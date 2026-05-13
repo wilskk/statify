@@ -5,6 +5,11 @@ use std::collections::HashMap;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NearestNeighborAnalysis {
     pub case_processing_summary: Option<CaseProcessingSummary>,
+    pub feature_selection_summary: Option<FeatureSelectionSummary>,
+    pub feature_selection_steps: Option<Vec<FeatureSelectionStep>>,
+    pub k_feature_selection_summary: Option<Vec<KFeatureSelectionSummary>>,
+    pub k_selection_chart: Option<KSelectionChart>,
+    pub prediction_results: Option<PredictionResults>,
     pub system_settings: Option<SystemSettings>,
     pub predictor_importance: Option<PredictorImportance>,
     pub classification_table: Option<ClassificationTable>,
@@ -14,6 +19,71 @@ pub struct NearestNeighborAnalysis {
     pub nearest_neighbors: Option<NearestNeighbors>,
     pub quadrant_map: Option<QuadrantMap>,
     pub saved_variables: Option<SavedVariables>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FeatureSelectionSummary {
+    pub enabled: bool,
+    pub method: String,
+    pub forced_features: Vec<String>,
+    pub candidate_features: Vec<String>,
+    pub selected_features: Vec<String>,
+    pub removed_features: Vec<String>,
+    pub final_error: f64,
+    pub stopping_method: String,
+    pub stopping_reason: String,
+    pub evaluation_strategy: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FeatureSelectionStep {
+    pub step_number: usize,
+    pub selected_feature: String,
+    pub trial_error: f64,
+    pub improvement: Option<f64>,
+    pub selected_features_after_step: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct KFeatureSelectionSummary {
+    pub k: usize,
+    pub selected_features: Vec<String>,
+    pub error: f64,
+    pub stopping_reason: String,
+    pub selected: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct KSelectionChart {
+    pub candidates: Vec<KSelectionCandidate>,
+    pub selected_k: usize,
+    pub metric_name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct KSelectionCandidate {
+    pub k: usize,
+    pub average_error: f64,
+    pub selected: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PredictionResults {
+    pub rows: Vec<PredictionResultRow>,
+    pub target_type: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PredictionResultRow {
+    pub case_id: i32,
+    pub row_index: usize,
+    pub sample_type: String,
+    pub actual: crate::models::data::DataValue,
+    pub predicted: crate::models::data::DataValue,
+    pub correct: Option<bool>,
+    pub probability_predicted_class: Option<f64>,
+    pub error: Option<f64>,
+    pub squared_error: Option<f64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

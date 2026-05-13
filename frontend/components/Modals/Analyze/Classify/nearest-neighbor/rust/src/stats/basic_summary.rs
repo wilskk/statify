@@ -23,7 +23,7 @@ pub fn basic_processing_summary(
     }
 
     let knn_data = preprocess_knn_data(data, config)?;
-    let valid_cases = knn_data.data_matrix.len();
+    let valid_cases = knn_data.training_indices.len() + knn_data.holdout_indices.len();
     let excluded_cases = total_cases - valid_cases;
     let training_n = knn_data.training_indices.len();
     let holdout_n = knn_data.holdout_indices.len();

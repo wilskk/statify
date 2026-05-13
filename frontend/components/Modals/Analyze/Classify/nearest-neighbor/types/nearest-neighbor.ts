@@ -1,5 +1,3 @@
-import type React from "react";
-
 /* =========================
    MAIN TAB
 ========================= */
@@ -11,7 +9,6 @@ export type KNNMainType = {
     CaseIdenVar: string | null;
     FocalCaseIdenVar: string | null;
     NormCovar: boolean;
-    Normalize?: boolean;
 };
 
 export type KNNDialogProps = {
@@ -136,6 +133,12 @@ export type KNNSaveProps = {
 
 export type KNNOutputType = {
     CaseSummary: boolean;
+    FeatureSelectionSummary: boolean;
+    KSelectionChart: boolean;
+    PredictorSpace: boolean;
+    PredictionResults: boolean;
+    ConfusionMatrix: boolean;
+    ShowNeighborDetail: boolean;
     ChartAndTable: boolean;
     ExportModelXML: boolean;
     XMLFilePath: string | null;
@@ -153,6 +156,8 @@ export type KNNOutputProps = {
         value: string | boolean | null
     ) => void;
     focalCaseVar: string | null;
+    isAutoK: boolean;
+    isFeatureSelectionActive: boolean;
 };
 
 export type KNNType = {

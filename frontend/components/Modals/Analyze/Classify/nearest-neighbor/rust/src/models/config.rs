@@ -118,6 +118,18 @@ pub struct SaveConfig {
 pub struct OutputConfig {
     #[serde(rename = "CaseSummary")]
     pub case_summary: bool,
+    #[serde(rename = "FeatureSelectionSummary", default = "default_true")]
+    pub feature_selection_summary: bool,
+    #[serde(rename = "KSelectionChart", default)]
+    pub k_selection_chart: bool,
+    #[serde(rename = "PredictorSpace", default = "default_true")]
+    pub predictor_space: bool,
+    #[serde(rename = "PredictionResults", default = "default_true")]
+    pub prediction_results: bool,
+    #[serde(rename = "ConfusionMatrix", default = "default_true")]
+    pub confusion_matrix: bool,
+    #[serde(rename = "ShowNeighborDetail", default)]
+    pub show_neighbor_detail: bool,
     #[serde(rename = "ChartAndTable")]
     pub chart_and_table: bool,
     #[serde(rename = "ExportModelXML")]
@@ -134,4 +146,8 @@ pub struct OutputConfig {
     pub new_data_file_path: Option<String>,
     #[serde(rename = "DatasetName")]
     pub dataset_name: Option<String>,
+}
+
+fn default_true() -> bool {
+    true
 }

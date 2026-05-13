@@ -4,7 +4,7 @@ use crate::models::{
     result::{DataPoint, PredictorDimension, PredictorSpace},
 };
 
-use super::core::preprocess_knn_data;
+use super::core::{build_effective_feature_weights, determine_effective_k, preprocess_knn_data};
 
 pub fn calculate_predictor_space(
     data: &AnalysisData,
@@ -16,20 +16,29 @@ pub fn calculate_predictor_space(
         return Err("No features available for predictor space visualization".to_string());
     }
 
-    let k = if config.neighbors.specify {
-        config.neighbors.specify_k as usize
-    } else if config.neighbors.auto_selection {
-        config.neighbors.min_k.unwrap_or(3).max(1) as usize
-    } else {
-        3
-    };
+    let k = determine_effective_k(&knn_data, config)?;
+    let weights = build_effective_feature_weights(&knn_data, config)?;
+    let displayed_feature_indices: Vec<usize> = weights
+        .as_ref()
+        .map(|values| {
+            values
+                .iter()
+                .enumerate()
+                .filter_map(|(idx, weight)| if *weight > 0.0 { Some(idx) } else { None })
+                .collect()
+        })
+        .unwrap_or_else(|| (0..knn_data.features.len()).collect());
+
+    if displayed_feature_indices.is_empty() {
+        return Err("No selected features available for predictor space visualization".to_string());
+    }
 
     let mut dimensions = Vec::new();
 
-    if knn_data.features.len() >= 3 {
-        let feature1_idx = 0;
-        let feature2_idx = 1;
-        let feature3_idx = 2;
+    if displayed_feature_indices.len() >= 3 {
+        let feature1_idx = displayed_feature_indices[0];
+        let feature2_idx = displayed_feature_indices[1];
+        let feature3_idx = displayed_feature_indices[2];
         let mut points = Vec::new();
 
         for (idx, point) in knn_data.data_matrix.iter().enumerate() {
@@ -84,9 +93,9 @@ pub fn calculate_predictor_space(
             ),
             points,
         });
-    } else if knn_data.features.len() >= 2 {
-        let feature1_idx = 0;
-        let feature2_idx = 1;
+    } else if displayed_feature_indices.len() >= 2 {
+        let feature1_idx = displayed_feature_indices[0];
+        let feature2_idx = displayed_feature_indices[1];
         let mut points = Vec::new();
 
         for (idx, point) in knn_data.data_matrix.iter().enumerate() {
@@ -136,8 +145,8 @@ pub fn calculate_predictor_space(
             ),
             points,
         });
-    } else if knn_data.features.len() == 1 {
-        let feature_idx = 0;
+    } else if displayed_feature_indices.len() == 1 {
+        let feature_idx = displayed_feature_indices[0];
         let mut points = Vec::new();
 
         for (idx, point) in knn_data.data_matrix.iter().enumerate() {
@@ -187,7 +196,7 @@ pub fn calculate_predictor_space(
     }
 
     Ok(PredictorSpace {
-        model_predictors: knn_data.features.len(),
+        model_predictors: displayed_feature_indices.len(),
         k_value: k,
         dimensions,
     })

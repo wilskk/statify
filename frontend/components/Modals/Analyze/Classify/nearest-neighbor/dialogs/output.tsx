@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import type {
   KNNOutputProps,
   KNNOutputType,
@@ -18,79 +18,111 @@ export const KNNOutput = ({
   updateFormData,
   data,
   focalCaseVar,
+  isAutoK,
+  isFeatureSelectionActive,
 }: KNNOutputProps) => {
-  const [outputState, setOutputState] = useState<KNNOutputType>({
+  const wasFeatureSelectionActive = useRef(isFeatureSelectionActive);
+
+  const outputState: KNNOutputType = {
     ...data,
     CaseSummary: data.CaseSummary ?? true,
+    FeatureSelectionSummary: data.FeatureSelectionSummary ?? true,
+    KSelectionChart: data.KSelectionChart ?? true,
+    PredictorSpace: data.PredictorSpace ?? true,
+    PredictionResults: data.PredictionResults ?? true,
+    ConfusionMatrix: data.ConfusionMatrix ?? true,
+    ShowNeighborDetail: data.ShowNeighborDetail ?? false,
     ChartAndTable: data.ChartAndTable ?? true,
-  });
-
-  useEffect(() => {
-    if (JSON.stringify(data) === JSON.stringify(outputState)) return;
-    setOutputState({ ...data });
-  }, [data]);
-
-  useEffect(() => {
-    if (JSON.stringify(outputState) === JSON.stringify(data)) return;
-
-    Object.entries(outputState).forEach(([key, value]) => {
-      updateFormData(key as keyof KNNOutputType, value);
-    });
-  }, [outputState]);
+  };
 
   const handleChange = (
     field: keyof KNNOutputType,
-    value: CheckedState | undefined | number | boolean | string | null,
+    value: CheckedState | undefined | boolean | string | null,
   ) => {
-    setOutputState((prevState) => ({
-      ...prevState,
-      [field]: value,
-    }));
+    const nextValue =
+      value === "indeterminate" || typeof value === "undefined" ? false : value;
+
+    if (field === "KSelectionChart" && !isAutoK && nextValue) {
+      return;
+    }
+
+    if (
+      field === "FeatureSelectionSummary" &&
+      !isFeatureSelectionActive &&
+      nextValue
+    ) {
+      return;
+    }
+
+    updateFormData(field, nextValue);
+
+    if (field === "ExportModelXML" && !nextValue) {
+      updateFormData("XMLFilePath", null);
+    }
+
+    if (field === "ExportDistance" && !nextValue) {
+      updateFormData("CreateDataset", false);
+      updateFormData("WriteDataFile", false);
+      updateFormData("DatasetName", null);
+      updateFormData("NewDataFilePath", null);
+    }
   };
 
   const handleExportDistGrp = (value: string) => {
-    setOutputState((prevState) => ({
-      ...prevState,
-      CreateDataset: value === "CreateDataset",
-      WriteDataFile: value === "WriteDataFile",
-    }));
+    updateFormData("CreateDataset", value === "CreateDataset");
+    updateFormData("WriteDataFile", value === "WriteDataFile");
   };
 
   const canExportDistance = !!focalCaseVar;
+  const exportDistanceEnabled = canExportDistance && outputState.ExportDistance;
 
   useEffect(() => {
-    if (!canExportDistance) {
-      setOutputState((prev) => ({
-        ...prev,
-        ExportDistance: false,
-        CreateDataset: false,
-        WriteDataFile: false,
-        DatasetName: null,
-        NewDataFilePath: null,
-      }));
+    if (!isAutoK && data.KSelectionChart) {
+      updateFormData("KSelectionChart", false);
     }
-  }, [canExportDistance]);
+  }, [data.KSelectionChart, isAutoK, updateFormData]);
 
   useEffect(() => {
-    if (!outputState.ExportModelXML) {
-      setOutputState((prev) => ({
-        ...prev,
-        XMLFilePath: null,
-      }));
+    if (
+      isFeatureSelectionActive &&
+      (!wasFeatureSelectionActive.current ||
+        data.FeatureSelectionSummary === undefined) &&
+      !data.FeatureSelectionSummary
+    ) {
+      updateFormData("FeatureSelectionSummary", true);
     }
-  }, [outputState.ExportModelXML]);
 
-  useEffect(() => {
-    if (!outputState.ExportDistance) {
-      setOutputState((prev) => ({
-        ...prev,
-        CreateDataset: false,
-        WriteDataFile: false,
-        DatasetName: null,
-        NewDataFilePath: null,
-      }));
-    }
-  }, [outputState.ExportDistance]);
+    wasFeatureSelectionActive.current = isFeatureSelectionActive;
+  }, [
+    data.FeatureSelectionSummary,
+    isFeatureSelectionActive,
+    updateFormData,
+  ]);
+
+  const viewerOutputOptions: Array<{
+    field: keyof KNNOutputType;
+    label: string;
+    disabled?: boolean;
+  }> = [
+    { field: "CaseSummary", label: "Case Processing Summary" },
+    {
+      field: "FeatureSelectionSummary",
+      label: "Feature Selection Summary",
+      disabled: !isFeatureSelectionActive,
+    },
+    {
+      field: "KSelectionChart",
+      label: "K Selection Chart",
+      disabled: !isAutoK,
+    },
+    { field: "PredictorSpace", label: "Predictor Space Scatter Plot" },
+    {
+      field: "PredictionResults",
+      label: "Classification / Prediction Result",
+    },
+    { field: "ConfusionMatrix", label: "Confusion Matrix and Metrics" },
+    { field: "ShowNeighborDetail", label: "Neighbor Detail" },
+  ];
 
   return (
     <div className="flex flex-col h-full">
@@ -100,43 +132,33 @@ export const KNNOutput = ({
             direction="vertical"
             className="min-h-[325px] max-w-xl rounded-lg border md:min-w-[200px]"
           >
-            <ResizablePanel defaultSize={22}>
+            <ResizablePanel defaultSize={50}>
               <div className="flex flex-col gap-1 p-2">
                 <Label className="font-bold">Viewer Output</Label>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="CaseSummary"
-                    checked={outputState.CaseSummary}
-                    onCheckedChange={(checked) =>
-                      handleChange("CaseSummary", checked)
-                    }
-                  />
-                  <label
-                    htmlFor="CaseSummary"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Case Processing Summary
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="ChartAndTable"
-                    checked={outputState.ChartAndTable}
-                    onCheckedChange={(checked) =>
-                      handleChange("ChartAndTable", checked)
-                    }
-                  />
-                  <label
-                    htmlFor="ChartAndTable"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Charts and Tables
-                  </label>
-                </div>
+                {viewerOutputOptions.map(({ field, label, disabled }) => (
+                  <div className="flex items-center space-x-2" key={field}>
+                    <Checkbox
+                      id={field}
+                      checked={disabled ? false : Boolean(outputState[field])}
+                      disabled={disabled}
+                      onCheckedChange={(checked) =>
+                        handleChange(field, checked)
+                      }
+                    />
+                    <label
+                      htmlFor={field}
+                      className={`text-sm font-medium leading-none ${
+                        disabled ? "cursor-not-allowed opacity-70" : ""
+                      }`}
+                    >
+                      {label}
+                    </label>
+                  </div>
+                ))}
               </div>
             </ResizablePanel>
             <ResizableHandle />
-            <ResizablePanel defaultSize={78}>
+            <ResizablePanel defaultSize={50}>
               <div className="flex flex-col gap-2 p-2">
                 <Label className="font-bold">Files</Label>
                 <div className="flex flex-col gap-2">
@@ -171,7 +193,7 @@ export const KNNOutput = ({
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="ExportDistance"
-                      checked={outputState.ExportDistance}
+                      checked={exportDistanceEnabled}
                       disabled={!canExportDistance}
                       onCheckedChange={(checked) =>
                         handleChange("ExportDistance", checked)
@@ -192,7 +214,7 @@ export const KNNOutput = ({
                           ? "CreateDataset"
                           : "WriteDataFile"
                       }
-                      disabled={!outputState.ExportDistance}
+                      disabled={!exportDistanceEnabled}
                       onValueChange={handleExportDistGrp}
                     >
                       <div className="flex flex-col gap-2">
@@ -215,7 +237,7 @@ export const KNNOutput = ({
                             className="min-w-2xl w-full"
                             placeholder=""
                             value={outputState.DatasetName ?? ""}
-                            disabled={!outputState.CreateDataset}
+                            disabled={!exportDistanceEnabled || !outputState.CreateDataset}
                             onChange={(e) =>
                               handleChange("DatasetName", e.target.value)
                             }
@@ -239,7 +261,7 @@ export const KNNOutput = ({
                             className="min-w-2xl w-full"
                             placeholder=""
                             value={outputState.NewDataFilePath ?? ""}
-                            disabled={!outputState.WriteDataFile}
+                            disabled={!exportDistanceEnabled || !outputState.WriteDataFile}
                             onChange={(e) =>
                               handleChange("NewDataFilePath", e.target.value)
                             }

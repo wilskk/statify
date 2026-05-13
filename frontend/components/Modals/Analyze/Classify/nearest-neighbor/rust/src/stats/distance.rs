@@ -83,7 +83,11 @@ pub fn find_k_nearest_neighbors(
         })
         .collect();
 
-    distances.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(Ordering::Equal));
+    distances.sort_by(|a, b| {
+        a.1.partial_cmp(&b.1)
+            .unwrap_or(Ordering::Equal)
+            .then_with(|| a.0.cmp(&b.0))
+    });
     distances.into_iter().take(k.max(1)).collect()
 }
 
@@ -101,4 +105,18 @@ pub fn calculate_manhattan_distance(
     feature_weights: Option<&[f64]>,
 ) -> f64 {
     calculate_distance(point1, point2, false, feature_weights)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{calculate_euclidean_distance, calculate_manhattan_distance};
+
+    #[test]
+    fn euclidean_and_manhattan_match_sklearn_metrics() {
+        let a = [0.0, 0.0];
+        let b = [3.0, 4.0];
+
+        assert_eq!(calculate_euclidean_distance(&a, &b, None), 5.0);
+        assert_eq!(calculate_manhattan_distance(&a, &b, None), 7.0);
+    }
 }

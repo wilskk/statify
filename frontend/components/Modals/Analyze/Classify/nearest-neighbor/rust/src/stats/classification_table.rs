@@ -8,8 +8,11 @@ use crate::models::{
 };
 
 use super::core::{
-    build_effective_feature_weights, determine_k_value, find_k_nearest_neighbors,
-    perform_cross_validation, preprocess_knn_data,
+    build_effective_feature_weights, determine_effective_k, find_k_nearest_neighbors,
+    preprocess_knn_data,
+};
+use super::prediction::{
+    calculate_categorical_probabilities, category_key, sorted_target_categories,
 };
 
 pub fn calculate_classification_table(
@@ -25,11 +28,7 @@ pub fn calculate_classification_table(
     let knn_data = preprocess_knn_data(data, config)?;
 
     // Determine k value
-    let k = if config.neighbors.auto_selection && !config.neighbors.specify {
-        perform_cross_validation(&knn_data, config)?
-    } else {
-        determine_k_value(config)
-    };
+    let k = determine_effective_k(&knn_data, config)?;
 
     // Create mapping of categorical target values to numeric indices
     let (category_map, categories) = create_category_mapping(&knn_data.target_values);
@@ -47,6 +46,7 @@ pub fn calculate_classification_table(
         k,
         use_euclidean,
         weights.as_deref(),
+        config.neighbors.weight,
         true,
     );
 
@@ -58,6 +58,7 @@ pub fn calculate_classification_table(
             k,
             use_euclidean,
             weights.as_deref(),
+            config.neighbors.weight,
             false,
         );
 
@@ -99,26 +100,12 @@ pub fn calculate_classification_table(
 
 /// Create a mapping from categorical values to numeric indices
 fn create_category_mapping(target_values: &[DataValue]) -> (HashMap<String, usize>, Vec<String>) {
-    let mut category_map = HashMap::new();
-    let mut categories = Vec::new();
-
-    for value in target_values {
-        let category = match value {
-            DataValue::Text(s) => s.clone(),
-            DataValue::Boolean(b) => b.to_string(),
-            DataValue::Number(n) => n.to_string(),
-            _ => {
-                // Handle other types as needed
-                continue;
-            }
-        };
-
-        if !category_map.contains_key(&category) {
-            let idx = category_map.len();
-            category_map.insert(category.clone(), idx);
-            categories.push(category);
-        }
-    }
+    let categories = sorted_target_categories(target_values);
+    let category_map = categories
+        .iter()
+        .enumerate()
+        .map(|(idx, category)| (category.clone(), idx))
+        .collect();
 
     (category_map, categories)
 }
@@ -131,6 +118,7 @@ fn calculate_confusion_matrix(
     k: usize,
     use_euclidean: bool,
     weights: Option<&[f64]>,
+    use_distance_weights: bool,
     is_training: bool,
 ) -> (Vec<Vec<usize>>, usize, usize, Vec<usize>) {
     let mut confusion = vec![vec![0; n_categories]; n_categories];
@@ -148,11 +136,9 @@ fn calculate_confusion_matrix(
     for &idx in indices_to_process {
         // Get actual category
         let actual_value = &knn_data.target_values[idx];
-        let actual_cat = match actual_value {
-            DataValue::Text(s) => category_map.get(s),
-            DataValue::Boolean(b) => category_map.get(&b.to_string()),
-            DataValue::Number(n) => category_map.get(&n.to_string()),
-            _ => {
+        let actual_cat = match category_key(Some(actual_value)) {
+            Some(category) => category_map.get(&category),
+            None => {
                 // Consider this as missing value
                 if !is_training {
                     // Track missing values in holdout set
@@ -170,6 +156,7 @@ fn calculate_confusion_matrix(
                         &knn_data.target_values,
                         category_map,
                         n_categories,
+                        use_distance_weights,
                     );
 
                     missing[predicted_cat] += 1;
@@ -218,6 +205,7 @@ fn calculate_confusion_matrix(
             &knn_data.target_values,
             category_map,
             n_categories,
+            use_distance_weights,
         );
 
         // Update confusion matrix
@@ -241,32 +229,27 @@ fn predict_category(
     target_values: &[DataValue],
     category_map: &HashMap<String, usize>,
     n_categories: usize,
+    use_distance_weights: bool,
 ) -> usize {
-    let mut vote_counts = vec![0; n_categories];
+    let probabilities =
+        calculate_categorical_probabilities(neighbors, target_values, use_distance_weights);
+    let mut best_idx = 0;
+    let mut best_probability = f64::NEG_INFINITY;
 
-    for &(neighbor_idx, _) in neighbors {
-        let neighbor_value = &target_values[neighbor_idx];
-        let neighbor_cat = match neighbor_value {
-            DataValue::Text(s) => category_map.get(s),
-            DataValue::Boolean(b) => category_map.get(&b.to_string()),
-            DataValue::Number(n) => category_map.get(&n.to_string()),
-            _ => {
+    for (category, probability) in probabilities {
+        if let Some(&idx) = category_map.get(&category) {
+            if idx >= n_categories {
                 continue;
             }
-        };
 
-        if let Some(&cat_idx) = neighbor_cat {
-            vote_counts[cat_idx] += 1;
+            if probability > best_probability {
+                best_probability = probability;
+                best_idx = idx;
+            }
         }
     }
 
-    // Find predicted category (max votes)
-    vote_counts
-        .iter()
-        .enumerate()
-        .max_by_key(|&(_, count)| count)
-        .map(|(idx, _)| idx)
-        .unwrap_or(0)
+    best_idx
 }
 
 /// Extract row and column sums from confusion matrix

@@ -246,7 +246,7 @@ export const KNNNeighbors = ({
                       }
                     />
                     <Label>
-                      Weight features by importance when computing distances
+                      Weight neighbors by inverse distance
                     </Label>
                   </div>
                 </div>

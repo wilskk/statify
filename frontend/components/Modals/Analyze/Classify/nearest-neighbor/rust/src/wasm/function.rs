@@ -1,5 +1,6 @@
 use wasm_bindgen::prelude::*;
 
+use crate::models::result::{KSelectionCandidate, KSelectionChart};
 use crate::models::{config::KnnConfig, data::AnalysisData, result::NearestNeighborAnalysis};
 use crate::stats::core;
 use crate::utils::converter::format_result;
@@ -47,29 +48,91 @@ pub fn run_analysis(
         };
     }
 
+    let mut k_selection_chart = None;
+    if config.neighbors.auto_selection && config.output.k_selection_chart {
+        logger.add_log("k_selection_chart");
+        match core::preprocess_knn_data(data, config).and_then(|knn_data| {
+            if config.features.perform_selection {
+                let (_, _, k_summaries) =
+                    core::calculate_feature_selection_output(&knn_data, config)?;
+                Ok(k_summaries.map(|summaries| KSelectionChart {
+                    selected_k: summaries
+                        .iter()
+                        .find(|summary| summary.selected)
+                        .map(|summary| summary.k)
+                        .unwrap_or_else(|| summaries.first().map(|summary| summary.k).unwrap_or(1)),
+                    metric_name: "feature_selection_holdout_error".to_string(),
+                    candidates: summaries
+                        .into_iter()
+                        .map(|summary| KSelectionCandidate {
+                            k: summary.k,
+                            average_error: summary.error,
+                            selected: summary.selected,
+                        })
+                        .collect(),
+                }))
+            } else {
+                core::calculate_k_selection_chart(&knn_data, config)
+            }
+        }) {
+            Ok(chart) => k_selection_chart = chart,
+            Err(e) => error_collector.add_error("k_selection_chart", &e),
+        }
+    }
+
+    let mut feature_selection_summary = None;
+    let mut feature_selection_steps = None;
+    let mut k_feature_selection_summary = None;
+    if config.features.perform_selection && config.output.feature_selection_summary {
+        logger.add_log("feature_selection");
+        match core::preprocess_knn_data(data, config)
+            .and_then(|knn_data| core::calculate_feature_selection_output(&knn_data, config))
+        {
+            Ok((summary, steps, k_summary)) => {
+                feature_selection_summary = summary;
+                feature_selection_steps = steps;
+                k_feature_selection_summary = k_summary;
+            }
+            Err(e) => error_collector.add_error("feature_selection", &e),
+        }
+    }
+
     // Step 2: Nearest neighbors
     logger.add_log("nearest_neighbors");
     let mut nearest_neighbors = None;
-    match core::calculate_nearest_neighbors(data, config) {
-        Ok(neighbors) => {
-            web_sys::console::log_1(&format!("Nearest Neighbors: {:?}", neighbors).into());
-            nearest_neighbors = Some(neighbors);
+    if config.output.show_neighbor_detail {
+        match core::calculate_nearest_neighbors(data, config) {
+            Ok(neighbors) => {
+                web_sys::console::log_1(&format!("Nearest Neighbors: {:?}", neighbors).into());
+                nearest_neighbors = Some(neighbors);
+            }
+            Err(e) => {
+                error_collector.add_error("nearest_neighbors", &e);
+            }
         }
-        Err(e) => {
-            error_collector.add_error("nearest_neighbors", &e);
-        }
-    }
+    };
 
     // Step 3: Classification results
     logger.add_log("classification_results");
     let mut classification_table = None;
-    match core::calculate_classification_table(data, config) {
-        Ok(table) => {
-            web_sys::console::log_1(&format!("Classification Table: {:?}", table).into());
-            classification_table = Some(table);
+    if config.output.confusion_matrix {
+        match core::calculate_classification_table(data, config) {
+            Ok(table) => {
+                web_sys::console::log_1(&format!("Classification Table: {:?}", table).into());
+                classification_table = Some(table);
+            }
+            Err(e) => {
+                error_collector.add_error("classification_results", &e);
+            }
         }
-        Err(e) => {
-            error_collector.add_error("classification_results", &e);
+    };
+
+    let mut prediction_results = None;
+    if config.output.prediction_results {
+        logger.add_log("prediction_results");
+        match core::calculate_prediction_results(data, config) {
+            Ok(result) => prediction_results = Some(result),
+            Err(e) => error_collector.add_error("prediction_results", &e),
         }
     }
 
@@ -91,15 +154,17 @@ pub fn run_analysis(
     // Step 5: Predictor space
     logger.add_log("predictor_space");
     let mut predictor_space = None;
-    match core::calculate_predictor_space(data, config) {
-        Ok(space) => {
-            web_sys::console::log_1(&format!("Predictor Space: {:?}", space).into());
-            predictor_space = Some(space);
+    if config.output.predictor_space {
+        match core::calculate_predictor_space(data, config) {
+            Ok(space) => {
+                web_sys::console::log_1(&format!("Predictor Space: {:?}", space).into());
+                predictor_space = Some(space);
+            }
+            Err(e) => {
+                error_collector.add_error("predictor_space", &e);
+            }
         }
-        Err(e) => {
-            error_collector.add_error("predictor_space", &e);
-        }
-    }
+    };
 
     // Step 6: Peers chart
     logger.add_log("peers_chart");
@@ -162,6 +227,11 @@ pub fn run_analysis(
     // Create the final result
     let result = NearestNeighborAnalysis {
         case_processing_summary,
+        feature_selection_summary,
+        feature_selection_steps,
+        k_feature_selection_summary,
+        k_selection_chart,
+        prediction_results,
         system_settings,
         predictor_importance,
         classification_table,

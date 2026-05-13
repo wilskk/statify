@@ -7,9 +7,11 @@ use crate::models::{
 };
 
 use super::core::{
-    build_effective_feature_weights, calculate_predictions, determine_k_value,
-    find_k_nearest_neighbors, perform_cross_validation, preprocess_knn_data,
+    build_effective_feature_weights, determine_k_value, find_k_nearest_neighbors,
+    perform_cross_validation, preprocess_knn_data,
 };
+use super::partition::EXCLUDED_FOLD;
+use super::prediction::{calculate_categorical_probabilities, calculate_predictions};
 
 pub fn calculate_saved_variables(
     data: &AnalysisData,
@@ -141,16 +143,18 @@ fn calculate_case_predictions(
         predicted_values[case_idx] = calculate_predictions(&neighbors, target_values, config);
 
         if !categories.is_empty() && !neighbors.is_empty() {
-            let mut counts: HashMap<String, usize> = HashMap::new();
-            for &(neighbor_idx, _) in &neighbors {
-                if let Some(category) = category_key(target_values.get(neighbor_idx)) {
-                    *counts.entry(category).or_insert(0) += 1;
-                }
-            }
+            let probabilities = calculate_categorical_probabilities(
+                &neighbors,
+                target_values,
+                config.neighbors.weight,
+            );
+            let probability_by_category: HashMap<String, f64> = probabilities.into_iter().collect();
 
-            let denominator = neighbors.len() as f64;
             for category in &categories {
-                let probability = (*counts.get(category).unwrap_or(&0) as f64) / denominator;
+                let probability = probability_by_category
+                    .get(category)
+                    .copied()
+                    .unwrap_or(0.0);
                 if let Some(values) = category_probabilities.get_mut(category) {
                     values[case_idx] = probability;
                 }
@@ -267,8 +271,11 @@ fn build_fold_variable(
 
     for (processed_idx, &raw_idx) in processed_case_indices.iter().enumerate() {
         if raw_idx < values.len() {
-            values[raw_idx] =
-                DataValue::Number(folds.get(processed_idx).copied().unwrap_or(0) as f64 + 1.0);
+            if let Some(fold) = folds.get(processed_idx).copied() {
+                if fold != EXCLUDED_FOLD {
+                    values[raw_idx] = DataValue::Number(fold as f64 + 1.0);
+                }
+            }
         }
     }
 

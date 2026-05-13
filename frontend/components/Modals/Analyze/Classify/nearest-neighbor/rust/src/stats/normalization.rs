@@ -25,6 +25,11 @@ pub fn normalize_features(data_matrix: &mut Vec<Vec<f64>>) {
         let max_val = col.max();
 
         if (max_val - min_val).abs() < f64::EPSILON {
+            for i in 0..n_rows {
+                if j < data_matrix[i].len() {
+                    data_matrix[i][j] = 0.0;
+                }
+            }
             continue;
         }
 

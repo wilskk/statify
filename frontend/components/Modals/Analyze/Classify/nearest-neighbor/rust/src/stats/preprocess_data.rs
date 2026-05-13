@@ -6,7 +6,8 @@ use crate::models::{
 };
 
 use super::partition::{
-    split_cross_validation_by_partition_config, split_training_holdout_by_partition_config,
+    has_valid_partitioning_values, split_cross_validation_by_partition_config,
+    split_training_holdout_by_partition_config_detailed,
 };
 
 pub fn preprocess_knn_data(data: &AnalysisData, config: &KnnConfig) -> Result<KnnData, String> {
@@ -89,28 +90,29 @@ pub fn preprocess_knn_data(data: &AnalysisData, config: &KnnConfig) -> Result<Kn
     // Get case identifier variable
     let case_ident_var = &config.main.case_iden_var;
 
-    let partition_var = if config.partition.use_variable {
-        config.partition.partitioning_variable.as_deref()
-    } else {
-        None
-    };
-
     let valid_case_indices = collect_valid_case_indices(
         data,
         &features,
         &feature_measures,
         Some(target_var.as_str()),
-        partition_var,
     );
+    let analysis_case_indices: Vec<usize> = valid_case_indices
+        .into_iter()
+        .filter(|&case_idx| has_valid_partitioning_values(data, config, case_idx))
+        .collect();
+
+    if analysis_case_indices.is_empty() {
+        return Err("No valid data records after preprocessing".to_string());
+    }
 
     let category_maps =
-        build_category_maps(data, &features, &feature_measures, &valid_case_indices);
+        build_category_maps(data, &features, &feature_measures, &analysis_case_indices);
 
     let expanded_feature_measures =
         build_expanded_feature_measures(&feature_measures, &category_maps);
 
     // Process each valid case
-    for &case_idx in &valid_case_indices {
+    for &case_idx in &analysis_case_indices {
         // Extract feature values for current case
         let row = match extract_feature_values_one_hot(
             case_idx,
@@ -149,12 +151,13 @@ pub fn preprocess_knn_data(data: &AnalysisData, config: &KnnConfig) -> Result<Kn
         normalize_non_categorical_features(&mut data_matrix, &expanded_feature_measures);
     }
 
-    let (training_indices, holdout_indices) = split_training_holdout_by_partition_config(
-        data,
-        config,
-        data_matrix.len(),
-        &processed_case_indices,
-    )?;
+    let (training_indices, holdout_indices, excluded_indices) =
+        split_training_holdout_by_partition_config_detailed(
+            data,
+            config,
+            data_matrix.len(),
+            &processed_case_indices,
+        )?;
 
     let cross_validation_folds =
         split_cross_validation_by_partition_config(data, config, &processed_case_indices)?;
@@ -174,6 +177,7 @@ pub fn preprocess_knn_data(data: &AnalysisData, config: &KnnConfig) -> Result<Kn
         processed_case_indices,
         training_indices,
         holdout_indices,
+        excluded_indices,
         cross_validation_folds,
         focal_indices,
     })
@@ -248,7 +252,6 @@ fn collect_valid_case_indices(
     features: &[String],
     feature_measures: &[VariableMeasure],
     target_var: Option<&str>,
-    partition_var: Option<&str>,
 ) -> Vec<usize> {
     let mut valid_case_indices = Vec::new();
 
@@ -283,15 +286,6 @@ fn collect_valid_case_indices(
         if let Some(target_var_name) = target_var {
             let target_value = extract_target_value(case_idx, target_var_name, data);
             if is_missing_target_value(&target_value) {
-                continue;
-            }
-        }
-
-        if let Some(partition_var_name) = partition_var {
-            if !matches!(
-                find_feature_value(case_idx, partition_var_name, data),
-                Some(DataValue::Number(n)) if n.is_finite()
-            ) {
                 continue;
             }
         }
@@ -465,6 +459,13 @@ fn normalize_non_categorical_features(
             .fold(f64::NEG_INFINITY, f64::max);
 
         if (max_val - min_val).abs() < f64::EPSILON {
+            for row in data_matrix.iter_mut() {
+                if let Some(value) = row.get_mut(j) {
+                    if value.is_finite() {
+                        *value = 0.0;
+                    }
+                }
+            }
             continue;
         }
 
@@ -567,4 +568,33 @@ fn identify_focal_cases(
     }
 
     focal_indices
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::models::data::VariableMeasure;
+
+    use super::normalize_non_categorical_features;
+
+    #[test]
+    fn adjusted_normalization_scales_continuous_columns_and_skips_one_hot() {
+        let mut matrix = vec![vec![10.0, 1.0], vec![20.0, 0.0], vec![30.0, 1.0]];
+        let measures = vec![VariableMeasure::Scale, VariableMeasure::Nominal];
+
+        normalize_non_categorical_features(&mut matrix, &measures);
+
+        assert_eq!(matrix[0], vec![-1.0, 1.0]);
+        assert_eq!(matrix[1], vec![0.0, 0.0]);
+        assert_eq!(matrix[2], vec![1.0, 1.0]);
+    }
+
+    #[test]
+    fn adjusted_normalization_constant_continuous_column_becomes_zero() {
+        let mut matrix = vec![vec![5.0], vec![5.0], vec![5.0]];
+        let measures = vec![VariableMeasure::Scale];
+
+        normalize_non_categorical_features(&mut matrix, &measures);
+
+        assert_eq!(matrix, vec![vec![0.0], vec![0.0], vec![0.0]]);
+    }
 }

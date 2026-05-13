@@ -125,6 +125,7 @@ pub struct KnnData {
     pub processed_case_indices: Vec<usize>,
     pub training_indices: Vec<usize>,
     pub holdout_indices: Vec<usize>,
+    pub excluded_indices: Vec<usize>,
     pub cross_validation_folds: Vec<usize>,
     pub focal_indices: Vec<usize>,
 }

@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
-use rand_mt::Mt64;
-
 use crate::models::{
     config::KnnConfig,
     data::{AnalysisData, DataValue},
 };
 
-use super::common::split_training_holdout;
+use super::{common::split_training_holdout, numpy_random::shuffle_indices_numpy_compatible};
+
+pub const EXCLUDED_FOLD: usize = usize::MAX;
 
 pub fn split_training_holdout_by_partition_config(
     data: &AnalysisData,
@@ -15,26 +15,41 @@ pub fn split_training_holdout_by_partition_config(
     processed_case_count: usize,
     processed_case_indices: &[usize],
 ) -> Result<(Vec<usize>, Vec<usize>), String> {
+    let (training_indices, holdout_indices, _) =
+        split_training_holdout_by_partition_config_detailed(
+            data,
+            config,
+            processed_case_count,
+            processed_case_indices,
+        )?;
+
+    Ok((training_indices, holdout_indices))
+}
+
+pub fn split_training_holdout_by_partition_config_detailed(
+    data: &AnalysisData,
+    config: &KnnConfig,
+    processed_case_count: usize,
+    processed_case_indices: &[usize],
+) -> Result<(Vec<usize>, Vec<usize>, Vec<usize>), String> {
     if config.partition.use_variable {
         if let Some(ref partition_var) = config.partition.partitioning_variable {
             return split_by_partition_variable(data, partition_var, processed_case_indices);
         }
 
-        return Ok(split_training_holdout_randomly(
-            config,
-            processed_case_count,
-        ));
+        let (training_indices, holdout_indices) =
+            split_training_holdout_randomly(config, processed_case_count);
+        return Ok((training_indices, holdout_indices, Vec::new()));
     }
 
     if config.partition.use_randomly {
-        return Ok(split_training_holdout_randomly(
-            config,
-            processed_case_count,
-        ));
+        let (training_indices, holdout_indices) =
+            split_training_holdout_randomly(config, processed_case_count);
+        return Ok((training_indices, holdout_indices, Vec::new()));
     }
 
     let indices: Vec<usize> = (0..processed_case_count).collect();
-    Ok((indices, Vec::new()))
+    Ok((indices, Vec::new(), Vec::new()))
 }
 
 pub fn split_cross_validation_by_partition_config(
@@ -42,6 +57,10 @@ pub fn split_cross_validation_by_partition_config(
     config: &KnnConfig,
     processed_case_indices: &[usize],
 ) -> Result<Vec<usize>, String> {
+    if config.features.perform_selection {
+        return Ok(vec![0; processed_case_indices.len()]);
+    }
+
     if config.partition.v_fold_use_partitioning_var {
         if let Some(ref fold_var) = config.partition.v_fold_partitioning_variable {
             return split_cross_validation_by_variable(data, fold_var, processed_case_indices);
@@ -51,15 +70,26 @@ pub fn split_cross_validation_by_partition_config(
     }
 
     if config.partition.v_fold_use_randomly {
-        return Ok(create_random_folds(
+        return create_random_folds(
             processed_case_indices.len(),
             config.partition.num_partition,
             config.partition.set_seed,
             config.partition.seed,
-        ));
+        );
     }
 
-    Ok(create_sequential_folds(processed_case_indices.len(), 10))
+    if processed_case_indices.len() < 2 {
+        return Ok(vec![0; processed_case_indices.len()]);
+    }
+
+    let default_folds = 10.min(processed_case_indices.len()) as i32;
+    create_k_fold_assignments(
+        processed_case_indices.len(),
+        default_folds,
+        false,
+        false,
+        None,
+    )
 }
 
 fn split_training_holdout_randomly(
@@ -78,12 +108,16 @@ fn split_by_partition_variable(
     data: &AnalysisData,
     partition_var: &str,
     processed_case_indices: &[usize],
-) -> Result<(Vec<usize>, Vec<usize>), String> {
+) -> Result<(Vec<usize>, Vec<usize>, Vec<usize>), String> {
     let mut training_indices = Vec::new();
     let mut holdout_indices = Vec::new();
+    let mut excluded_indices = Vec::new();
 
     for (processed_idx, &raw_case_idx) in processed_case_indices.iter().enumerate() {
-        let value = numeric_partition_value(raw_case_idx, partition_var, data)?;
+        let Some(value) = numeric_partition_value(raw_case_idx, partition_var, data) else {
+            excluded_indices.push(processed_idx);
+            continue;
+        };
 
         if value > 0.0 {
             training_indices.push(processed_idx);
@@ -96,7 +130,7 @@ fn split_by_partition_variable(
         return Err("No training cases found using partition variable".to_string());
     }
 
-    Ok((training_indices, holdout_indices))
+    Ok((training_indices, holdout_indices, excluded_indices))
 }
 
 fn split_cross_validation_by_variable(
@@ -105,22 +139,19 @@ fn split_cross_validation_by_variable(
     processed_case_indices: &[usize],
 ) -> Result<Vec<usize>, String> {
     let mut raw_fold_values = Vec::with_capacity(processed_case_indices.len());
+    let mut unique_values = Vec::new();
 
     for &raw_case_idx in processed_case_indices {
-        let value = numeric_partition_value(raw_case_idx, fold_var, data)?;
-        if value < 0.0 {
-            return Err(format!(
-                "Cross-validation fold variable '{}' contains a negative fold value",
-                fold_var
-            ));
+        let raw_value = fold_partition_value(raw_case_idx, fold_var, data);
+
+        if let Some(value) = raw_value {
+            if !unique_values.contains(&value) {
+                unique_values.push(value);
+            }
         }
 
-        raw_fold_values.push(value.round() as i64);
+        raw_fold_values.push(raw_value);
     }
-
-    let mut unique_values = raw_fold_values.clone();
-    unique_values.sort_unstable();
-    unique_values.dedup();
 
     if unique_values.len() < 2 && processed_case_indices.len() > 1 {
         return Err(format!(
@@ -135,15 +166,14 @@ fn split_cross_validation_by_variable(
         .map(|(fold_idx, raw_value)| (raw_value, fold_idx))
         .collect();
 
-    raw_fold_values
+    Ok(raw_fold_values
         .into_iter()
         .map(|raw_value| {
-            fold_lookup
-                .get(&raw_value)
-                .copied()
-                .ok_or_else(|| format!("Failed to map fold value '{}'", raw_value))
+            raw_value
+                .and_then(|value| fold_lookup.get(&value).copied())
+                .unwrap_or(EXCLUDED_FOLD)
         })
-        .collect()
+        .collect())
 }
 
 fn create_random_folds(
@@ -151,58 +181,135 @@ fn create_random_folds(
     requested_num_folds: i32,
     use_seed: bool,
     seed: Option<i64>,
-) -> Vec<usize> {
-    let mut folds = create_sequential_folds(num_cases, requested_num_folds);
+) -> Result<Vec<usize>, String> {
+    create_k_fold_assignments(num_cases, requested_num_folds, true, use_seed, seed)
+}
 
-    let mut rng = if use_seed {
-        match seed {
-            Some(seed) => Mt64::new(seed as u64),
-            None => Mt64::new(rand::random::<u64>()),
+fn create_k_fold_assignments(
+    num_cases: usize,
+    requested_num_folds: i32,
+    shuffle: bool,
+    use_seed: bool,
+    seed: Option<i64>,
+) -> Result<Vec<usize>, String> {
+    if requested_num_folds < 2 {
+        return Err("Number of folds must be at least 2".to_string());
+    }
+
+    let num_folds = requested_num_folds as usize;
+    if num_folds > num_cases {
+        return Err("Number of folds cannot exceed the number of samples".to_string());
+    }
+
+    let mut indices: Vec<usize> = (0..num_cases).collect();
+
+    if shuffle {
+        let effective_seed = if use_seed { seed } else { None };
+        shuffle_indices_numpy_compatible(&mut indices, effective_seed);
+    }
+
+    let base_size = num_cases / num_folds;
+    let remainder = num_cases % num_folds;
+    let mut folds = vec![EXCLUDED_FOLD; num_cases];
+    let mut current = 0;
+
+    for fold_idx in 0..num_folds {
+        let fold_size = base_size + usize::from(fold_idx < remainder);
+        let end = current + fold_size;
+
+        for &sample_idx in &indices[current..end] {
+            folds[sample_idx] = fold_idx;
         }
-    } else {
-        Mt64::new(rand::random::<u64>())
-    };
 
-    for i in (1..folds.len()).rev() {
-        let j = (rng.next_u64() % ((i + 1) as u64)) as usize;
-        folds.swap(i, j);
+        current = end;
     }
 
-    folds
+    Ok(folds)
 }
 
-fn create_sequential_folds(num_cases: usize, requested_num_folds: i32) -> Vec<usize> {
-    if num_cases == 0 {
-        return Vec::new();
+pub fn has_valid_partitioning_values(
+    data: &AnalysisData,
+    config: &KnnConfig,
+    raw_case_idx: usize,
+) -> bool {
+    if config.partition.use_variable {
+        if let Some(ref partition_var) = config.partition.partitioning_variable {
+            if numeric_partition_value(raw_case_idx, partition_var, data).is_none() {
+                return false;
+            }
+        }
     }
 
-    let num_folds = requested_num_folds.max(2) as usize;
-    let num_folds = num_folds.min(num_cases.max(1));
+    if !config.features.perform_selection && config.partition.v_fold_use_partitioning_var {
+        if let Some(ref fold_var) = config.partition.v_fold_partitioning_variable {
+            if fold_partition_value(raw_case_idx, fold_var, data).is_none() {
+                return false;
+            }
+        }
+    }
 
-    (0..num_cases).map(|idx| idx % num_folds).collect()
+    true
 }
 
-fn numeric_partition_value(case_idx: usize, var: &str, data: &AnalysisData) -> Result<f64, String> {
+#[cfg(test)]
+fn create_fold_variable_splits(folds: &[usize]) -> Vec<(Vec<usize>, Vec<usize>)> {
+    let mut unique_folds = Vec::new();
+
+    for &fold in folds {
+        if fold != EXCLUDED_FOLD && !unique_folds.contains(&fold) {
+            unique_folds.push(fold);
+        }
+    }
+
+    unique_folds
+        .into_iter()
+        .map(|fold| {
+            let mut train_index = Vec::new();
+            let mut test_index = Vec::new();
+
+            for (idx, &value) in folds.iter().enumerate() {
+                if value == EXCLUDED_FOLD {
+                    continue;
+                }
+
+                if value == fold {
+                    test_index.push(idx);
+                } else {
+                    train_index.push(idx);
+                }
+            }
+
+            (train_index, test_index)
+        })
+        .collect()
+}
+
+fn numeric_partition_value(case_idx: usize, var: &str, data: &AnalysisData) -> Option<f64> {
     match find_partition_value(case_idx, var, data) {
-        Some(DataValue::Number(value)) if value.is_finite() => Ok(*value),
-        Some(DataValue::Text(value)) => value.trim().parse::<f64>().map_err(|_| {
-            format!(
-                "Partition variable '{}' contains a non-numeric value at case {}",
-                var,
-                case_idx + 1
-            )
-        }),
-        Some(_) => Err(format!(
-            "Partition variable '{}' contains a non-numeric value at case {}",
-            var,
-            case_idx + 1
-        )),
-        None => Err(format!(
-            "Partition variable '{}' not found in data at case {}",
-            var,
-            case_idx + 1
-        )),
+        Some(DataValue::Number(value)) if value.is_finite() => Some(*value),
+        Some(DataValue::Text(value)) => {
+            let trimmed = value.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                trimmed
+                    .parse::<f64>()
+                    .ok()
+                    .filter(|value| value.is_finite())
+            }
+        }
+        _ => None,
     }
+}
+
+fn fold_partition_value(case_idx: usize, var: &str, data: &AnalysisData) -> Option<i64> {
+    numeric_partition_value(case_idx, var, data).and_then(|value| {
+        if value > 0.0 && value.fract().abs() < f64::EPSILON {
+            Some(value as i64)
+        } else {
+            None
+        }
+    })
 }
 
 fn find_partition_value<'a>(
@@ -237,4 +344,136 @@ fn find_partition_value<'a>(
     }
 
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use crate::models::data::{AnalysisData, DataRecord, DataValue};
+
+    use super::{
+        create_fold_variable_splits, create_k_fold_assignments, split_by_partition_variable,
+        split_cross_validation_by_variable, EXCLUDED_FOLD,
+    };
+
+    fn record(name: &str, value: DataValue) -> DataRecord {
+        let mut values = HashMap::new();
+        values.insert(name.to_string(), value);
+        DataRecord { values }
+    }
+
+    fn data_with_feature(name: &str, values: Vec<DataValue>) -> AnalysisData {
+        AnalysisData {
+            target_data: Vec::new(),
+            features_data: vec![values
+                .into_iter()
+                .map(|value| record(name, value))
+                .collect()],
+            focal_case_data: Vec::new(),
+            case_data: None,
+            target_data_defs: Vec::new(),
+            features_data_defs: Vec::new(),
+            focal_case_data_defs: Vec::new(),
+            case_data_defs: None,
+        }
+    }
+
+    #[test]
+    fn partition_variable_positive_train_non_positive_holdout_missing_excluded() {
+        let data = data_with_feature(
+            "partition",
+            vec![
+                DataValue::Number(1.0),
+                DataValue::Number(0.0),
+                DataValue::Number(-1.0),
+                DataValue::Null,
+                DataValue::Text("".to_string()),
+                DataValue::Text("abc".to_string()),
+                DataValue::Text("2".to_string()),
+            ],
+        );
+        let processed_case_indices = vec![0, 1, 2, 3, 4, 5, 6];
+
+        let (train, holdout, excluded) =
+            split_by_partition_variable(&data, "partition", &processed_case_indices).unwrap();
+
+        assert_eq!(train, vec![0, 6]);
+        assert_eq!(holdout, vec![1, 2]);
+        assert_eq!(excluded, vec![3, 4, 5]);
+    }
+
+    #[test]
+    fn k_fold_balances_remainder_on_earliest_folds() {
+        let folds = create_k_fold_assignments(10, 3, false, false, None).unwrap();
+        let mut counts = vec![0; 3];
+
+        for fold in folds {
+            counts[fold] += 1;
+        }
+
+        assert_eq!(counts, vec![4, 3, 3]);
+    }
+
+    #[test]
+    fn shuffled_k_fold_matches_sklearn_kfold_test_indices() {
+        let folds = create_k_fold_assignments(10, 3, true, true, Some(1234)).unwrap();
+        let test_indices_by_fold: Vec<Vec<usize>> = (0..3)
+            .map(|fold| {
+                folds
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(idx, &value)| if value == fold { Some(idx) } else { None })
+                    .collect()
+            })
+            .collect();
+
+        assert_eq!(
+            test_indices_by_fold,
+            vec![vec![1, 2, 7, 9], vec![0, 4, 8], vec![3, 5, 6]]
+        );
+    }
+
+    #[test]
+    fn fold_variable_uses_unique_values_in_first_seen_order_and_excludes_missing_or_invalid() {
+        let data = data_with_feature(
+            "fold",
+            vec![
+                DataValue::Number(2.0),
+                DataValue::Number(5.0),
+                DataValue::Number(2.0),
+                DataValue::Number(7.0),
+                DataValue::Number(5.0),
+                DataValue::Null,
+                DataValue::Number(0.0),
+                DataValue::Number(-1.0),
+                DataValue::Number(3.5),
+                DataValue::Text("abc".to_string()),
+            ],
+        );
+        let processed_case_indices = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+        let folds =
+            split_cross_validation_by_variable(&data, "fold", &processed_case_indices).unwrap();
+        assert_eq!(
+            folds,
+            vec![
+                0,
+                1,
+                0,
+                2,
+                1,
+                EXCLUDED_FOLD,
+                EXCLUDED_FOLD,
+                EXCLUDED_FOLD,
+                EXCLUDED_FOLD,
+                EXCLUDED_FOLD,
+            ]
+        );
+
+        let splits = create_fold_variable_splits(&folds);
+        assert_eq!(splits[0], (vec![1, 3, 4], vec![0, 2]));
+        assert_eq!(splits[1], (vec![0, 2, 3], vec![1, 4]));
+        assert_eq!(splits[2], (vec![0, 1, 2, 4], vec![3]));
+    }
 }

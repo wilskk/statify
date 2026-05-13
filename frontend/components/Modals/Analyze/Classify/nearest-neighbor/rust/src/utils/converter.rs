@@ -2,8 +2,10 @@ use serde::Serialize;
 use wasm_bindgen::JsValue;
 
 use crate::models::result::{
-    CaseProcessingSummary, ClassificationTable, ErrorSummary, FocalNeighborSet,
-    NearestNeighborAnalysis, NearestNeighbors, PredictorSpace, SavedVariables, SystemSettings,
+    CaseProcessingSummary, ClassificationTable, ErrorSummary, FeatureSelectionStep,
+    FeatureSelectionSummary, FocalNeighborSet, KFeatureSelectionSummary, KSelectionChart,
+    NearestNeighborAnalysis, NearestNeighbors, PredictionResults, PredictorSpace, SavedVariables,
+    SystemSettings,
 };
 
 pub fn string_to_js_error(error: String) -> JsValue {
@@ -23,6 +25,11 @@ pub fn format_result(result: &Option<NearestNeighborAnalysis>) -> Result<JsValue
 #[derive(Serialize)]
 struct FormatResult {
     case_processing_summary: Option<CaseProcessingSummary>,
+    feature_selection_summary: Option<FeatureSelectionSummary>,
+    feature_selection_steps: Option<Vec<FeatureSelectionStep>>,
+    k_feature_selection_summary: Option<Vec<KFeatureSelectionSummary>>,
+    k_selection_chart: Option<KSelectionChart>,
+    prediction_results: Option<PredictionResults>,
     system_settings: Option<SystemSettings>,
     predictor_importance: Option<FormattedPredictorImportance>,
     classification_table: Option<ClassificationTable>,
@@ -116,6 +123,11 @@ impl FormatResult {
 
         FormatResult {
             case_processing_summary: result.case_processing_summary.clone(),
+            feature_selection_summary: result.feature_selection_summary.clone(),
+            feature_selection_steps: result.feature_selection_steps.clone(),
+            k_feature_selection_summary: result.k_feature_selection_summary.clone(),
+            k_selection_chart: result.k_selection_chart.clone(),
+            prediction_results: result.prediction_results.clone(),
             system_settings: result.system_settings.clone(),
             predictor_importance,
             classification_table: result.classification_table.clone(),

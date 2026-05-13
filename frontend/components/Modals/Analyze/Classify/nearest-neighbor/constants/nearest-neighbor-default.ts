@@ -66,6 +66,12 @@ export const KNNSaveDefault: KNNSaveType = {
 
 export const KNNOutputDefault: KNNOutputType = {
     CaseSummary: true,
+    FeatureSelectionSummary: true,
+    KSelectionChart: true,
+    PredictorSpace: true,
+    PredictionResults: true,
+    ConfusionMatrix: true,
+    ShowNeighborDetail: false,
     ChartAndTable: true,
     ExportModelXML: false,
     XMLFilePath: null,

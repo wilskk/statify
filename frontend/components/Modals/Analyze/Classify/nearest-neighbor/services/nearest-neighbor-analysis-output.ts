@@ -52,6 +52,64 @@ export async function resultNearestNeighbor({
       /*
        * ⚙️ System Settings Result ⚙️
        * */
+      const featureSelectionSummary = findTable("feature_selection_summary");
+      if (featureSelectionSummary) {
+        const featureSelectionSummaryId = await addAnalytic(logId, {
+          title: `Feature Selection Summary`,
+          note: "",
+        });
+
+        await addStatistic(featureSelectionSummaryId, {
+          title: `Feature Selection Summary`,
+          description: `Feature Selection Summary`,
+          output_data: featureSelectionSummary,
+          components: `Feature Selection Summary`,
+        });
+      }
+
+      const kFeatureSelectionSummary = findTable("k_feature_selection_summary");
+      if (kFeatureSelectionSummary) {
+        const kFeatureSelectionSummaryId = await addAnalytic(logId, {
+          title: `K and Feature Selection Summary`,
+          note: "",
+        });
+
+        await addStatistic(kFeatureSelectionSummaryId, {
+          title: `K and Feature Selection Summary`,
+          description: `K and Feature Selection Summary`,
+          output_data: kFeatureSelectionSummary,
+          components: `K and Feature Selection Summary`,
+        });
+      }
+
+      const kSelectionChart = findTable("k_selection_chart");
+      if (kSelectionChart) {
+        const kSelectionChartId = await addAnalytic(logId, {
+          title: `K Selection Chart`,
+          note: "",
+        });
+
+        await addStatistic(kSelectionChartId, {
+          title: `K Selection Chart`,
+          description: `K Selection Chart`,
+          output_data: kSelectionChart,
+          components: `K Selection Chart`,
+        });
+
+        const kSelectionLineChart = createKSelectionChart(
+          rawResult?.k_selection_chart,
+        );
+
+        if (kSelectionLineChart) {
+          await addStatistic(kSelectionChartId, {
+            title: `K Selection Chart Plot`,
+            description: `K Selection Chart Plot`,
+            output_data: JSON.stringify(kSelectionLineChart),
+            components: `K Selection Chart Plot`,
+          });
+        }
+      }
+
       const systemSettings = findTable("system_settings");
       if (systemSettings) {
         const systemSettingsId = await addAnalytic(logId, {
@@ -137,6 +195,48 @@ export async function resultNearestNeighbor({
       /*
        * 🔬 Predictor Space Result 🔬
        * */
+      const predictionResults = findTable("prediction_results");
+      if (predictionResults) {
+        const predictionResultsId = await addAnalytic(logId, {
+          title: `Classification / Prediction Result`,
+          note: "",
+        });
+
+        await addStatistic(predictionResultsId, {
+          title: `Classification / Prediction Result`,
+          description: `Classification / Prediction Result`,
+          output_data: predictionResults,
+          components: `Classification / Prediction Result`,
+        });
+      }
+
+      const confusionMatrix = findTable("confusion_matrix");
+      const metrics = findTable("metrics");
+      if (confusionMatrix || metrics) {
+        const confusionMatrixId = await addAnalytic(logId, {
+          title: `Confusion Matrix and Metrics`,
+          note: "",
+        });
+
+        if (confusionMatrix) {
+          await addStatistic(confusionMatrixId, {
+            title: `Confusion Matrix`,
+            description: `Confusion Matrix`,
+            output_data: confusionMatrix,
+            components: `Confusion Matrix`,
+          });
+        }
+
+        if (metrics) {
+          await addStatistic(confusionMatrixId, {
+            title: `Metrics`,
+            description: `Metrics`,
+            output_data: metrics,
+            components: `Metrics`,
+          });
+        }
+      }
+
       const predictorSpace = findTable("predictor_space");
       if (predictorSpace) {
         const predictorSpaceId = await addAnalytic(logId, {
@@ -166,18 +266,18 @@ export async function resultNearestNeighbor({
       /*
        * 👥 Nearest Neighbors Result 👥
        * */
-      const nearestNeighbors = findTable("nearest_neighbors");
+      const nearestNeighbors = findTable("neighbor_details");
       if (nearestNeighbors) {
         const nearestNeighborsId = await addAnalytic(logId, {
-          title: `k Nearest Neighbors and Distances`,
+          title: `Neighbor Detail`,
           note: "",
         });
 
         await addStatistic(nearestNeighborsId, {
-          title: `k Nearest Neighbors and Distances`,
-          description: `k Nearest Neighbors and Distances`,
+          title: `Neighbor Detail`,
+          description: `Neighbor Detail`,
           output_data: nearestNeighbors,
-          components: `k Nearest Neighbors and Distances`,
+          components: `Neighbor Detail`,
         });
       }
 
@@ -311,6 +411,34 @@ function createPredictorSpaceChart(predictorSpace?: any) {
         x: labels.x,
         y: labels.y,
       },
+    },
+  });
+}
+
+function createKSelectionChart(chart?: any) {
+  const chartData = (chart?.candidates ?? [])
+    .map((candidate: any) => ({
+      x: Number(candidate.k),
+      y: Number(candidate.average_error),
+    }))
+    .filter((candidate: any) => Number.isFinite(candidate.x) && Number.isFinite(candidate.y));
+
+  if (!chartData.length) return null;
+
+  return ChartService.createChartJSON({
+    chartType: "Line Chart",
+    chartData,
+    chartVariables: { x: ["K"], y: ["Average Error"] },
+    chartMetadata: {
+      title: "K Selection Chart",
+      description: "Average validation error by K",
+    },
+    chartConfig: {
+      axisLabels: {
+        x: "K",
+        y: "Average Error",
+      },
+      useLegend: false,
     },
   });
 }

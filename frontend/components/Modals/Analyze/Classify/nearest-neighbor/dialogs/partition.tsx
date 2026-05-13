@@ -60,8 +60,14 @@ export const KNNPartition = ({
         VFoldUsePartitioningVar: prev.VFoldUsePartitioningVar ?? false,
         NumPartition: prev.NumPartition ?? 10, // biasanya default 10 folds
       }));
+    } else if (isFeatureSelectionActive) {
+      setPartitionState((prev) => ({
+        ...prev,
+        VFoldUseRandomly: false,
+        VFoldUsePartitioningVar: false,
+      }));
     }
-  }, [isCrossValidationEnabled]);
+  }, [isCrossValidationEnabled, isFeatureSelectionActive]);
 
   const filteredAvailableVariables = availableVariables.filter(
     (variable) =>

@@ -179,14 +179,6 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
     const forwardCount = (f.ForwardSelection ?? []).filter(
       (v) => !(f.ForcedEntryVar ?? []).includes(v),
     ).length;
-    const forcedCount = (f.ForcedEntryVar ?? []).length;
-
-    const totalFeatures = forwardCount + forcedCount;
-
-    if (forwardCount === 0 && totalFeatures > 0) {
-      return "Feature selection cannot be performed if all features are forced into the model. Move at least one feature to the Forward Selection list or uncheck the Perform feature selection checkbox.";
-    }
-
     if (f.MaxReached && (!f.MaxToSelect || f.MaxToSelect <= 0)) {
       return "Enter a positive integer for the number of features to select.";
     }
@@ -330,6 +322,8 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
                   updateFormData("output", field, value)
                 }
                 focalCaseVar={formData.main.FocalCaseIdenVar}
+                isAutoK={isAutoK}
+                isFeatureSelectionActive={isFeatureSelectionActive}
               />
             </TabsContent>
 

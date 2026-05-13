@@ -180,9 +180,9 @@ export const KNNDialog = ({
                         <input
                           type="checkbox"
                           id="normalize"
-                          checked={data.Normalize ?? false}
+                          checked={data.NormCovar ?? true}
                           onChange={(e) =>
-                            updateFormData("Normalize", e.target.checked)
+                            updateFormData("NormCovar", e.target.checked)
                           }
                         />
                         <label htmlFor="normalize" className="text-sm">

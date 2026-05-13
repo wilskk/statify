@@ -5,10 +5,10 @@ use crate::models::{
 };
 
 use super::core::{
-    build_effective_feature_weights, calculate_categorical_prediction, calculate_mean_prediction,
-    calculate_median_prediction, determine_k_value, find_k_nearest_neighbors,
-    perform_cross_validation, preprocess_knn_data,
+    build_effective_feature_weights, calculate_mean_prediction, calculate_median_prediction,
+    determine_effective_k, find_k_nearest_neighbors, preprocess_knn_data,
 };
+use super::prediction::calculate_categorical_prediction_with_weights;
 
 /// Calculates nearest neighbors for the whole dataset
 pub fn calculate_nearest_neighbors(
@@ -37,11 +37,7 @@ pub fn calculate_nearest_neighbors(
     }
 
     // Determine k value - use auto-selection if specified
-    let k = if config.neighbors.auto_selection && !config.neighbors.specify {
-        perform_cross_validation(&knn_data, config)?
-    } else {
-        determine_k_value(config)
-    };
+    let k = determine_effective_k(&knn_data, config)?;
 
     let use_euclidean = config.neighbors.metric_eucli;
     let distance_metric = if use_euclidean {
@@ -114,7 +110,7 @@ pub fn calculate_nearest_neighbors(
     Ok(NearestNeighbors {
         k_value: k,
         distance_metric,
-        weighting_enabled: weights.is_some(),
+        weighting_enabled: config.neighbors.weight,
         prediction_method,
         focal_neighbor_sets,
     })
@@ -151,7 +147,11 @@ fn calculate_neighbor_prediction(
             calculate_mean_prediction(neighbors, target_values)
         }
     } else {
-        calculate_categorical_prediction(neighbors, target_values)
+        calculate_categorical_prediction_with_weights(
+            neighbors,
+            target_values,
+            config.neighbors.weight,
+        )
     };
 
     match prediction {
