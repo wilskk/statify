@@ -4,8 +4,8 @@ use wasm_bindgen::JsValue;
 use crate::models::result::{
     CaseProcessingSummary, ClassificationTable, ErrorSummary, FeatureSelectionStep,
     FeatureSelectionSummary, FocalNeighborSet, KFeatureSelectionSummary, KSelectionChart,
-    NearestNeighborAnalysis, NearestNeighbors, PredictionResults, PredictorSpace, SavedVariables,
-    SystemSettings,
+    NearestNeighborAnalysis, NearestNeighbors, PredictionResults, PredictorImportanceEntry,
+    PredictorSpace, SavedVariables, SystemSettings,
 };
 
 pub fn string_to_js_error(error: String) -> JsValue {
@@ -45,6 +45,8 @@ struct FormatResult {
 struct FormattedPredictorImportance {
     predictors: Vec<PredictorEntry>,
     target: String,
+    entries: Vec<PredictorImportanceEntry>,
+    k: usize,
 }
 
 #[derive(Serialize)]
@@ -86,6 +88,8 @@ impl FormatResult {
             FormattedPredictorImportance {
                 predictors,
                 target: pi.target.clone(),
+                entries: pi.entries.clone(),
+                k: pi.k,
             }
         });
 

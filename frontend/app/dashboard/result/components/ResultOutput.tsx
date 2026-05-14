@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import dynamic from "next/dynamic";
 import { useResultStore } from "@/stores/useResultStore";
 import GeneralChartContainer from "@/components/Output/Chart/GeneralChartContainer";
+import KNNPredictorSpaceChart from "@/components/Modals/Analyze/Classify/nearest-neighbor/components/KNNPredictorSpaceChart";
 const KMedoidsOutputRenderer = dynamic(
   () => import("@/components/Modals/Analyze/Clustering/k-medoids-cluster/components/OutputRenderer").then(m => ({ default: m.KMedoidsOutputRenderer })),
   { ssr: false, loading: () => <div className="p-4 text-sm text-muted-foreground">Loading...</div> }
@@ -240,6 +241,17 @@ const ResultOutput: React.FC = () => {
                                           )}
                                         </button>
                                       )}
+                                    </div>
+                                  );
+                                } else if (
+                                  parsedData.charts?.[0]?.chartType ===
+                                  "KNN Predictor Space"
+                                ) {
+                                  return (
+                                    <div data-testid={`result-chart-${stat.id}`}>
+                                      <KNNPredictorSpaceChart
+                                        data={stat.output_data}
+                                      />
                                     </div>
                                   );
                                 } else if (parsedData.charts) {

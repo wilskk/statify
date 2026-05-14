@@ -46,7 +46,7 @@ pub fn calculate_nearest_neighbors(
         "Manhattan".to_string()
     };
 
-    let prediction_method = numeric_prediction_method(&knn_data.target_values, config);
+    let prediction_method = numeric_prediction_method(&knn_data, config);
 
     // Get feature weights if enabled
     let weights = build_effective_feature_weights(&knn_data, config)?;
@@ -85,8 +85,7 @@ pub fn calculate_nearest_neighbors(
             let mut neighbor_details = Vec::with_capacity(neighbors.len());
             let mut distances = Vec::with_capacity(neighbors.len());
 
-            let predicted_value =
-                calculate_neighbor_prediction(&neighbors, &knn_data.target_values, config);
+            let predicted_value = calculate_neighbor_prediction(&neighbors, &knn_data, config);
 
             for (idx, distance) in neighbors {
                 let neighbor_id = knn_data.case_identifiers[idx];
@@ -116,11 +115,11 @@ pub fn calculate_nearest_neighbors(
     })
 }
 
-fn numeric_prediction_method(target_values: &[DataValue], config: &KnnConfig) -> Option<String> {
-    if !target_values
-        .iter()
-        .any(|value| matches!(value, DataValue::Number(n) if n.is_finite()))
-    {
+fn numeric_prediction_method(
+    knn_data: &crate::models::data::KnnData,
+    config: &KnnConfig,
+) -> Option<String> {
+    if !knn_data.target_is_numeric_scale() {
         return None;
     }
 
@@ -133,23 +132,19 @@ fn numeric_prediction_method(target_values: &[DataValue], config: &KnnConfig) ->
 
 fn calculate_neighbor_prediction(
     neighbors: &[(usize, f64)],
-    target_values: &[DataValue],
+    knn_data: &crate::models::data::KnnData,
     config: &KnnConfig,
 ) -> Option<DataValue> {
-    let has_numeric_target = target_values
-        .iter()
-        .any(|value| matches!(value, DataValue::Number(n) if n.is_finite()));
-
-    let prediction = if has_numeric_target {
+    let prediction = if knn_data.target_is_numeric_scale() {
         if config.neighbors.predictions_median {
-            calculate_median_prediction(neighbors, target_values)
+            calculate_median_prediction(neighbors, &knn_data.target_values)
         } else {
-            calculate_mean_prediction(neighbors, target_values)
+            calculate_mean_prediction(neighbors, &knn_data.target_values)
         }
     } else {
         calculate_categorical_prediction_with_weights(
             neighbors,
-            target_values,
+            &knn_data.target_values,
             config.neighbors.weight,
         )
     };

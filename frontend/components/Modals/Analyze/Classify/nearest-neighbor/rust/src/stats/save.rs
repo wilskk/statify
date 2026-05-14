@@ -2,7 +2,7 @@ use std::collections::{BTreeSet, HashMap};
 
 use crate::models::{
     config::KnnConfig,
-    data::{AnalysisData, DataValue},
+    data::{AnalysisData, DataValue, VariableMeasure},
     result::{SavedVariable, SavedVariables},
 };
 
@@ -37,6 +37,7 @@ pub fn calculate_saved_variables(
     );
 
     let mut variables = Vec::new();
+    let target_is_categorical = knn_data.target_is_categorical();
 
     if config.save.has_target_var || config.save.is_cate_target_var {
         let k = if config.neighbors.auto_selection && !config.neighbors.specify {
@@ -53,6 +54,7 @@ pub fn calculate_saved_variables(
             k,
             weights.as_deref(),
             config,
+            target_is_categorical,
         );
 
         if config.save.has_target_var {
@@ -60,7 +62,7 @@ pub fn calculate_saved_variables(
                 total_cases,
                 &knn_data.processed_case_indices,
                 &predictions.predicted_values,
-                target_is_numeric(&knn_data.target_values),
+                &knn_data.target_measure,
             ));
         }
 
@@ -112,6 +114,7 @@ fn calculate_case_predictions(
     k: usize,
     weights: Option<&[f64]>,
     config: &KnnConfig,
+    target_is_categorical: bool,
 ) -> CasePredictions {
     let categories = collect_target_categories(target_values);
     let mut predicted_values = vec![DataValue::Null; data_matrix.len()];
@@ -140,7 +143,8 @@ fn calculate_case_predictions(
             weights,
         );
 
-        predicted_values[case_idx] = calculate_predictions(&neighbors, target_values, config);
+        predicted_values[case_idx] =
+            calculate_predictions(&neighbors, target_values, config, target_is_categorical);
 
         if !categories.is_empty() && !neighbors.is_empty() {
             let probabilities = calculate_categorical_probabilities(
@@ -172,7 +176,7 @@ fn build_predicted_value_variable(
     total_cases: usize,
     processed_case_indices: &[usize],
     predictions: &[DataValue],
-    numeric_target: bool,
+    target_measure: &VariableMeasure,
 ) -> SavedVariable {
     let mut values = vec![DataValue::Null; total_cases];
     for (processed_idx, &raw_idx) in processed_case_indices.iter().enumerate() {
@@ -184,12 +188,33 @@ fn build_predicted_value_variable(
         }
     }
 
+    let numeric_prediction = predictions
+        .iter()
+        .any(|value| matches!(value, DataValue::Number(value) if value.is_finite()));
+    let measure = match target_measure {
+        VariableMeasure::Scale => "scale",
+        VariableMeasure::Ordinal => "ordinal",
+        VariableMeasure::Nominal => "nominal",
+        VariableMeasure::Unknown => {
+            if numeric_prediction {
+                "scale"
+            } else {
+                "nominal"
+            }
+        }
+    };
+
     SavedVariable {
         name: "KNN_PredictedValue".to_string(),
         label: "KNN predicted value or category".to_string(),
-        variable_type: if numeric_target { "NUMERIC" } else { "STRING" }.to_string(),
-        measure: if numeric_target { "scale" } else { "nominal" }.to_string(),
-        decimals: if numeric_target { 2 } else { 0 },
+        variable_type: if numeric_prediction {
+            "NUMERIC"
+        } else {
+            "STRING"
+        }
+        .to_string(),
+        measure: measure.to_string(),
+        decimals: if measure == "scale" { 2 } else { 0 },
         values,
     }
 }
@@ -287,12 +312,6 @@ fn build_fold_variable(
         decimals: 0,
         values,
     }
-}
-
-fn target_is_numeric(target_values: &[DataValue]) -> bool {
-    target_values
-        .iter()
-        .any(|value| matches!(value, DataValue::Number(n) if n.is_finite()))
 }
 
 fn collect_target_categories(target_values: &[DataValue]) -> Vec<String> {

@@ -361,58 +361,60 @@ function createPredictorSpaceChart(predictorSpace?: any) {
   const hasZ = dimension.points.some((point: any) => Number.isFinite(Number(point.z)) && Number(point.z) !== 0);
   const chartData = dimension.points
     .map((point: any) => ({
+      id: point.id,
+      label: point.label ?? point.id,
       x: Number(point.x),
       y: Number(point.y),
       z: Number(point.z),
-      group: point.focal
-        ? "Focal"
-        : point.target_value
-          ? `${point.point_type} - Target true`
-          : `${point.point_type} - Target false`,
-      category: point.focal
-        ? "Focal"
-        : point.target_value
-          ? `${point.point_type} - Target true`
-          : `${point.point_type} - Target false`,
+      type: point.point_type,
+      target: point.target_label || String(point.target_value),
+      observed: point.target_label || String(point.target_value),
+      focal: Boolean(point.focal),
+      neighbors: Array.isArray(point.neighbors) ? point.neighbors : [],
     }))
     .filter((point: any) => Number.isFinite(point.x) && Number.isFinite(point.y));
 
   if (!chartData.length) return null;
 
-  if (hasZ) {
-    return ChartService.createChartJSON({
-      chartType: "Grouped 3D Scatter Plot (ECharts)",
-      chartData,
-      chartVariables: { x: [labels.x], y: [labels.y], z: [labels.z], groupBy: ["Point Type"] },
-      chartMetadata: {
-        title: `Predictor Space: ${dimension.name}`,
-        description: "KNN predictor space by partition, target, and focal status",
-      },
-      chartConfig: {
-        axisLabels: {
-          x: labels.x,
-          y: labels.y,
-          z: labels.z,
+  return {
+    charts: [
+      {
+        chartType: "KNN Predictor Space",
+        chartMetadata: {
+          axisInfo: {},
+          title: "Predictor Space",
+          subtitle: `Built Model: ${predictorSpace.model_predictors ?? chartData.length} selected predictors, K = ${predictorSpace.k_value ?? ""}`,
+          description: "Select points to use as focal records",
+          titleFontSize: 16,
+          subtitleFontSize: 12,
+        },
+        chartData,
+        chartConfig: {
+          width: 900,
+          height: 640,
+          chartColor: [],
+          useAxis: true,
+          useLegend: true,
+          axisLabels: {
+            x: labels.x,
+            y: labels.y,
+            z: hasZ ? labels.z : "",
+          },
+          predictorSpace: {
+            selectedK: Number(predictorSpace.k_value ?? 1),
+            modelPredictors: Number(predictorSpace.model_predictors ?? 0),
+            actualPredictors: Number(
+              predictorSpace.actual_predictors ?? predictorSpace.model_predictors ?? 0,
+            ),
+            targetVariable: predictorSpace.target_variable ?? "Target",
+            hasFocalCaseIdentifier: Boolean(predictorSpace.has_focal_case_identifier),
+            displayedDimensions: hasZ ? 3 : chartData.some((point: any) => point.y !== 0) ? 2 : 1,
+            instruction: "Select points to use as focal records",
+          },
         },
       },
-    });
-  }
-
-  return ChartService.createChartJSON({
-    chartType: "Grouped Scatter Plot",
-    chartData,
-    chartVariables: { x: [labels.x], y: [labels.y], groupBy: ["Point Type"] },
-    chartMetadata: {
-      title: `Predictor Space: ${dimension.name}`,
-      description: "KNN predictor space by partition, target, and focal status",
-    },
-    chartConfig: {
-      axisLabels: {
-        x: labels.x,
-        y: labels.y,
-      },
-    },
-  });
+    ],
+  };
 }
 
 function createKSelectionChart(chart?: any) {

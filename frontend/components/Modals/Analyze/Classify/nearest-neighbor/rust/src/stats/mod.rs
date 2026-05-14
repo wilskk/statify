@@ -8,6 +8,7 @@ pub mod error_summary;
 pub mod feature_selection;
 pub mod feature_weighting;
 pub mod knn_error;
+pub mod knn_evaluation;
 pub mod mersenne_twister;
 pub mod nearest_neighbor;
 pub mod normalization;

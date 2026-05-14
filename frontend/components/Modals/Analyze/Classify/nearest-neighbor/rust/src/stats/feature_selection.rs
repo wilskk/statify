@@ -2,18 +2,13 @@ use std::collections::HashSet;
 
 use crate::models::{
     config::KnnConfig,
-    data::{DataValue, KnnData},
+    data::KnnData,
     result::{FeatureSelectionStep, FeatureSelectionSummary, KFeatureSelectionSummary},
 };
 
 use super::{
-    cross_validation::determine_k_value,
-    distance::find_k_nearest_neighbors,
-    feature_weighting::calculate_feature_weights,
-    prediction::{
-        calculate_categorical_prediction_with_weights, calculate_mean_prediction,
-        calculate_median_prediction, category_key,
-    },
+    cross_validation::determine_k_value, feature_weighting::calculate_feature_weights,
+    knn_evaluation::evaluate_knn_error,
 };
 
 pub fn build_effective_feature_weights(
@@ -130,7 +125,7 @@ pub fn calculate_feature_selection_output(
     ))
 }
 
-struct ForwardSelectionRun {
+pub(crate) struct ForwardSelectionRun {
     selected_indices: Vec<usize>,
     selected_groups: Vec<String>,
     final_error: f64,
@@ -150,21 +145,11 @@ fn resolve_combined_k_and_feature_selection(
         .unwrap_or(min_k as i32)
         .max(min_k as i32) as usize;
 
-    let mut best_run: Option<(usize, ForwardSelectionRun)> = None;
     let mut k_summaries = Vec::new();
+    let mut runs = Vec::new();
 
     for k in min_k..=max_k {
         let run = run_forward_selection_for_k(knn_data, config, k)?;
-        let is_better = best_run
-            .as_ref()
-            .map(|(best_k, best)| {
-                run.final_error < best.final_error
-                    || ((run.final_error - best.final_error).abs() <= f64::EPSILON
-                        && (k < *best_k
-                            || (k == *best_k
-                                && run.selected_groups.len() < best.selected_groups.len())))
-            })
-            .unwrap_or(true);
 
         k_summaries.push(KFeatureSelectionSummary {
             k,
@@ -174,12 +159,10 @@ fn resolve_combined_k_and_feature_selection(
             selected: false,
         });
 
-        if is_better {
-            best_run = Some((k, run));
-        }
+        runs.push((k, run));
     }
 
-    let Some((selected_k, run)) = best_run else {
+    let Some((selected_k, run)) = select_best_k_and_feature_subset(runs) else {
         return Err("No valid K and feature-selection candidate found".to_string());
     };
 
@@ -198,7 +181,24 @@ fn resolve_combined_k_and_feature_selection(
     })
 }
 
-fn run_forward_selection_for_k(
+pub(crate) fn select_best_k_and_feature_subset(
+    runs: Vec<(usize, ForwardSelectionRun)>,
+) -> Option<(usize, ForwardSelectionRun)> {
+    runs.into_iter().min_by(|(left_k, left), (right_k, right)| {
+        if (left.final_error - right.final_error).abs() > f64::EPSILON {
+            return left
+                .final_error
+                .partial_cmp(&right.final_error)
+                .unwrap_or(std::cmp::Ordering::Equal);
+        }
+
+        left_k
+            .cmp(right_k)
+            .then_with(|| left.selected_groups.len().cmp(&right.selected_groups.len()))
+    })
+}
+
+pub(crate) fn run_forward_selection_for_k(
     knn_data: &KnnData,
     config: &KnnConfig,
     k: usize,
@@ -361,84 +361,10 @@ fn calculate_holdout_error_with_selected_features(
     k: usize,
     selected_features: &[usize],
 ) -> Result<f64, String> {
-    let weights = selected_feature_weights(knn_data, config, selected_features);
-    let validation_indices: Vec<usize> = if knn_data.holdout_indices.is_empty() {
-        knn_data.training_indices.clone()
-    } else {
-        knn_data.holdout_indices.clone()
-    };
-
-    if validation_indices.is_empty() || knn_data.training_indices.is_empty() {
-        return Ok(0.0);
-    }
-
-    let target_is_numeric = knn_data
-        .target_values
-        .iter()
-        .any(|value| matches!(value, DataValue::Number(n) if n.is_finite()));
-    let mut total_error = 0.0;
-    let mut count = 0usize;
-
-    for &idx in &validation_indices {
-        let training_indices: Vec<usize> = knn_data
-            .training_indices
-            .iter()
-            .copied()
-            .filter(|&candidate_idx| candidate_idx != idx)
-            .collect();
-
-        if training_indices.is_empty() {
-            continue;
-        }
-
-        let neighbors = find_k_nearest_neighbors(
-            &knn_data.data_matrix[idx],
-            &knn_data.data_matrix,
-            &training_indices,
-            k,
-            config.neighbors.metric_eucli,
-            Some(&weights),
-        );
-
-        if target_is_numeric {
-            let predicted = if config.neighbors.predictions_median {
-                calculate_median_prediction(&neighbors, &knn_data.target_values)
-            } else {
-                calculate_mean_prediction(&neighbors, &knn_data.target_values)
-            };
-
-            if let (DataValue::Number(actual), DataValue::Number(predicted)) =
-                (&knn_data.target_values[idx], predicted)
-            {
-                total_error += (*actual - predicted).powi(2);
-                count += 1;
-            }
-        } else {
-            let predicted = calculate_categorical_prediction_with_weights(
-                &neighbors,
-                &knn_data.target_values,
-                config.neighbors.weight,
-            );
-
-            if category_key(Some(&knn_data.target_values[idx])).is_some() {
-                if category_key(Some(&knn_data.target_values[idx]))
-                    != category_key(Some(&predicted))
-                {
-                    total_error += 1.0;
-                }
-                count += 1;
-            }
-        }
-    }
-
-    Ok(if count > 0 {
-        total_error / (count as f64)
-    } else {
-        0.0
-    })
+    evaluate_knn_error(knn_data, config, k, selected_features)
 }
 
-fn selected_feature_weights(
+pub(crate) fn selected_feature_weights(
     knn_data: &KnnData,
     config: &KnnConfig,
     selected_features: &[usize],
@@ -479,7 +405,7 @@ fn ordered_existing_groups(variables: &[String], features: &[String]) -> Vec<Str
     result
 }
 
-fn expanded_feature_groups(features: &[String]) -> Vec<String> {
+pub(crate) fn expanded_feature_groups(features: &[String]) -> Vec<String> {
     let mut groups = Vec::new();
 
     for feature in features {
@@ -496,7 +422,7 @@ fn expanded_feature_groups(features: &[String]) -> Vec<String> {
     groups
 }
 
-fn feature_indices_for_variable(features: &[String], variable: &str) -> Vec<usize> {
+pub(crate) fn feature_indices_for_variable(features: &[String], variable: &str) -> Vec<usize> {
     let prefix = format!("{}=", variable);
 
     features
@@ -519,7 +445,7 @@ mod tests {
             FeaturesConfig, KnnConfig, MainConfig, NeighborsConfig, OutputConfig, PartitionConfig,
             SaveConfig,
         },
-        data::{DataValue, KnnData},
+        data::{DataValue, KnnData, VariableMeasure},
     };
 
     use super::{perform_forward_selection, resolve_feature_selection};
@@ -608,6 +534,14 @@ mod tests {
                 vec![1.0, 0.0, 8.0],
                 vec![0.0, 1.0, 8.0],
             ],
+            display_matrix: vec![
+                vec![1.0, 0.0, 5.0],
+                vec![1.0, 0.0, 6.0],
+                vec![0.0, 1.0, 5.0],
+                vec![0.0, 1.0, 6.0],
+                vec![1.0, 0.0, 8.0],
+                vec![0.0, 1.0, 8.0],
+            ],
             target_values: vec![
                 DataValue::Text("A".to_string()),
                 DataValue::Text("A".to_string()),
@@ -616,7 +550,16 @@ mod tests {
                 DataValue::Text("A".to_string()),
                 DataValue::Text("B".to_string()),
             ],
+            target_measure: VariableMeasure::Nominal,
             case_identifiers: vec![1, 2, 3, 4, 5, 6],
+            case_labels: vec![
+                "1".to_string(),
+                "2".to_string(),
+                "3".to_string(),
+                "4".to_string(),
+                "5".to_string(),
+                "6".to_string(),
+            ],
             processed_case_indices: vec![0, 1, 2, 3, 4, 5],
             training_indices: vec![0, 1, 2, 3],
             holdout_indices: vec![4, 5],
@@ -667,6 +610,7 @@ mod tests {
         let row_count = data_matrix.len();
         KnnData {
             features: features.into_iter().map(String::from).collect(),
+            display_matrix: data_matrix.clone(),
             data_matrix,
             target_values: (0..row_count)
                 .map(|idx| match idx % 6 {
@@ -674,7 +618,9 @@ mod tests {
                     _ => DataValue::Text("B".to_string()),
                 })
                 .collect(),
+            target_measure: VariableMeasure::Nominal,
             case_identifiers: (1..=row_count as i32).collect(),
+            case_labels: (1..=row_count).map(|idx| idx.to_string()).collect(),
             processed_case_indices: (0..row_count).collect(),
             training_indices: (0..row_count.saturating_sub(2)).collect(),
             holdout_indices: ((row_count.saturating_sub(2))..row_count).collect(),

@@ -4,6 +4,7 @@ pub use crate::stats::common::*;
 pub use crate::stats::error_summary::*;
 #[allow(unused_imports)]
 pub use crate::stats::feature_selection::*;
+pub use crate::stats::knn_evaluation::*;
 pub use crate::stats::mersenne_twister::*;
 pub use crate::stats::nearest_neighbor::*;
 pub use crate::stats::partition::*;

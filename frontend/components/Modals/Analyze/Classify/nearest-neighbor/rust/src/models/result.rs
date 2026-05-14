@@ -117,6 +117,20 @@ pub struct RngSetting {
 pub struct PredictorImportance {
     pub predictors: HashMap<String, f64>,
     pub target: String,
+    pub entries: Vec<PredictorImportanceEntry>,
+    pub k: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct PredictorImportanceEntry {
+    pub feature_name: String,
+    pub base_error: f64,
+    pub error_without_feature: f64,
+    pub delta_error: f64,
+    pub raw_feature_importance: f64,
+    pub normalized_importance: f64,
+    pub rank: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -143,6 +157,9 @@ pub struct ErrorSummary {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PredictorSpace {
     pub model_predictors: usize,
+    pub actual_predictors: usize,
+    pub target_variable: String,
+    pub has_focal_case_identifier: bool,
     pub k_value: usize,
     pub dimensions: Vec<PredictorDimension>,
 }
@@ -155,12 +172,16 @@ pub struct PredictorDimension {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DataPoint {
+    pub id: i32,
+    pub label: String,
     pub x: f64,
     pub y: f64,
     pub z: f64,
     pub focal: bool,
     pub target_value: bool,
+    pub target_label: String,
     pub point_type: String,
+    pub neighbors: Vec<NeighborDetail>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

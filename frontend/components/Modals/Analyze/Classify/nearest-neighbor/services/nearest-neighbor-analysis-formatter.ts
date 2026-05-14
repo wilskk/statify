@@ -25,6 +25,10 @@ export function transformNearestNeighborResult(data: any): ResultJson {
     tables.push(buildKSelectionChart(data.k_selection_chart));
   }
 
+  if (data.predictor_importance) {
+    tables.push(buildPredictorImportance(data.predictor_importance));
+  }
+
   if (data.predictor_space) {
     tables.push(buildPredictorSpaceSummary(data.predictor_space));
   }
@@ -178,6 +182,39 @@ function buildKSelectionChart(chart: any): Table {
   };
 }
 
+function buildPredictorImportance(importance: any): Table {
+  const entries = Array.isArray(importance.entries) && importance.entries.length
+    ? importance.entries
+    : normalizePredictorImportanceEntries(importance.predictors);
+
+  return {
+    key: "predictor_importance",
+    title: "Feature Importance",
+    columnHeaders: [
+      { header: "Rank", key: "rank" },
+      { header: "Feature", key: "predictor" },
+      { header: "Base Error", key: "base_error" },
+      { header: "Error Without Feature", key: "error_without_feature" },
+      { header: "Delta Error", key: "delta_error" },
+      { header: "Raw Feature Importance", key: "raw_feature_importance" },
+      { header: "Normalized Importance", key: "importance" },
+    ],
+    rows: entries.map((entry: any, index: number) => ({
+      rowHeader: [String(entry.featureName ?? entry.feature_name ?? entry.name ?? index + 1)],
+      rank: formatDisplayNumber(entry.rank ?? index + 1),
+      predictor: entry.featureName ?? entry.feature_name ?? entry.name ?? "",
+      base_error: optionalNumber(entry.baseError ?? entry.base_error),
+      error_without_feature: optionalNumber(entry.errorWithoutFeature ?? entry.error_without_feature),
+      delta_error: optionalNumber(entry.deltaError ?? entry.delta_error),
+      raw_feature_importance: optionalNumber(
+        entry.rawFeatureImportance ?? entry.raw_feature_importance ?? entry.rawImportance ?? entry.raw_importance,
+      ),
+      importance: optionalNumber(entry.normalizedImportance ?? entry.normalized_importance ?? entry.value),
+    })),
+    note: `Target: ${importance.target ?? ""}; K = ${importance.k ?? ""}`,
+  };
+}
+
 function buildPredictorSpaceSummary(space: any): Table {
   const dimension = space.dimensions?.[0];
   return {
@@ -192,6 +229,10 @@ function buildPredictorSpaceSummary(space: any): Table {
       {
         rowHeader: ["Model Predictors"],
         value: formatDisplayNumber(space.model_predictors),
+      },
+      {
+        rowHeader: ["Actual Predictors"],
+        value: formatDisplayNumber(space.actual_predictors ?? space.model_predictors),
       },
       { rowHeader: ["Displayed Space"], value: dimension?.name ?? "" },
       {
@@ -371,6 +412,23 @@ function formatValue(value: any) {
     if ("Boolean" in value) return value.Boolean ? "true" : "false";
   }
   return String(value);
+}
+
+function normalizePredictorImportanceEntries(predictors: any) {
+  const rows = Array.isArray(predictors)
+    ? predictors.map((entry: any) => ({
+        name: entry.name,
+        value: entry.value,
+      }))
+    : Object.entries(predictors ?? {}).map(([name, value]) => ({ name, value }));
+
+  return rows
+    .sort((left: any, right: any) => Number(right.value ?? 0) - Number(left.value ?? 0))
+    .map((entry: any, index: number) => ({
+      ...entry,
+      rank: index + 1,
+      normalizedImportance: Number(entry.value ?? 0),
+    }));
 }
 
 function formatList(values: any[] | undefined) {

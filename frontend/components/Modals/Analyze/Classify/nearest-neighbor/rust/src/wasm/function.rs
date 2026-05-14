@@ -48,35 +48,18 @@ pub fn run_analysis(
         };
     }
 
-    let mut k_selection_chart = None;
-    if config.neighbors.auto_selection && config.output.k_selection_chart {
-        logger.add_log("k_selection_chart");
+    let mut feature_selection_data = None;
+    let mut feature_selection_resolution = None;
+    if config.features.perform_selection {
         match core::preprocess_knn_data(data, config).and_then(|knn_data| {
-            if config.features.perform_selection {
-                let (_, _, k_summaries) =
-                    core::calculate_feature_selection_output(&knn_data, config)?;
-                Ok(k_summaries.map(|summaries| KSelectionChart {
-                    selected_k: summaries
-                        .iter()
-                        .find(|summary| summary.selected)
-                        .map(|summary| summary.k)
-                        .unwrap_or_else(|| summaries.first().map(|summary| summary.k).unwrap_or(1)),
-                    metric_name: "feature_selection_holdout_error".to_string(),
-                    candidates: summaries
-                        .into_iter()
-                        .map(|summary| KSelectionCandidate {
-                            k: summary.k,
-                            average_error: summary.error,
-                            selected: summary.selected,
-                        })
-                        .collect(),
-                }))
-            } else {
-                core::calculate_k_selection_chart(&knn_data, config)
-            }
+            core::resolve_feature_selection(&knn_data, config)
+                .map(|resolution| (knn_data, resolution))
         }) {
-            Ok(chart) => k_selection_chart = chart,
-            Err(e) => error_collector.add_error("k_selection_chart", &e),
+            Ok((knn_data, resolution)) => {
+                feature_selection_data = Some(knn_data);
+                feature_selection_resolution = Some(resolution);
+            }
+            Err(e) => error_collector.add_error("feature_selection", &e),
         }
     }
 
@@ -85,15 +68,45 @@ pub fn run_analysis(
     let mut k_feature_selection_summary = None;
     if config.features.perform_selection && config.output.feature_selection_summary {
         logger.add_log("feature_selection");
-        match core::preprocess_knn_data(data, config)
-            .and_then(|knn_data| core::calculate_feature_selection_output(&knn_data, config))
-        {
-            Ok((summary, steps, k_summary)) => {
-                feature_selection_summary = summary;
-                feature_selection_steps = steps;
-                k_feature_selection_summary = k_summary;
+        if let Some(resolution) = feature_selection_resolution.as_ref() {
+            feature_selection_summary = resolution.summary.clone();
+            feature_selection_steps = Some(resolution.steps.clone());
+            k_feature_selection_summary = if resolution.k_summaries.is_empty() {
+                None
+            } else {
+                Some(resolution.k_summaries.clone())
+            };
+        }
+    }
+
+    let mut k_selection_chart = None;
+    if config.neighbors.auto_selection && config.output.k_selection_chart {
+        logger.add_log("k_selection_chart");
+        if config.features.perform_selection {
+            if let Some(resolution) = feature_selection_resolution.as_ref() {
+                if !resolution.k_summaries.is_empty() {
+                    let summaries = resolution.k_summaries.clone();
+                    k_selection_chart = Some(KSelectionChart {
+                        selected_k: resolution.selected_k,
+                        metric_name: "feature_selection_holdout_error".to_string(),
+                        candidates: summaries
+                            .into_iter()
+                            .map(|summary| KSelectionCandidate {
+                                k: summary.k,
+                                average_error: summary.error,
+                                selected: summary.selected,
+                            })
+                            .collect(),
+                    });
+                }
             }
-            Err(e) => error_collector.add_error("feature_selection", &e),
+        } else {
+            match core::preprocess_knn_data(data, config)
+                .and_then(|knn_data| core::calculate_k_selection_chart(&knn_data, config))
+            {
+                Ok(chart) => k_selection_chart = chart,
+                Err(e) => error_collector.add_error("k_selection_chart", &e),
+            }
         }
     }
 
@@ -138,16 +151,40 @@ pub fn run_analysis(
 
     // Step 4: Predictor importance if requested
     let mut predictor_importance = None;
-    if config.features.forced_entry_var.is_some() || config.features.perform_selection {
+    if config.features.perform_selection {
         logger.add_log("predictor_importance");
-        match core::calculate_predictor_importance(data, config) {
-            Ok(importance) => {
-                web_sys::console::log_1(&format!("Predictor Importance: {:?}", importance).into());
-                predictor_importance = Some(importance);
+        let target_var = config.main.target_var.as_deref();
+        match (
+            feature_selection_data.as_ref(),
+            feature_selection_resolution.as_ref(),
+            target_var,
+        ) {
+            (Some(knn_data), Some(resolution), Some(target_var)) => {
+                match core::compute_knn_feature_importance_for_subset(
+                    knn_data,
+                    config,
+                    target_var,
+                    resolution.selected_k,
+                    &resolution.selected_indices,
+                ) {
+                    Ok(importance) => {
+                        web_sys::console::log_1(
+                            &format!("Predictor Importance: {:?}", importance).into(),
+                        );
+                        predictor_importance = Some(importance);
+                    }
+                    Err(e) => {
+                        error_collector.add_error("predictor_importance", &e);
+                    }
+                }
             }
-            Err(e) => {
-                error_collector.add_error("predictor_importance", &e);
+            (_, _, None) => {
+                error_collector.add_error(
+                    "predictor_importance",
+                    "A target variable is required for calculating feature importance",
+                );
             }
+            _ => {}
         }
     }
 

@@ -23,10 +23,7 @@ pub fn calculate_prediction_results(
     let knn_data = preprocess_knn_data(data, config)?;
     let k = determine_effective_k(&knn_data, config)?;
     let weights = build_effective_feature_weights(&knn_data, config)?;
-    let target_is_numeric = knn_data
-        .target_values
-        .iter()
-        .any(|value| matches!(value, DataValue::Number(n) if n.is_finite()));
+    let target_is_numeric = knn_data.target_is_numeric_scale();
     let training_set: HashSet<usize> = knn_data.training_indices.iter().copied().collect();
     let holdout_set: HashSet<usize> = knn_data.holdout_indices.iter().copied().collect();
     let mut ordered_indices = knn_data.holdout_indices.clone();

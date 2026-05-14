@@ -49,6 +49,15 @@ export const KNNDialog = ({
   const isScale = (v: Variable) => v.measure === "scale";
   const isCategorical = (v: Variable) =>
     v.measure === "nominal" || v.measure === "ordinal";
+  const isNumericVariable = (v: Variable) =>
+    [
+      "NUMERIC",
+      "COMMA",
+      "DOT",
+      "SCIENTIFIC",
+      "DOLLAR",
+      "RESTRICTED_NUMERIC",
+    ].includes(v.type ?? "");
 
   const handleMoveVariable = (
     variable: Variable,
@@ -66,7 +75,9 @@ export const KNNDialog = ({
     }
 
     if (toListId === "FocalCaseIdenVar") {
-      updateFormData("FocalCaseIdenVar", variable.name);
+      if (isNumericVariable(variable)) {
+        updateFormData("FocalCaseIdenVar", variable.name);
+      }
     }
 
     if (toListId === "CaseIdenVar") {
@@ -133,6 +144,14 @@ export const KNNDialog = ({
         variables: mapToVariables(focalVars),
         maxItems: 1,
         height: "80px",
+        allowedTypes: [
+          "NUMERIC",
+          "COMMA",
+          "DOT",
+          "SCIENTIFIC",
+          "DOLLAR",
+          "RESTRICTED_NUMERIC",
+        ],
       },
       {
         id: "CaseIdenVar",

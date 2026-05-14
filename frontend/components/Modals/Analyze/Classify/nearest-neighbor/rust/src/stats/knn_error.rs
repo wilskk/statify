@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::models::data::{DataValue, KnnData};
 
 use super::distance::find_k_nearest_neighbors;
+use super::prediction::category_key;
 
 pub fn calculate_knn_error(
     knn_data: &KnnData,
@@ -21,19 +22,14 @@ pub fn calculate_knn_error(
         return Err("Target values are required for error calculation".to_string());
     }
 
-    let target_is_categorical = knn_data
-        .target_values
-        .iter()
-        .all(|v| matches!(v, DataValue::Text(_) | DataValue::Boolean(_)));
+    let target_is_categorical = knn_data.target_is_categorical();
 
     let mut category_map = HashMap::new();
 
     if target_is_categorical {
         for value in &knn_data.target_values {
-            let category = match value {
-                DataValue::Text(s) => s.clone(),
-                DataValue::Boolean(b) => b.to_string(),
-                _ => continue,
+            let Some(category) = category_key(Some(value)) else {
+                continue;
             };
 
             if !category_map.contains_key(&category) {
@@ -133,22 +129,15 @@ fn calculate_classification_error(
     n_categories: usize,
 ) -> f64 {
     let actual_value = &target_values[idx];
-    let actual_cat = match actual_value {
-        DataValue::Text(s) => category_map.get(s),
-        DataValue::Boolean(b) => category_map.get(&b.to_string()),
-        _ => return 0.0,
-    };
+    let actual_cat = category_key(Some(actual_value)).and_then(|key| category_map.get(&key));
 
     if let Some(&actual_cat_idx) = actual_cat {
         let mut vote_counts = vec![0; n_categories];
 
         for &(neighbor_idx, _) in neighbors {
             let neighbor_value = &target_values[neighbor_idx];
-            let neighbor_cat = match neighbor_value {
-                DataValue::Text(s) => category_map.get(s),
-                DataValue::Boolean(b) => category_map.get(&b.to_string()),
-                _ => continue,
-            };
+            let neighbor_cat =
+                category_key(Some(neighbor_value)).and_then(|key| category_map.get(&key));
 
             if let Some(&cat_idx) = neighbor_cat {
                 vote_counts[cat_idx] += 1;

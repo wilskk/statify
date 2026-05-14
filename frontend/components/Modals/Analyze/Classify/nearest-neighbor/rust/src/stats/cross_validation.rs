@@ -8,7 +8,7 @@ use super::{
     distance::find_k_nearest_neighbors,
     feature_selection::build_effective_feature_weights,
     partition::EXCLUDED_FOLD,
-    prediction::{calculate_mean_prediction, calculate_median_prediction},
+    prediction::{calculate_mean_prediction, calculate_median_prediction, category_key},
 };
 
 pub fn determine_k_value(config: &KnnConfig) -> usize {
@@ -174,10 +174,7 @@ fn calculate_fold_error(
     let mut total_error = 0.0;
     let mut count = 0;
 
-    let target_is_categorical = knn_data
-        .target_values
-        .iter()
-        .all(|v| matches!(v, DataValue::Text(_) | DataValue::Boolean(_)));
+    let target_is_categorical = knn_data.target_is_categorical();
 
     for &idx in validation_indices {
         let neighbors = find_k_nearest_neighbors(
@@ -197,18 +194,8 @@ fn calculate_fold_error(
                 use_distance_weights,
             );
 
-            match (actual, &predicted) {
-                (DataValue::Text(a), DataValue::Text(p)) => {
-                    if a != p {
-                        total_error += 1.0;
-                    }
-                }
-                (DataValue::Boolean(a), DataValue::Boolean(p)) => {
-                    if a != p {
-                        total_error += 1.0;
-                    }
-                }
-                _ => total_error += 1.0,
+            if category_key(Some(actual)) != category_key(Some(&predicted)) {
+                total_error += 1.0;
             }
         } else if let DataValue::Number(actual) = knn_data.target_values[idx] {
             let prediction_fn = if use_median {
@@ -245,7 +232,7 @@ mod tests {
             FeaturesConfig, KnnConfig, MainConfig, NeighborsConfig, OutputConfig, PartitionConfig,
             SaveConfig,
         },
-        data::{DataValue, KnnData},
+        data::{DataValue, KnnData, VariableMeasure},
     };
 
     use super::perform_cross_validation;
@@ -255,13 +242,16 @@ mod tests {
         let knn_data = KnnData {
             features: vec!["x".to_string()],
             data_matrix: vec![vec![0.0], vec![1.0], vec![2.0], vec![3.0]],
+            display_matrix: vec![vec![0.0], vec![1.0], vec![2.0], vec![3.0]],
             target_values: vec![
                 DataValue::Text("A".to_string()),
                 DataValue::Text("A".to_string()),
                 DataValue::Text("A".to_string()),
                 DataValue::Text("A".to_string()),
             ],
+            target_measure: VariableMeasure::Nominal,
             case_identifiers: vec![1, 2, 3, 4],
+            case_labels: vec!["1".to_string(), "2".to_string(), "3".to_string(), "4".to_string()],
             processed_case_indices: vec![0, 1, 2, 3],
             training_indices: vec![0, 1, 2, 3],
             holdout_indices: Vec::new(),

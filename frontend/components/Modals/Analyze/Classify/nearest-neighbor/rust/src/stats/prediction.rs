@@ -6,15 +6,18 @@ pub fn calculate_predictions(
     neighbors: &[(usize, f64)],
     target_values: &[DataValue],
     config: &KnnConfig,
+    target_is_categorical: bool,
 ) -> DataValue {
     let first_value = neighbors
         .first()
         .and_then(|&(idx, _)| target_values.get(idx));
 
-    if matches!(
-        first_value,
-        Some(DataValue::Text(_) | DataValue::Boolean(_))
-    ) {
+    if target_is_categorical
+        || matches!(
+            first_value,
+            Some(DataValue::Text(_) | DataValue::Boolean(_))
+        )
+    {
         return calculate_categorical_prediction_with_weights(
             neighbors,
             target_values,
@@ -56,7 +59,7 @@ pub fn calculate_categorical_prediction_with_weights(
                 .unwrap_or(Ordering::Equal)
                 .then_with(|| right_key.cmp(left_key))
         })
-        .map(|(key, _)| data_value_from_category_key(&key))
+        .map(|(key, _)| data_value_from_category_key(&key, target_values))
         .unwrap_or(DataValue::Null)
 }
 
@@ -149,7 +152,14 @@ fn neighbor_vote_weight(distance: f64, use_distance_weights: bool, has_zero_dist
     }
 }
 
-fn data_value_from_category_key(key: &str) -> DataValue {
+fn data_value_from_category_key(key: &str, target_values: &[DataValue]) -> DataValue {
+    if let Some(value) = target_values
+        .iter()
+        .find(|value| category_key(Some(value)).as_deref() == Some(key))
+    {
+        return value.clone();
+    }
+
     if key.eq_ignore_ascii_case("true") {
         DataValue::Boolean(true)
     } else if key.eq_ignore_ascii_case("false") {
@@ -222,6 +232,7 @@ mod tests {
 
     use super::{
         calculate_categorical_prediction_with_weights, calculate_categorical_probabilities,
+        calculate_predictions,
     };
 
     #[test]
@@ -272,5 +283,91 @@ mod tests {
             .sum::<f64>();
 
         assert!((total - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn numeric_ordinal_target_can_be_predicted_as_category() {
+        let targets = vec![
+            DataValue::Number(1.0),
+            DataValue::Number(2.0),
+            DataValue::Number(2.0),
+        ];
+        let neighbors = vec![(0, 1.0), (1, 2.0), (2, 3.0)];
+        let config = crate::models::config::KnnConfig {
+            main: crate::models::config::MainConfig {
+                target_var: Some("target".to_string()),
+                feature_var: Some(vec!["x".to_string()]),
+                case_iden_var: None,
+                focal_case_iden_var: None,
+                norm_covar: false,
+            },
+            neighbors: crate::models::config::NeighborsConfig {
+                specify: true,
+                auto_selection: false,
+                specify_k: 3,
+                min_k: None,
+                max_k: None,
+                metric_eucli: true,
+                metric_manhattan: false,
+                weight: false,
+                predictions_mean: false,
+                predictions_median: false,
+            },
+            features: crate::models::config::FeaturesConfig {
+                forward_selection: None,
+                forced_entry_var: None,
+                features_to_evaluate: 0,
+                forced_features: 0,
+                perform_selection: false,
+                max_reached: true,
+                below_min: false,
+                max_to_select: None,
+                min_change: 0.01,
+            },
+            partition: crate::models::config::PartitionConfig {
+                src_var: None,
+                partitioning_variable: None,
+                use_randomly: false,
+                use_variable: false,
+                v_fold_partitioning_variable: None,
+                v_fold_use_randomly: false,
+                v_fold_use_partitioning_var: false,
+                training_number: 70,
+                num_partition: 2,
+                set_seed: false,
+                seed: None,
+            },
+            save: crate::models::config::SaveConfig {
+                auto_name: true,
+                custom_name: false,
+                max_cats_to_save: None,
+                has_target_var: false,
+                is_cate_target_var: false,
+                random_assign_to_partition: false,
+                random_assign_to_fold: false,
+            },
+            output: crate::models::config::OutputConfig {
+                case_summary: true,
+                feature_selection_summary: true,
+                k_selection_chart: true,
+                predictor_space: true,
+                prediction_results: true,
+                confusion_matrix: true,
+                show_neighbor_detail: false,
+                chart_and_table: true,
+                export_model_xml: false,
+                xml_file_path: None,
+                export_distance: false,
+                create_dataset: false,
+                write_data_file: false,
+                new_data_file_path: None,
+                dataset_name: None,
+            },
+        };
+
+        assert!(matches!(
+            calculate_predictions(&neighbors, &targets, &config, true),
+            DataValue::Number(value) if (value - 2.0).abs() < f64::EPSILON
+        ));
     }
 }
