@@ -769,15 +769,14 @@ export function transformDiscriminantResult(data: any): ResultJson {
     }
 
     // 14. Structure Matrix
+    // converter.rs transforms HashMap to Vec<FunctionValue> where each entry has .variable and .values
     if (
         data.structure_matrix?.correlations &&
         data.structure_matrix.correlations.length > 0
     ) {
-        // Get the number of functions from the first correlation's values length
         const numFunctions =
             data.structure_matrix.correlations[0].values.length;
 
-        // Create column headers dynamically based on number of functions
         const functionChildren = [];
         for (let i = 1; i <= numFunctions; i++) {
             functionChildren.push({
@@ -800,7 +799,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
             rows: [],
         };
 
-        // Iterate through variables (correlations)
+        // Iterate through variables (correlations is array of {variable, values})
         for (let i = 0; i < data.structure_matrix.correlations.length; i++) {
             const corr = data.structure_matrix.correlations[i];
             const rowData: any = {

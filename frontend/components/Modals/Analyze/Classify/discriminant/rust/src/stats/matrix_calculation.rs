@@ -6,12 +6,15 @@
 
 use std::collections::HashMap;
 
-use nalgebra::{ DMatrix, DVector };
+use nalgebra::{DMatrix, DVector};
 use rayon::prelude::*;
 
 use crate::{
-    models::{ result::{ CovarianceMatrices, PooledMatrices }, AnalysisData, DiscriminantConfig },
-    stats::core::{ calculate_covariance, AnalyzedDataset, EPSILON },
+    models::{
+        result::{CovarianceMatrices, PooledMatrices},
+        AnalysisData, DiscriminantConfig,
+    },
+    stats::core::{calculate_covariance, AnalyzedDataset, EPSILON},
 };
 
 use super::core::extract_analyzed_dataset;
@@ -30,7 +33,7 @@ use super::core::extract_analyzed_dataset;
 /// A tuple containing (between-groups matrix, within-groups matrix)
 pub fn calculate_between_within_matrices(
     dataset: &AnalyzedDataset,
-    variables: &[String]
+    variables: &[String],
 ) -> (DMatrix<f64>, DMatrix<f64>) {
     let p = variables.len();
 
@@ -47,13 +50,20 @@ pub fn calculate_between_within_matrices(
             let mut sum = 0.0;
 
             for group_label in &dataset.group_labels {
-                if
-                    let (Some(values_i), Some(mean_i), Some(mean_j)) = (
-                        dataset.group_data.get(var_i).and_then(|g| g.get(group_label)),
-                        dataset.group_means.get(group_label).and_then(|m| m.get(var_i)),
-                        dataset.group_means.get(group_label).and_then(|m| m.get(var_j)),
-                    )
-                {
+                if let (Some(values_i), Some(mean_i), Some(mean_j)) = (
+                    dataset
+                        .group_data
+                        .get(var_i)
+                        .and_then(|g| g.get(group_label)),
+                    dataset
+                        .group_means
+                        .get(group_label)
+                        .and_then(|m| m.get(var_i)),
+                    dataset
+                        .group_means
+                        .get(group_label)
+                        .and_then(|m| m.get(var_j)),
+                ) {
                     let n_g = values_i.len() as f64;
                     if n_g > 0.0 {
                         sum += n_g * (mean_i - overall_mean_i) * (mean_j - overall_mean_j);
@@ -68,14 +78,16 @@ pub fn calculate_between_within_matrices(
     // Calculate within-groups matrix - parallel across group pairs
     let mut total_df = 0;
 
-    let group_contributions: Vec<(DMatrix<f64>, usize)> = dataset.group_labels
+    let group_contributions: Vec<(DMatrix<f64>, usize)> = dataset
+        .group_labels
         .par_iter()
         .filter_map(|group_label| {
             // For each group, calculate contribution to within-groups matrix
             let mut group_within = DMatrix::zeros(p, p);
 
             // Check if group has data
-            let n = dataset.group_data
+            let n = dataset
+                .group_data
                 .get(&variables[0])
                 .and_then(|g| g.get(group_label))
                 .map_or(0, |v| v.len());
@@ -89,12 +101,16 @@ pub fn calculate_between_within_matrices(
             // Calculate group covariance matrix
             for (i, var_i) in variables.iter().enumerate() {
                 for (j, var_j) in variables.iter().enumerate() {
-                    if
-                        let (Some(values_i), Some(values_j)) = (
-                            dataset.group_data.get(var_i).and_then(|g| g.get(group_label)),
-                            dataset.group_data.get(var_j).and_then(|g| g.get(group_label)),
-                        )
-                    {
+                    if let (Some(values_i), Some(values_j)) = (
+                        dataset
+                            .group_data
+                            .get(var_i)
+                            .and_then(|g| g.get(group_label)),
+                        dataset
+                            .group_data
+                            .get(var_j)
+                            .and_then(|g| g.get(group_label)),
+                    ) {
                         if values_i.len() > 1 && values_i.len() == values_j.len() {
                             let mean_i = dataset.group_means[group_label][var_i];
                             let mean_j = dataset.group_means[group_label][var_j];
@@ -104,7 +120,7 @@ pub fn calculate_between_within_matrices(
                                 values_i,
                                 values_j,
                                 Some(mean_i),
-                                Some(mean_j)
+                                Some(mean_j),
                             );
 
                             group_within[(i, j)] = (df as f64) * cov;
@@ -146,21 +162,23 @@ pub fn calculate_between_within_matrices(
 /// The pooled within-groups covariance matrix
 pub fn calculate_pooled_within_matrix(
     dataset: &AnalyzedDataset,
-    variables: &[String]
+    variables: &[String],
 ) -> DMatrix<f64> {
     let num_vars = variables.len();
     let mut pooled_within = DMatrix::zeros(num_vars, num_vars);
     let mut total_df = 0;
 
     // Process each group in parallel
-    let group_contributions: Vec<(DMatrix<f64>, usize)> = dataset.group_labels
+    let group_contributions: Vec<(DMatrix<f64>, usize)> = dataset
+        .group_labels
         .par_iter()
         .filter_map(|group_label| {
             // For each group, calculate contribution to pooled within matrix
             let mut group_within = DMatrix::zeros(num_vars, num_vars);
 
             // Check if group has data
-            let n = dataset.group_data
+            let n = dataset
+                .group_data
                 .get(&variables[0])
                 .and_then(|g| g.get(group_label))
                 .map_or(0, |v| v.len());
@@ -174,12 +192,16 @@ pub fn calculate_pooled_within_matrix(
             // Calculate group covariance matrix
             for (i, var_i) in variables.iter().enumerate() {
                 for (j, var_j) in variables.iter().enumerate() {
-                    if
-                        let (Some(values_i), Some(values_j)) = (
-                            dataset.group_data.get(var_i).and_then(|g| g.get(group_label)),
-                            dataset.group_data.get(var_j).and_then(|g| g.get(group_label)),
-                        )
-                    {
+                    if let (Some(values_i), Some(values_j)) = (
+                        dataset
+                            .group_data
+                            .get(var_i)
+                            .and_then(|g| g.get(group_label)),
+                        dataset
+                            .group_data
+                            .get(var_j)
+                            .and_then(|g| g.get(group_label)),
+                    ) {
                         if values_i.len() > 1 && values_i.len() == values_j.len() {
                             let mean_i = dataset.group_means[group_label][var_i];
                             let mean_j = dataset.group_means[group_label][var_j];
@@ -189,7 +211,7 @@ pub fn calculate_pooled_within_matrix(
                                 values_i,
                                 values_j,
                                 Some(mean_i),
-                                Some(mean_j)
+                                Some(mean_j),
                             );
 
                             group_within[(i, j)] = (df as f64) * cov;
@@ -234,7 +256,7 @@ pub fn calculate_pooled_within_matrix(
 /// A PooledMatrices object with covariance and correlation matrices
 pub fn calculate_pooled_matrices(
     data: &AnalysisData,
-    config: &DiscriminantConfig
+    config: &DiscriminantConfig,
 ) -> Result<PooledMatrices, String> {
     web_sys::console::log_1(&"Executing calculate_pooled_matrices".into());
 
@@ -243,7 +265,9 @@ pub fn calculate_pooled_matrices(
 
     // Exclude grouping variable from pooled matrices output
     let grouping_var = &config.main.grouping_variable;
-    let variables: Vec<String> = config.main.independent_variables
+    let variables: Vec<String> = config
+        .main
+        .independent_variables
         .iter()
         .filter(|v| *v != grouping_var)
         .cloned()
@@ -284,7 +308,10 @@ pub fn calculate_pooled_matrices(
     // Calculate degrees of freedom for the pooled matrix
     // For pooled covariance matrix, df = total_cases - num_groups
     let total_df = dataset.total_cases - dataset.num_groups;
-    let note_df = format!("a. The covariance matrix has {} degrees of freedom.", total_df);
+    let note_df = format!(
+        "a. The covariance matrix has {} degrees of freedom.",
+        total_df
+    );
 
     Ok(PooledMatrices {
         variables: variables.clone(),
@@ -307,7 +334,7 @@ pub fn calculate_pooled_matrices(
 /// A CovarianceMatrices object with covariance matrices for each group
 pub fn calculate_covariance_matrices(
     data: &AnalysisData,
-    config: &DiscriminantConfig
+    config: &DiscriminantConfig,
 ) -> Result<CovarianceMatrices, String> {
     web_sys::console::log_1(&"Executing calculate_covariance_matrices".into());
 
@@ -322,13 +349,13 @@ pub fn calculate_covariance_matrices(
     let mut group_dfs = 0;
 
     // Calculate covariance matrix for each group in parallel
-    let group_matrices: Vec<
-        (String, HashMap<String, HashMap<String, f64>>, usize)
-    > = dataset.group_labels
+    let group_matrices: Vec<(String, HashMap<String, HashMap<String, f64>>, usize)> = dataset
+        .group_labels
         .par_iter()
         .filter_map(|group| {
             // Check if this group has enough data
-            let group_size = dataset.group_data
+            let group_size = dataset
+                .group_data
                 .get(&variables[0])
                 .and_then(|g| g.get(group))
                 .map_or(0, |v| v.len());
@@ -347,12 +374,10 @@ pub fn calculate_covariance_matrices(
                 let mut row = HashMap::new();
 
                 for (j, var_j) in variables.iter().enumerate() {
-                    if
-                        let (Some(values_i), Some(values_j)) = (
-                            dataset.group_data.get(var_i).and_then(|g| g.get(group)),
-                            dataset.group_data.get(var_j).and_then(|g| g.get(group)),
-                        )
-                    {
+                    if let (Some(values_i), Some(values_j)) = (
+                        dataset.group_data.get(var_i).and_then(|g| g.get(group)),
+                        dataset.group_data.get(var_j).and_then(|g| g.get(group)),
+                    ) {
                         if values_i.len() > 1 && values_i.len() == values_j.len() {
                             let mean_i = dataset.group_means[group][var_i];
                             let mean_j = dataset.group_means[group][var_j];
@@ -361,7 +386,7 @@ pub fn calculate_covariance_matrices(
                                 values_i,
                                 values_j,
                                 Some(mean_i),
-                                Some(mean_j)
+                                Some(mean_j),
                             );
 
                             row.insert(var_j.clone(), cov);
@@ -392,7 +417,10 @@ pub fn calculate_covariance_matrices(
     let df = dataset.total_cases - 1;
 
     // Create note for degrees of freedom
-    let note_df = format!("a. The total covariance matrix has {} degrees of freedom.", df);
+    let note_df = format!(
+        "a. The total covariance matrix has {} degrees of freedom.",
+        df
+    );
 
     Ok(CovarianceMatrices {
         groups: dataset.group_labels.clone(),
@@ -408,7 +436,7 @@ pub fn calculate_covariance_matrices(
 /// Lower values indicate better separation.
 pub fn calculate_total_unexplained_variation(
     dataset: &AnalyzedDataset,
-    variables: &[String]
+    variables: &[String],
 ) -> f64 {
     if variables.is_empty() {
         return 1.0; // Maximum unexplained variation
@@ -461,7 +489,9 @@ pub fn calculate_min_mahalanobis_distance(dataset: &AnalyzedDataset, variables: 
     if distances.is_empty() {
         0.0
     } else {
-        distances.into_iter().fold(f64::MAX, |min_val, val| min_val.min(val))
+        distances
+            .into_iter()
+            .fold(f64::MAX, |min_val, val| min_val.min(val))
     }
 }
 
@@ -485,12 +515,14 @@ pub fn calculate_min_f_ratio(dataset: &AnalyzedDataset, variables: &[String]) ->
                 let d2 = calculate_group_mahalanobis_distance(dataset, group_i, group_j, variables);
 
                 // Get group sizes
-                let n_i = dataset.group_data
+                let n_i = dataset
+                    .group_data
                     .get(&variables[0])
                     .and_then(|g| g.get(group_i))
                     .map_or(0, |v| v.len());
 
-                let n_j = dataset.group_data
+                let n_j = dataset
+                    .group_data
                     .get(&variables[0])
                     .and_then(|g| g.get(group_j))
                     .map_or(0, |v| v.len());
@@ -501,8 +533,8 @@ pub fn calculate_min_f_ratio(dataset: &AnalyzedDataset, variables: &[String]) ->
                     let g = dataset.num_groups as f64;
 
                     // Convert to F ratio
-                    (d2 * (n - g - p + 1.0) * ((n_i * n_j) as f64)) /
-                        (p * (n - g) * ((n_i + n_j) as f64))
+                    (d2 * (n - g - p + 1.0) * ((n_i * n_j) as f64))
+                        / (p * (n - g) * ((n_i + n_j) as f64))
                 } else {
                     0.0
                 }
@@ -515,7 +547,9 @@ pub fn calculate_min_f_ratio(dataset: &AnalyzedDataset, variables: &[String]) ->
     if f_ratios.is_empty() {
         0.0
     } else {
-        f_ratios.into_iter().fold(f64::MAX, |min_val, val| min_val.min(val))
+        f_ratios
+            .into_iter()
+            .fold(f64::MAX, |min_val, val| min_val.min(val))
     }
 }
 
@@ -524,18 +558,20 @@ fn calculate_group_mahalanobis_distance(
     dataset: &AnalyzedDataset,
     group_i: &str,
     group_j: &str,
-    variables: &[String]
+    variables: &[String],
 ) -> f64 {
     // Extract means for both groups as vectors
     let mut mean_diff = DVector::zeros(variables.len());
 
     for (idx, var) in variables.iter().enumerate() {
-        let mean_i = dataset.group_means
+        let mean_i = dataset
+            .group_means
             .get(group_i)
             .and_then(|m| m.get(var))
             .copied()
             .unwrap_or(0.0);
-        let mean_j = dataset.group_means
+        let mean_j = dataset
+            .group_means
             .get(group_j)
             .and_then(|m| m.get(var))
             .copied()
@@ -548,7 +584,8 @@ fn calculate_group_mahalanobis_distance(
     let mut total_df = 0;
 
     for group_label in [group_i, group_j] {
-        let n_g = dataset.group_data
+        let n_g = dataset
+            .group_data
             .get(&variables[0])
             .and_then(|g| g.get(group_label))
             .map_or(0, |v| v.len());
@@ -563,23 +600,23 @@ fn calculate_group_mahalanobis_distance(
         // Calculate covariance contribution for this group
         for (i, var_i) in variables.iter().enumerate() {
             for (j, var_j) in variables.iter().enumerate() {
-                if
-                    let (Some(values_i), Some(values_j)) = (
-                        dataset.group_data.get(var_i).and_then(|g| g.get(group_label)),
-                        dataset.group_data.get(var_j).and_then(|g| g.get(group_label)),
-                    )
-                {
+                if let (Some(values_i), Some(values_j)) = (
+                    dataset
+                        .group_data
+                        .get(var_i)
+                        .and_then(|g| g.get(group_label)),
+                    dataset
+                        .group_data
+                        .get(var_j)
+                        .and_then(|g| g.get(group_label)),
+                ) {
                     if values_i.len() == values_j.len() && values_i.len() > 1 {
                         let mean_i = dataset.group_means[group_label][var_i];
                         let mean_j = dataset.group_means[group_label][var_j];
 
                         // Calculate covariance
-                        let cov = calculate_covariance(
-                            values_i,
-                            values_j,
-                            Some(mean_i),
-                            Some(mean_j)
-                        );
+                        let cov =
+                            calculate_covariance(values_i, values_j, Some(mean_i), Some(mean_j));
 
                         pooled_cov[(i, j)] += (df as f64) * cov;
                     }
