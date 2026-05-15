@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { CircleHelp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KNNDialog } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/dialog";
@@ -98,6 +99,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
   const [resetKey, setResetKey] = useState(0);
 
   const [activeTab, setActiveTab] = useState("variables");
+  const showFieldHelp = false;
 
   const { closeModal } = useModal();
 
@@ -259,8 +261,8 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-grow px-6 min-h-0">
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex-grow px-6 min-h-0 overflow-hidden">
         <Tabs
           value={activeTab}
           onValueChange={(nextTab) => {
@@ -313,6 +315,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
                   updateFormData("main", field, value)
                 }
                 externalErrors={validation.errors}
+                showFieldHelp={showFieldHelp}
               />
             </TabsContent>
 
@@ -328,6 +331,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
                 }
                 hasTarget={hasTarget}
                 targetType={targetType}
+                showFieldHelp={showFieldHelp}
               />
             </TabsContent>
 
@@ -342,6 +346,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
                   updateFormData("features", field, value)
                 }
                 hasTarget={hasTarget}
+                showFieldHelp={showFieldHelp}
               />
             </TabsContent>
 
@@ -358,6 +363,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
                 availableVariables={availableVariables}
                 isAutoK={isAutoK}
                 isFeatureSelectionActive={isFeatureSelectionActive}
+                showFieldHelp={showFieldHelp}
               />
             </TabsContent>
 
@@ -378,6 +384,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
                 featureCount={(formData.main.FeatureVar ?? []).length}
                 isUsingPartitionVariable={isUsingPartitionVariable}
                 isUsingFoldVariable={isUsingFoldVariable}
+                showFieldHelp={showFieldHelp}
               />
             </TabsContent>
 
@@ -394,6 +401,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
                 focalCaseVar={formData.main.FocalCaseIdenVar}
                 isAutoK={isAutoK}
                 isFeatureSelectionActive={isFeatureSelectionActive}
+                showFieldHelp={showFieldHelp}
               />
             </TabsContent>
 
@@ -401,7 +409,17 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
         </Tabs>
       </div>
 
-      <div className="px-6 py-3 border-t border-border flex items-center justify-end gap-4 bg-secondary">
+      <div className="px-6 py-3 border-t border-border flex flex-shrink-0 items-center justify-between gap-4 bg-secondary">
+        <Button
+          type="button"
+          variant="outline"
+          disabled
+          aria-pressed={showFieldHelp}
+        >
+          <CircleHelp className="mr-2 h-4 w-4" />
+        </Button>
+
+        <div className="flex items-center justify-end gap-4">
         <Button
           onClick={() => {
             const error = validateFeatureSelection();
@@ -431,6 +449,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
         >
           Cancel
         </Button>
+        </div>
       </div>
     </div>
   );

@@ -57,6 +57,18 @@ pub fn compute_knn_feature_importance_for_subset(
     let selected_groups = selected_original_features(&knn_data.features, &selected_indices);
     let base_error = evaluate_knn_error(&knn_data, config, k, &selected_indices)?;
     let m = selected_groups.len().max(1) as f64;
+    let target_is_numeric_scale = knn_data.target_is_numeric_scale();
+    let evaluation_strategy = if knn_data.holdout_indices.is_empty() {
+        "training_loo"
+    } else {
+        "holdout"
+    };
+    if target_is_numeric_scale {
+        log_debug(&format!(
+            "KNN scale feature importance: evaluation_strategy={}, base_error={:.12}",
+            evaluation_strategy, base_error
+        ));
+    }
     let mut entries = Vec::with_capacity(selected_groups.len());
 
     for feature_name in selected_groups {
@@ -75,6 +87,20 @@ pub fn compute_knn_feature_importance_for_subset(
         let delta_error = error_without_feature - base_error;
         let raw_feature_importance =
             calculate_raw_importance_spss_style(error_without_feature, base_error, m);
+        let error_ratio = if error_without_feature.is_finite()
+            && base_error.is_finite()
+            && base_error > f64::EPSILON
+        {
+            error_without_feature / base_error
+        } else {
+            f64::NAN
+        };
+        if target_is_numeric_scale {
+            log_debug(&format!(
+                "KNN scale feature importance [{}]: error_without_feature={:.12}, error_ratio={:.12}, raw_importance={:.12}",
+                feature_name, error_without_feature, error_ratio, raw_feature_importance
+            ));
+        }
 
         entries.push(PredictorImportanceEntry {
             feature_name,
@@ -88,6 +114,17 @@ pub fn compute_knn_feature_importance_for_subset(
     }
 
     normalize_feature_importance(&mut entries);
+    if target_is_numeric_scale {
+        let normalized_details = entries
+            .iter()
+            .map(|entry| format!("{}={:.12}", entry.feature_name, entry.normalized_importance))
+            .collect::<Vec<_>>()
+            .join(", ");
+        log_debug(&format!(
+            "KNN scale feature importance normalized weights: {}",
+            normalized_details
+        ));
+    }
 
     let predictors = entries
         .iter()
@@ -154,6 +191,14 @@ pub fn normalize_feature_importance(entries: &mut [PredictorImportanceEntry]) {
     for (rank, entry) in entries.iter_mut().enumerate() {
         entry.rank = rank + 1;
     }
+}
+
+fn log_debug(message: &str) {
+    #[cfg(target_arch = "wasm32")]
+    web_sys::console::log_1(&message.into());
+
+    #[cfg(not(target_arch = "wasm32"))]
+    eprintln!("{}", message);
 }
 
 #[cfg(test)]

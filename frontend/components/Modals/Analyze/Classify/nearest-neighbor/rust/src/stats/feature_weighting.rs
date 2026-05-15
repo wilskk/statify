@@ -389,6 +389,58 @@ mod tests {
         assert!(weights[0] > weights[1]);
     }
 
+    #[test]
+    fn numeric_scale_weighting_uses_holdout_regression_error() {
+        let data = KnnData {
+            features: vec!["informative".to_string(), "constant".to_string()],
+            data_matrix: vec![
+                vec![0.0, 0.0],
+                vec![10.0, 0.0],
+                vec![20.0, 0.0],
+                vec![1.0, 0.0],
+                vec![19.0, 0.0],
+            ],
+            display_matrix: vec![
+                vec![0.0, 0.0],
+                vec![10.0, 0.0],
+                vec![20.0, 0.0],
+                vec![1.0, 0.0],
+                vec![19.0, 0.0],
+            ],
+            target_values: vec![
+                DataValue::Number(0.0),
+                DataValue::Number(10.0),
+                DataValue::Number(20.0),
+                DataValue::Number(1.0),
+                DataValue::Number(19.0),
+            ],
+            target_measure: VariableMeasure::Scale,
+            case_identifiers: vec![1, 2, 3, 4, 5],
+            case_labels: vec![
+                "1".to_string(),
+                "2".to_string(),
+                "3".to_string(),
+                "4".to_string(),
+                "5".to_string(),
+            ],
+            processed_case_indices: vec![0, 1, 2, 3, 4],
+            training_indices: vec![0, 1, 2],
+            holdout_indices: vec![3, 4],
+            excluded_indices: Vec::new(),
+            cross_validation_folds: vec![0; 5],
+            focal_indices: Vec::new(),
+        };
+        let mut config = test_config();
+        config.neighbors.weight = true;
+        config.features.perform_selection = false;
+
+        let weights = calculate_feature_weights(&data, &config).unwrap();
+
+        assert!((weights.iter().sum::<f64>() - 1.0).abs() <= f64::EPSILON);
+        assert!(weights[0] > 0.9);
+        assert!(weights[1] < 0.1);
+    }
+
     fn test_data(feature_count: usize) -> KnnData {
         KnnData {
             features: (0..feature_count)

@@ -39,30 +39,51 @@ pub fn calculate_knn_error(
         }
     }
 
+    let modified_data =
+        prepare_data_with_excluded_features(&knn_data.data_matrix, excluded_features);
+    let use_holdout = !knn_data.holdout_indices.is_empty();
+    let evaluation_strategy = if use_holdout {
+        "holdout"
+    } else {
+        "training_loo"
+    };
+    let query_indices = if use_holdout {
+        knn_data.holdout_indices.clone()
+    } else {
+        knn_data.training_indices.clone()
+    };
     let n_categories = category_map.len();
     let mut total_error = 0.0;
     let mut total_cases = 0;
+    let mut neighbor_reference_debug = Vec::with_capacity(query_indices.len());
 
-    let modified_data =
-        prepare_data_with_excluded_features(&knn_data.data_matrix, excluded_features);
-
-    for (idx, point) in knn_data.data_matrix.iter().enumerate() {
-        if !knn_data.training_indices.contains(&idx) {
+    for &idx in &query_indices {
+        if idx >= knn_data.data_matrix.len() {
             continue;
         }
 
-        let modified_point = prepare_point_with_excluded_features(point, excluded_features);
-        let train_indices: Vec<usize> = knn_data
-            .training_indices
-            .iter()
-            .filter(|&&i| i != idx)
-            .copied()
-            .collect();
+        let modified_point =
+            prepare_point_with_excluded_features(&knn_data.data_matrix[idx], excluded_features);
+        let neighbor_reference_indices: Vec<usize> = if use_holdout {
+            knn_data.training_indices.clone()
+        } else {
+            knn_data
+                .training_indices
+                .iter()
+                .filter(|&&candidate_idx| candidate_idx != idx)
+                .copied()
+                .collect()
+        };
+        neighbor_reference_debug.push(format!(
+            "{}:[{}]",
+            idx,
+            format_indices(&neighbor_reference_indices)
+        ));
 
         let neighbors = find_k_nearest_neighbors(
             &modified_point,
             &modified_data,
-            &train_indices,
+            &neighbor_reference_indices,
             k,
             use_euclidean,
             weights,
@@ -85,11 +106,23 @@ pub fn calculate_knn_error(
         total_cases += 1;
     }
 
-    if total_cases > 0 {
-        Ok(total_error / (total_cases as f64))
+    let average_error = if total_cases > 0 {
+        total_error / (total_cases as f64)
     } else {
-        Ok(0.0)
-    }
+        0.0
+    };
+
+    log_debug(&format!(
+        "KNN error evaluation: evaluation_strategy={}, total_cases={}, total_error={:.12}, average_error={:.12}, query_indices=[{}], neighbor_reference_indices={}",
+        evaluation_strategy,
+        total_cases,
+        total_error,
+        average_error,
+        format_indices(&query_indices),
+        neighbor_reference_debug.join("; ")
+    ));
+
+    Ok(average_error)
 }
 
 fn prepare_data_with_excluded_features(
@@ -201,4 +234,20 @@ fn calculate_regression_error(
     };
 
     (actual_value - predicted).powi(2)
+}
+
+fn format_indices(indices: &[usize]) -> String {
+    indices
+        .iter()
+        .map(|idx| idx.to_string())
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+fn log_debug(message: &str) {
+    #[cfg(target_arch = "wasm32")]
+    web_sys::console::log_1(&message.into());
+
+    #[cfg(not(target_arch = "wasm32"))]
+    eprintln!("{}", message);
 }

@@ -28,6 +28,12 @@ pub fn evaluate_knn_error(
 
     let weights = selected_feature_weights(knn_data, config, selected_features);
     let evaluation_indices = evaluation_case_indices(knn_data);
+    let use_holdout = !knn_data.holdout_indices.is_empty();
+    let evaluation_strategy = if use_holdout {
+        "holdout"
+    } else {
+        "training_loo"
+    };
 
     if evaluation_indices.is_empty() || knn_data.training_indices.is_empty() {
         return Ok(0.0);
@@ -44,12 +50,16 @@ pub fn evaluate_knn_error(
             continue;
         }
 
-        let training_indices: Vec<usize> = knn_data
-            .training_indices
-            .iter()
-            .copied()
-            .filter(|&candidate_idx| candidate_idx != idx)
-            .collect();
+        let training_indices: Vec<usize> = if use_holdout {
+            knn_data.training_indices.clone()
+        } else {
+            knn_data
+                .training_indices
+                .iter()
+                .copied()
+                .filter(|&candidate_idx| candidate_idx != idx)
+                .collect()
+        };
 
         if training_indices.is_empty() {
             continue;
@@ -83,11 +93,24 @@ pub fn evaluate_knn_error(
         }
     }
 
-    Ok(if evaluated > 0 {
+    let average_error = if evaluated > 0 {
         total_error / (evaluated as f64)
     } else {
         0.0
-    })
+    };
+
+    if target_is_numeric {
+        log_debug(&format!(
+            "KNN scale error evaluation: evaluation_strategy={}, total_cases={}, total_error={:.12}, average_error={:.12}, query_indices=[{}]",
+            evaluation_strategy,
+            evaluated,
+            total_error,
+            average_error,
+            format_indices(&evaluation_indices)
+        ));
+    }
+
+    Ok(average_error)
 }
 
 pub fn predict_knn(
@@ -191,4 +214,20 @@ fn data_value_from_category_key(key: &str, target_values: &[DataValue]) -> DataV
     } else {
         DataValue::Text(key.to_string())
     }
+}
+
+fn format_indices(indices: &[usize]) -> String {
+    indices
+        .iter()
+        .map(|idx| idx.to_string())
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+fn log_debug(message: &str) {
+    #[cfg(target_arch = "wasm32")]
+    web_sys::console::log_1(&message.into());
+
+    #[cfg(not(target_arch = "wasm32"))]
+    eprintln!("{}", message);
 }

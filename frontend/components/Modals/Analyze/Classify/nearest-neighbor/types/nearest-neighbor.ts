@@ -18,6 +18,7 @@ export type KNNDialogProps = {
         value: string[] | string | boolean | null
     ) => void;
     externalErrors?: string[];
+    showFieldHelp?: boolean;
 };
 
 /* =========================
@@ -45,6 +46,7 @@ export type KNNNeighborsProps = {
     ) => void;
     hasTarget: boolean;
     targetType: "scale" | "nominal" | "ordinal" | null;
+    showFieldHelp?: boolean;
 };
 
 /* =========================
@@ -70,6 +72,7 @@ export type KNNFeaturesProps = {
         value: string[] | number | string | boolean | null
     ) => void;
     hasTarget: boolean;
+    showFieldHelp?: boolean;
 };
 
 /* =========================
@@ -98,6 +101,7 @@ export type KNNPartitionProps = {
     availableVariables: string[];
     isAutoK: boolean;
     isFeatureSelectionActive: boolean;
+    showFieldHelp?: boolean;
 };
 
 /* =========================
@@ -127,6 +131,7 @@ export type KNNSaveProps = {
     isFeatureSelectionActive: boolean;
     isUsingPartitionVariable: boolean;
     isUsingFoldVariable: boolean;
+    showFieldHelp?: boolean;
 };
 
 /* =========================
@@ -160,6 +165,7 @@ export type KNNOutputProps = {
     focalCaseVar: string | null;
     isAutoK: boolean;
     isFeatureSelectionActive: boolean;
+    showFieldHelp?: boolean;
 };
 
 export type KNNType = {

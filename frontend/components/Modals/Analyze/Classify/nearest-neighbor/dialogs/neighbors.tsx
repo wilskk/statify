@@ -1,9 +1,4 @@
 import React, { useEffect, useState } from "react";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
@@ -14,12 +9,14 @@ import type {
   KNNNeighborsProps,
   KNNNeighborsType,
 } from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor";
+import { FieldHelp } from "./field-help";
 
 export const KNNNeighbors = ({
   updateFormData,
   data,
   hasTarget,
   targetType,
+  showFieldHelp = false,
 }: KNNNeighborsProps) => {
   const [neighborsState, setNeighborsState] = useState<KNNNeighborsType>({
     ...data,
@@ -121,34 +118,45 @@ export const KNNNeighbors = ({
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="flex flex-col items-start gap-2 p-4">
-          <ResizablePanelGroup
-            direction="vertical"
-            className="h-full min-h-[450px] max-w-md rounded-lg border md:min-w-[200px]"
-          >
+    <div className="flex flex-col h-full min-h-0 w-full overflow-hidden">
+      <div className="flex-1 min-h-0 w-full overflow-y-auto">
+        <div className="flex flex-col items-start gap-2 p-4 w-full">
+          <div className="w-full rounded-lg border md:min-w-[200px]">
             {/* K Selection */}
-            <ResizablePanel defaultSize={50}>
+            <section className="border-b">
               <div className="flex flex-col gap-2 w-full p-2">
                 <RadioGroup
                   value={neighborsState.Specify ? "Specify" : "AutoSelection"}
                   onValueChange={handleSpecifyGrp}
                 >
                   <div className="flex flex-col gap-2 p-2">
-                    <Label className="font-bold">
-                      Number of Nearest Neighbors (k)
-                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Label className="font-bold">
+                        Number of Nearest Neighbors (k)
+                      </Label>
+                      <FieldHelp
+                        show={showFieldHelp}
+                        text="Mengatur jumlah tetangga terdekat yang dipakai untuk menentukan prediksi atau klasifikasi."
+                      />
+                    </div>
 
                     {/* Fixed K */}
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="Specify" id="Specify" />
                         <Label htmlFor="Specify">Specify Fixed K</Label>
+                        <FieldHelp
+                          show={showFieldHelp}
+                          text="Gunakan nilai k tetap untuk seluruh proses KNN."
+                        />
                       </div>
 
                       <div className="flex items-center space-x-2 pl-6">
                         <Label className="w-[75px]">k:</Label>
+                        <FieldHelp
+                          show={showFieldHelp}
+                          text="Jumlah tetangga terdekat yang dihitung untuk setiap kasus."
+                        />
                         <Input
                           type="number"
                           className="w-[80px]"
@@ -172,11 +180,19 @@ export const KNNNeighbors = ({
                         <Label htmlFor="AutoSelection">
                           Automatically Select K
                         </Label>
+                        <FieldHelp
+                          show={showFieldHelp}
+                          text="Biarkan sistem memilih nilai k terbaik dalam rentang minimum dan maksimum."
+                        />
                       </div>
 
                       <div className="flex flex-col gap-2 pl-6">
                         <div className="flex items-center space-x-2">
                           <Label className="w-[75px]">Minimum:</Label>
+                          <FieldHelp
+                            show={showFieldHelp}
+                            text="Nilai k terkecil yang akan dicoba saat pemilihan otomatis."
+                          />
                           <Input
                             type="number"
                             className="w-[80px]"
@@ -192,6 +208,10 @@ export const KNNNeighbors = ({
 
                         <div className="flex items-center space-x-2">
                           <Label className="w-[75px]">Maximum:</Label>
+                          <FieldHelp
+                            show={showFieldHelp}
+                            text="Nilai k terbesar yang akan dicoba saat pemilihan otomatis."
+                          />
                           <Input
                             type="number"
                             className="w-[80px]"
@@ -207,12 +227,10 @@ export const KNNNeighbors = ({
                   </div>
                 </RadioGroup>
               </div>
-            </ResizablePanel>
-
-            <ResizableHandle />
+            </section>
 
             {/* Distance */}
-            <ResizablePanel defaultSize={30}>
+            <section className="border-b">
               <RadioGroup
                 value={
                   neighborsState.MetricEucli ? "MetricEucli" : "MetricManhattan"
@@ -220,11 +238,21 @@ export const KNNNeighbors = ({
                 onValueChange={handleDistanceGrp}
               >
                 <div className="flex flex-col gap-2 p-2">
-                  <Label className="font-bold">Distance Computation</Label>
+                  <div className="flex items-center gap-2">
+                    <Label className="font-bold">Distance Computation</Label>
+                    <FieldHelp
+                      show={showFieldHelp}
+                      text="Menentukan cara menghitung jarak antar kasus berdasarkan fitur."
+                    />
+                  </div>
 
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="MetricEucli" id="MetricEucli" />
                     <Label htmlFor="MetricEucli">Euclidean Metric</Label>
+                    <FieldHelp
+                      show={showFieldHelp}
+                      text="Mengukur jarak garis lurus antar kasus; umum dipakai untuk fitur numerik."
+                    />
                   </div>
 
                   <div className="flex items-center space-x-2">
@@ -235,6 +263,10 @@ export const KNNNeighbors = ({
                     <Label htmlFor="MetricManhattan">
                       City Block Metric
                     </Label>
+                    <FieldHelp
+                      show={showFieldHelp}
+                      text="Mengukur jarak sebagai total selisih absolut antar fitur."
+                    />
                   </div>
 
                   <div className="flex items-center space-x-2">
@@ -248,15 +280,17 @@ export const KNNNeighbors = ({
                     <Label>
                       Weight features by importance when computing distances
                     </Label>
+                    <FieldHelp
+                      show={showFieldHelp}
+                      text="Memberi bobot fitur yang lebih penting lebih besar saat menghitung jarak."
+                    />
                   </div>
                 </div>
               </RadioGroup>
-            </ResizablePanel>
-
-            <ResizableHandle />
+            </section>
 
             {/* Prediction */}
-            <ResizablePanel defaultSize={20}>
+            <section>
               <RadioGroup
                 disabled={targetType !== "scale"}
                 value={
@@ -267,9 +301,15 @@ export const KNNNeighbors = ({
                 onValueChange={handlePredictionsGrp}
               >
                 <div className="flex flex-col gap-2 p-2">
-                  <Label className="font-bold">
-                    Predictions for Scale Target
-                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Label className="font-bold">
+                      Predictions for Scale Target
+                    </Label>
+                    <FieldHelp
+                      show={showFieldHelp}
+                      text="Menentukan ringkasan nilai tetangga yang digunakan untuk prediksi target scale."
+                    />
+                  </div>
 
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem
@@ -279,6 +319,10 @@ export const KNNNeighbors = ({
                     <Label htmlFor="PredictionsMean">
                       Mean of nearest neighbors values
                     </Label>
+                    <FieldHelp
+                      show={showFieldHelp}
+                      text="Prediksi dibuat dari rata-rata nilai tetangga terdekat."
+                    />
                   </div>
 
                   <div className="flex items-center space-x-2">
@@ -289,11 +333,15 @@ export const KNNNeighbors = ({
                     <Label htmlFor="PredictionsMedian">
                       Median of nearest neighbors values
                     </Label>
+                    <FieldHelp
+                      show={showFieldHelp}
+                      text="Prediksi dibuat dari median nilai tetangga terdekat, lebih tahan terhadap nilai ekstrem."
+                    />
                   </div>
                 </div>
               </RadioGroup>
-            </ResizablePanel>
-          </ResizablePanelGroup>
+            </section>
+          </div>
         </div>
       </div>
     </div>

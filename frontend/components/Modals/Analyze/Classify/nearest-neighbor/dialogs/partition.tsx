@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { FieldHelp } from "./field-help";
 
 export const KNNPartition = ({
   updateFormData,
@@ -22,6 +22,7 @@ export const KNNPartition = ({
   availableVariables,
   isAutoK,
   isFeatureSelectionActive,
+  showFieldHelp = false,
 }: KNNPartitionProps) => {
   const [partitionState, setPartitionState] = useState<KNNPartitionType>({
     ...data,
@@ -173,23 +174,24 @@ export const KNNPartition = ({
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto">
-        <div className="flex flex-col items-start gap-2 p-4">
+    <div className="flex flex-col h-full min-h-0 w-full">
+      <div className="flex-1 min-h-0 w-full">
+        <div className="flex flex-col items-start gap-2 p-4 h-full min-h-0 w-full">
           <ResizablePanelGroup
             direction="horizontal"
-            className="min-h-[650px] max-w-xl rounded-lg border md:min-w-[200px]"
+            className="h-full min-h-0 w-full rounded-lg border md:min-w-[200px]"
           >
-            <ResizablePanel defaultSize={40}>
-              <ScrollArea>
-                <div className="flex flex-col justify-start items-start h-[510px] gap-1 p-2 overflow-hidden">
+            <ResizablePanel defaultSize={30} className="min-h-0 min-w-0">
+              <div className="h-full min-h-0 overflow-y-auto hide-scrollbar">
+                <div className="flex flex-col justify-start items-start gap-1 p-2 min-w-0">
                   {filteredAvailableVariables.map(
                     (variable: string, index: number) => (
                       <Badge
                         key={index}
-                        className="w-full text-start text-sm font-light p-2 cursor-pointer"
+                        className="block w-full min-w-0 truncate text-start text-sm font-light p-2 cursor-pointer"
                         variant="outline"
                         draggable
+                        title={variable}
                         onDragStart={(e) =>
                           e.dataTransfer.setData("text", variable)
                         }
@@ -199,25 +201,36 @@ export const KNNPartition = ({
                     ),
                   )}
                 </div>
-              </ScrollArea>
+              </div>
             </ResizablePanel>
             <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={60}>
-              <ResizablePanelGroup direction="vertical">
-                <ResizablePanel defaultSize={45}>
+            <ResizablePanel defaultSize={70} className="min-h-0">
+              <div className="h-full min-h-0 overflow-y-auto">
+                <div className="flex min-h-full flex-col">
+                <section className="border-b">
                   <RadioGroup
                     value={partitionMode}
                     onValueChange={handlePartitionGrp}
                   >
                     <div className="flex flex-col gap-2 p-2">
-                      <Label className="font-bold">
-                        Training and Holdout Partition
-                      </Label>
+                      <div className="flex items-center gap-2">
+                        <Label className="font-bold">
+                          Training and Holdout Partition
+                        </Label>
+                        <FieldHelp
+                          show={showFieldHelp}
+                          text="Mengatur pembagian data untuk pelatihan model dan pengujian holdout."
+                        />
+                      </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="UseRandomly" id="UseRandomly" />
                         <Label htmlFor="UseRandomly">
                           Randomly assign cases to partition
                         </Label>
+                        <FieldHelp
+                          show={showFieldHelp}
+                          text="Membagi kasus secara acak ke partisi training dan holdout."
+                        />
                       </div>
                       <div
                         className={`flex flex-row gap-1 pl-6 ${
@@ -228,6 +241,10 @@ export const KNNPartition = ({
                       >
                         <div className="flex flex-col gap-2">
                           <Label htmlFor="TrainingNumber">Training %:</Label>
+                          <FieldHelp
+                            show={showFieldHelp}
+                            text="Persentase kasus yang dipakai untuk melatih model."
+                          />
                           <Input
                             id="TrainingNumber"
                             type="number"
@@ -245,6 +262,10 @@ export const KNNPartition = ({
                         </div>
                         <div className="flex flex-col gap-2">
                           <Label htmlFor="TrainingNumber">Holdout %:</Label>
+                          <FieldHelp
+                            show={showFieldHelp}
+                            text="Persentase kasus yang disisihkan untuk evaluasi holdout."
+                          />
                           <Input
                             id="HoldoutNumber"
                             type="number"
@@ -257,6 +278,10 @@ export const KNNPartition = ({
                         </div>
                         <div className="flex flex-col gap-2">
                           <Label htmlFor="TotalNumber">Total %:</Label>
+                          <FieldHelp
+                            show={showFieldHelp}
+                            text="Total pembagian training dan holdout; nilainya selalu 100%."
+                          />
                           <Input
                             id="TotalNumber"
                             type="number"
@@ -273,15 +298,23 @@ export const KNNPartition = ({
                         <Label htmlFor="UseVariable">
                           Use variable to assign cases
                         </Label>
+                        <FieldHelp
+                          show={showFieldHelp}
+                          text="Gunakan sebuah variabel untuk menentukan partisi tiap kasus."
+                        />
                       </div>
                       <div className="flex flex-row gap-1 pl-6">
                         <div className="flex flex-col gap-2 w-full">
                           <Label htmlFor="PartitioningVariable">
                             Partition Variable:
                           </Label>
-                          <div className="flex w-full items-center space-x-2">
+                          <FieldHelp
+                            show={showFieldHelp}
+                            text="Variabel yang berisi penanda partisi training atau holdout."
+                          />
+                          <div className="flex w-full min-w-0 items-center space-x-2">
                             <div
-                              className={`w-full min-h-[40px] p-2 border rounded ${
+                              className={`w-full min-w-0 min-h-[40px] p-2 border rounded ${
                                 !partitionState.UseVariable
                                   ? "opacity-50 pointer-events-none"
                                   : ""
@@ -296,8 +329,9 @@ export const KNNPartition = ({
                             >
                               {partitionState.PartitioningVariable ? (
                                 <Badge
-                                  className="text-start text-sm font-light p-2 cursor-pointer"
+                                  className="block max-w-full min-w-0 truncate text-start text-sm font-light p-2 cursor-pointer"
                                   variant="outline"
+                                  title={partitionState.PartitioningVariable}
                                   onClick={() =>
                                     handleRemoveVariable("PartitioningVariable")
                                   }
@@ -320,9 +354,8 @@ export const KNNPartition = ({
                       </div>
                     </div>
                   </RadioGroup>
-                </ResizablePanel>
-                <ResizableHandle />
-                <ResizablePanel defaultSize={38}>
+                </section>
+                <section className="border-b">
                   <RadioGroup
                     disabled={!isCrossValidationEnabled}
                     value={foldMode}
@@ -335,9 +368,15 @@ export const KNNPartition = ({
                           : ""
                       }`}
                     >
-                      <Label className="font-bold">
-                        Cross Validation Folds
-                      </Label>
+                      <div className="flex items-center gap-2">
+                        <Label className="font-bold">
+                          Cross Validation Folds
+                        </Label>
+                        <FieldHelp
+                          show={showFieldHelp}
+                          text="Mengatur lipatan validasi silang untuk memilih atau mengevaluasi model."
+                        />
+                      </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem
                           value="VFoldUseRandomly"
@@ -346,9 +385,17 @@ export const KNNPartition = ({
                         <Label htmlFor="VFoldUseRandomly">
                           Randomly assign cases to folds
                         </Label>
+                        <FieldHelp
+                          show={showFieldHelp}
+                          text="Membagi kasus ke fold validasi silang secara acak."
+                        />
                       </div>
                       <div className="flex flex-row pl-6 gap-2">
                         <Label htmlFor="TrainingNumber">Number of Folds:</Label>
+                        <FieldHelp
+                          show={showFieldHelp}
+                          text="Jumlah fold yang digunakan dalam validasi silang."
+                        />
                         <Input
                           id="NumPartition"
                           type="text"
@@ -372,14 +419,22 @@ export const KNNPartition = ({
                         <Label htmlFor="VFoldUsePartitioningVar">
                           Use variable to assign cases
                         </Label>
+                        <FieldHelp
+                          show={showFieldHelp}
+                          text="Gunakan variabel untuk menentukan fold setiap kasus."
+                        />
                       </div>
                       <div className="flex flex-col gap-2 pl-6 w-full">
                         <Label htmlFor="VFoldPartitioningVariable">
                           Fold Variable:
                         </Label>
-                        <div className="flex w-full items-center space-x-2">
+                        <FieldHelp
+                          show={showFieldHelp}
+                          text="Variabel yang berisi nomor atau label fold untuk validasi silang."
+                        />
+                        <div className="flex w-full min-w-0 items-center space-x-2">
                           <div
-                            className={`w-full min-h-[40px] p-2 border rounded ${
+                            className={`w-full min-w-0 min-h-[40px] p-2 border rounded ${
                               !isCrossValidationEnabled ||
                               !partitionState.VFoldUsePartitioningVar
                                 ? "opacity-50 pointer-events-none"
@@ -395,8 +450,11 @@ export const KNNPartition = ({
                           >
                             {partitionState.VFoldPartitioningVariable ? (
                               <Badge
-                                className="text-start text-sm font-light p-2 cursor-pointer"
+                                className="block max-w-full min-w-0 truncate text-start text-sm font-light p-2 cursor-pointer"
                                 variant="outline"
+                                title={
+                                  partitionState.VFoldPartitioningVariable
+                                }
                                 onClick={() =>
                                   handleRemoveVariable(
                                     "VFoldPartitioningVariable",
@@ -422,11 +480,16 @@ export const KNNPartition = ({
                       </div>
                     </div>
                   </RadioGroup>
-                </ResizablePanel>
-                <ResizableHandle />
-                <ResizablePanel defaultSize={17}>
+                </section>
+                <section>
                   <div className="flex flex-col gap-2 p-2">
-                    <Label className="font-bold">Random Number Seed</Label>
+                    <div className="flex items-center gap-2">
+                      <Label className="font-bold">Random Number Seed</Label>
+                      <FieldHelp
+                        show={showFieldHelp}
+                        text="Mengatur seed agar pembagian acak dapat direproduksi."
+                      />
+                    </div>
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id="SetSeed"
@@ -442,9 +505,17 @@ export const KNNPartition = ({
                       >
                         Set Seed for Mersenne Twister
                       </label>
+                      <FieldHelp
+                        show={showFieldHelp}
+                        text="Aktifkan seed manual untuk generator angka acak."
+                      />
                     </div>
                     <div className="flex flex-row items-center gap-2 pl-6 w-full">
                       <Label htmlFor="Seed">Seed:</Label>
+                      <FieldHelp
+                        show={showFieldHelp}
+                        text="Nilai seed yang digunakan untuk menghasilkan pembagian acak yang sama pada run berikutnya."
+                      />
                       <Input
                         id="Seed"
                         type="number"
@@ -458,8 +529,9 @@ export const KNNPartition = ({
                       />
                     </div>
                   </div>
-                </ResizablePanel>
-              </ResizablePanelGroup>
+                </section>
+                </div>
+              </div>
             </ResizablePanel>
           </ResizablePanelGroup>
         </div>

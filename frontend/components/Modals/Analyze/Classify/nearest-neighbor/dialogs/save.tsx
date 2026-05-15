@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { FieldHelp } from "./field-help";
 
 export const KNNSave = ({
   updateFormData,
@@ -27,6 +28,7 @@ export const KNNSave = ({
   isFeatureSelectionActive,
   isUsingPartitionVariable,
   isUsingFoldVariable,
+  showFieldHelp = false,
 }: KNNSaveProps) => {
   const [saveState, setSaveState] = useState<KNNSaveType>({
     ...data,
@@ -105,62 +107,77 @@ export const KNNSave = ({
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto">
-        <div className="flex flex-col items-start gap-2 p-4">
-          <ResizablePanelGroup
-            direction="vertical"
-            className="min-h-[250px] rounded-lg border md:min-w-[200px]"
-          >
-            <ResizablePanel defaultSize={100}>
-              <RadioGroup
-                value={saveState.AutoName ? "AutoName" : "CustomName"}
-                onValueChange={handleSavedGrp}
-              >
-                <div className="flex flex-col gap-2 p-2">
-                  <Label className="font-bold">Names of Saved Variables</Label>
-                  <div className="flex flex-row gap-2">
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="AutoName" id="AutoName" />
-                      <Label htmlFor="AutoName">
-                        Automatically generate unique names
-                      </Label>
+    <div className="flex flex-col h-full min-h-0 w-full">
+      <div className="flex-1 min-h-0 w-full">
+        <div className="h-full min-h-0 overflow-y-auto">
+          <div className="flex flex-col items-start gap-2 p-4">
+            <ResizablePanelGroup
+              direction="vertical"
+              className="min-h-[250px] w-full rounded-lg border md:min-w-[200px]"
+            >
+              <ResizablePanel defaultSize={100}>
+                <RadioGroup
+                  value={saveState.AutoName ? "AutoName" : "CustomName"}
+                  onValueChange={handleSavedGrp}
+                >
+                  <div className="flex flex-col gap-2 p-2">
+                    <Label className="font-bold">
+                      Names of Saved Variables
+                    </Label>
+                    <FieldHelp
+                      show={showFieldHelp}
+                      text="Menentukan bagaimana nama variabel hasil KNN dibuat di dataset."
+                    />
+                    <div className="flex flex-row gap-2">
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="AutoName" id="AutoName" />
+                        <Label htmlFor="AutoName">
+                          Automatically generate unique names
+                        </Label>
+                        <FieldHelp
+                          show={showFieldHelp}
+                          text="Sistem membuat nama variabel output yang unik secara otomatis."
+                        />
+                      </div>
+                    </div>
+                    <div className="pl-6">
+                      <p className="text-sm text-justify">
+                        Select this option if you want to add a new set of saved
+                        variables to your dataset each time you run a model.
+                      </p>
+                    </div>
+                    <div className="flex flex-row gap-1">
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="CustomName" id="CustomName" />
+                        <Label htmlFor="CustomName">Use custom names</Label>
+                        <FieldHelp
+                          show={showFieldHelp}
+                          text="Gunakan nama variabel output yang ditentukan sendiri."
+                        />
+                      </div>
+                    </div>
+                    <div className="pl-6">
+                      <p className="text-sm text-justify">
+                        Specify names for the variables. If you select this
+                        option, any existing variables with the same name or root
+                        name are replaced each time you run a model.
+                      </p>
                     </div>
                   </div>
-                  <div className="pl-6">
-                    <p className="text-sm text-justify">
-                      Select this option if you want to add a new set of saved
-                      variables to your dataset each time you run a model.
-                    </p>
-                  </div>
-                  <div className="flex flex-row gap-1">
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="CustomName" id="CustomName" />
-                      <Label htmlFor="CustomName">Use custom names</Label>
-                    </div>
-                  </div>
-                  <div className="pl-6">
-                    <p className="text-sm text-justify">
-                      Specify names for the variables. If you select this
-                      option, any existing variables with the same name or root
-                      name are replaced each time you run a model.
-                    </p>
-                  </div>
-                </div>
-              </RadioGroup>
-            </ResizablePanel>
-          </ResizablePanelGroup>
-        </div>
-        <div className="flex flex-col gap-2 p-4">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[100px] text-center">Save</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Variable Name</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+                </RadioGroup>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </div>
+          <div className="flex flex-col gap-2 p-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[100px] text-center">Save</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Variable Name</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
               <TableRow>
                 <TableCell className="text-center">
                   <Checkbox
@@ -179,6 +196,10 @@ export const KNNSave = ({
                   >
                     Predicted Value or Category
                   </label>
+                  <FieldHelp
+                    show={showFieldHelp}
+                    text="Menyimpan hasil prediksi nilai atau kategori target untuk setiap kasus."
+                  />
                 </TableCell>
                 <TableCell>
                   <Input
@@ -209,6 +230,10 @@ export const KNNSave = ({
                   >
                     Predicted Probability (Category Target)
                   </label>
+                  <FieldHelp
+                    show={showFieldHelp}
+                    text="Menyimpan probabilitas prediksi untuk target kategorikal."
+                  />
                 </TableCell>
                 <TableCell>
                   <Input
@@ -239,6 +264,10 @@ export const KNNSave = ({
                   >
                     Training/Holdout Partition Variable
                   </label>
+                  <FieldHelp
+                    show={showFieldHelp}
+                    text="Menyimpan penanda kasus masuk training atau holdout."
+                  />
                 </TableCell>
                 <TableCell>
                   <Input
@@ -269,6 +298,10 @@ export const KNNSave = ({
                   >
                     Cross-Validation Fold Variable
                   </label>
+                  <FieldHelp
+                    show={showFieldHelp}
+                    text="Menyimpan nomor fold validasi silang untuk setiap kasus."
+                  />
                 </TableCell>
                 <TableCell>
                   <Input
@@ -287,6 +320,10 @@ export const KNNSave = ({
             <Label className="w-[275px]" htmlFor="MaxCatsToSave">
               Maximum Number of Categories to Save:
             </Label>
+            <FieldHelp
+              show={showFieldHelp}
+              text="Batas jumlah kategori target yang probabilitasnya disimpan."
+            />
             <Input
               id="MaxCatsToSave"
               type="number"
@@ -298,6 +335,7 @@ export const KNNSave = ({
               onChange={handleMaxCatsToSaveChange}
             />
           </div>
+        </div>
         </div>
       </div>
     </div>

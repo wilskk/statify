@@ -5,11 +5,6 @@ import type {
   KNNFeaturesType,
 } from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor";
 import type { CheckedState } from "@radix-ui/react-checkbox";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -23,11 +18,13 @@ import { PopoverArrow } from "@radix-ui/react-popover";
 import { Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { FieldHelp } from "./field-help";
 
 export const KNNFeatures = ({
   updateFormData,
   data,
   hasTarget,
+  showFieldHelp = false,
 }: KNNFeaturesProps) => {
   const [availableVariables, setAvailableVariables] = useState<string[]>([]);
 
@@ -112,14 +109,11 @@ export const KNNFeatures = ({
   const forcedCount = (data.ForcedEntryVar ?? []).length;
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto">
-        <div className="flex flex-col items-start gap-2 p-4">
-          <ResizablePanelGroup
-            direction="vertical"
-            className="min-h-[500px] max-w-2xl rounded-lg border md:min-w-[200px]"
-          >
-            <ResizablePanel defaultSize={60}>
+    <div className="flex flex-col h-full min-h-0 w-full overflow-hidden">
+      <div className="flex-1 min-h-0 w-full overflow-y-auto">
+        <div className="flex flex-col items-start gap-2 p-4 w-full">
+          <div className="w-full max-w-2xl rounded-lg border md:min-w-[200px]">
+            <section className="border-b">
               <div className="flex flex-col gap-2 p-2 w-full">
                 <div className="flex flex-row items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -137,6 +131,10 @@ export const KNNFeatures = ({
                     >
                       Perform Feature Selection
                     </label>
+                    <FieldHelp
+                      show={showFieldHelp}
+                      text="Aktifkan pemilihan fitur otomatis untuk mengevaluasi fitur mana yang paling membantu model."
+                    />
                   </div>
                   <div>
                     <Popover>
@@ -159,10 +157,15 @@ export const KNNFeatures = ({
                     </Popover>
                   </div>
                 </div>
-                <ResizablePanelGroup direction="horizontal">
-                  <ResizablePanel defaultSize={50}>
-                    <div className="flex flex-col h-full gap-2">
-                      <Label className="font-bold">Forward Selection:</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex min-w-0 flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <Label className="font-bold">Forward Selection:</Label>
+                        <FieldHelp
+                          show={showFieldHelp}
+                          text="Daftar fitur kandidat yang akan dievaluasi oleh prosedur forward selection."
+                        />
+                      </div>
                       <div className="w-full h-[150px] p-2 border rounded overflow-hidden">
                         <ScrollArea>
                           <div className="flex flex-col h-[130px] gap-1 justify-start items-start">
@@ -188,9 +191,7 @@ export const KNNFeatures = ({
                         Features to evaluate: {forwardCount}
                       </p>
                     </div>
-                  </ResizablePanel>
-                  <ResizableHandle withHandle />
-                  <ResizablePanel defaultSize={50}>
+                  <div className="flex min-w-0 flex-col gap-2">
                     <div
                       className="flex flex-col w-full gap-2"
                       onDragOver={(e) => {
@@ -203,7 +204,13 @@ export const KNNFeatures = ({
                         handleDrop("ForcedEntryVar", variable);
                       }}
                     >
-                      <Label className="font-bold">Forced Entry:</Label>
+                      <div className="flex items-center gap-2">
+                        <Label className="font-bold">Forced Entry:</Label>
+                        <FieldHelp
+                          show={showFieldHelp}
+                          text="Fitur yang wajib masuk ke model dan tidak dikeluarkan oleh proses seleksi."
+                        />
+                      </div>
                       <div className="w-full h-[150px] p-2 border rounded overflow-hidden">
                         <ScrollArea>
                           <div className="w-full h-[130px]">
@@ -244,29 +251,43 @@ export const KNNFeatures = ({
                         Features to force: {forcedCount}
                       </p>
                     </div>
-                  </ResizablePanel>
-                </ResizablePanelGroup>
+                  </div>
+                </div>
               </div>
-            </ResizablePanel>
-            <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={40}>
+            </section>
+
+            <section>
               <RadioGroup
                 value={data.MaxReached ? "MaxReached" : "BelowMin"}
                 disabled={!data.PerformSelection}
                 onValueChange={handleCriterionGrp}
               >
                 <div className="flex flex-col gap-2 p-2">
-                  <Label className="font-bold">Stopping Criterion</Label>
+                  <div className="flex items-center gap-2">
+                    <Label className="font-bold">Stopping Criterion</Label>
+                    <FieldHelp
+                      show={showFieldHelp}
+                      text="Aturan kapan proses pemilihan fitur harus berhenti."
+                    />
+                  </div>
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="MaxReached" id="MaxReached" />
                       <Label htmlFor="MaxReached">
                         Stop when the specified number of features is reached
                       </Label>
+                      <FieldHelp
+                        show={showFieldHelp}
+                        text="Hentikan seleksi saat jumlah fitur terpilih mencapai batas yang ditentukan."
+                      />
                     </div>
                     <div className="flex flex-col space-x-2 pl-4">
                       <div className="flex items-center space-x-2 pl-2">
                         <Label className="w-[150px]">Number to Select:</Label>
+                        <FieldHelp
+                          show={showFieldHelp}
+                          text="Jumlah maksimum fitur yang boleh dipilih oleh proses seleksi."
+                        />
                         <div className="w-[75px]">
                           <Input
                             id="MaxToSelect"
@@ -292,10 +313,18 @@ export const KNNFeatures = ({
                         Stop when the change in the absolute error ratio is less
                         than or equal to minimum
                       </Label>
+                      <FieldHelp
+                        show={showFieldHelp}
+                        text="Hentikan seleksi ketika penurunan error sudah terlalu kecil."
+                      />
                     </div>
                     <div className="flex flex-col space-x-2 pl-4 gap-1">
                       <div className="flex items-center space-x-2 pl-2">
                         <Label className="w-[150px]">Minimum Change:</Label>
+                        <FieldHelp
+                          show={showFieldHelp}
+                          text="Ambang minimum perubahan error ratio agar fitur berikutnya masih dianggap berguna."
+                        />
                         <div className="w-[75px]">
                           <Input
                             id="MinChange"
@@ -313,8 +342,8 @@ export const KNNFeatures = ({
                   </div>
                 </div>
               </RadioGroup>
-            </ResizablePanel>
-          </ResizablePanelGroup>
+            </section>
+          </div>
         </div>
       </div>
     </div>
