@@ -12,7 +12,6 @@ import { KNNOutput } from "@/components/Modals/Analyze/Classify/nearest-neighbor
 
 import type {
   KNNContainerProps,
-  KNNMainType,
   KNNType,
 } from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor";
 
@@ -27,18 +26,76 @@ import { clearFormData, getFormData, saveFormData } from "@/hooks/useIndexedDB";
 
 import { toast } from "sonner";
 
-const stripRemovedConfig = (data: KNNType & { options?: unknown }): KNNType => {
-  const { options, ...config } = data;
-  return config;
+type KNNFormValue = string[] | string | number | boolean | null;
+
+const stripRemovedConfig = <T extends object>(
+  data: T & { options?: unknown },
+): Omit<T, "options"> => {
+  const { options: _options, ...config } = data;
+  return config as Omit<T, "options">;
+};
+
+const createDefaultFormData = (): KNNType => ({
+  main: {
+    ...KNNDefault.main,
+    FeatureVar: KNNDefault.main.FeatureVar
+      ? [...KNNDefault.main.FeatureVar]
+      : null,
+  },
+  neighbors: { ...KNNDefault.neighbors },
+  features: {
+    ...KNNDefault.features,
+    ForwardSelection: KNNDefault.features.ForwardSelection
+      ? [...KNNDefault.features.ForwardSelection]
+      : null,
+    ForcedEntryVar: KNNDefault.features.ForcedEntryVar
+      ? [...KNNDefault.features.ForcedEntryVar]
+      : null,
+  },
+  partition: { ...KNNDefault.partition },
+  save: { ...KNNDefault.save },
+  output: { ...KNNDefault.output },
+});
+
+const normalizeFormData = (
+  data?: Partial<KNNType & { options?: unknown }> | null,
+): KNNType => {
+  const defaults = createDefaultFormData();
+  if (!data) return defaults;
+
+  const config = stripRemovedConfig(data);
+
+  return {
+    main: {
+      ...defaults.main,
+      ...(config.main ?? {}),
+      FeatureVar: config.main?.FeatureVar
+        ? [...config.main.FeatureVar]
+        : defaults.main.FeatureVar,
+    },
+    neighbors: { ...defaults.neighbors, ...(config.neighbors ?? {}) },
+    features: {
+      ...defaults.features,
+      ...(config.features ?? {}),
+      ForwardSelection: config.features?.ForwardSelection
+        ? [...config.features.ForwardSelection]
+        : defaults.features.ForwardSelection,
+      ForcedEntryVar: config.features?.ForcedEntryVar
+        ? [...config.features.ForcedEntryVar]
+        : defaults.features.ForcedEntryVar,
+    },
+    partition: { ...defaults.partition, ...(config.partition ?? {}) },
+    save: { ...defaults.save, ...(config.save ?? {}) },
+    output: { ...defaults.output, ...(config.output ?? {}) },
+  };
 };
 
 export const KNNContainer = ({ onClose }: KNNContainerProps) => {
   const variables = useVariableStore((state) => state.variables);
   const dataVariables = useDataStore((state) => state.data);
 
-  const [formData, setFormData] = useState<KNNType>({
-    ...KNNDefault,
-  });
+  const [formData, setFormData] = useState<KNNType>(createDefaultFormData);
+  const [resetKey, setResetKey] = useState(0);
 
   const [activeTab, setActiveTab] = useState("variables");
 
@@ -49,10 +106,10 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
       const savedData = await getFormData("NearestNeighbor");
 
       if (savedData) {
-        const { id, ...formDataWithoutId } = savedData;
-        setFormData(stripRemovedConfig(formDataWithoutId));
+        const { id: _id, ...formDataWithoutId } = savedData;
+        setFormData(normalizeFormData(formDataWithoutId));
       } else {
-        setFormData({ ...KNNDefault });
+        setFormData(createDefaultFormData());
       }
     };
 
@@ -78,7 +135,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
   const updateFormData = (
     section: keyof KNNType,
     field: string,
-    value: any,
+    value: KNNFormValue,
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -108,13 +165,18 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
     toast.promise(promise, {
       loading: "Running KNN analysis...",
       success: "KNN analysis completed successfully.",
-      error: "An error occurred during KNN analysis.",
+      error: (error) =>
+        error instanceof Error
+          ? error.message
+          : "An error occurred during KNN analysis.",
     });
   };
 
   const resetFormData = async () => {
     try {
-      setFormData({ ...KNNDefault });
+      setResetKey((key) => key + 1);
+      setActiveTab("variables");
+      setFormData(createDefaultFormData());
       await clearFormData("NearestNeighbor");
 
       toast.success("Form data cleared successfully");
@@ -130,7 +192,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
   const availableVariables = useMemo(() => {
     const used = new Set([
       formData.main.TargetVar,
-      ...(formData.main.FeatureVar || []),
+      ...(formData.main.FeatureVar ?? []),
       formData.main.FocalCaseIdenVar,
       formData.main.CaseIdenVar,
     ]);
@@ -151,6 +213,8 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
 
   const isAutoK = formData.neighbors.AutoSelection;
   const isFeatureSelectionActive = formData.features.PerformSelection;
+  const isUsingPartitionVariable = formData.partition.UseVariable;
+  const isUsingFoldVariable = formData.partition.VFoldUsePartitioningVar;
 
   const validation = useMemo(() => {
     const errors: string[] = [];
@@ -193,8 +257,6 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
 
     return null;
   };
-
-  const featureError = validateFeatureSelection();
 
   return (
     <div className="flex flex-col h-full">
@@ -242,6 +304,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
           <div className="flex-grow min-h-0">
             <TabsContent
               value="variables"
+              key={`variables-${resetKey}`}
               className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col"
             >
               <KNNDialog
@@ -255,6 +318,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
 
             <TabsContent
               value="neighbors"
+              key={`neighbors-${resetKey}`}
               className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex"
             >
               <KNNNeighbors
@@ -269,6 +333,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
 
             <TabsContent
               value="features"
+              key={`features-${resetKey}`}
               className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col"
             >
               <KNNFeatures
@@ -282,6 +347,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
 
             <TabsContent
               value="partition"
+              key={`partition-${resetKey}`}
               className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col"
             >
               <KNNPartition
@@ -297,6 +363,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
 
             <TabsContent
               value="save"
+              key={`save-${resetKey}`}
               className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col"
             >
               <KNNSave
@@ -309,11 +376,14 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
                 isAutoK={isAutoK}
                 isFeatureSelectionActive={isFeatureSelectionActive}
                 featureCount={(formData.main.FeatureVar ?? []).length}
+                isUsingPartitionVariable={isUsingPartitionVariable}
+                isUsingFoldVariable={isUsingFoldVariable}
               />
             </TabsContent>
 
             <TabsContent
               value="output"
+              key={`output-${resetKey}`}
               className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col"
             >
               <KNNOutput

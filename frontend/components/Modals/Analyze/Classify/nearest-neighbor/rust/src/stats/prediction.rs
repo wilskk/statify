@@ -49,7 +49,7 @@ pub fn calculate_categorical_prediction_with_weights(
     use_distance_weights: bool,
 ) -> DataValue {
     let probabilities =
-        calculate_categorical_probabilities(neighbors, target_values, use_distance_weights);
+        calculate_categorical_vote_probabilities(neighbors, target_values, use_distance_weights);
 
     probabilities
         .into_iter()
@@ -64,6 +64,52 @@ pub fn calculate_categorical_prediction_with_weights(
 }
 
 pub fn calculate_categorical_probabilities(
+    neighbors: &[(usize, f64)],
+    target_values: &[DataValue],
+    categories: &[String],
+) -> Vec<(String, f64)> {
+    if categories.is_empty() {
+        return Vec::new();
+    }
+
+    let mut counts: HashMap<String, usize> = categories
+        .iter()
+        .map(|category| (category.clone(), 0))
+        .collect();
+
+    for &(idx, _) in neighbors {
+        if idx >= target_values.len() {
+            continue;
+        }
+
+        let Some(key) = category_key(target_values.get(idx)) else {
+            continue;
+        };
+
+        if let Some(count) = counts.get_mut(&key) {
+            *count += 1;
+        }
+    }
+
+    let neighbor_count = counts.values().sum::<usize>();
+    if neighbor_count == 0 {
+        return categories
+            .iter()
+            .map(|category| (category.clone(), 0.0))
+            .collect();
+    }
+
+    let denominator = (neighbor_count + categories.len()) as f64;
+    categories
+        .iter()
+        .map(|category| {
+            let count = counts.get(category).copied().unwrap_or(0) as f64;
+            (category.clone(), (count + 1.0) / denominator)
+        })
+        .collect()
+}
+
+pub fn calculate_categorical_vote_probabilities(
     neighbors: &[(usize, f64)],
     target_values: &[DataValue],
     use_distance_weights: bool,
@@ -118,6 +164,20 @@ pub fn calculate_categorical_probabilities(
 pub fn sorted_target_categories(target_values: &[DataValue]) -> Vec<String> {
     let mut categories: Vec<String> = target_values
         .iter()
+        .filter_map(|value| category_key(Some(value)))
+        .collect();
+    categories.sort();
+    categories.dedup();
+    categories
+}
+
+pub fn sorted_target_categories_for_indices(
+    target_values: &[DataValue],
+    indices: &[usize],
+) -> Vec<String> {
+    let mut categories: Vec<String> = indices
+        .iter()
+        .filter_map(|&idx| target_values.get(idx))
         .filter_map(|value| category_key(Some(value)))
         .collect();
     categories.sort();
@@ -232,7 +292,8 @@ mod tests {
 
     use super::{
         calculate_categorical_prediction_with_weights, calculate_categorical_probabilities,
-        calculate_predictions,
+        calculate_mean_prediction, calculate_median_prediction, calculate_predictions,
+        sorted_target_categories_for_indices,
     };
 
     #[test]
@@ -275,14 +336,74 @@ mod tests {
             DataValue::Text("B".to_string()),
             DataValue::Text("B".to_string()),
         ];
+        let training_indices = vec![0, 1, 2];
+        let categories = sorted_target_categories_for_indices(&targets, &training_indices);
         let neighbors = vec![(0, 1.0), (1, 2.0), (2, 4.0)];
 
-        let total = calculate_categorical_probabilities(&neighbors, &targets, true)
+        let total = calculate_categorical_probabilities(&neighbors, &targets, &categories)
             .iter()
             .map(|(_, probability)| probability)
             .sum::<f64>();
 
         assert!((total - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn categorical_probabilities_use_laplace_correction() {
+        let targets = vec![
+            DataValue::Text("A".to_string()),
+            DataValue::Text("A".to_string()),
+            DataValue::Text("B".to_string()),
+        ];
+        let training_indices = vec![0, 1, 2];
+        let categories = sorted_target_categories_for_indices(&targets, &training_indices);
+        let neighbors = vec![(0, 1.0), (1, 2.0), (2, 4.0)];
+        let probabilities: std::collections::HashMap<String, f64> =
+            calculate_categorical_probabilities(&neighbors, &targets, &categories)
+                .into_iter()
+                .collect();
+
+        assert!((probabilities["A"] - 0.6).abs() < 1e-12);
+        assert!((probabilities["B"] - 0.4).abs() < 1e-12);
+    }
+
+    #[test]
+    fn categorical_probabilities_keep_absent_classes_nonzero() {
+        let targets = vec![
+            DataValue::Text("A".to_string()),
+            DataValue::Text("B".to_string()),
+            DataValue::Text("B".to_string()),
+            DataValue::Text("B".to_string()),
+        ];
+        let training_indices = vec![0, 1, 2, 3];
+        let categories = sorted_target_categories_for_indices(&targets, &training_indices);
+        let neighbors = vec![(1, 1.0), (2, 2.0), (3, 4.0)];
+        let probabilities: std::collections::HashMap<String, f64> =
+            calculate_categorical_probabilities(&neighbors, &targets, &categories)
+                .into_iter()
+                .collect();
+
+        assert!((probabilities["A"] - 0.2).abs() < 1e-12);
+        assert!((probabilities["B"] - 0.8).abs() < 1e-12);
+    }
+
+    #[test]
+    fn numeric_scale_predictions_use_neighbor_target_mean_or_median() {
+        let targets = vec![
+            DataValue::Number(120.0),
+            DataValue::Number(130.0),
+            DataValue::Number(500.0),
+        ];
+        let neighbors = vec![(0, 0.1), (1, 0.2), (2, 0.3)];
+
+        assert!(matches!(
+            calculate_mean_prediction(&neighbors, &targets),
+            DataValue::Number(value) if (value - 250.0).abs() < f64::EPSILON
+        ));
+        assert!(matches!(
+            calculate_median_prediction(&neighbors, &targets),
+            DataValue::Number(value) if (value - 130.0).abs() < f64::EPSILON
+        ));
     }
 
     #[test]

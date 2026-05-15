@@ -117,10 +117,14 @@ fn selected_original_features(features: &[String], selected_indices: &[usize]) -
 
 fn calculate_raw_importance_spss_style(
     error_without_feature: f64,
-    _base_error: f64,
+    base_error: f64,
     original_feature_count: f64,
 ) -> f64 {
-    error_without_feature + (1.0 / original_feature_count)
+    if error_without_feature.is_finite() && base_error.is_finite() && base_error > f64::EPSILON {
+        (error_without_feature / base_error) + (1.0 / original_feature_count)
+    } else {
+        f64::NAN
+    }
 }
 
 pub fn normalize_feature_importance(entries: &mut [PredictorImportanceEntry]) {
@@ -133,10 +137,9 @@ pub fn normalize_feature_importance(entries: &mut [PredictorImportanceEntry]) {
         for entry in entries.iter_mut() {
             entry.normalized_importance = entry.raw_feature_importance.max(0.0) / sum;
         }
-    } else if !entries.is_empty() {
-        let equal = 1.0 / (entries.len() as f64);
+    } else {
         for entry in entries.iter_mut() {
-            entry.normalized_importance = equal;
+            entry.normalized_importance = 0.0;
         }
     }
 
@@ -195,7 +198,7 @@ mod tests {
                 DataValue::Text("A".to_string()),
                 DataValue::Text("B".to_string()),
                 DataValue::Text("B".to_string()),
-                DataValue::Text("A".to_string()),
+                DataValue::Text("B".to_string()),
                 DataValue::Text("B".to_string()),
             ],
             target_measure: VariableMeasure::Nominal,
@@ -230,10 +233,13 @@ mod tests {
         assert!(importance
             .entries
             .iter()
-            .all(
-                |entry| (entry.raw_feature_importance - (entry.error_without_feature + 0.5)).abs()
-                    <= f64::EPSILON
-            ));
+            .all(|entry| if entry.base_error > f64::EPSILON {
+                let expected =
+                    (entry.error_without_feature / entry.base_error) + (1.0 / 2.0);
+                (entry.raw_feature_importance - expected).abs() <= f64::EPSILON
+            } else {
+                entry.raw_feature_importance.is_finite()
+            }));
 
         let normalized_sum = importance
             .entries

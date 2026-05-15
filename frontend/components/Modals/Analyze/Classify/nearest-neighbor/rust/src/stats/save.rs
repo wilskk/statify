@@ -11,7 +11,10 @@ use super::core::{
     perform_cross_validation, preprocess_knn_data,
 };
 use super::partition::EXCLUDED_FOLD;
-use super::prediction::{calculate_categorical_probabilities, calculate_predictions};
+use super::prediction::{
+    calculate_categorical_probabilities, calculate_predictions,
+    sorted_target_categories_for_indices,
+};
 
 pub fn calculate_saved_variables(
     data: &AnalysisData,
@@ -53,6 +56,7 @@ pub fn calculate_saved_variables(
             config.neighbors.metric_eucli,
             k,
             weights.as_deref(),
+            &knn_data.processed_case_indices,
             config,
             target_is_categorical,
         );
@@ -66,7 +70,7 @@ pub fn calculate_saved_variables(
             ));
         }
 
-        if config.save.is_cate_target_var {
+        if config.save.is_cate_target_var && target_is_categorical {
             let max_categories = config.save.max_cats_to_save.unwrap_or(25).max(0) as usize;
             variables.extend(build_probability_variables(
                 total_cases,
@@ -113,10 +117,15 @@ fn calculate_case_predictions(
     use_euclidean: bool,
     k: usize,
     weights: Option<&[f64]>,
+    processed_case_indices: &[usize],
     config: &KnnConfig,
     target_is_categorical: bool,
 ) -> CasePredictions {
-    let categories = collect_target_categories(target_values);
+    let categories = if target_is_categorical {
+        sorted_target_categories_for_indices(target_values, training_indices)
+    } else {
+        Vec::new()
+    };
     let mut predicted_values = vec![DataValue::Null; data_matrix.len()];
     let mut category_probabilities: HashMap<String, Vec<f64>> = categories
         .iter()
@@ -141,17 +150,15 @@ fn calculate_case_predictions(
             k,
             use_euclidean,
             weights,
+            Some(processed_case_indices),
         );
 
         predicted_values[case_idx] =
             calculate_predictions(&neighbors, target_values, config, target_is_categorical);
 
         if !categories.is_empty() && !neighbors.is_empty() {
-            let probabilities = calculate_categorical_probabilities(
-                &neighbors,
-                target_values,
-                config.neighbors.weight,
-            );
+            let probabilities =
+                calculate_categorical_probabilities(&neighbors, target_values, &categories);
             let probability_by_category: HashMap<String, f64> = probabilities.into_iter().collect();
 
             for category in &categories {
@@ -299,6 +306,8 @@ fn build_fold_variable(
             if let Some(fold) = folds.get(processed_idx).copied() {
                 if fold != EXCLUDED_FOLD {
                     values[raw_idx] = DataValue::Number(fold as f64 + 1.0);
+                } else {
+                    values[raw_idx] = DataValue::Number(0.0);
                 }
             }
         }
@@ -311,26 +320,6 @@ fn build_fold_variable(
         measure: "nominal".to_string(),
         decimals: 0,
         values,
-    }
-}
-
-fn collect_target_categories(target_values: &[DataValue]) -> Vec<String> {
-    let mut categories = BTreeSet::new();
-    for value in target_values {
-        if let Some(category) = category_key(Some(value)) {
-            categories.insert(category);
-        }
-    }
-
-    categories.into_iter().collect()
-}
-
-fn category_key(value: Option<&DataValue>) -> Option<String> {
-    match value {
-        Some(DataValue::Text(text)) if !text.trim().is_empty() => Some(text.clone()),
-        Some(DataValue::Boolean(value)) => Some(value.to_string()),
-        Some(DataValue::Number(value)) if value.is_finite() => Some(value.to_string()),
-        _ => None,
     }
 }
 

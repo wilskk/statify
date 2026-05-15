@@ -5,7 +5,10 @@ use crate::models::{
     data::{AnalysisData, DataValue},
 };
 
-use super::{common::split_training_holdout, numpy_random::shuffle_indices_numpy_compatible};
+use super::{
+    common::{split_training_holdout, split_training_holdout_with_rng},
+    numpy_random::{random_interval, seeded_mt19937, shuffle_indices_numpy_compatible},
+};
 
 pub const EXCLUDED_FOLD: usize = usize::MAX;
 
@@ -52,12 +55,63 @@ pub fn split_training_holdout_by_partition_config_detailed(
     Ok((indices, Vec::new(), Vec::new()))
 }
 
+pub fn split_partition_and_cross_validation_by_config(
+    data: &AnalysisData,
+    config: &KnnConfig,
+    processed_case_count: usize,
+    processed_case_indices: &[usize],
+) -> Result<(Vec<usize>, Vec<usize>, Vec<usize>, Vec<usize>), String> {
+    let effective_seed = if config.partition.set_seed {
+        config.partition.seed
+    } else {
+        None
+    };
+    let mut rng = seeded_mt19937(effective_seed);
+
+    let (training_indices, holdout_indices, excluded_indices) = if config.partition.use_variable {
+        if let Some(ref partition_var) = config.partition.partitioning_variable {
+            split_by_partition_variable(data, partition_var, processed_case_indices)?
+        } else {
+            let (training_indices, holdout_indices) = split_training_holdout_with_rng(
+                processed_case_count,
+                config.partition.training_number,
+                &mut rng,
+            );
+            (training_indices, holdout_indices, Vec::new())
+        }
+    } else if config.partition.use_randomly {
+        let (training_indices, holdout_indices) = split_training_holdout_with_rng(
+            processed_case_count,
+            config.partition.training_number,
+            &mut rng,
+        );
+        (training_indices, holdout_indices, Vec::new())
+    } else {
+        ((0..processed_case_count).collect(), Vec::new(), Vec::new())
+    };
+
+    let cross_validation_folds = split_cross_validation_by_partition_config_for_training(
+        data,
+        config,
+        processed_case_indices,
+        &training_indices,
+        &mut rng,
+    )?;
+
+    Ok((
+        training_indices,
+        holdout_indices,
+        excluded_indices,
+        cross_validation_folds,
+    ))
+}
+
 pub fn split_cross_validation_by_partition_config(
     data: &AnalysisData,
     config: &KnnConfig,
     processed_case_indices: &[usize],
 ) -> Result<Vec<usize>, String> {
-    if config.features.perform_selection {
+    if !is_cross_validation_enabled(config) {
         return Ok(vec![0; processed_case_indices.len()]);
     }
 
@@ -90,6 +144,56 @@ pub fn split_cross_validation_by_partition_config(
         false,
         None,
     )
+}
+
+fn split_cross_validation_by_partition_config_for_training(
+    data: &AnalysisData,
+    config: &KnnConfig,
+    processed_case_indices: &[usize],
+    training_indices: &[usize],
+    rng: &mut rand_mt::Mt,
+) -> Result<Vec<usize>, String> {
+    if !is_cross_validation_enabled(config) {
+        return Ok(vec![EXCLUDED_FOLD; processed_case_indices.len()]);
+    }
+
+    if config.partition.v_fold_use_partitioning_var {
+        if let Some(ref fold_var) = config.partition.v_fold_partitioning_variable {
+            return split_cross_validation_by_variable_for_training(
+                data,
+                fold_var,
+                processed_case_indices,
+                training_indices,
+            );
+        }
+
+        return Err("No cross-validation fold variable specified".to_string());
+    }
+
+    if config.partition.v_fold_use_randomly {
+        return create_random_folds_for_training(
+            processed_case_indices.len(),
+            training_indices,
+            config.partition.num_partition,
+            rng,
+        );
+    }
+
+    if training_indices.len() < 2 {
+        return Ok(vec![EXCLUDED_FOLD; processed_case_indices.len()]);
+    }
+
+    let default_folds = 10.min(training_indices.len()) as i32;
+    create_random_fold_assignments_for_training(
+        processed_case_indices.len(),
+        training_indices,
+        default_folds,
+        rng,
+    )
+}
+
+fn is_cross_validation_enabled(config: &KnnConfig) -> bool {
+    config.neighbors.auto_selection && !config.features.perform_selection
 }
 
 fn split_training_holdout_randomly(
@@ -176,6 +280,53 @@ fn split_cross_validation_by_variable(
         .collect())
 }
 
+fn split_cross_validation_by_variable_for_training(
+    data: &AnalysisData,
+    fold_var: &str,
+    processed_case_indices: &[usize],
+    training_indices: &[usize],
+) -> Result<Vec<usize>, String> {
+    let mut folds = vec![EXCLUDED_FOLD; processed_case_indices.len()];
+    let mut raw_fold_values = Vec::with_capacity(training_indices.len());
+    let mut unique_values = Vec::new();
+
+    for &processed_idx in training_indices {
+        let Some(&raw_case_idx) = processed_case_indices.get(processed_idx) else {
+            continue;
+        };
+        let raw_value = fold_partition_value(raw_case_idx, fold_var, data);
+
+        if let Some(value) = raw_value {
+            if !unique_values.contains(&value) {
+                unique_values.push(value);
+            }
+        }
+
+        raw_fold_values.push((processed_idx, raw_value));
+    }
+
+    if unique_values.len() < 2 && training_indices.len() > 1 {
+        return Err(format!(
+            "Cross-validation fold variable '{}' must contain at least two fold groups among training cases",
+            fold_var
+        ));
+    }
+
+    let fold_lookup: HashMap<i64, usize> = unique_values
+        .into_iter()
+        .enumerate()
+        .map(|(fold_idx, raw_value)| (raw_value, fold_idx))
+        .collect();
+
+    for (processed_idx, raw_value) in raw_fold_values {
+        folds[processed_idx] = raw_value
+            .and_then(|value| fold_lookup.get(&value).copied())
+            .unwrap_or(EXCLUDED_FOLD);
+    }
+
+    Ok(folds)
+}
+
 fn create_random_folds(
     num_cases: usize,
     requested_num_folds: i32,
@@ -183,6 +334,20 @@ fn create_random_folds(
     seed: Option<i64>,
 ) -> Result<Vec<usize>, String> {
     create_k_fold_assignments(num_cases, requested_num_folds, true, use_seed, seed)
+}
+
+fn create_random_folds_for_training(
+    num_cases: usize,
+    training_indices: &[usize],
+    requested_num_folds: i32,
+    rng: &mut rand_mt::Mt,
+) -> Result<Vec<usize>, String> {
+    create_random_fold_assignments_for_training(
+        num_cases,
+        training_indices,
+        requested_num_folds,
+        rng,
+    )
 }
 
 fn create_k_fold_assignments(
@@ -227,6 +392,40 @@ fn create_k_fold_assignments(
     Ok(folds)
 }
 
+fn create_random_fold_assignments_for_training(
+    num_cases: usize,
+    training_indices: &[usize],
+    requested_num_folds: i32,
+    rng: &mut rand_mt::Mt,
+) -> Result<Vec<usize>, String> {
+    if requested_num_folds < 2 {
+        return Err("Number of folds must be at least 2".to_string());
+    }
+
+    let num_folds = requested_num_folds as usize;
+    if num_folds > training_indices.len() {
+        return Err("Number of folds cannot exceed the number of training samples".to_string());
+    }
+
+    loop {
+        let mut folds = vec![EXCLUDED_FOLD; num_cases];
+        let mut fold_counts = vec![0; num_folds];
+
+        for &sample_idx in training_indices {
+            if sample_idx < folds.len() {
+                let raw_fold = random_interval(rng, num_folds - 1);
+                let fold = num_folds - 1 - raw_fold;
+                folds[sample_idx] = fold;
+                fold_counts[fold] += 1;
+            }
+        }
+
+        if fold_counts.iter().all(|&count| count > 0) {
+            return Ok(folds);
+        }
+    }
+}
+
 pub fn has_valid_partitioning_values(
     data: &AnalysisData,
     config: &KnnConfig,
@@ -235,14 +434,6 @@ pub fn has_valid_partitioning_values(
     if config.partition.use_variable {
         if let Some(ref partition_var) = config.partition.partitioning_variable {
             if numeric_partition_value(raw_case_idx, partition_var, data).is_none() {
-                return false;
-            }
-        }
-    }
-
-    if !config.features.perform_selection && config.partition.v_fold_use_partitioning_var {
-        if let Some(ref fold_var) = config.partition.v_fold_partitioning_variable {
-            if fold_partition_value(raw_case_idx, fold_var, data).is_none() {
                 return false;
             }
         }
@@ -354,7 +545,8 @@ mod tests {
 
     use super::{
         create_fold_variable_splits, create_k_fold_assignments, split_by_partition_variable,
-        split_cross_validation_by_variable, EXCLUDED_FOLD,
+        split_cross_validation_by_variable, split_partition_and_cross_validation_by_config,
+        EXCLUDED_FOLD,
     };
 
     fn record(name: &str, value: DataValue) -> DataRecord {
@@ -475,5 +667,114 @@ mod tests {
         assert_eq!(splits[0], (vec![1, 3, 4], vec![0, 2]));
         assert_eq!(splits[1], (vec![0, 2, 3], vec![1, 4]));
         assert_eq!(splits[2], (vec![0, 1, 2, 4], vec![3]));
+    }
+
+    #[test]
+    fn random_partition_then_random_folds_use_single_rng_sequence_and_training_only() {
+        let data = data_with_feature(
+            "x",
+            (0..10)
+                .map(|value| DataValue::Number(value as f64))
+                .collect(),
+        );
+        let processed_case_indices: Vec<usize> = (0..10).collect();
+        let config = crate::models::config::KnnConfig {
+            main: crate::models::config::MainConfig {
+                target_var: Some("target".to_string()),
+                feature_var: Some(vec!["x".to_string()]),
+                case_iden_var: None,
+                focal_case_iden_var: None,
+                norm_covar: false,
+            },
+            neighbors: crate::models::config::NeighborsConfig {
+                specify: false,
+                auto_selection: true,
+                specify_k: 1,
+                min_k: Some(1),
+                max_k: Some(3),
+                metric_eucli: true,
+                metric_manhattan: false,
+                weight: false,
+                predictions_mean: false,
+                predictions_median: false,
+            },
+            features: crate::models::config::FeaturesConfig {
+                forward_selection: None,
+                forced_entry_var: None,
+                features_to_evaluate: 0,
+                forced_features: 0,
+                perform_selection: false,
+                max_reached: true,
+                below_min: false,
+                max_to_select: None,
+                min_change: 0.01,
+            },
+            partition: crate::models::config::PartitionConfig {
+                src_var: None,
+                partitioning_variable: None,
+                use_randomly: true,
+                use_variable: false,
+                v_fold_partitioning_variable: None,
+                v_fold_use_randomly: true,
+                v_fold_use_partitioning_var: false,
+                training_number: 60,
+                num_partition: 2,
+                set_seed: true,
+                seed: Some(1234),
+            },
+            save: crate::models::config::SaveConfig {
+                auto_name: true,
+                custom_name: false,
+                max_cats_to_save: None,
+                has_target_var: false,
+                is_cate_target_var: false,
+                random_assign_to_partition: false,
+                random_assign_to_fold: false,
+            },
+            output: crate::models::config::OutputConfig {
+                case_summary: true,
+                feature_selection_summary: true,
+                k_selection_chart: true,
+                predictor_space: true,
+                prediction_results: true,
+                confusion_matrix: true,
+                show_neighbor_detail: false,
+                chart_and_table: true,
+                export_model_xml: false,
+                xml_file_path: None,
+                export_distance: false,
+                create_dataset: false,
+                write_data_file: false,
+                new_data_file_path: None,
+                dataset_name: None,
+            },
+        };
+
+        let (train, holdout, excluded, folds) = split_partition_and_cross_validation_by_config(
+            &data,
+            &config,
+            10,
+            &processed_case_indices,
+        )
+        .unwrap();
+
+        assert_eq!(train, vec![0, 2, 5, 6]);
+        assert_eq!(holdout, vec![1, 3, 4, 7, 8, 9]);
+        assert!(excluded.is_empty());
+        assert_eq!(
+            folds,
+            vec![
+                0,
+                EXCLUDED_FOLD,
+                1,
+                EXCLUDED_FOLD,
+                EXCLUDED_FOLD,
+                0,
+                0,
+                EXCLUDED_FOLD,
+                EXCLUDED_FOLD,
+                EXCLUDED_FOLD,
+            ]
+        );
     }
 }

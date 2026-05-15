@@ -12,7 +12,7 @@ use super::core::{
     preprocess_knn_data,
 };
 use super::prediction::{
-    calculate_categorical_probabilities, category_key, sorted_target_categories,
+    calculate_categorical_vote_probabilities, category_key, sorted_target_categories,
 };
 
 pub fn calculate_classification_table(
@@ -149,6 +149,7 @@ fn calculate_confusion_matrix(
                         k,
                         use_euclidean,
                         weights,
+                        Some(&knn_data.processed_case_indices),
                     );
 
                     let predicted_cat = predict_category(
@@ -186,6 +187,7 @@ fn calculate_confusion_matrix(
                 k,
                 use_euclidean,
                 weights,
+                Some(&knn_data.processed_case_indices),
             )
         } else {
             // For holdout, find neighbors from training set
@@ -196,6 +198,7 @@ fn calculate_confusion_matrix(
                 k,
                 use_euclidean,
                 weights,
+                Some(&knn_data.processed_case_indices),
             )
         };
 
@@ -232,7 +235,7 @@ fn predict_category(
     use_distance_weights: bool,
 ) -> usize {
     let probabilities =
-        calculate_categorical_probabilities(neighbors, target_values, use_distance_weights);
+        calculate_categorical_vote_probabilities(neighbors, target_values, use_distance_weights);
     let mut best_idx = 0;
     let mut best_probability = f64::NEG_INFINITY;
 

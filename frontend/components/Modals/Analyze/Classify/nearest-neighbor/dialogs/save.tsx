@@ -25,6 +25,8 @@ export const KNNSave = ({
   targetType,
   isAutoK,
   isFeatureSelectionActive,
+  isUsingPartitionVariable,
+  isUsingFoldVariable,
 }: KNNSaveProps) => {
   const [saveState, setSaveState] = useState<KNNSaveType>({
     ...data,
@@ -50,6 +52,8 @@ export const KNNSave = ({
   const canPredict = hasTarget;
   const canProbability = hasTarget && isCategorical;
   const canFold = hasTarget && isAutoK && !isFeatureSelectionActive;
+  const canSavePartition = !isUsingPartitionVariable;
+  const canSaveFold = canFold && !isUsingFoldVariable;
   const canEditMaxCatsToSave = canProbability && saveState.IsCateTargetVar;
 
   // Predictions need a target; probabilities only apply to categorical targets.
@@ -59,9 +63,12 @@ export const KNNSave = ({
       ...prev,
       HasTargetVar: canPredict ? prev.HasTargetVar : false,
       IsCateTargetVar: canProbability ? prev.IsCateTargetVar : false,
-      RandomAssignToFold: canFold ? prev.RandomAssignToFold : false,
+      RandomAssignToPartition: canSavePartition
+        ? prev.RandomAssignToPartition
+        : false,
+      RandomAssignToFold: canSaveFold ? prev.RandomAssignToFold : false,
     }));
-  }, [canPredict, canProbability, canFold]);
+  }, [canPredict, canProbability, canSavePartition, canSaveFold]);
 
   const handleChange = (
     field: keyof KNNSaveType,
@@ -219,7 +226,7 @@ export const KNNSave = ({
                   <Checkbox
                     id="RandomAssignToPartition"
                     checked={saveState.RandomAssignToPartition}
-                    disabled={false}
+                    disabled={!canSavePartition}
                     onCheckedChange={(checked) =>
                       handleChange("RandomAssignToPartition", checked)
                     }
@@ -237,7 +244,9 @@ export const KNNSave = ({
                   <Input
                     value="KNN_Partition"
                     disabled={
-                      saveState.AutoName || !saveState.RandomAssignToPartition
+                      saveState.AutoName ||
+                      !canSavePartition ||
+                      !saveState.RandomAssignToPartition
                     }
                   />
                 </TableCell>
@@ -247,7 +256,7 @@ export const KNNSave = ({
                   <Checkbox
                     id="RandomAssignToFold"
                     checked={saveState.RandomAssignToFold}
-                    disabled={!canFold}
+                    disabled={!canSaveFold}
                     onCheckedChange={(checked) =>
                       handleChange("RandomAssignToFold", checked)
                     }
@@ -266,7 +275,7 @@ export const KNNSave = ({
                     value="KNN_Fold"
                     disabled={
                       saveState.AutoName ||
-                      !canFold ||
+                      !canSaveFold ||
                       !saveState.RandomAssignToFold
                     }
                   />

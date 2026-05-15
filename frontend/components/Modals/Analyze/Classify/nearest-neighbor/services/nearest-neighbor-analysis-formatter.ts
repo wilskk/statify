@@ -25,6 +25,10 @@ export function transformNearestNeighborResult(data: any): ResultJson {
     tables.push(buildKSelectionChart(data.k_selection_chart));
   }
 
+  if (data.system_settings) {
+    tables.push(buildSystemSettings(data.system_settings));
+  }
+
   if (data.predictor_importance) {
     tables.push(buildPredictorImportance(data.predictor_importance));
   }
@@ -179,6 +183,28 @@ function buildKSelectionChart(chart: any): Table {
       selected: candidate.selected ? "Yes" : "",
     })),
     note: `Metric: ${chart.metric_name ?? "validation_error"}; selected K = ${chart.selected_k}`,
+  };
+}
+
+function buildSystemSettings(settings: any): Table {
+  return {
+    key: "system_settings",
+    title: "System Settings",
+    columnHeaders: [
+      { header: "Setting", key: "setting" },
+      { header: "Value", key: "value" },
+      { header: "Description", key: "description" },
+    ],
+    rows: settings.rng
+      ? [
+          {
+            rowHeader: [settings.rng.keyword ?? "RNG"],
+            setting: settings.rng.keyword ?? "RNG",
+            value: settings.rng.setting ?? "",
+            description: settings.rng.description ?? "",
+          },
+        ]
+      : [],
   };
 }
 

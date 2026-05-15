@@ -37,12 +37,14 @@ self.onmessage = async (e) => {
     );
 
     const result = knn.get_formatted_results();
+    const errors = knn.get_all_errors();
 
     console.log("KNN DONE");
 
     self.postMessage({
       success: true,
-      data: result
+      data: result,
+      errors
     });
 
   } catch (err) {

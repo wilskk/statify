@@ -1,4 +1,37 @@
-use super::numpy_random::shuffle_indices_numpy_compatible;
+use super::numpy_random::seeded_mt19937;
+
+fn next_uniform_01(rng: &mut rand_mt::Mt) -> f64 {
+    let high = (rng.next_u32() >> 5) as u64;
+    let low = (rng.next_u32() >> 6) as u64;
+
+    ((high << 26) | low) as f64 / ((1u64 << 53) as f64)
+}
+
+pub fn split_training_holdout_with_rng(
+    total_cases: usize,
+    training_percent: i32,
+    rng: &mut rand_mt::Mt,
+) -> (Vec<usize>, Vec<usize>) {
+    if total_cases == 0 {
+        return (Vec::new(), Vec::new());
+    }
+
+    let training_ratio = training_percent.clamp(0, 100) as f64 / 100.0;
+    let mut training_indices = Vec::new();
+    let mut holdout_indices = Vec::new();
+
+    for case_idx in 0..total_cases {
+        let u = next_uniform_01(rng);
+
+        if u < training_ratio {
+            training_indices.push(case_idx);
+        } else {
+            holdout_indices.push(case_idx);
+        }
+    }
+
+    (training_indices, holdout_indices)
+}
 
 /// Splits data into training and holdout sets
 pub fn split_training_holdout(
@@ -11,18 +44,9 @@ pub fn split_training_holdout(
         return (Vec::new(), Vec::new());
     }
 
-    let clamped_percent = training_percent.max(0).min(100) as f64;
-    let training_size = (((total_cases as f64) * clamped_percent) / 100.0).floor() as usize;
-    let training_size = training_size.min(total_cases);
-    let holdout_size = total_cases - training_size;
-
-    let mut indices: Vec<usize> = (0..total_cases).collect();
-
     let effective_seed = if use_seed { seed } else { None };
-    shuffle_indices_numpy_compatible(&mut indices, effective_seed);
-
-    let (holdout_indices, training_indices) = indices.split_at(holdout_size);
-    (training_indices.to_vec(), holdout_indices.to_vec())
+    let mut rng = seeded_mt19937(effective_seed);
+    split_training_holdout_with_rng(total_cases, training_percent, &mut rng)
 }
 
 #[cfg(test)]
@@ -30,22 +54,28 @@ mod tests {
     use super::split_training_holdout;
 
     #[test]
-    fn random_split_with_seed_is_deterministic_and_uses_floor_size() {
-        let first = split_training_holdout(10, 65, true, Some(1234));
-        let second = split_training_holdout(10, 65, true, Some(1234));
+    fn random_split_with_seed_is_deterministic() {
+        let first = split_training_holdout(10, 60, true, Some(1234));
+        let second = split_training_holdout(10, 60, true, Some(1234));
 
         assert_eq!(first, second);
-        assert_eq!(first.0, vec![0, 8, 4, 5, 6, 3]);
-        assert_eq!(first.1, vec![7, 2, 9, 1]);
-        assert_eq!(first.0.len(), 6);
-        assert_eq!(first.1.len(), 4);
+        assert_eq!(first.0, vec![0, 2, 5, 6]);
+        assert_eq!(first.1, vec![1, 3, 4, 7, 8, 9]);
     }
 
     #[test]
-    fn random_split_matches_numpy_permutation_with_seed() {
+    fn random_split_uses_probabilistic_assignment_not_exact_size() {
         let (train, holdout) = split_training_holdout(10, 60, true, Some(1234));
 
-        assert_eq!(train, vec![0, 8, 4, 5, 6, 3]);
-        assert_eq!(holdout, vec![7, 2, 9, 1]);
+        assert_eq!(train.len(), 4);
+        assert_eq!(holdout.len(), 6);
+    }
+
+    #[test]
+    fn random_split_changes_with_different_seed() {
+        let first = split_training_holdout(10, 60, true, Some(1234));
+        let second = split_training_holdout(10, 60, true, Some(5678));
+
+        assert_ne!(first, second);
     }
 }

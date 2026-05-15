@@ -6,8 +6,7 @@ use crate::models::{
 };
 
 use super::partition::{
-    has_valid_partitioning_values, split_cross_validation_by_partition_config,
-    split_training_holdout_by_partition_config_detailed,
+    has_valid_partitioning_values, split_partition_and_cross_validation_by_config,
 };
 
 pub fn preprocess_knn_data(data: &AnalysisData, config: &KnnConfig) -> Result<KnnData, String> {
@@ -160,21 +159,22 @@ pub fn preprocess_knn_data(data: &AnalysisData, config: &KnnConfig) -> Result<Kn
         return Err("No valid data records after preprocessing".to_string());
     }
 
-    // Normalize features if needed
-    if config.main.norm_covar {
-        normalize_non_categorical_features(&mut data_matrix, &expanded_feature_measures);
-    }
-
-    let (training_indices, holdout_indices, excluded_indices) =
-        split_training_holdout_by_partition_config_detailed(
+    let (training_indices, holdout_indices, excluded_indices, cross_validation_folds) =
+        split_partition_and_cross_validation_by_config(
             data,
             config,
             data_matrix.len(),
             &processed_case_indices,
         )?;
 
-    let cross_validation_folds =
-        split_cross_validation_by_partition_config(data, config, &processed_case_indices)?;
+    // Normalize features using scalers fitted only from training cases.
+    if config.main.norm_covar {
+        apply_training_based_normalization(
+            &mut data_matrix,
+            &expanded_feature_measures,
+            &training_indices,
+        );
+    }
 
     // Identify focal cases
     let focal_indices =
@@ -445,28 +445,52 @@ fn build_expanded_feature_names(
     expanded
 }
 
-fn normalize_non_categorical_features(
+#[derive(Clone, Debug, PartialEq)]
+pub struct FeatureScaler {
+    pub min: f64,
+    pub max: f64,
+}
+
+fn apply_training_based_normalization(
     data_matrix: &mut [Vec<f64>],
     feature_measures: &[VariableMeasure],
+    training_indices: &[usize],
 ) {
+    let scalers = fit_feature_scalers(data_matrix, feature_measures, training_indices);
+    transform_with_feature_scalers(data_matrix, feature_measures, &scalers);
+}
+
+fn fit_feature_scalers(
+    data_matrix: &[Vec<f64>],
+    feature_measures: &[VariableMeasure],
+    training_indices: &[usize],
+) -> Vec<Option<FeatureScaler>> {
     if data_matrix.is_empty() {
-        return;
+        return Vec::new();
     }
 
     let n_features = data_matrix[0].len();
+    let mut scalers = Vec::with_capacity(n_features);
+    let training_index_set: HashSet<usize> = training_indices.iter().copied().collect();
+
     for j in 0..n_features {
         let measure = feature_measures.get(j).unwrap_or(&VariableMeasure::Unknown);
         if *measure == VariableMeasure::Nominal {
+            scalers.push(None);
             continue;
         }
 
         let finite_values: Vec<f64> = data_matrix
             .iter()
+            .enumerate()
+            .filter(|(row_idx, _)| training_index_set.contains(row_idx))
+            .map(|(_, row)| row)
             .filter_map(|row| row.get(j).copied())
             .filter(|value| value.is_finite())
             .collect();
 
         if finite_values.is_empty() {
+            scalers.push(None);
             continue;
         }
 
@@ -476,21 +500,38 @@ fn normalize_non_categorical_features(
             .copied()
             .fold(f64::NEG_INFINITY, f64::max);
 
-        if (max_val - min_val).abs() < f64::EPSILON {
-            for row in data_matrix.iter_mut() {
-                if let Some(value) = row.get_mut(j) {
-                    if value.is_finite() {
-                        *value = 0.0;
-                    }
-                }
-            }
+        scalers.push(Some(FeatureScaler {
+            min: min_val,
+            max: max_val,
+        }));
+    }
+
+    scalers
+}
+
+fn transform_with_feature_scalers(
+    data_matrix: &mut [Vec<f64>],
+    feature_measures: &[VariableMeasure],
+    scalers: &[Option<FeatureScaler>],
+) {
+    for (j, scaler) in scalers.iter().enumerate() {
+        let measure = feature_measures.get(j).unwrap_or(&VariableMeasure::Unknown);
+        if *measure == VariableMeasure::Nominal {
             continue;
         }
+
+        let Some(scaler) = scaler else {
+            continue;
+        };
 
         for row in data_matrix.iter_mut() {
             if let Some(value) = row.get_mut(j) {
                 if value.is_finite() {
-                    *value = (2.0 * (*value - min_val)) / (max_val - min_val) - 1.0;
+                    if (scaler.max - scaler.min).abs() < f64::EPSILON {
+                        *value = 0.0;
+                    } else {
+                        *value = (2.0 * (*value - scaler.min)) / (scaler.max - scaler.min) - 1.0;
+                    }
                 }
             }
         }
@@ -636,7 +677,11 @@ fn extract_case_label(
 
     for dataset in &data.features_data {
         if case_idx < dataset.len() {
-            if let Some(label) = dataset[case_idx].values.get(id_var).and_then(data_value_to_label) {
+            if let Some(label) = dataset[case_idx]
+                .values
+                .get(id_var)
+                .and_then(data_value_to_label)
+            {
                 return label;
             }
         }
@@ -644,7 +689,11 @@ fn extract_case_label(
 
     for dataset in &data.target_data {
         if case_idx < dataset.len() {
-            if let Some(label) = dataset[case_idx].values.get(id_var).and_then(data_value_to_label) {
+            if let Some(label) = dataset[case_idx]
+                .values
+                .get(id_var)
+                .and_then(data_value_to_label)
+            {
                 return label;
             }
         }
@@ -653,7 +702,11 @@ fn extract_case_label(
     if let Some(case_data) = &data.case_data {
         for dataset in case_data {
             if case_idx < dataset.len() {
-                if let Some(label) = dataset[case_idx].values.get(id_var).and_then(data_value_to_label) {
+                if let Some(label) = dataset[case_idx]
+                    .values
+                    .get(id_var)
+                    .and_then(data_value_to_label)
+                {
                     return label;
                 }
             }
@@ -719,17 +772,19 @@ mod tests {
     use crate::models::data::{AnalysisData, DataRecord, DataValue, VariableMeasure};
 
     use super::{
-        build_category_maps, collect_valid_case_indices, extract_case_identifier,
-        extract_feature_values_one_hot, has_valid_focal_case_identifier_value,
-        identify_focal_cases, normalize_non_categorical_features,
+        apply_training_based_normalization, build_category_maps, collect_valid_case_indices,
+        extract_case_identifier, extract_feature_values_one_hot, fit_feature_scalers,
+        has_valid_focal_case_identifier_value, identify_focal_cases,
+        transform_with_feature_scalers, FeatureScaler,
     };
 
     #[test]
     fn adjusted_normalization_scales_continuous_columns_and_skips_one_hot() {
         let mut matrix = vec![vec![10.0, 1.0], vec![20.0, 0.0], vec![30.0, 1.0]];
         let measures = vec![VariableMeasure::Scale, VariableMeasure::Nominal];
+        let training_indices = vec![0, 1, 2];
 
-        normalize_non_categorical_features(&mut matrix, &measures);
+        apply_training_based_normalization(&mut matrix, &measures, &training_indices);
 
         assert_eq!(matrix[0], vec![-1.0, 1.0]);
         assert_eq!(matrix[1], vec![0.0, 0.0]);
@@ -740,10 +795,58 @@ mod tests {
     fn adjusted_normalization_constant_continuous_column_becomes_zero() {
         let mut matrix = vec![vec![5.0], vec![5.0], vec![5.0]];
         let measures = vec![VariableMeasure::Scale];
+        let training_indices = vec![0, 1, 2];
 
-        normalize_non_categorical_features(&mut matrix, &measures);
+        apply_training_based_normalization(&mut matrix, &measures, &training_indices);
 
         assert_eq!(matrix, vec![vec![0.0], vec![0.0], vec![0.0]]);
+    }
+
+    #[test]
+    fn feature_scalers_are_fit_from_training_rows_only() {
+        let matrix = vec![vec![10.0], vec![11.0], vec![15.0], vec![19.0]];
+        let measures = vec![VariableMeasure::Scale];
+        let training_indices = vec![1, 2, 3];
+
+        let scalers = fit_feature_scalers(&matrix, &measures, &training_indices);
+
+        assert_eq!(
+            scalers,
+            vec![Some(FeatureScaler {
+                min: 11.0,
+                max: 19.0
+            })]
+        );
+    }
+
+    #[test]
+    fn training_fitted_scalers_transform_training_and_holdout_rows() {
+        let mut matrix = vec![vec![10.0], vec![11.0], vec![15.0], vec![19.0]];
+        let measures = vec![VariableMeasure::Scale];
+        let scalers = vec![Some(FeatureScaler {
+            min: 11.0,
+            max: 19.0,
+        })];
+
+        transform_with_feature_scalers(&mut matrix, &measures, &scalers);
+
+        assert_eq!(matrix[0], vec![-1.25]);
+        assert_eq!(matrix[1], vec![-1.0]);
+        assert_eq!(matrix[2], vec![0.0]);
+        assert_eq!(matrix[3], vec![1.0]);
+    }
+
+    #[test]
+    fn adjusted_normalized_difference_uses_training_range() {
+        let mut matrix = vec![vec![10.0], vec![11.0], vec![14.0], vec![15.0], vec![19.0]];
+        let measures = vec![VariableMeasure::Scale];
+        let training_indices = vec![1, 2, 3, 4];
+        let scalers = fit_feature_scalers(&matrix, &measures, &training_indices);
+
+        transform_with_feature_scalers(&mut matrix, &measures, &scalers);
+
+        let diff = (matrix[3][0] - matrix[2][0]).abs();
+        assert!((diff - 0.25).abs() <= f64::EPSILON);
     }
 
     #[test]

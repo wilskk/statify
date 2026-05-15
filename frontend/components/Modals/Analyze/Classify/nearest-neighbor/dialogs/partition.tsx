@@ -51,6 +51,9 @@ export const KNNPartition = ({
     : partitionState.VFoldUsePartitioningVar
       ? "VFoldUsePartitioningVar"
       : "VFoldUseRandomly"; // default
+  const isUsingPartitionVariable = partitionState.UseVariable;
+  const isUsingFoldVariable = partitionState.VFoldUsePartitioningVar;
+  const isSeedDisabled = isUsingPartitionVariable || isUsingFoldVariable;
 
   useEffect(() => {
     if (isCrossValidationEnabled) {
@@ -68,6 +71,15 @@ export const KNNPartition = ({
       }));
     }
   }, [isCrossValidationEnabled, isFeatureSelectionActive]);
+
+  useEffect(() => {
+    if (!isSeedDisabled) return;
+
+    setPartitionState((prev) => ({
+      ...prev,
+      SetSeed: false,
+    }));
+  }, [isSeedDisabled]);
 
   const filteredAvailableVariables = availableVariables.filter(
     (variable) =>
@@ -419,6 +431,7 @@ export const KNNPartition = ({
                       <Checkbox
                         id="SetSeed"
                         checked={partitionState.SetSeed}
+                        disabled={isSeedDisabled}
                         onCheckedChange={(checked) =>
                           handleChange("SetSeed", checked)
                         }
@@ -438,7 +451,7 @@ export const KNNPartition = ({
                         className="min-w-2xl w-full"
                         placeholder=""
                         value={partitionState.Seed ?? ""}
-                        disabled={!partitionState.SetSeed}
+                        disabled={isSeedDisabled || !partitionState.SetSeed}
                         onChange={(e) =>
                           handleChange("Seed", Number(e.target.value))
                         }

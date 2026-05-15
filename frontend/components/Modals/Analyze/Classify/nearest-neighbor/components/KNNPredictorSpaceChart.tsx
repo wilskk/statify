@@ -13,6 +13,7 @@ type Point = {
   z?: number;
   type: string;
   target: string;
+  targetNumber?: number | null;
   observed?: string;
   focal?: boolean;
   neighbors?: Neighbor[];
@@ -33,6 +34,7 @@ type ChartPayload = {
         modelPredictors: number;
         actualPredictors: number;
         targetVariable: string;
+        targetMeasure?: string;
         hasFocalCaseIdentifier?: boolean;
         instruction: string;
       };
@@ -81,6 +83,31 @@ function formatTick(value: number) {
   });
 }
 
+function formatNumericTargetTick(value: number) {
+  if (!Number.isFinite(value)) return "";
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function interpolateColor(start: string, end: string, ratio: number) {
+  const clamped = Math.min(1, Math.max(0, ratio));
+  const parse = (hex: string) => [
+    Number.parseInt(hex.slice(1, 3), 16),
+    Number.parseInt(hex.slice(3, 5), 16),
+    Number.parseInt(hex.slice(5, 7), 16),
+  ];
+  const [r1, g1, b1] = parse(start);
+  const [r2, g2, b2] = parse(end);
+  const toHex = (value: number) =>
+    Math.round(value).toString(16).padStart(2, "0");
+
+  return `#${toHex(r1 + (r2 - r1) * clamped)}${toHex(
+    g1 + (g2 - g1) * clamped,
+  )}${toHex(b1 + (b2 - b1) * clamped)}`;
+}
+
 export default function KNNPredictorSpaceChart({
   data,
 }: {
@@ -97,6 +124,7 @@ export default function KNNPredictorSpaceChart({
   const svgWidth = width - 220;
   const svgHeight = height - 110;
   const maxK = Math.max(1, Number(config?.selectedK ?? 1));
+  const isNumericTarget = config?.targetMeasure === "scale";
 
   const [currentK, setCurrentK] = useState(maxK);
   const [selectedId, setSelectedId] = useState<number | string | null>(null);
@@ -116,6 +144,31 @@ export default function KNNPredictorSpaceChart({
       ),
     [targetCategories],
   );
+  const numericTargets = useMemo(
+    () =>
+      points
+        .map((point) => Number(point.targetNumber))
+        .filter((value) => Number.isFinite(value)),
+    [points],
+  );
+  const numericTargetMin = numericTargets.length ? Math.min(...numericTargets) : 0;
+  const numericTargetMax = numericTargets.length ? Math.max(...numericTargets) : 0;
+  const numericTargetSpan = numericTargetMax - numericTargetMin || 1;
+  const numericTargetTicks = createFiveTicks(numericTargetMin, numericTargetMax)
+    .reverse()
+    .concat(
+      Math.abs(numericTargetMax - numericTargetMin) < Number.EPSILON
+        ? []
+        : [numericTargetMin],
+    );
+  const numericTargetColor = (value: number | null | undefined) => {
+    if (!Number.isFinite(Number(value))) return "#6b7280";
+    return interpolateColor(
+      "#2563eb",
+      "#dc2626",
+      (Number(value) - numericTargetMin) / numericTargetSpan,
+    );
+  };
 
   const projected = useMemo(
     () =>
@@ -409,7 +462,9 @@ export default function KNNPredictorSpaceChart({
             {points.map((point) => {
               const projectedPoint = projectedOf(point);
               const isSelected = String(point.id) === String(selectedId);
-              const fill = colorByTarget.get(point.target || "(blank)") ?? "#2563eb";
+              const fill = isNumericTarget
+                ? numericTargetColor(point.targetNumber)
+                : colorByTarget.get(point.target || "(blank)") ?? "#2563eb";
               const commonProps = {
                 fill,
                 stroke: isSelected ? "#dc2626" : "#1f2937",
@@ -472,19 +527,29 @@ export default function KNNPredictorSpaceChart({
             <LegendCircle label="Yes" outline="#dc2626" />
             <LegendSection title="Type" />
             <LegendCircle label="Training" fill="#6b7280" />
-            <div className="mb-1 flex items-center gap-2">
-              <span className="h-0 w-0 border-b-[13px] border-l-[7px] border-r-[7px] border-b-gray-500 border-l-transparent border-r-transparent" />
-              <span>Holdout</span>
-            </div>
+            {!isNumericTarget && (
+              <div className="mb-1 flex items-center gap-2">
+                <span className="h-0 w-0 border-b-[13px] border-l-[7px] border-r-[7px] border-b-gray-500 border-l-transparent border-r-transparent" />
+                <span>Holdout</span>
+              </div>
+            )}
             <LegendSection title="Target" />
             <div className="mb-1">{config?.targetVariable ?? "Target"}</div>
-            {targetCategories.map((target) => (
-              <LegendCircle
-                key={target}
-                label={target}
-                fill={colorByTarget.get(target) ?? "#2563eb"}
+            {isNumericTarget ? (
+              <NumericGradientLegend
+                ticks={numericTargetTicks}
+                min={numericTargetMin}
+                max={numericTargetMax}
               />
-            ))}
+            ) : (
+              targetCategories.map((target) => (
+                <LegendCircle
+                  key={target}
+                  label={target}
+                  fill={colorByTarget.get(target) ?? "#2563eb"}
+                />
+              ))
+            )}
             <LegendSection title={`K: ${currentK}`} />
           </div>
         </div>
@@ -526,6 +591,41 @@ function LegendCircle({
         style={{ background: fill, borderColor: outline }}
       />
       <span>{label}</span>
+    </div>
+  );
+}
+
+function NumericGradientLegend({
+  ticks,
+  min,
+  max,
+}: {
+  ticks: number[];
+  min: number;
+  max: number;
+}) {
+  return (
+    <div className="flex items-stretch gap-2">
+      <div
+        className="h-32 w-4 rounded-sm border border-gray-300"
+        style={{
+          background: "linear-gradient(to bottom, #dc2626, #f59e0b, #2563eb)",
+        }}
+      />
+      <div className="flex h-32 flex-col justify-between">
+        {ticks.length > 0 ? (
+          ticks.map((tick) => (
+            <span key={`target-tick-${tick}`}>
+              {formatNumericTargetTick(tick)}
+            </span>
+          ))
+        ) : (
+          <>
+            <span>{formatNumericTargetTick(max)}</span>
+            <span>{formatNumericTargetTick(min)}</span>
+          </>
+        )}
+      </div>
     </div>
   );
 }

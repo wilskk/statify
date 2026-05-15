@@ -7,7 +7,8 @@ use crate::models::{
 };
 
 use super::{
-    cross_validation::determine_k_value, feature_weighting::calculate_feature_weights,
+    cross_validation::determine_k_value,
+    feature_weighting::{calculate_feature_weights_for_subset_with_k, normalize_feature_weights},
     knn_evaluation::evaluate_knn_error,
 };
 
@@ -16,27 +17,12 @@ pub fn build_effective_feature_weights(
     config: &KnnConfig,
 ) -> Result<Option<Vec<f64>>, String> {
     let selection = resolve_feature_selection(knn_data, config)?;
-    let selected_features = selection.selected_indices;
-    let selection_is_active = config.features.perform_selection;
-    let base_weights = calculate_feature_weights(knn_data, config);
-
-    if !selection_is_active {
-        return Ok(base_weights);
-    }
-
-    let selected_set: HashSet<usize> = selected_features.into_iter().collect();
-    let mut effective_weights = vec![0.0; knn_data.features.len()];
-
-    for (feature_idx, weight) in effective_weights.iter_mut().enumerate() {
-        if selected_set.contains(&feature_idx) {
-            *weight = base_weights
-                .as_ref()
-                .and_then(|weights| weights.get(feature_idx).copied())
-                .unwrap_or(1.0);
-        }
-    }
-
-    Ok(Some(effective_weights))
+    Ok(calculate_feature_weights_for_subset_with_k(
+        knn_data,
+        config,
+        &selection.selected_indices,
+        selection.selected_k,
+    ))
 }
 
 pub fn perform_forward_selection(
@@ -369,17 +355,17 @@ pub(crate) fn selected_feature_weights(
     config: &KnnConfig,
     selected_features: &[usize],
 ) -> Vec<f64> {
-    let base_weights = calculate_feature_weights(knn_data, config);
     let selected_set: HashSet<usize> = selected_features.iter().copied().collect();
     let mut weights = vec![0.0; knn_data.features.len()];
 
     for feature_idx in selected_set {
         if feature_idx < weights.len() {
-            weights[feature_idx] = base_weights
-                .as_ref()
-                .and_then(|base| base.get(feature_idx).copied())
-                .unwrap_or(1.0);
+            weights[feature_idx] = 1.0;
         }
+    }
+
+    if config.neighbors.weight {
+        normalize_feature_weights(&mut weights);
     }
 
     weights
@@ -448,7 +434,9 @@ mod tests {
         data::{DataValue, KnnData, VariableMeasure},
     };
 
-    use super::{perform_forward_selection, resolve_feature_selection};
+    use super::{
+        build_effective_feature_weights, perform_forward_selection, resolve_feature_selection,
+    };
 
     #[test]
     fn disabled_feature_selection_uses_all_features() {
@@ -573,6 +561,24 @@ mod tests {
         let selected = perform_forward_selection(&data, &config).unwrap();
 
         assert_eq!(selected, vec![0, 1]);
+    }
+
+    #[test]
+    fn weighted_feature_selection_normalizes_selected_weights_to_one() {
+        let data = separable_data(vec!["x1", "x2", "x3"]);
+        let mut config = test_config(vec!["x1", "x2", "x3"]);
+        config.neighbors.weight = true;
+        config.features.forced_entry_var = Some(vec!["x1".to_string(), "x3".to_string()]);
+        config.features.forward_selection = Some(Vec::new());
+
+        let weights = build_effective_feature_weights(&data, &config)
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(weights[1], 0.0);
+        assert!((weights.iter().sum::<f64>() - 1.0).abs() <= f64::EPSILON);
+        assert!((weights[0] - 0.5).abs() <= f64::EPSILON);
+        assert!((weights[2] - 0.5).abs() <= f64::EPSILON);
     }
 
     #[test]

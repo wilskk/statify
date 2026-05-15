@@ -73,6 +73,7 @@ pub fn calculate_quadrant_map(
             k,
             use_euclidean,
             weights.as_deref(),
+            Some(&knn_data.processed_case_indices),
         );
 
         // Create neighbor details

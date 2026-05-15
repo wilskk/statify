@@ -1,5 +1,7 @@
 use std::cmp::Ordering;
 
+const NEIGHBOR_TIE_EPSILON: f64 = 1e-12;
+
 /// Calculates distance between two points using specified metric.
 pub fn calculate_distance(
     point1: &[f64],
@@ -65,6 +67,7 @@ pub fn find_k_nearest_neighbors(
     k: usize,
     use_euclidean: bool,
     feature_weights: Option<&[f64]>,
+    original_case_indices: Option<&[usize]>,
 ) -> Vec<(usize, f64)> {
     let mut distances: Vec<(usize, f64)> = indices
         .iter()
@@ -83,12 +86,39 @@ pub fn find_k_nearest_neighbors(
         })
         .collect();
 
-    distances.sort_by(|a, b| {
-        a.1.partial_cmp(&b.1)
-            .unwrap_or(Ordering::Equal)
-            .then_with(|| a.0.cmp(&b.0))
-    });
+    distances.sort_by(|a, b| compare_neighbors(a, b, original_case_indices));
     distances.into_iter().take(k.max(1)).collect()
+}
+
+fn compare_neighbors(
+    left: &(usize, f64),
+    right: &(usize, f64),
+    original_case_indices: Option<&[usize]>,
+) -> Ordering {
+    let distance_order = if !left.1.is_finite() && !right.1.is_finite() {
+        Ordering::Equal
+    } else if !left.1.is_finite() {
+        Ordering::Greater
+    } else if !right.1.is_finite() {
+        Ordering::Less
+    } else if (left.1 - right.1).abs() <= NEIGHBOR_TIE_EPSILON {
+        Ordering::Equal
+    } else {
+        left.1.partial_cmp(&right.1).unwrap_or(Ordering::Equal)
+    };
+
+    distance_order.then_with(|| {
+        let left_case_idx = original_case_indices
+            .and_then(|indices| indices.get(left.0).copied())
+            .unwrap_or(left.0);
+        let right_case_idx = original_case_indices
+            .and_then(|indices| indices.get(right.0).copied())
+            .unwrap_or(right.0);
+
+        right_case_idx
+            .cmp(&left_case_idx)
+            .then_with(|| right.0.cmp(&left.0))
+    })
 }
 
 pub fn calculate_euclidean_distance(
@@ -109,7 +139,9 @@ pub fn calculate_manhattan_distance(
 
 #[cfg(test)]
 mod tests {
-    use super::{calculate_euclidean_distance, calculate_manhattan_distance};
+    use super::{
+        calculate_euclidean_distance, calculate_manhattan_distance, find_k_nearest_neighbors,
+    };
 
     #[test]
     fn euclidean_and_manhattan_match_sklearn_metrics() {
@@ -118,5 +150,58 @@ mod tests {
 
         assert_eq!(calculate_euclidean_distance(&a, &b, None), 5.0);
         assert_eq!(calculate_manhattan_distance(&a, &b, None), 7.0);
+    }
+
+    #[test]
+    fn euclidean_and_manhattan_apply_normalized_feature_weights() {
+        let a = [0.0, 0.0];
+        let b = [3.0, 4.0];
+        let weights = [0.5, 0.5];
+
+        assert_eq!(
+            calculate_euclidean_distance(&a, &b, Some(&weights)),
+            12.5_f64.sqrt()
+        );
+        assert_eq!(calculate_manhattan_distance(&a, &b, Some(&weights)), 3.5);
+    }
+
+    #[test]
+    fn nearest_neighbors_break_distance_ties_by_original_case_index_descending() {
+        let data_matrix = vec![vec![0.0], vec![1.0], vec![1.0], vec![1.0]];
+        let original_case_indices = vec![10, 20, 40, 30];
+        let neighbors = find_k_nearest_neighbors(
+            &data_matrix[0],
+            &data_matrix,
+            &[1, 2, 3],
+            3,
+            true,
+            None,
+            Some(&original_case_indices),
+        );
+
+        assert_eq!(
+            neighbors.iter().map(|(idx, _)| *idx).collect::<Vec<_>>(),
+            vec![2, 3, 1]
+        );
+    }
+
+    #[test]
+    fn nearest_neighbors_treat_almost_equal_distances_as_ties() {
+        let data_matrix = vec![vec![0.0], vec![1.0], vec![1.0 + 5e-13]];
+        let original_case_indices = vec![0, 1, 2];
+        let neighbors = find_k_nearest_neighbors(
+            &data_matrix[0],
+            &data_matrix,
+            &[1, 2],
+            2,
+            false,
+            None,
+            Some(&original_case_indices),
+        );
+
+        assert_eq!(
+            neighbors.iter().map(|(idx, _)| *idx).collect::<Vec<_>>(),
+            vec![2, 1]
+        );
     }
 }

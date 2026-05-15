@@ -12,6 +12,7 @@ use super::{
     prediction::{
         calculate_categorical_prediction_with_weights, calculate_categorical_probabilities,
         calculate_mean_prediction, calculate_median_prediction, category_key,
+        sorted_target_categories_for_indices,
     },
     preprocess_data::preprocess_knn_data,
 };
@@ -26,6 +27,8 @@ pub fn calculate_prediction_results(
     let target_is_numeric = knn_data.target_is_numeric_scale();
     let training_set: HashSet<usize> = knn_data.training_indices.iter().copied().collect();
     let holdout_set: HashSet<usize> = knn_data.holdout_indices.iter().copied().collect();
+    let categories =
+        sorted_target_categories_for_indices(&knn_data.target_values, &knn_data.training_indices);
     let mut ordered_indices = knn_data.holdout_indices.clone();
     ordered_indices.extend(knn_data.training_indices.iter().copied());
 
@@ -55,6 +58,7 @@ pub fn calculate_prediction_results(
             k,
             config.neighbors.metric_eucli,
             weights.as_deref(),
+            Some(&knn_data.processed_case_indices),
         );
 
         let actual = knn_data.target_values[idx].clone();
@@ -82,7 +86,7 @@ pub fn calculate_prediction_results(
                 calculate_categorical_probabilities(
                     &neighbors,
                     &knn_data.target_values,
-                    config.neighbors.weight,
+                    &categories,
                 )
                 .into_iter()
                 .find_map(|(key, value)| {

@@ -125,6 +125,8 @@ export type KNNSaveProps = {
     featureCount: number;
     isAutoK: boolean;
     isFeatureSelectionActive: boolean;
+    isUsingPartitionVariable: boolean;
+    isUsingFoldVariable: boolean;
 };
 
 /* =========================

@@ -184,6 +184,7 @@ fn calculate_fold_error(
             k,
             use_euclidean,
             weights,
+            Some(&knn_data.processed_case_indices),
         );
 
         if target_is_categorical {
@@ -251,7 +252,12 @@ mod tests {
             ],
             target_measure: VariableMeasure::Nominal,
             case_identifiers: vec![1, 2, 3, 4],
-            case_labels: vec!["1".to_string(), "2".to_string(), "3".to_string(), "4".to_string()],
+            case_labels: vec![
+                "1".to_string(),
+                "2".to_string(),
+                "3".to_string(),
+                "4".to_string(),
+            ],
             processed_case_indices: vec![0, 1, 2, 3],
             training_indices: vec![0, 1, 2, 3],
             holdout_indices: Vec::new(),

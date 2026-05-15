@@ -1,6 +1,6 @@
 use crate::models::{
     config::KnnConfig,
-    data::{AnalysisData, DataValue, KnnData},
+    data::{AnalysisData, DataValue, KnnData, VariableMeasure},
     result::{DataPoint, NeighborDetail, PredictorDimension, PredictorSpace},
 };
 
@@ -56,6 +56,7 @@ pub fn calculate_predictor_space(
         model_predictors: displayed_feature_indices.len(),
         actual_predictors: displayed_feature_indices.len(),
         target_variable: config.main.target_var.clone().unwrap_or_default(),
+        target_measure: target_measure_label(&knn_data.target_measure).to_string(),
         has_focal_case_identifier: config.main.focal_case_iden_var.is_some(),
         k_value: k,
         dimensions: vec![PredictorDimension {
@@ -76,6 +77,9 @@ fn build_points(
         .display_matrix
         .iter()
         .enumerate()
+        .filter(|(idx, _)| {
+            !knn_data.target_is_numeric_scale() || knn_data.training_indices.contains(idx)
+        })
         .filter_map(|(idx, display_row)| {
             let model_row = knn_data.data_matrix.get(idx)?;
             let x = feature_value(display_row, display_indices, 0)?;
@@ -92,6 +96,10 @@ fn build_points(
 
             let target = knn_data.target_values.get(idx).unwrap_or(&DataValue::Null);
             let target_label = data_value_label(target);
+            let target_number = match target {
+                DataValue::Number(value) if value.is_finite() => Some(*value),
+                _ => None,
+            };
             let target_value = match target {
                 DataValue::Number(n) => *n > 0.5,
                 DataValue::Boolean(b) => *b,
@@ -117,6 +125,7 @@ fn build_points(
                 k,
                 use_euclidean,
                 weights,
+                Some(&knn_data.processed_case_indices),
             )
             .into_iter()
             .map(|(neighbor_idx, distance)| NeighborDetail {
@@ -137,6 +146,7 @@ fn build_points(
                 z,
                 focal: knn_data.focal_indices.contains(&idx),
                 target_value,
+                target_number,
                 target_label,
                 point_type,
                 neighbors,
@@ -160,5 +170,14 @@ fn data_value_label(value: &DataValue) -> String {
         DataValue::Boolean(value) => value.to_string(),
         DataValue::Null => String::new(),
         DataValue::Number(_) => String::new(),
+    }
+}
+
+fn target_measure_label(measure: &VariableMeasure) -> &'static str {
+    match measure {
+        VariableMeasure::Scale => "scale",
+        VariableMeasure::Ordinal => "ordinal",
+        VariableMeasure::Nominal => "nominal",
+        VariableMeasure::Unknown => "unknown",
     }
 }

@@ -368,6 +368,9 @@ function createPredictorSpaceChart(predictorSpace?: any) {
       z: Number(point.z),
       type: point.point_type,
       target: point.target_label || String(point.target_value),
+      targetNumber: Number.isFinite(Number(point.target_number))
+        ? Number(point.target_number)
+        : null,
       observed: point.target_label || String(point.target_value),
       focal: Boolean(point.focal),
       neighbors: Array.isArray(point.neighbors) ? point.neighbors : [],
@@ -407,6 +410,7 @@ function createPredictorSpaceChart(predictorSpace?: any) {
               predictorSpace.actual_predictors ?? predictorSpace.model_predictors ?? 0,
             ),
             targetVariable: predictorSpace.target_variable ?? "Target",
+            targetMeasure: predictorSpace.target_measure ?? "",
             hasFocalCaseIdentifier: Boolean(predictorSpace.has_focal_case_identifier),
             displayedDimensions: hasZ ? 3 : chartData.some((point: any) => point.y !== 0) ? 2 : 1,
             instruction: "Select points to use as focal records",

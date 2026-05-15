@@ -1,11 +1,11 @@
 use rand_mt::Mt;
 
-fn seeded_rng(seed: Option<i64>) -> Mt {
+pub fn seeded_mt19937(seed: Option<i64>) -> Mt {
     let seed = seed.map(|seed| seed as u32).unwrap_or_else(rand::random);
     Mt::new(seed)
 }
 
-fn random_interval(rng: &mut Mt, max: usize) -> usize {
+pub fn random_interval(rng: &mut Mt, max: usize) -> usize {
     if max == 0 {
         return 0;
     }
@@ -39,10 +39,13 @@ fn random_interval(rng: &mut Mt, max: usize) -> usize {
 }
 
 pub fn shuffle_indices_numpy_compatible(indices: &mut [usize], seed: Option<i64>) {
-    let mut rng = seeded_rng(seed);
+    let mut rng = seeded_mt19937(seed);
+    shuffle_indices_numpy_compatible_with_rng(indices, &mut rng);
+}
 
+pub fn shuffle_indices_numpy_compatible_with_rng(indices: &mut [usize], rng: &mut Mt) {
     for i in (1..indices.len()).rev() {
-        let j = random_interval(&mut rng, i);
+        let j = random_interval(rng, i);
         indices.swap(i, j);
     }
 }

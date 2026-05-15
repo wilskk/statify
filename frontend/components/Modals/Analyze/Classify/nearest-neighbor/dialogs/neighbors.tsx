@@ -233,7 +233,7 @@ export const KNNNeighbors = ({
                       id="MetricManhattan"
                     />
                     <Label htmlFor="MetricManhattan">
-                      Manhattan (City Block) Metric
+                      City Block Metric
                     </Label>
                   </div>
 
@@ -246,7 +246,7 @@ export const KNNNeighbors = ({
                       }
                     />
                     <Label>
-                      Weight neighbors by inverse distance
+                      Weight features by importance when computing distances
                     </Label>
                   </div>
                 </div>

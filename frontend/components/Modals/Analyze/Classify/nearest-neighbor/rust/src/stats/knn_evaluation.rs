@@ -107,6 +107,7 @@ pub fn predict_knn(
         k,
         config.neighbors.metric_eucli,
         Some(weights),
+        Some(&knn_data.processed_case_indices),
     );
 
     if target_is_numeric {

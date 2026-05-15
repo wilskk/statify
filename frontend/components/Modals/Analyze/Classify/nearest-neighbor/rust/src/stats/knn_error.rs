@@ -66,6 +66,7 @@ pub fn calculate_knn_error(
             k,
             use_euclidean,
             weights,
+            Some(&knn_data.processed_case_indices),
         );
 
         if target_is_categorical {

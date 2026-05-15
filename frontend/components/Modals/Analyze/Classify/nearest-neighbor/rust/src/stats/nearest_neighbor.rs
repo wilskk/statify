@@ -51,10 +51,12 @@ pub fn calculate_nearest_neighbors(
     // Get feature weights if enabled
     let weights = build_effective_feature_weights(&knn_data, config)?;
 
-    // Combine training and holdout indices for finding neighbors
+    // Numeric targets are predicted from training-case neighbors only.
     let mut all_candidate_indices = Vec::new();
     all_candidate_indices.extend_from_slice(&knn_data.training_indices);
-    all_candidate_indices.extend_from_slice(&knn_data.holdout_indices);
+    if !knn_data.target_is_numeric_scale() {
+        all_candidate_indices.extend_from_slice(&knn_data.holdout_indices);
+    }
     all_candidate_indices.sort();
     all_candidate_indices.dedup();
 
@@ -79,6 +81,7 @@ pub fn calculate_nearest_neighbors(
                 k,
                 use_euclidean,
                 weights.as_deref(),
+                Some(&knn_data.processed_case_indices),
             );
 
             // Create neighbor details

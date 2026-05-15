@@ -5,6 +5,7 @@ import { resultNearestNeighbor } from "./nearest-neighbor-analysis-output";
 import { useDataStore, type CellUpdate } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import type { Variable } from "@/types/Variable";
+import type { ResultJson } from "@/types/Table";
 
 type SavedVariableResult = {
   name: string;
@@ -18,6 +19,18 @@ type SavedVariableResult = {
 type SavedVariablesResult = {
   variables?: SavedVariableResult[];
 };
+
+function isResultJson(result: unknown): result is ResultJson {
+  return (
+    typeof result === "object" &&
+    result !== null &&
+    Array.isArray((result as ResultJson).tables)
+  );
+}
+
+function hasWorkerErrors(errors: unknown): errors is string {
+  return typeof errors === "string" && !errors.includes("No errors occurred.");
+}
 
 export async function analyzeKNN({
   configData,
@@ -121,52 +134,78 @@ export async function analyzeKNN({
     { type: "module" },
   );
 
-  worker.postMessage({
-    target: slicedDataForTarget.length ? slicedDataForTarget : [],
-    features: slicedDataForFeatures,
-    focal: slicedDataForFocalCaseIdentifier.length
-      ? slicedDataForFocalCaseIdentifier
-      : [],
-    caseData: slicedDataForCaseIdentifier.length
-      ? slicedDataForCaseIdentifier
-      : null,
-    targetDefs: varDefsForTarget,
-    featureDefs: varDefsForFeatures,
-    focalDefs: varDefsForFocalCaseIdentifier,
-    caseDefs: varDefsForCaseIdentifier,
-    config: configData,
-  });
-
-  worker.onmessage = async (e) => {
-    if (!e.data.success) {
-      console.error(e.data.error);
-      return;
-    }
-
-    const result = e.data.data;
-
-    console.log("🔥 RAW RESULT:", result);
-
-    const formattedResults = transformNearestNeighborResult(result);
-
-    console.log("✨ FORMATTED RESULT:", formattedResults);
-
-    await saveKnnVariablesToDataViewer(
-      result.saved_variables,
-      configData.save.CustomName,
-    );
-
-    await resultNearestNeighbor({
-      formattedResult: formattedResults ?? [],
-      rawResult: result,
+  await new Promise<void>((resolve, reject) => {
+    worker.postMessage({
+      target: slicedDataForTarget.length ? slicedDataForTarget : [],
+      features: slicedDataForFeatures,
+      focal: slicedDataForFocalCaseIdentifier.length
+        ? slicedDataForFocalCaseIdentifier
+        : [],
+      caseData: slicedDataForCaseIdentifier.length
+        ? slicedDataForCaseIdentifier
+        : null,
+      targetDefs: varDefsForTarget,
+      featureDefs: varDefsForFeatures,
+      focalDefs: varDefsForFocalCaseIdentifier,
+      caseDefs: varDefsForCaseIdentifier,
+      config: configData,
     });
 
-    worker.terminate();
-  };
+    worker.onmessage = async (e) => {
+      try {
+        if (!e.data.success) {
+          reject(new Error(e.data.error ?? "KNN worker failed."));
+          return;
+        }
 
-  worker.onerror = (err) => {
-    console.error("Worker error:", err);
-  };
+        const result = e.data.data;
+        const workerErrors = e.data.errors;
+
+        console.log("🔥 RAW RESULT:", result);
+
+        if (hasWorkerErrors(workerErrors)) {
+          console.warn("KNN analysis warnings:", workerErrors);
+        }
+
+        const formattedResults = isResultJson(result)
+          ? result
+          : transformNearestNeighborResult(result);
+
+        console.log("✨ FORMATTED RESULT:", formattedResults);
+
+        const hasAnalysisTables = formattedResults.tables.some(
+          (table) => table.key !== "system_settings",
+        );
+
+        if (!hasAnalysisTables && hasWorkerErrors(workerErrors)) {
+          worker.terminate();
+          reject(new Error(workerErrors));
+          return;
+        }
+
+        await saveKnnVariablesToDataViewer(
+          result.saved_variables,
+          configData.save.CustomName,
+        );
+
+        await resultNearestNeighbor({
+          formattedResult: formattedResults,
+          rawResult: result,
+        });
+
+        worker.terminate();
+        resolve();
+      } catch (error) {
+        worker.terminate();
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
+    };
+
+    worker.onerror = (err) => {
+      worker.terminate();
+      reject(new Error(err.message || "KNN worker error."));
+    };
+  });
 
   console.log("configData", configData);
 
