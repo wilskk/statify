@@ -20,6 +20,12 @@ type SavedVariablesResult = {
   variables?: SavedVariableResult[];
 };
 
+type VariableDefinitionPayload = {
+  name?: string;
+  values?: Array<Record<string, unknown>>;
+  [key: string]: unknown;
+};
+
 function isResultJson(result: unknown): result is ResultJson {
   return (
     typeof result === "object" &&
@@ -30,6 +36,24 @@ function isResultJson(result: unknown): result is ResultJson {
 
 function hasWorkerErrors(errors: unknown): errors is string {
   return typeof errors === "string" && !errors.includes("No errors occurred.");
+}
+
+function normalizeKnnVarDefsForWorker(defs: unknown[][]) {
+  return defs.map((group) =>
+    group.map((definition) => {
+      const varDef = definition as VariableDefinitionPayload;
+      const values = Array.isArray(varDef.values) ? varDef.values : [];
+
+      return {
+        ...varDef,
+        values: values.map((valueLabel) => ({
+          ...valueLabel,
+          variable_name:
+            valueLabel.variable_name ?? varDef.name ?? "",
+        })),
+      };
+    }),
+  );
 }
 
 export async function analyzeKNN({
@@ -77,57 +101,18 @@ export async function analyzeKNN({
     selectedVariables: CaseIdentifierVariable,
   });
 
-  const varDefsForTarget = getVarDefs(variables, TargetVariable);
-  const varDefsForFeatures = getVarDefs(variables, FeaturesVariables);
-  const varDefsForFocalCaseIdentifier = getVarDefs(
-    variables,
-    FocalCaseIdentifierVariable,
+  const varDefsForTarget = normalizeKnnVarDefsForWorker(
+    getVarDefs(variables, TargetVariable),
   );
-  const varDefsForCaseIdentifier = getVarDefs(
-    variables,
-    CaseIdentifierVariable,
+  const varDefsForFeatures = normalizeKnnVarDefsForWorker(
+    getVarDefs(variables, FeaturesVariables),
   );
-
-  console.group("🧠 KNN DEBUG - UI INPUT");
-
-  console.log("TargetVar:", configData.main.TargetVar);
-  console.log("FeatureVar:", configData.main.FeatureVar);
-  console.log("FocalCaseIdenVar:", configData.main.FocalCaseIdenVar);
-  console.log("CaseIdenVar:", configData.main.CaseIdenVar);
-  console.log("PartitioningVariable:", configData.partition.PartitioningVariable);
-  console.log(
-    "VFoldPartitioningVariable:",
-    configData.partition.VFoldPartitioningVariable,
+  const varDefsForFocalCaseIdentifier = normalizeKnnVarDefsForWorker(
+    getVarDefs(variables, FocalCaseIdentifierVariable),
   );
-
-  console.log("Full Config:", configData);
-
-  console.groupEnd();
-
-  console.group("📦 DATASET");
-
-  console.log("Total rows:", dataVariables.length);
-  console.log("Sample row:", dataVariables[0]);
-
-  console.groupEnd();
-
-  console.group("✂️ SLICED DATA");
-
-  console.log("Target:", slicedDataForTarget);
-  console.log("Features:", slicedDataForFeatures);
-  console.log("Focal:", slicedDataForFocalCaseIdentifier);
-  console.log("Case:", slicedDataForCaseIdentifier);
-
-  console.groupEnd();
-
-  console.group("📘 VARIABLE DEFINITIONS");
-
-  console.log("TargetDefs:", varDefsForTarget);
-  console.log("FeatureDefs:", varDefsForFeatures);
-  console.log("FocalDefs:", varDefsForFocalCaseIdentifier);
-  console.log("CaseDefs:", varDefsForCaseIdentifier);
-
-  console.groupEnd();
+  const varDefsForCaseIdentifier = normalizeKnnVarDefsForWorker(
+    getVarDefs(variables, CaseIdentifierVariable),
+  );
 
   const worker = new Worker(
     "/workers/Classify/NearestNeighbor/nearest-neighbor.worker.js",
@@ -161,17 +146,9 @@ export async function analyzeKNN({
         const result = e.data.data;
         const workerErrors = e.data.errors;
 
-        console.log("🔥 RAW RESULT:", result);
-
-        if (hasWorkerErrors(workerErrors)) {
-          console.warn("KNN analysis warnings:", workerErrors);
-        }
-
         const formattedResults = isResultJson(result)
           ? result
           : transformNearestNeighborResult(result);
-
-        console.log("✨ FORMATTED RESULT:", formattedResults);
 
         const hasAnalysisTables = formattedResults.tables.some(
           (table) => table.key !== "system_settings",
@@ -207,8 +184,6 @@ export async function analyzeKNN({
     };
   });
 
-  console.log("configData", configData);
-
   // await init();
   // const knn = new KNNAnalysis(
   //     slicedDataForTarget,
@@ -226,12 +201,7 @@ export async function analyzeKNN({
   // const error = knn.get_all_errors();
   // const executed = knn.get_executed_functions();
 
-  // console.log("knn results", results);
-  // console.log("error", error);
-  // console.log("executed", executed);
-
   // const formattedResults = transformNearestNeighborResult(results);
-  // // console.log("formattedResults", formattedResults);
 
   // // /*
   // //  * 🎉 Final Result Process 🎯

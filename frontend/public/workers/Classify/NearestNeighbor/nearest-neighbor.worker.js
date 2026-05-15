@@ -1,11 +1,6 @@
-// DEBUG biar yakin worker ke-load
-console.log("WORKER FILE LOADED");
-
 import init, { KNNAnalysis } from "/workers/Classify/NearestNeighbor/pkg/wasm.js";
 
 self.onmessage = async (e) => {
-  console.log("WORKER GOT MESSAGE");
-
   const {
     target,
     features,
@@ -22,8 +17,6 @@ self.onmessage = async (e) => {
     // init WASM (WAJIB kasih path biar ga error)
     await init("/workers/Classify/NearestNeighbor/pkg/wasm_bg.wasm");
 
-    console.log("WASM INITIALIZED");
-
     const knn = new KNNAnalysis(
       target,
       features,
@@ -39,8 +32,6 @@ self.onmessage = async (e) => {
     const result = knn.get_formatted_results();
     const errors = knn.get_all_errors();
 
-    console.log("KNN DONE");
-
     self.postMessage({
       success: true,
       data: result,
@@ -48,8 +39,6 @@ self.onmessage = async (e) => {
     });
 
   } catch (err) {
-    console.error("WORKER ERROR:", err);
-
     self.postMessage({
       success: false,
       error: err instanceof Error ? err.message : String(err)
