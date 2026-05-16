@@ -175,6 +175,7 @@ export const BinaryLogisticMain = () => {
       }));
 
       // 2. Cek apakah tipe datanya Nominal atau Ordinal (case-insensitive check)
+      //    Jika ya, auto-check di tab Categorical dengan setting default Indicator(Last)
       const measure = highlightedVariable.measure?.toLowerCase();
       if (measure === "nominal" || measure === "ordinal") {
         setCatParams((prev) => {
@@ -183,6 +184,14 @@ export const BinaryLogisticMain = () => {
             return {
               ...prev,
               covariates: [...prev.covariates, highlightedVariable.name],
+              variableSettings: {
+                ...prev.variableSettings,
+                [highlightedVariable.name]: {
+                  name: highlightedVariable.name,
+                  contrast: "Indicator" as const,
+                  referenceCategory: "Last" as const,
+                },
+              },
             };
           }
           return prev;
