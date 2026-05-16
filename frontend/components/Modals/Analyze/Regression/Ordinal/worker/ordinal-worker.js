@@ -550,7 +550,7 @@ self.onmessage = function (e) {
     // Konvergensi: |LL_{t+1} - LL_t| < 1e-7
     // =========================================================================
 
-    const maxIter = iterations || 200;
+    const maxIter = iterations || 100;
     const tol     = 1e-7;
     let llPrev    = null;
 

@@ -214,12 +214,10 @@ const OrdinalMain: React.FC = () => {
         x: featureColIdxs.map((idx) => Number(row?.[idx]) || 0),
       }));
 
-      // ...existing code...
       const depValues = data.map((row: any) => row?.[depColIndex]);
       if (depValues.some((v) => v === undefined || v === null || v === "")) {
         throw new Error("Variabel dependen mengandung nilai kosong (missing). Bersihkan data dulu.");
       };
-      // ...existing code...
 
       worker.postMessage({
         data: dataset,
