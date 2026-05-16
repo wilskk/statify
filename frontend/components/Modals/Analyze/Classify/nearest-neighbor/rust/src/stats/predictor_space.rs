@@ -52,7 +52,7 @@ pub fn calculate_predictor_space(
 
     Ok(PredictorSpace {
         model_predictors: displayed_feature_indices.len(),
-        actual_predictors: displayed_feature_indices.len(),
+        actual_predictors: feature_space.actual_predictors,
         target_variable: config.main.target_var.clone().unwrap_or_default(),
         target_measure: target_measure_label(&knn_data.target_measure).to_string(),
         has_focal_case_identifier: config.main.focal_case_iden_var.is_some(),
@@ -133,6 +133,10 @@ fn build_points(
             .into_iter()
             .map(|(neighbor_idx, distance)| NeighborDetail {
                 id: knn_data.case_identifiers[neighbor_idx],
+                row_number: knn_data
+                    .processed_case_indices
+                    .get(neighbor_idx)
+                    .map(|idx| idx + 1),
                 distance,
             })
             .collect();
@@ -159,6 +163,7 @@ fn build_points(
 }
 
 struct OriginalFeatureSpace {
+    actual_predictors: usize,
     features: Vec<String>,
     axes: Vec<PredictorAxis>,
     display_matrix: Vec<Vec<f64>>,
@@ -244,6 +249,7 @@ fn build_original_feature_space(
         .collect::<Vec<_>>();
 
     Ok(OriginalFeatureSpace {
+        actual_predictors: original_features.len(),
         features,
         axes,
         display_matrix,
@@ -674,6 +680,74 @@ mod tests {
         );
         assert_eq!(dimension.points[0].x, 1.0);
         assert_eq!(dimension.points[2].x, 3.0);
+    }
+
+    #[test]
+    fn predictor_space_uses_first_three_features_in_input_order() {
+        let data = AnalysisData {
+            target_data: vec![vec![
+                record("class", DataValue::Text("A".to_string())),
+                record("class", DataValue::Text("B".to_string())),
+                record("class", DataValue::Text("A".to_string())),
+            ]],
+            features_data: vec![vec![
+                record_many(vec![
+                    ("first", DataValue::Number(1.0)),
+                    ("second", DataValue::Number(10.0)),
+                    ("third", DataValue::Number(100.0)),
+                    ("fourth", DataValue::Number(1000.0)),
+                ]),
+                record_many(vec![
+                    ("first", DataValue::Number(2.0)),
+                    ("second", DataValue::Number(20.0)),
+                    ("third", DataValue::Number(200.0)),
+                    ("fourth", DataValue::Number(2000.0)),
+                ]),
+                record_many(vec![
+                    ("first", DataValue::Number(3.0)),
+                    ("second", DataValue::Number(30.0)),
+                    ("third", DataValue::Number(300.0)),
+                    ("fourth", DataValue::Number(3000.0)),
+                ]),
+            ]],
+            focal_case_data: Vec::new(),
+            case_data: None,
+            target_data_defs: vec![vec![variable_def("class", VariableMeasure::Nominal)]],
+            features_data_defs: vec![vec![
+                variable_def("first", VariableMeasure::Scale),
+                variable_def("second", VariableMeasure::Scale),
+                variable_def("third", VariableMeasure::Scale),
+                variable_def("fourth", VariableMeasure::Scale),
+            ]],
+            focal_case_data_defs: Vec::new(),
+            case_data_defs: None,
+        };
+
+        let mut config = config();
+        config.main.feature_var = Some(vec![
+            "first".to_string(),
+            "second".to_string(),
+            "third".to_string(),
+            "fourth".to_string(),
+        ]);
+
+        let space = calculate_predictor_space(&data, &config).unwrap();
+        let dimension = &space.dimensions[0];
+
+        assert_eq!(space.model_predictors, 4);
+        assert_eq!(space.actual_predictors, 4);
+        assert_eq!(dimension.name, "first vs second vs third");
+        assert_eq!(
+            dimension
+                .axes
+                .iter()
+                .map(|axis| axis.name.clone())
+                .collect::<Vec<_>>(),
+            vec!["first", "second", "third"]
+        );
+        assert_eq!(dimension.points[0].x, 1.0);
+        assert_eq!(dimension.points[0].y, 10.0);
+        assert_eq!(dimension.points[0].z, 100.0);
     }
 
     fn config() -> KnnConfig {

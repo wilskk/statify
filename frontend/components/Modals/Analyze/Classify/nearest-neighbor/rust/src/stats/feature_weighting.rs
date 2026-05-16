@@ -57,7 +57,7 @@ pub fn calculate_feature_weights_for_subset_with_k(
         return Some(weights);
     }
 
-    log_debug(&format!(
+    log_diagnostic(&format!(
         "KNN feature weighting ON: compute_knn_feature_importance_for_subset will run; target_scale={}, selected_features={:?}, k={}",
         knn_data.target_is_numeric_scale(),
         selected_features,
@@ -66,7 +66,7 @@ pub fn calculate_feature_weights_for_subset_with_k(
 
     let mut weights = calculate_importance_distance_weights(knn_data, config, &selected_set, k);
     if !weights.iter().any(|weight| *weight > 0.0) {
-        log_debug("KNN feature weighting fallback: no positive final weights after importance calculation");
+        log_diagnostic("KNN feature weighting fallback: no positive final weights after importance calculation");
         weights = equal_normalized_weights(feature_count, &selected_set);
     }
 
@@ -92,7 +92,7 @@ fn calculate_importance_distance_weights(
     );
 
     let Ok(importance) = importance else {
-        log_debug(
+        log_diagnostic(
             "KNN feature weighting fallback: compute_knn_feature_importance_for_subset failed",
         );
         return equal_normalized_weights(feature_count, selected_set);
@@ -140,12 +140,12 @@ fn calculate_importance_distance_weights(
     );
     log_equal_importance_diagnostic(&importance.entries);
     if !has_valid_importance_entries(&importance.entries) {
-        log_debug("KNN feature weighting fallback: importance entries are invalid");
+        log_diagnostic("KNN feature weighting fallback: importance entries are invalid");
         return equal_normalized_weights(feature_count, selected_set);
     }
 
     if !has_valid_positive_sum(&normalized_weights) {
-        log_debug(
+        log_diagnostic(
             "KNN feature weighting fallback: normalized importance empty, invalid, or sum <= 0",
         );
         return equal_normalized_weights(feature_count, selected_set);
@@ -171,7 +171,7 @@ fn log_equal_importance_diagnostic(entries: &[crate::models::result::PredictorIm
     });
 
     if all_same_error && all_same_importance {
-        log_debug(
+        log_diagnostic(
             "KNN feature weighting diagnostic: leave-one-feature-out errors are identical, so normalized distance weights are identical; this is not fallback.",
         );
     }
@@ -254,7 +254,7 @@ fn log_importance(
         })
         .collect::<Vec<_>>()
         .join(" | ");
-    log_debug(&format!(
+    log_diagnostic(&format!(
         "KNN feature importance entries: {}",
         if entry_details.is_empty() {
             "(empty)".to_string()
@@ -262,18 +262,18 @@ fn log_importance(
             entry_details
         }
     ));
-    log_debug(&format!(
+    log_diagnostic(&format!(
         "KNN raw feature importance by distance column: {}",
         named_weights(knn_data, raw_weights)
     ));
-    log_debug(&format!(
+    log_diagnostic(&format!(
         "KNN normalized feature importance by distance column: {}",
         named_weights(knn_data, normalized_weights)
     ));
 }
 
 fn log_final_weights(knn_data: &KnnData, weights: &[f64], reason: &str) {
-    log_debug(&format!(
+    log_diagnostic(&format!(
         "KNN final distance feature weights [{}]: {}",
         reason,
         named_weights(knn_data, weights)
@@ -296,12 +296,7 @@ fn named_weights(knn_data: &KnnData, weights: &[f64]) -> String {
         .join(", ")
 }
 
-fn log_debug(message: &str) {
-    #[cfg(target_arch = "wasm32")]
-    web_sys::console::log_1(&message.into());
-
-    #[cfg(not(target_arch = "wasm32"))]
-    eprintln!("{}", message);
+fn log_diagnostic(_message: &str) {
 }
 
 #[cfg(test)]

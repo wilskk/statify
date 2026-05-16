@@ -64,7 +64,7 @@ pub fn compute_knn_feature_importance_for_subset(
         "holdout"
     };
     if target_is_numeric_scale {
-        log_debug(&format!(
+        log_diagnostic(&format!(
             "KNN scale feature importance: evaluation_strategy={}, base_error={:.12}",
             evaluation_strategy, base_error
         ));
@@ -96,7 +96,7 @@ pub fn compute_knn_feature_importance_for_subset(
             f64::NAN
         };
         if target_is_numeric_scale {
-            log_debug(&format!(
+            log_diagnostic(&format!(
                 "KNN scale feature importance [{}]: error_without_feature={:.12}, error_ratio={:.12}, raw_importance={:.12}",
                 feature_name, error_without_feature, error_ratio, raw_feature_importance
             ));
@@ -120,7 +120,7 @@ pub fn compute_knn_feature_importance_for_subset(
             .map(|entry| format!("{}={:.12}", entry.feature_name, entry.normalized_importance))
             .collect::<Vec<_>>()
             .join(", ");
-        log_debug(&format!(
+        log_diagnostic(&format!(
             "KNN scale feature importance normalized weights: {}",
             normalized_details
         ));
@@ -193,12 +193,7 @@ pub fn normalize_feature_importance(entries: &mut [PredictorImportanceEntry]) {
     }
 }
 
-fn log_debug(message: &str) {
-    #[cfg(target_arch = "wasm32")]
-    web_sys::console::log_1(&message.into());
-
-    #[cfg(not(target_arch = "wasm32"))]
-    eprintln!("{}", message);
+fn log_diagnostic(_message: &str) {
 }
 
 #[cfg(test)]

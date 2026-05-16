@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
@@ -46,6 +46,7 @@ type ChartPayload = {
         targetVariable: string;
         targetMeasure?: string;
         hasFocalCaseIdentifier?: boolean;
+        displayedDimensions?: number;
         instruction: string;
       };
     };
@@ -129,6 +130,11 @@ function formatNumericTargetTick(value: number) {
   });
 }
 
+function finiteNumber(value: unknown, fallback = 0) {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : fallback;
+}
+
 function interpolateColor(start: string, end: string, ratio: number) {
   const clamped = Math.min(1, Math.max(0, ratio));
   const parse = (hex: string) => [
@@ -153,8 +159,12 @@ export default function KNNPredictorSpaceChart({
 }) {
   const payload = useMemo(() => parsePayload(data), [data]);
   const chart = payload.charts?.[0];
-  const points = (chart?.chartData ?? []).filter(
-    (point) => Number.isFinite(point.x) && Number.isFinite(point.y),
+  const points = useMemo(
+    () =>
+      (chart?.chartData ?? []).filter(
+        (point) => Number.isFinite(point.x) && Number.isFinite(point.y),
+      ),
+    [chart?.chartData],
   );
   const config = chart?.chartConfig?.predictorSpace;
   const width = chart?.chartConfig?.width ?? 900;
@@ -193,37 +203,56 @@ export default function KNNPredictorSpaceChart({
   const numericTargetMax = numericTargets.length ? Math.max(...numericTargets) : 0;
   const numericTargetSpan = numericTargetMax - numericTargetMin || 1;
   const numericTargetTicks = createNiceTicks(numericTargetMin, numericTargetMax).reverse();
-  const numericTargetColor = (value: number | null | undefined) => {
+  const numericTargetColor = useCallback((value: number | null | undefined) => {
     if (!Number.isFinite(Number(value))) return "#6b7280";
     return interpolateColor(
       "#2563eb",
       "#dc2626",
       (Number(value) - numericTargetMin) / numericTargetSpan,
     );
-  };
+  }, [numericTargetMin, numericTargetSpan]);
+  const colorForPoint = useCallback(
+    (point: Point) =>
+      isNumericTarget
+        ? numericTargetColor(point.targetNumber)
+        : colorByTarget.get(point.target || "(blank)") ?? "#2563eb",
+    [colorByTarget, isNumericTarget, numericTargetColor],
+  );
 
   const rawXValues = points.map((point) => point.x);
   const rawYValues = points.map((point) => point.y);
-  const rawZValues = points.map((point) => Number(point.z ?? 0));
+  const rawZValues = points.map((point) => finiteNumber(point.z, 0));
   const rawXMin = Math.min(...rawXValues);
   const rawXMax = Math.max(...rawXValues);
   const rawYMin = Math.min(...rawYValues);
   const rawYMax = Math.max(...rawYValues);
   const rawZMin = Math.min(...rawZValues);
   const rawZMax = Math.max(...rawZValues);
+  const displayedDimensions = Math.max(
+    1,
+    Math.min(3, Number(config?.displayedDimensions ?? 2)),
+  );
   const hasZAxis =
+    displayedDimensions >= 3 &&
     Boolean(chart?.chartConfig?.axisLabels?.z) &&
     rawZValues.some((value) => Number.isFinite(value));
   const chartAxisInfo = chart?.chartConfig?.axisInfo ?? {};
   const chartAxisLabels = chart?.chartConfig?.axisLabels ?? {};
+  const isSinglePredictorSpace = displayedDimensions === 1;
+  const projectionNote =
+    (config?.actualPredictors ?? 0) > 3
+      ? `This chart is a lower-dimensional projection of the predictor space, which contains a total of ${config?.actualPredictors} predictors`
+      : "";
   const xAxis = buildAxisTicks(chartAxisInfo.x, chartAxisLabels.x ?? "X", [
     rawXMin,
     rawXMax,
   ]);
-  const yAxis = buildAxisTicks(chartAxisInfo.y, chartAxisLabels.y ?? "Y", [
-    rawYMin,
-    rawYMax,
-  ]);
+  const yAxis = isSinglePredictorSpace
+    ? { label: "", min: -1, max: 1, ticks: [] }
+    : buildAxisTicks(chartAxisInfo.y, chartAxisLabels.y ?? "Y", [
+        rawYMin,
+        rawYMax,
+      ]);
   const zTicks = hasZAxis ? createNiceTicks(rawZMin, rawZMax) : [];
 
   const plot = { left: 58, right: 24, top: 28, bottom: 58 };
@@ -243,7 +272,7 @@ export default function KNNPredictorSpaceChart({
     : points.filter((point) => point.focal);
 
   const projectedOf = (point: Point) => {
-    const z = Number(point.z ?? 0);
+    const z = finiteNumber(point.z, 0);
     return {
       x: scaleX(point.x + z * 0.45),
       y: scaleY(point.y - z * 0.35),
@@ -275,13 +304,6 @@ export default function KNNPredictorSpaceChart({
               Built Model: {config?.modelPredictors ?? 0} selected predictors, K ={" "}
               {currentK}
             </div>
-            {(config?.actualPredictors ?? 0) > 3 && (
-              <div className="mt-1 text-xs text-gray-500">
-                This chart is a lower-dimensional projection of the predictor
-                space, which contains a total of {config?.actualPredictors}{" "}
-                predictors
-              </div>
-            )}
           </div>
 
           <div className="mb-2 flex items-center justify-center gap-3">
@@ -308,11 +330,7 @@ export default function KNNPredictorSpaceChart({
               axisLabels={chartAxisLabels}
               axisInfo={chartAxisInfo}
               isNumericTarget={isNumericTarget}
-              colorForPoint={(point) =>
-                isNumericTarget
-                  ? numericTargetColor(point.targetNumber)
-                  : colorByTarget.get(point.target || "(blank)") ?? "#2563eb"
-              }
+              colorForPoint={colorForPoint}
             />
 
             <div className="w-44 text-xs leading-snug">
@@ -348,6 +366,12 @@ export default function KNNPredictorSpaceChart({
             </div>
           </div>
 
+          {projectionNote && (
+            <div className="mt-2 text-center text-xs text-gray-500">
+              {projectionNote}
+            </div>
+          )}
+
           <div className="mt-2 text-center text-xs text-gray-600">
             {config?.instruction ?? "Select points to use as focal records"}
           </div>
@@ -365,13 +389,6 @@ export default function KNNPredictorSpaceChart({
             Built Model: {config?.modelPredictors ?? 0} selected predictors, K ={" "}
             {currentK}
           </div>
-          {(config?.actualPredictors ?? 0) > 3 && (
-            <div className="mt-1 text-xs text-gray-500">
-              This chart is a lower-dimensional projection of the predictor
-              space, which contains a total of {config?.actualPredictors}{" "}
-              predictors
-            </div>
-          )}
         </div>
 
         <div className="mb-2 flex items-center justify-center gap-3">
@@ -663,6 +680,12 @@ export default function KNNPredictorSpaceChart({
           </div>
         </div>
 
+        {projectionNote && (
+          <div className="mt-2 text-center text-xs text-gray-500">
+            {projectionNote}
+          </div>
+        )}
+
         <div className="mt-2 text-center text-xs text-gray-600">
           {config?.instruction ?? "Select points to use as focal records"}
         </div>
@@ -704,6 +727,15 @@ function ThreePredictorSpace({
   colorForPoint: (point: Point) => string;
 }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  const sceneStateRef = useRef<{
+    lineGroup: THREE.Group;
+    outlineGroup: THREE.Group;
+    pointMeshes: THREE.Object3D[];
+    meshById: Map<string, THREE.Mesh>;
+    pointById: Map<string, Point>;
+    positionOf: (point: Point) => THREE.Vector3;
+  } | null>(null);
+  const neighborLinesRef = useRef<THREE.Object3D[]>([]);
   const [tooltip, setTooltip] = useState<TooltipState>(null);
 
   useEffect(() => {
@@ -748,10 +780,10 @@ function ThreePredictorSpace({
     };
     const positionOf = (point: Point) =>
       new THREE.Vector3(
-        scale.horizontal(Number(point.z ?? 0)),
+        scale.horizontal(finiteNumber(point.z, 0)),
         scale.vertical(point.y),
         -scale.depth(point.x),
-      );
+    );
 
     const axisGroup = new THREE.Group();
     const axisMaterial = new THREE.LineBasicMaterial({ color: "#6b7280" });
@@ -777,22 +809,15 @@ function ThreePredictorSpace({
     addTickLabels(scene, axes, scale);
 
     const pointById = new Map(points.map((point) => [String(point.id), point]));
-    const selectedPoint =
-      selectedId === null ? null : pointById.get(String(selectedId)) ?? null;
-    const focalLinePoints = selectedPoint
-      ? [selectedPoint]
-      : points.filter((point) => point.focal);
 
     const pointMeshes: THREE.Object3D[] = [];
-    const neighborLines: THREE.Object3D[] = [];
+    const meshById = new Map<string, THREE.Mesh>();
     const pointGroup = new THREE.Group();
     for (const point of points) {
       const geometry =
         point.type === "Holdout" && !isNumericTarget
           ? new THREE.ConeGeometry(0.15, 0.34, 3)
           : new THREE.SphereGeometry(0.13, 20, 20);
-      const isSelected = String(point.id) === String(selectedId);
-      const isFocal = isSelected || (selectedId === null && Boolean(point.focal));
       const material = new THREE.MeshStandardMaterial({
         color: colorForPoint(point),
         roughness: 0.55,
@@ -801,50 +826,28 @@ function ThreePredictorSpace({
       const mesh = new THREE.Mesh(geometry, material);
       mesh.position.copy(positionOf(point));
       mesh.userData.point = point;
-      mesh.scale.setScalar(isSelected ? 1.45 : isFocal ? 1.25 : 1);
-      if (isFocal) {
-        const outline = new THREE.Mesh(
-          geometry.clone(),
-          new THREE.MeshBasicMaterial({
-            color: "#dc2626",
-            side: THREE.BackSide,
-          }),
-        );
-        outline.position.copy(mesh.position);
-        outline.scale.setScalar(isSelected ? 1.75 : 1.5);
-        pointGroup.add(outline);
-      }
       pointGroup.add(mesh);
       pointMeshes.push(mesh);
+      meshById.set(String(point.id), mesh);
     }
     scene.add(pointGroup);
 
     const lineGroup = new THREE.Group();
-    const neighborMaterial = new THREE.LineBasicMaterial({
-      color: "#dc2626",
-      transparent: true,
-      opacity: selectedPoint ? 0.85 : 0.35,
-    });
-    for (const focalPoint of focalLinePoints) {
-      const start = positionOf(focalPoint);
-      for (const neighbor of (focalPoint.neighbors ?? []).slice(0, currentK)) {
-        const neighborPoint = pointById.get(String(neighbor.id));
-        if (!neighborPoint) continue;
-        const line = addLine(
-          lineGroup,
-          start.toArray(),
-          positionOf(neighborPoint).toArray(),
-          neighborMaterial,
-        );
-        line.userData.neighbor = neighbor;
-        neighborLines.push(line);
-      }
-    }
     scene.add(lineGroup);
+    const outlineGroup = new THREE.Group();
+    scene.add(outlineGroup);
 
     const raycaster = new THREE.Raycaster();
     raycaster.params.Line = { threshold: 0.12 };
     const mouse = new THREE.Vector2();
+    sceneStateRef.current = {
+      lineGroup,
+      outlineGroup,
+      pointMeshes,
+      meshById,
+      pointById,
+      positionOf,
+    };
 
     const updateMouse = (event: PointerEvent) => {
       const rect = renderer.domElement.getBoundingClientRect();
@@ -868,7 +871,7 @@ function ThreePredictorSpace({
         return;
       }
 
-      const [lineHit] = raycaster.intersectObjects(neighborLines, false);
+      const [lineHit] = raycaster.intersectObjects(neighborLinesRef.current, false);
       if (lineHit?.object.userData.neighbor) {
         const neighbor = lineHit.object.userData.neighbor as Neighbor;
         setTooltip({
@@ -925,7 +928,11 @@ function ThreePredictorSpace({
           material?.dispose();
         }
       });
-      mount.removeChild(renderer.domElement);
+      sceneStateRef.current = null;
+      neighborLinesRef.current = [];
+      if (mount.contains(renderer.domElement)) {
+        mount.removeChild(renderer.domElement);
+      }
     };
   }, [
     axisLabels.x,
@@ -935,14 +942,74 @@ function ThreePredictorSpace({
     axisInfo.y,
     axisInfo.z,
     colorForPoint,
-    currentK,
     height,
     isNumericTarget,
     points,
-    selectedId,
     setSelectedId,
     width,
   ]);
+
+  useEffect(() => {
+    const state = sceneStateRef.current;
+    if (!state) return;
+
+    clearGroup(state.lineGroup);
+    clearGroup(state.outlineGroup);
+    neighborLinesRef.current = [];
+
+    const selectedPoint =
+      selectedId === null ? null : state.pointById.get(String(selectedId)) ?? null;
+    const focalLinePoints = selectedPoint
+      ? [selectedPoint]
+      : points.filter((point) => point.focal);
+
+    for (const point of points) {
+      const mesh = state.meshById.get(String(point.id));
+      if (!mesh) continue;
+
+      const isSelected = String(point.id) === String(selectedId);
+      const isFocal = isSelected || (selectedId === null && Boolean(point.focal));
+      mesh.scale.setScalar(isSelected ? 1.45 : isFocal ? 1.25 : 1);
+
+      if (isFocal) {
+        const outline = new THREE.Mesh(
+          mesh.geometry.clone(),
+          new THREE.MeshBasicMaterial({
+            color: "#dc2626",
+            side: THREE.BackSide,
+          }),
+        );
+        outline.position.copy(mesh.position);
+        outline.scale.setScalar(isSelected ? 1.75 : 1.5);
+        state.outlineGroup.add(outline);
+      }
+    }
+
+    const neighborMaterial = new THREE.LineBasicMaterial({
+      color: "#dc2626",
+      transparent: true,
+      opacity: selectedPoint ? 0.85 : 0.35,
+    });
+    for (const focalPoint of focalLinePoints) {
+      const start = state.positionOf(focalPoint);
+      for (const neighbor of (focalPoint.neighbors ?? []).slice(0, currentK)) {
+        const neighborPoint = state.pointById.get(String(neighbor.id));
+        if (!neighborPoint) continue;
+        const line = addLine(
+          state.lineGroup,
+          start.toArray(),
+          state.positionOf(neighborPoint).toArray(),
+          neighborMaterial,
+        );
+        line.userData.neighbor = neighbor;
+        neighborLinesRef.current.push(line);
+      }
+    }
+
+    return () => {
+      neighborMaterial.dispose();
+    };
+  }, [currentK, points, selectedId]);
 
   return (
     <div
@@ -969,6 +1036,25 @@ function extent(values: number[]): [number, number] {
   const min = Math.min(...finiteValues);
   const max = Math.max(...finiteValues);
   return Math.abs(max - min) < Number.EPSILON ? [min - 0.5, max + 0.5] : [min, max];
+}
+
+function clearGroup(group: THREE.Group) {
+  while (group.children.length > 0) {
+    const child = group.children[0];
+    if (!child) continue;
+    group.remove(child);
+
+    child.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      mesh.geometry?.dispose();
+      const material = mesh.material;
+      if (Array.isArray(material)) {
+        material.forEach((item) => item.dispose());
+      } else {
+        material?.dispose();
+      }
+    });
+  }
 }
 
 function createScale(min: number, max: number) {

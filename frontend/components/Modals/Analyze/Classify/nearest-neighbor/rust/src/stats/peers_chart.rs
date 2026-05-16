@@ -82,6 +82,7 @@ pub fn calculate_peers_chart(
             let neighbor_id = knn_data.case_identifiers[idx];
             neighbor_details.push(NeighborDetail {
                 id: neighbor_id,
+                row_number: knn_data.processed_case_indices.get(idx).map(|idx| idx + 1),
                 distance,
             });
             distances.push(distance);
@@ -90,6 +91,10 @@ pub fn calculate_peers_chart(
         // Add this focal point and its neighbors to the collection
         focal_neighbor_sets.push(FocalNeighborSet {
             focal_record,
+            focal_row_number: knn_data
+                .processed_case_indices
+                .get(focal_idx)
+                .map(|idx| idx + 1),
             neighbors: neighbor_details,
             distances,
             predicted_value: None,

@@ -55,7 +55,7 @@ pub fn calculate_knn_error(
     let n_categories = category_map.len();
     let mut total_error = 0.0;
     let mut total_cases = 0;
-    let mut neighbor_reference_debug = Vec::with_capacity(query_indices.len());
+    let mut neighbor_reference_details = Vec::with_capacity(query_indices.len());
 
     for &idx in &query_indices {
         if idx >= knn_data.data_matrix.len() {
@@ -74,7 +74,7 @@ pub fn calculate_knn_error(
                 .copied()
                 .collect()
         };
-        neighbor_reference_debug.push(format!(
+        neighbor_reference_details.push(format!(
             "{}:[{}]",
             idx,
             format_indices(&neighbor_reference_indices)
@@ -112,14 +112,14 @@ pub fn calculate_knn_error(
         0.0
     };
 
-    log_debug(&format!(
+    log_diagnostic(&format!(
         "KNN error evaluation: evaluation_strategy={}, total_cases={}, total_error={:.12}, average_error={:.12}, query_indices=[{}], neighbor_reference_indices={}",
         evaluation_strategy,
         total_cases,
         total_error,
         average_error,
         format_indices(&query_indices),
-        neighbor_reference_debug.join("; ")
+        neighbor_reference_details.join("; ")
     ));
 
     Ok(average_error)
@@ -244,10 +244,5 @@ fn format_indices(indices: &[usize]) -> String {
         .join(",")
 }
 
-fn log_debug(message: &str) {
-    #[cfg(target_arch = "wasm32")]
-    web_sys::console::log_1(&message.into());
-
-    #[cfg(not(target_arch = "wasm32"))]
-    eprintln!("{}", message);
+fn log_diagnostic(_message: &str) {
 }

@@ -100,7 +100,7 @@ pub fn evaluate_knn_error(
     };
 
     if target_is_numeric {
-        log_debug(&format!(
+        log_diagnostic(&format!(
             "KNN scale error evaluation: evaluation_strategy={}, total_cases={}, total_error={:.12}, average_error={:.12}, query_indices=[{}]",
             evaluation_strategy,
             evaluated,
@@ -224,10 +224,5 @@ fn format_indices(indices: &[usize]) -> String {
         .join(",")
 }
 
-fn log_debug(message: &str) {
-    #[cfg(target_arch = "wasm32")]
-    web_sys::console::log_1(&message.into());
-
-    #[cfg(not(target_arch = "wasm32"))]
-    eprintln!("{}", message);
+fn log_diagnostic(_message: &str) {
 }

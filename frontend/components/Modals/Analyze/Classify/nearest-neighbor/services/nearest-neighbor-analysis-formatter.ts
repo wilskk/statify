@@ -359,26 +359,22 @@ function buildMetrics(table: any, errorSummary: any): Table {
 function buildNeighborDetails(nearest: any): Table {
   const rows = nearest.focal_neighbor_sets.flatMap((set: any) =>
     (set.neighbors ?? []).map((neighbor: any, index: number) => ({
-      rowHeader: [String(set.focal_record), String(index + 1)],
-      query_case: String(set.focal_record),
-      neighbor_case: String(neighbor.id ?? ""),
+      rowHeader: [String(set.focal_row_number ?? set.focal_record), String(index + 1)],
+      query_case: String(set.focal_row_number ?? set.focal_record),
+      neighbor_rank: formatDisplayNumber(index + 1),
+      neighbor_case: String(neighbor.row_number ?? neighbor.id ?? ""),
       distance: optionalNumber(set.distances?.[index] ?? neighbor.distance),
-      neighbor_target: "",
-      neighbor_weight: nearest.weighting_enabled
-        ? optionalNumber(inverseDistance(set.distances?.[index] ?? neighbor.distance))
-        : "",
     })),
   );
 
   return {
     key: "neighbor_details",
-    title: "Neighbor Details",
+    title: "Neighbor Detail",
     columnHeaders: [
       { header: "Query Case", key: "query_case" },
+      { header: "Neighbor Rank", key: "neighbor_rank" },
       { header: "Neighbor Case", key: "neighbor_case" },
       { header: "Distance", key: "distance" },
-      { header: "Neighbor Target", key: "neighbor_target" },
-      { header: "Neighbor Weight", key: "neighbor_weight" },
     ],
     rows,
   };
@@ -477,11 +473,4 @@ function titleCase(value: string | undefined) {
   return value.replace(/\w\S*/g, (word) => (
     word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
   ));
-}
-
-function inverseDistance(distance: any) {
-  const value = Number(distance);
-  if (!Number.isFinite(value)) return null;
-  if (Math.abs(value) <= Number.EPSILON) return 1;
-  return 1 / value;
 }

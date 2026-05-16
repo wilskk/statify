@@ -359,7 +359,12 @@ function createPredictorSpaceChart(predictorSpace?: any) {
 
   const labels = splitDimensionName(dimension.name);
   const axes = Array.isArray(dimension.axes) ? dimension.axes : [];
-  const hasZ = Boolean(labels.z) && dimension.points.some((point: any) => Number.isFinite(Number(point.z)));
+  const displayedAxisCount = axes.length > 0 ? axes.length : labels.length;
+  const displayedDimensions = Math.max(1, Math.min(3, displayedAxisCount));
+  const hasZ =
+    displayedDimensions >= 3 &&
+    Boolean(labels[2]) &&
+    dimension.points.some((point: any) => Number.isFinite(Number(point.z)));
   const chartData = dimension.points
     .map((point: any) => ({
       id: point.id,
@@ -400,14 +405,16 @@ function createPredictorSpaceChart(predictorSpace?: any) {
           useAxis: true,
           useLegend: true,
           axisLabels: {
-            x: labels.x,
-            y: labels.y,
-            z: hasZ ? labels.z : "",
+            x: labels[0] ?? "X",
+            y: labels[1] ?? "Y",
+            z: hasZ ? labels[2] : "",
           },
           axisInfo: {
-            x: axes[0] ?? { name: labels.x, measure: "", categories: [], ticks: [] },
-            y: axes[1] ?? { name: labels.y, measure: "", categories: [], ticks: [] },
-            z: axes[2] ?? { name: labels.z, measure: "", categories: [], ticks: [] },
+            x: axes[0] ?? { name: labels[0] ?? "X", measure: "", categories: [], ticks: [] },
+            y: axes[1] ?? { name: labels[1] ?? "Y", measure: "", categories: [], ticks: [] },
+            z: hasZ
+              ? axes[2] ?? { name: labels[2] ?? "Z", measure: "", categories: [], ticks: [] }
+              : undefined,
           },
           predictorSpace: {
             selectedK: Number(predictorSpace.k_value ?? 1),
@@ -418,7 +425,7 @@ function createPredictorSpaceChart(predictorSpace?: any) {
             targetVariable: predictorSpace.target_variable ?? "Target",
             targetMeasure: predictorSpace.target_measure ?? "",
             hasFocalCaseIdentifier: Boolean(predictorSpace.has_focal_case_identifier),
-            displayedDimensions: hasZ ? 3 : chartData.some((point: any) => point.y !== 0) ? 2 : 1,
+            displayedDimensions,
             instruction: "Select points to use as focal records",
           },
         },
@@ -636,12 +643,7 @@ function normalizeFeatureEntries(features: any): Array<{ feature: string; values
 }
 
 function splitDimensionName(name: string | undefined) {
-  const labels = String(name ?? "X vs Y").split(" vs ");
-  return {
-    x: labels[0] ?? "X",
-    y: labels[1] ?? "Y",
-    z: labels[2] ?? "Z",
-  };
+  return String(name ?? "X vs Y").split(" vs ").filter(Boolean);
 }
 
 function toNumber(value: unknown): number {

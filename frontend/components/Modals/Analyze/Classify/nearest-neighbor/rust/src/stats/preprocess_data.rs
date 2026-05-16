@@ -115,14 +115,29 @@ pub fn preprocess_knn_data(data: &AnalysisData, config: &KnnConfig) -> Result<Kn
         return Err("No valid data records after preprocessing".to_string());
     }
 
+    let (training_indices, holdout_indices, excluded_indices, cross_validation_folds) =
+        split_partition_and_cross_validation_by_config(
+            data,
+            config,
+            analysis_case_indices.len(),
+            &analysis_case_indices,
+        )?;
+
+    let training_case_indices = training_indices
+        .iter()
+        .filter_map(|processed_idx| analysis_case_indices.get(*processed_idx).copied())
+        .collect::<Vec<_>>();
+
     let category_maps =
-        build_category_maps(data, &features, &feature_measures, &analysis_case_indices);
+        build_category_maps(data, &features, &feature_measures, &training_case_indices);
 
     let expanded_feature_measures =
         build_expanded_feature_measures(&feature_measures, &category_maps);
 
+    let mut old_to_new_processed_idx = vec![None; analysis_case_indices.len()];
+
     // Process each valid case
-    for &case_idx in &analysis_case_indices {
+    for (old_processed_idx, &case_idx) in analysis_case_indices.iter().enumerate() {
         // Extract feature values for current case
         let row = match extract_feature_values_one_hot(
             case_idx,
@@ -147,6 +162,7 @@ pub fn preprocess_knn_data(data: &AnalysisData, config: &KnnConfig) -> Result<Kn
         let case_label = extract_case_label(case_idx, case_ident_var, data);
 
         // Add the case to the data matrix
+        old_to_new_processed_idx[old_processed_idx] = Some(data_matrix.len());
         data_matrix.push(row.clone());
         display_matrix.push(row);
         target_values.push(target_value);
@@ -160,14 +176,15 @@ pub fn preprocess_knn_data(data: &AnalysisData, config: &KnnConfig) -> Result<Kn
     }
 
     let (training_indices, holdout_indices, excluded_indices, cross_validation_folds) =
-        split_partition_and_cross_validation_by_config(
-            data,
-            config,
-            data_matrix.len(),
-            &processed_case_indices,
-        )?;
+        remap_partition_outputs(
+            &old_to_new_processed_idx,
+            &training_indices,
+            &holdout_indices,
+            &excluded_indices,
+            &cross_validation_folds,
+        );
 
-    // Normalize features using scalers fitted only from training cases.
+    // Normalize model features for distance calculations only when requested.
     if config.main.norm_covar {
         apply_training_based_normalization(
             &mut data_matrix,
@@ -360,7 +377,7 @@ fn extract_feature_values_one_hot(
             .get(feature_idx)
             .unwrap_or(&VariableMeasure::Unknown);
 
-        if *measure == VariableMeasure::Nominal {
+        if is_categorical(measure) {
             let category = category_key(find_feature_value(case_idx, var, data))?;
 
             let category_map = category_maps.get(feature_idx)?;
@@ -368,17 +385,6 @@ fn extract_feature_values_one_hot(
 
             for i in 0..category_map.len() {
                 row.push(if i == *category_idx { 1.0 } else { 0.0 });
-            }
-        } else if *measure == VariableMeasure::Ordinal {
-            match find_feature_value(case_idx, var, data) {
-                Some(DataValue::Number(n)) if n.is_finite() => row.push(*n),
-                Some(DataValue::Text(_)) | Some(DataValue::Boolean(_)) => {
-                    let category = category_key(find_feature_value(case_idx, var, data))?;
-                    let category_map = category_maps.get(feature_idx)?;
-                    let category_idx = category_map.get(&category)?;
-                    row.push(*category_idx as f64);
-                }
-                _ => return None,
             }
         } else {
             match find_feature_value(case_idx, var, data) {
@@ -389,6 +395,50 @@ fn extract_feature_values_one_hot(
     }
 
     Some(row)
+}
+
+fn remap_partition_outputs(
+    old_to_new_processed_idx: &[Option<usize>],
+    training_indices: &[usize],
+    holdout_indices: &[usize],
+    excluded_indices: &[usize],
+    cross_validation_folds: &[usize],
+) -> (Vec<usize>, Vec<usize>, Vec<usize>, Vec<usize>) {
+    let remap_indices = |indices: &[usize]| -> Vec<usize> {
+        indices
+            .iter()
+            .filter_map(|idx| {
+                old_to_new_processed_idx
+                    .get(*idx)
+                    .and_then(|mapped| *mapped)
+            })
+            .collect()
+    };
+
+    let mut remapped_folds = vec![
+        super::partition::EXCLUDED_FOLD;
+        old_to_new_processed_idx
+            .iter()
+            .filter(|idx| idx.is_some())
+            .count()
+    ];
+
+    for (old_idx, new_idx) in old_to_new_processed_idx.iter().enumerate() {
+        let Some(new_idx) = new_idx else {
+            continue;
+        };
+
+        if let Some(fold) = cross_validation_folds.get(old_idx) {
+            remapped_folds[*new_idx] = *fold;
+        }
+    }
+
+    (
+        remap_indices(training_indices),
+        remap_indices(holdout_indices),
+        remap_indices(excluded_indices),
+        remapped_folds,
+    )
 }
 
 fn category_key(value: Option<&DataValue>) -> Option<String> {
@@ -407,7 +457,7 @@ fn build_expanded_feature_measures(
     let mut expanded = Vec::new();
 
     for (i, measure) in feature_measures.iter().enumerate() {
-        if *measure == VariableMeasure::Nominal {
+        if is_categorical(measure) {
             for _ in 0..category_maps[i].len() {
                 expanded.push(measure.clone());
             }
@@ -429,7 +479,7 @@ fn build_expanded_feature_names(
     for (i, feature) in features.iter().enumerate() {
         let measure = feature_measures.get(i).unwrap_or(&VariableMeasure::Unknown);
 
-        if *measure == VariableMeasure::Nominal {
+        if is_categorical(measure) {
             let mut categories: Vec<(&String, &usize)> = category_maps[i].iter().collect();
 
             categories.sort_by_key(|(_, idx)| **idx);
@@ -475,7 +525,7 @@ fn fit_feature_scalers(
 
     for j in 0..n_features {
         let measure = feature_measures.get(j).unwrap_or(&VariableMeasure::Unknown);
-        if *measure == VariableMeasure::Nominal {
+        if is_categorical(measure) {
             scalers.push(None);
             continue;
         }
@@ -516,7 +566,7 @@ fn transform_with_feature_scalers(
 ) {
     for (j, scaler) in scalers.iter().enumerate() {
         let measure = feature_measures.get(j).unwrap_or(&VariableMeasure::Unknown);
-        if *measure == VariableMeasure::Nominal {
+        if is_categorical(measure) {
             continue;
         }
 
@@ -769,12 +819,21 @@ fn identify_focal_cases(
 mod tests {
     use std::collections::HashMap;
 
-    use crate::models::data::{AnalysisData, DataRecord, DataValue, VariableMeasure};
+    use crate::models::{
+        config::{
+            FeaturesConfig, KnnConfig, MainConfig, NeighborsConfig, OutputConfig, PartitionConfig,
+            SaveConfig,
+        },
+        data::{
+            AnalysisData, DataRecord, DataValue, VariableAlign, VariableDefinition,
+            VariableMeasure, VariableRole, VariableType,
+        },
+    };
 
     use super::{
         apply_training_based_normalization, build_category_maps, collect_valid_case_indices,
         extract_case_identifier, extract_feature_values_one_hot, fit_feature_scalers,
-        has_valid_focal_case_identifier_value, identify_focal_cases,
+        has_valid_focal_case_identifier_value, identify_focal_cases, preprocess_knn_data,
         transform_with_feature_scalers, FeatureScaler,
     };
 
@@ -882,7 +941,7 @@ mod tests {
     }
 
     #[test]
-    fn text_ordinal_features_are_encoded_as_ordered_numbers() {
+    fn text_ordinal_features_are_full_one_hot_encoded() {
         let data = AnalysisData {
             target_data: Vec::new(),
             features_data: vec![vec![
@@ -904,23 +963,27 @@ mod tests {
 
         assert_eq!(
             extract_feature_values_one_hot(0, &features, &measures, &category_maps, &data),
-            Some(vec![0.0])
+            Some(vec![1.0, 0.0, 0.0])
         );
         assert_eq!(
             extract_feature_values_one_hot(1, &features, &measures, &category_maps, &data),
-            Some(vec![1.0])
+            Some(vec![0.0, 1.0, 0.0])
         );
         assert_eq!(
             extract_feature_values_one_hot(2, &features, &measures, &category_maps, &data),
-            Some(vec![2.0])
+            Some(vec![0.0, 0.0, 1.0])
         );
     }
 
     #[test]
-    fn numeric_ordinal_features_are_used_directly() {
+    fn numeric_ordinal_features_are_full_one_hot_encoded() {
         let data = AnalysisData {
             target_data: Vec::new(),
-            features_data: vec![vec![record("rank", DataValue::Number(3.0))]],
+            features_data: vec![vec![
+                record("rank", DataValue::Number(1.0)),
+                record("rank", DataValue::Number(2.0)),
+                record("rank", DataValue::Number(3.0)),
+            ]],
             focal_case_data: Vec::new(),
             case_data: None,
             target_data_defs: Vec::new(),
@@ -935,8 +998,163 @@ mod tests {
 
         assert_eq!(
             extract_feature_values_one_hot(0, &features, &measures, &category_maps, &data),
-            Some(vec![3.0])
+            Some(vec![1.0, 0.0, 0.0])
         );
+        assert_eq!(
+            extract_feature_values_one_hot(2, &features, &measures, &category_maps, &data),
+            Some(vec![0.0, 0.0, 1.0])
+        );
+    }
+
+    #[test]
+    fn preprocessing_builds_final_distance_vector_for_spss_style_knn_when_normalized() {
+        let data = AnalysisData {
+            target_data: vec![vec![
+                record("target", DataValue::Number(1.0)),
+                record("target", DataValue::Number(2.0)),
+                record("target", DataValue::Number(3.0)),
+            ]],
+            features_data: vec![vec![
+                record_many(vec![
+                    ("score", DataValue::Number(10.0)),
+                    ("rank", DataValue::Text("low".to_string())),
+                    ("device", DataValue::Text("Android".to_string())),
+                ]),
+                record_many(vec![
+                    ("score", DataValue::Number(20.0)),
+                    ("rank", DataValue::Text("medium".to_string())),
+                    ("device", DataValue::Text("iOS".to_string())),
+                ]),
+                record_many(vec![
+                    ("score", DataValue::Number(30.0)),
+                    ("rank", DataValue::Text("high".to_string())),
+                    ("device", DataValue::Text("Desktop".to_string())),
+                ]),
+            ]],
+            focal_case_data: Vec::new(),
+            case_data: None,
+            target_data_defs: vec![vec![variable_def("target", VariableMeasure::Scale)]],
+            features_data_defs: vec![vec![
+                variable_def("score", VariableMeasure::Scale),
+                variable_def("rank", VariableMeasure::Ordinal),
+                variable_def("device", VariableMeasure::Nominal),
+            ]],
+            focal_case_data_defs: Vec::new(),
+            case_data_defs: None,
+        };
+        let config = config();
+
+        let knn_data = preprocess_knn_data(&data, &config).unwrap();
+
+        assert_eq!(
+            knn_data.features,
+            vec![
+                "score",
+                "rank=low",
+                "rank=medium",
+                "rank=high",
+                "device=Android",
+                "device=iOS",
+                "device=Desktop"
+            ]
+        );
+        assert_eq!(
+            knn_data.data_matrix,
+            vec![
+                vec![-1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                vec![0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0],
+                vec![1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0],
+            ]
+        );
+    }
+
+    #[test]
+    fn preprocessing_keeps_scale_raw_and_ordinal_one_hot_when_normalization_is_off() {
+        let data = AnalysisData {
+            target_data: vec![vec![
+                record("target", DataValue::Number(1.0)),
+                record("target", DataValue::Number(2.0)),
+                record("target", DataValue::Number(3.0)),
+            ]],
+            features_data: vec![vec![
+                record_many(vec![
+                    ("score", DataValue::Number(10.0)),
+                    ("rank", DataValue::Text("low".to_string())),
+                    ("device", DataValue::Text("Android".to_string())),
+                ]),
+                record_many(vec![
+                    ("score", DataValue::Number(20.0)),
+                    ("rank", DataValue::Text("medium".to_string())),
+                    ("device", DataValue::Text("iOS".to_string())),
+                ]),
+                record_many(vec![
+                    ("score", DataValue::Number(30.0)),
+                    ("rank", DataValue::Text("high".to_string())),
+                    ("device", DataValue::Text("Desktop".to_string())),
+                ]),
+            ]],
+            focal_case_data: Vec::new(),
+            case_data: None,
+            target_data_defs: vec![vec![variable_def("target", VariableMeasure::Scale)]],
+            features_data_defs: vec![vec![
+                variable_def("score", VariableMeasure::Scale),
+                variable_def("rank", VariableMeasure::Ordinal),
+                variable_def("device", VariableMeasure::Nominal),
+            ]],
+            focal_case_data_defs: Vec::new(),
+            case_data_defs: None,
+        };
+        let mut config = config();
+        config.main.norm_covar = false;
+
+        let knn_data = preprocess_knn_data(&data, &config).unwrap();
+
+        assert_eq!(
+            knn_data.data_matrix,
+            vec![
+                vec![10.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                vec![20.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0],
+                vec![30.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0],
+            ]
+        );
+    }
+
+    #[test]
+    fn nominal_one_hot_categories_are_fit_from_training_cases_only_and_unknown_holdout_excluded() {
+        let data = AnalysisData {
+            target_data: vec![vec![
+                record("target", DataValue::Number(1.0)),
+                record("target", DataValue::Number(2.0)),
+                record("target", DataValue::Number(3.0)),
+            ]],
+            features_data: vec![vec![
+                record("device", DataValue::Text("Android".to_string())),
+                record("device", DataValue::Text("Desktop".to_string())),
+                record("device", DataValue::Text("iPhone".to_string())),
+            ]],
+            focal_case_data: Vec::new(),
+            case_data: Some(vec![vec![
+                record("partition", DataValue::Number(1.0)),
+                record("partition", DataValue::Number(1.0)),
+                record("partition", DataValue::Number(0.0)),
+            ]]),
+            target_data_defs: vec![vec![variable_def("target", VariableMeasure::Scale)]],
+            features_data_defs: vec![vec![variable_def("device", VariableMeasure::Nominal)]],
+            focal_case_data_defs: Vec::new(),
+            case_data_defs: None,
+        };
+        let mut config = config();
+        config.main.feature_var = Some(vec!["device".to_string()]);
+        config.partition.use_variable = true;
+        config.partition.partitioning_variable = Some("partition".to_string());
+
+        let knn_data = preprocess_knn_data(&data, &config).unwrap();
+
+        assert_eq!(knn_data.features, vec!["device=Android", "device=Desktop"]);
+        assert_eq!(knn_data.processed_case_indices, vec![0, 1]);
+        assert_eq!(knn_data.training_indices, vec![0, 1]);
+        assert!(knn_data.holdout_indices.is_empty());
+        assert_eq!(knn_data.data_matrix, vec![vec![1.0, 0.0], vec![0.0, 1.0]]);
     }
 
     #[test]
@@ -1080,8 +1298,112 @@ mod tests {
     }
 
     fn record(name: &str, value: DataValue) -> DataRecord {
-        let mut values = HashMap::new();
-        values.insert(name.to_string(), value);
-        DataRecord { values }
+        record_many(vec![(name, value)])
+    }
+
+    fn record_many(values: Vec<(&str, DataValue)>) -> DataRecord {
+        let mut record_values = HashMap::new();
+        for (name, value) in values {
+            record_values.insert(name.to_string(), value);
+        }
+        DataRecord {
+            values: record_values,
+        }
+    }
+
+    fn variable_def(name: &str, measure: VariableMeasure) -> VariableDefinition {
+        VariableDefinition {
+            id: None,
+            column_index: 0,
+            name: name.to_string(),
+            r#type: VariableType::Numeric,
+            width: 8,
+            decimals: 0,
+            label: None,
+            values: Vec::new(),
+            missing: Vec::new(),
+            columns: 8,
+            align: VariableAlign::Right,
+            measure,
+            role: VariableRole::Input,
+        }
+    }
+
+    fn config() -> KnnConfig {
+        KnnConfig {
+            main: MainConfig {
+                target_var: Some("target".to_string()),
+                feature_var: Some(vec![
+                    "score".to_string(),
+                    "rank".to_string(),
+                    "device".to_string(),
+                ]),
+                case_iden_var: None,
+                focal_case_iden_var: None,
+                norm_covar: true,
+            },
+            neighbors: NeighborsConfig {
+                specify: true,
+                auto_selection: false,
+                specify_k: 1,
+                min_k: None,
+                max_k: None,
+                metric_eucli: true,
+                metric_manhattan: false,
+                weight: false,
+                predictions_mean: false,
+                predictions_median: false,
+            },
+            features: FeaturesConfig {
+                forward_selection: None,
+                forced_entry_var: None,
+                features_to_evaluate: 0,
+                forced_features: 0,
+                perform_selection: false,
+                max_reached: true,
+                below_min: false,
+                max_to_select: None,
+                min_change: 0.01,
+            },
+            partition: PartitionConfig {
+                src_var: None,
+                partitioning_variable: None,
+                use_randomly: false,
+                use_variable: false,
+                v_fold_partitioning_variable: None,
+                v_fold_use_randomly: false,
+                v_fold_use_partitioning_var: false,
+                training_number: 70,
+                num_partition: 2,
+                set_seed: false,
+                seed: None,
+            },
+            save: SaveConfig {
+                auto_name: true,
+                custom_name: false,
+                max_cats_to_save: None,
+                has_target_var: false,
+                is_cate_target_var: false,
+                random_assign_to_partition: false,
+                random_assign_to_fold: false,
+            },
+            output: OutputConfig {
+                case_summary: true,
+                feature_selection_summary: true,
+                k_selection_chart: true,
+                predictor_space: true,
+                prediction_results: true,
+                confusion_matrix: true,
+                show_neighbor_detail: false,
+                chart_and_table: true,
+                export_model_xml: false,
+                xml_file_path: None,
+                export_distance: false,
+                create_dataset: false,
+                write_data_file: false,
+                new_data_file_path: None,
+                dataset_name: None,
+            },
+        }
     }
 }

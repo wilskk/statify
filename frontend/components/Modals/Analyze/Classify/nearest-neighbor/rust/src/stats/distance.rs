@@ -166,6 +166,18 @@ mod tests {
     }
 
     #[test]
+    fn full_one_hot_nominal_mismatch_contributes_per_dimension() {
+        let android = [1.0, 0.0, 0.0];
+        let desktop = [0.0, 0.0, 1.0];
+
+        assert_eq!(
+            calculate_euclidean_distance(&android, &desktop, None),
+            2.0_f64.sqrt()
+        );
+        assert_eq!(calculate_manhattan_distance(&android, &desktop, None), 2.0);
+    }
+
+    #[test]
     fn nearest_neighbors_break_distance_ties_by_original_case_index_descending() {
         let data_matrix = vec![vec![0.0], vec![1.0], vec![1.0], vec![1.0]];
         let original_case_indices = vec![10, 20, 40, 30];
