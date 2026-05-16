@@ -168,7 +168,22 @@ pub struct PredictorSpace {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PredictorDimension {
     pub name: String,
+    pub axes: Vec<PredictorAxis>,
     pub points: Vec<DataPoint>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PredictorAxis {
+    pub name: String,
+    pub measure: String,
+    pub categories: Vec<String>,
+    pub ticks: Vec<PredictorAxisTick>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PredictorAxisTick {
+    pub value: f64,
+    pub label: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -1,4 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 type Neighbor = {
   id: number | string;
@@ -19,6 +21,13 @@ type Point = {
   neighbors?: Neighbor[];
 };
 
+type AxisInfo = {
+  name?: string;
+  measure?: string;
+  categories?: string[];
+  ticks?: Array<{ value: number; label: string }>;
+};
+
 type ChartPayload = {
   charts?: Array<{
     chartData: Point[];
@@ -29,6 +38,7 @@ type ChartPayload = {
       width?: number;
       height?: number;
       axisLabels?: { x?: string; y?: string; z?: string };
+      axisInfo?: { x?: AxisInfo; y?: AxisInfo; z?: AxisInfo };
       predictorSpace?: {
         selectedK: number;
         modelPredictors: number;
@@ -68,12 +78,40 @@ function formatDistance(value: number) {
   return value.toLocaleString(undefined, { maximumFractionDigits: 6 });
 }
 
-function createFiveTicks(min: number, max: number) {
+function createNiceTicks(min: number, max: number) {
   if (!Number.isFinite(min) || !Number.isFinite(max)) return [];
   if (Math.abs(max - min) < Number.EPSILON) return [max];
 
-  const step = (max - min) / 5;
-  return Array.from({ length: 5 }, (_, index) => min + step * (index + 1));
+  const step = niceTickStep((max - min) / 5);
+  let start = Math.floor(min / step) * step;
+  const end = Math.ceil(max / step) * step;
+
+  if (start === 0 && min > 0) {
+    start = step;
+  }
+
+  const tickCount = Math.round((end - start) / step) + 1;
+  return Array.from({ length: Math.max(0, tickCount) }, (_, index) =>
+    roundTick(start + step * index, step),
+  );
+}
+
+function niceTickStep(rawStep: number) {
+  if (!Number.isFinite(rawStep) || rawStep <= 0) return 1;
+
+  const exponent = Math.floor(Math.log10(rawStep));
+  const magnitude = 10 ** exponent;
+  const fraction = rawStep / magnitude;
+
+  if (fraction <= 1) return magnitude;
+  if (fraction <= 2) return 2 * magnitude;
+  if (fraction <= 5) return 5 * magnitude;
+  return 10 * magnitude;
+}
+
+function roundTick(value: number, step: number) {
+  const decimals = Math.max(0, -Math.floor(Math.log10(step)) + 2);
+  return Number(value.toFixed(decimals));
 }
 
 function formatTick(value: number) {
@@ -154,13 +192,7 @@ export default function KNNPredictorSpaceChart({
   const numericTargetMin = numericTargets.length ? Math.min(...numericTargets) : 0;
   const numericTargetMax = numericTargets.length ? Math.max(...numericTargets) : 0;
   const numericTargetSpan = numericTargetMax - numericTargetMin || 1;
-  const numericTargetTicks = createFiveTicks(numericTargetMin, numericTargetMax)
-    .reverse()
-    .concat(
-      Math.abs(numericTargetMax - numericTargetMin) < Number.EPSILON
-        ? []
-        : [numericTargetMin],
-    );
+  const numericTargetTicks = createNiceTicks(numericTargetMin, numericTargetMax).reverse();
   const numericTargetColor = (value: number | null | undefined) => {
     if (!Number.isFinite(Number(value))) return "#6b7280";
     return interpolateColor(
@@ -169,19 +201,6 @@ export default function KNNPredictorSpaceChart({
       (Number(value) - numericTargetMin) / numericTargetSpan,
     );
   };
-
-  const projected = useMemo(
-    () =>
-      points.map((point) => {
-        const z = Number(point.z ?? 0);
-        return {
-          point,
-          x: point.x + z * 0.45,
-          y: point.y - z * 0.35,
-        };
-      }),
-    [points],
-  );
 
   const rawXValues = points.map((point) => point.x);
   const rawYValues = points.map((point) => point.y);
@@ -194,35 +213,34 @@ export default function KNNPredictorSpaceChart({
   const rawZMax = Math.max(...rawZValues);
   const hasZAxis =
     Boolean(chart?.chartConfig?.axisLabels?.z) &&
-    rawZValues.some((value) => Number.isFinite(value) && Math.abs(value) > Number.EPSILON);
-  const xTicks = createFiveTicks(rawXMin, rawXMax);
-  const yTicks = createFiveTicks(rawYMin, rawYMax);
-  const zTicks = hasZAxis ? createFiveTicks(rawZMin, rawZMax) : [];
+    rawZValues.some((value) => Number.isFinite(value));
+  const chartAxisInfo = chart?.chartConfig?.axisInfo ?? {};
+  const chartAxisLabels = chart?.chartConfig?.axisLabels ?? {};
+  const xAxis = buildAxisTicks(chartAxisInfo.x, chartAxisLabels.x ?? "X", [
+    rawXMin,
+    rawXMax,
+  ]);
+  const yAxis = buildAxisTicks(chartAxisInfo.y, chartAxisLabels.y ?? "Y", [
+    rawYMin,
+    rawYMax,
+  ]);
+  const zTicks = hasZAxis ? createNiceTicks(rawZMin, rawZMax) : [];
 
-  const xValues = projected.map((point) => point.x);
-  const yValues = projected.map((point) => point.y);
-  const xMin = Math.min(...xValues);
-  const xMax = Math.max(...xValues);
-  const yMin = Math.min(...yValues);
-  const yMax = Math.max(...yValues);
   const plot = { left: 58, right: 24, top: 28, bottom: 58 };
-  const spanX = xMax - xMin || 1;
-  const spanY = yMax - yMin || 1;
+  const spanX = xAxis.max - xAxis.min || 1;
+  const spanY = yAxis.max - yAxis.min || 1;
   const scaleX = (value: number) =>
-    plot.left + ((value - xMin) / spanX) * (svgWidth - plot.left - plot.right);
+    plot.left + ((value - xAxis.min) / spanX) * (svgWidth - plot.left - plot.right);
   const scaleY = (value: number) =>
     svgHeight -
     plot.bottom -
-    ((value - yMin) / spanY) * (svgHeight - plot.top - plot.bottom);
+    ((value - yAxis.min) / spanY) * (svgHeight - plot.top - plot.bottom);
   const pointById = new Map(points.map((point) => [String(point.id), point]));
   const selectedPoint =
     selectedId === null ? null : pointById.get(String(selectedId)) ?? null;
-  const hasFocalCaseIdentifier = Boolean(config?.hasFocalCaseIdentifier);
   const focalLinePoints = selectedPoint
     ? [selectedPoint]
-    : hasFocalCaseIdentifier
-      ? points
-      : [];
+    : points.filter((point) => point.focal);
 
   const projectedOf = (point: Point) => {
     const z = Number(point.z ?? 0);
@@ -246,6 +264,97 @@ export default function KNNPredictorSpaceChart({
   };
 
   if (!chart || points.length === 0) return null;
+
+  if (hasZAxis) {
+    return (
+      <div className="relative mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div style={{ width, minHeight: height }} className="relative">
+          <div className="mb-2 text-center">
+            <div className="text-base font-bold">Predictor Space</div>
+            <div className="text-xs text-gray-600">
+              Built Model: {config?.modelPredictors ?? 0} selected predictors, K ={" "}
+              {currentK}
+            </div>
+            {(config?.actualPredictors ?? 0) > 3 && (
+              <div className="mt-1 text-xs text-gray-500">
+                This chart is a lower-dimensional projection of the predictor
+                space, which contains a total of {config?.actualPredictors}{" "}
+                predictors
+              </div>
+            )}
+          </div>
+
+          <div className="mb-2 flex items-center justify-center gap-3">
+            <label className="text-xs font-semibold">K: {currentK}</label>
+            <input
+              type="range"
+              min={1}
+              max={maxK}
+              step={1}
+              value={currentK}
+              onChange={(event) => setCurrentK(Number(event.target.value))}
+              className="w-44"
+            />
+          </div>
+
+          <div className="flex items-start justify-center gap-4">
+            <ThreePredictorSpace
+              points={points}
+              currentK={currentK}
+              selectedId={selectedId}
+              setSelectedId={setSelectedId}
+              width={svgWidth}
+              height={svgHeight}
+              axisLabels={chartAxisLabels}
+              axisInfo={chartAxisInfo}
+              isNumericTarget={isNumericTarget}
+              colorForPoint={(point) =>
+                isNumericTarget
+                  ? numericTargetColor(point.targetNumber)
+                  : colorByTarget.get(point.target || "(blank)") ?? "#2563eb"
+              }
+            />
+
+            <div className="w-44 text-xs leading-snug">
+              <LegendSection title="Focal" />
+              <LegendCircle label="No" />
+              <LegendCircle label="Yes" outline="#dc2626" />
+              <LegendSection title="Type" />
+              <LegendCircle label="Training" fill="#6b7280" />
+              {!isNumericTarget && (
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="h-0 w-0 border-b-[13px] border-l-[7px] border-r-[7px] border-b-gray-500 border-l-transparent border-r-transparent" />
+                  <span>Holdout</span>
+                </div>
+              )}
+              <LegendSection title="Target" />
+              <div className="mb-1">{config?.targetVariable ?? "Target"}</div>
+              {isNumericTarget ? (
+                <NumericGradientLegend
+                  ticks={numericTargetTicks}
+                  min={numericTargetMin}
+                  max={numericTargetMax}
+                />
+              ) : (
+                targetCategories.map((target) => (
+                  <LegendCircle
+                    key={target}
+                    label={target}
+                    fill={colorByTarget.get(target) ?? "#2563eb"}
+                  />
+                ))
+              )}
+              <LegendSection title={`K: ${currentK}`} />
+            </div>
+          </div>
+
+          <div className="mt-2 text-center text-xs text-gray-600">
+            {config?.instruction ?? "Select points to use as focal records"}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -280,10 +389,10 @@ export default function KNNPredictorSpaceChart({
 
         <div className="flex items-start justify-center gap-4">
           <svg width={svgWidth} height={svgHeight} className="overflow-visible">
-            {xTicks.map((tick) => {
-              const x = projectedCoord(tick, rawYMin, 0).x;
+            {xAxis.ticks.map((tick) => {
+              const x = projectedCoord(tick.value, yAxis.min, 0).x;
               return (
-                <g key={`x-tick-${tick}`}>
+                <g key={`x-tick-${tick.value}-${tick.label}`}>
                   <line
                     x1={x}
                     y1={plot.top}
@@ -306,16 +415,16 @@ export default function KNNPredictorSpaceChart({
                     fontSize={10}
                     fill="#4b5563"
                   >
-                    {formatTick(tick)}
+                    {tick.label}
                   </text>
                 </g>
               );
             })}
 
-            {yTicks.map((tick) => {
-              const y = projectedCoord(rawXMin, tick, 0).y;
+            {yAxis.ticks.map((tick) => {
+              const y = projectedCoord(xAxis.min, tick.value, 0).y;
               return (
-                <g key={`y-tick-${tick}`}>
+                <g key={`y-tick-${tick.value}-${tick.label}`}>
                   <line
                     x1={plot.left}
                     y1={y}
@@ -338,7 +447,7 @@ export default function KNNPredictorSpaceChart({
                     fontSize={10}
                     fill="#4b5563"
                   >
-                    {formatTick(tick)}
+                    {tick.label}
                   </text>
                 </g>
               );
@@ -401,7 +510,7 @@ export default function KNNPredictorSpaceChart({
               fontSize={12}
               fill="#374151"
             >
-              {chart.chartConfig?.axisLabels?.x ?? "X"}
+              {xAxis.label}
             </text>
             <text
               x={16}
@@ -411,7 +520,7 @@ export default function KNNPredictorSpaceChart({
               fill="#374151"
               transform={`rotate(-90 16 ${svgHeight / 2})`}
             >
-              {chart.chartConfig?.axisLabels?.y ?? "Y"}
+              {yAxis.label}
             </text>
             {hasZAxis && chart.chartConfig?.axisLabels?.z && (
               <text
@@ -489,7 +598,7 @@ export default function KNNPredictorSpaceChart({
               if (point.type === "Holdout") {
                 const size = 8;
                 const isFocal =
-                  isSelected || (hasFocalCaseIdentifier && selectedId === null);
+                  isSelected || (selectedId === null && Boolean(point.focal));
                 return (
                   <polygon
                     key={String(point.id)}
@@ -506,7 +615,7 @@ export default function KNNPredictorSpaceChart({
               }
 
               const isFocal =
-                isSelected || (hasFocalCaseIdentifier && selectedId === null);
+                isSelected || (selectedId === null && Boolean(point.focal));
               return (
                 <circle
                   key={String(point.id)}
@@ -569,6 +678,466 @@ export default function KNNPredictorSpaceChart({
       </div>
     </div>
   );
+}
+
+function ThreePredictorSpace({
+  points,
+  currentK,
+  selectedId,
+  setSelectedId,
+  width,
+  height,
+  axisLabels,
+  axisInfo,
+  isNumericTarget,
+  colorForPoint,
+}: {
+  points: Point[];
+  currentK: number;
+  selectedId: number | string | null;
+  setSelectedId: React.Dispatch<React.SetStateAction<number | string | null>>;
+  width: number;
+  height: number;
+  axisLabels: { x?: string; y?: string; z?: string };
+  axisInfo: { x?: AxisInfo; y?: AxisInfo; z?: AxisInfo };
+  isNumericTarget: boolean;
+  colorForPoint: (point: Point) => string;
+}) {
+  const mountRef = useRef<HTMLDivElement | null>(null);
+  const [tooltip, setTooltip] = useState<TooltipState>(null);
+
+  useEffect(() => {
+    const mount = mountRef.current;
+    if (!mount) return;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color("#ffffff");
+
+    const camera = new THREE.PerspectiveCamera(48, width / height, 0.1, 1000);
+    camera.position.set(7, 6, 8);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(width, height);
+    mount.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.target.set(0, 0, 0);
+
+    scene.add(new THREE.AmbientLight("#ffffff", 1.5));
+    const directional = new THREE.DirectionalLight("#ffffff", 2);
+    directional.position.set(5, 8, 6);
+    scene.add(directional);
+
+    const ranges = {
+      x: extent(points.map((point) => point.x)),
+      y: extent(points.map((point) => point.y)),
+      z: extent(points.map((point) => Number(point.z ?? 0))),
+    };
+    const axes = {
+      depth: buildAxisTicks(axisInfo.x, axisLabels.x ?? "X", ranges.x),
+      vertical: buildAxisTicks(axisInfo.y, axisLabels.y ?? "Y", ranges.y),
+      horizontal: buildAxisTicks(axisInfo.z, axisLabels.z ?? "Z", ranges.z),
+    };
+    const scale = {
+      depth: createScale(axes.depth.min, axes.depth.max),
+      vertical: createScale(axes.vertical.min, axes.vertical.max),
+      horizontal: createScale(axes.horizontal.min, axes.horizontal.max),
+    };
+    const positionOf = (point: Point) =>
+      new THREE.Vector3(
+        scale.horizontal(Number(point.z ?? 0)),
+        scale.vertical(point.y),
+        -scale.depth(point.x),
+      );
+
+    const axisGroup = new THREE.Group();
+    const axisMaterial = new THREE.LineBasicMaterial({ color: "#6b7280" });
+    addLine(axisGroup, [-4, -4, 4], [4, -4, 4], axisMaterial);
+    addLine(axisGroup, [-4, -4, 4], [-4, -4, -4], axisMaterial);
+    addLine(axisGroup, [-4, -4, 4], [-4, 4, 4], axisMaterial);
+    scene.add(axisGroup);
+
+    const gridGroup = new THREE.Group();
+    const gridMaterial = new THREE.LineDashedMaterial({
+      color: "#9ca3af",
+      dashSize: 0.14,
+      gapSize: 0.12,
+      transparent: true,
+      opacity: 0.8,
+    });
+    drawDashedGrid(gridGroup, axes, scale, gridMaterial);
+    scene.add(gridGroup);
+
+    scene.add(makeTextSprite(axes.depth.label, new THREE.Vector3(-4.45, -4.45, -4.55), 1.5));
+    scene.add(makeTextSprite(axes.vertical.label, new THREE.Vector3(-4.65, 4.35, 4.15), 1.5));
+    scene.add(makeTextSprite(axes.horizontal.label, new THREE.Vector3(4.55, -4.35, 4.15), 1.8));
+    addTickLabels(scene, axes, scale);
+
+    const pointById = new Map(points.map((point) => [String(point.id), point]));
+    const selectedPoint =
+      selectedId === null ? null : pointById.get(String(selectedId)) ?? null;
+    const focalLinePoints = selectedPoint
+      ? [selectedPoint]
+      : points.filter((point) => point.focal);
+
+    const pointMeshes: THREE.Object3D[] = [];
+    const neighborLines: THREE.Object3D[] = [];
+    const pointGroup = new THREE.Group();
+    for (const point of points) {
+      const geometry =
+        point.type === "Holdout" && !isNumericTarget
+          ? new THREE.ConeGeometry(0.15, 0.34, 3)
+          : new THREE.SphereGeometry(0.13, 20, 20);
+      const isSelected = String(point.id) === String(selectedId);
+      const isFocal = isSelected || (selectedId === null && Boolean(point.focal));
+      const material = new THREE.MeshStandardMaterial({
+        color: colorForPoint(point),
+        roughness: 0.55,
+        metalness: 0.05,
+      });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.copy(positionOf(point));
+      mesh.userData.point = point;
+      mesh.scale.setScalar(isSelected ? 1.45 : isFocal ? 1.25 : 1);
+      if (isFocal) {
+        const outline = new THREE.Mesh(
+          geometry.clone(),
+          new THREE.MeshBasicMaterial({
+            color: "#dc2626",
+            side: THREE.BackSide,
+          }),
+        );
+        outline.position.copy(mesh.position);
+        outline.scale.setScalar(isSelected ? 1.75 : 1.5);
+        pointGroup.add(outline);
+      }
+      pointGroup.add(mesh);
+      pointMeshes.push(mesh);
+    }
+    scene.add(pointGroup);
+
+    const lineGroup = new THREE.Group();
+    const neighborMaterial = new THREE.LineBasicMaterial({
+      color: "#dc2626",
+      transparent: true,
+      opacity: selectedPoint ? 0.85 : 0.35,
+    });
+    for (const focalPoint of focalLinePoints) {
+      const start = positionOf(focalPoint);
+      for (const neighbor of (focalPoint.neighbors ?? []).slice(0, currentK)) {
+        const neighborPoint = pointById.get(String(neighbor.id));
+        if (!neighborPoint) continue;
+        const line = addLine(
+          lineGroup,
+          start.toArray(),
+          positionOf(neighborPoint).toArray(),
+          neighborMaterial,
+        );
+        line.userData.neighbor = neighbor;
+        neighborLines.push(line);
+      }
+    }
+    scene.add(lineGroup);
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.params.Line = { threshold: 0.12 };
+    const mouse = new THREE.Vector2();
+
+    const updateMouse = (event: PointerEvent) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+      const [hit] = raycaster.intersectObjects(pointMeshes, false);
+      if (hit?.object.userData.point) {
+        const point = hit.object.userData.point as Point;
+        setTooltip({
+          x: event.clientX - rect.left + 10,
+          y: event.clientY - rect.top - 42,
+          html: (
+            <>
+              <strong>Label:</strong> {point.label ?? point.id}
+              <br />
+              <strong>Observed:</strong> {point.observed ?? point.target}
+            </>
+          ),
+        });
+        return;
+      }
+
+      const [lineHit] = raycaster.intersectObjects(neighborLines, false);
+      if (lineHit?.object.userData.neighbor) {
+        const neighbor = lineHit.object.userData.neighbor as Neighbor;
+        setTooltip({
+          x: event.clientX - rect.left + 10,
+          y: event.clientY - rect.top - 42,
+          html: <>Distance: {formatDistance(Number(neighbor.distance))}</>,
+        });
+        return;
+      }
+
+      if (!hit?.object.userData.point) {
+        setTooltip(null);
+        return;
+      }
+    };
+
+    const handleClick = () => {
+      raycaster.setFromCamera(mouse, camera);
+      const [hit] = raycaster.intersectObjects(pointMeshes, false);
+      const point = hit?.object.userData.point as Point | undefined;
+      if (!point) return;
+      setSelectedId((current) =>
+        String(current) === String(point.id) ? null : point.id,
+      );
+    };
+    const handlePointerLeave = () => setTooltip(null);
+
+    renderer.domElement.addEventListener("pointermove", updateMouse);
+    renderer.domElement.addEventListener("pointerleave", handlePointerLeave);
+    renderer.domElement.addEventListener("click", handleClick);
+
+    let animationFrame = 0;
+    const animate = () => {
+      controls.update();
+      renderer.render(scene, camera);
+      animationFrame = window.requestAnimationFrame(animate);
+    };
+    animate();
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      renderer.domElement.removeEventListener("pointermove", updateMouse);
+      renderer.domElement.removeEventListener("pointerleave", handlePointerLeave);
+      renderer.domElement.removeEventListener("click", handleClick);
+      controls.dispose();
+      renderer.dispose();
+      scene.traverse((object) => {
+        const mesh = object as THREE.Mesh;
+        mesh.geometry?.dispose();
+        const material = mesh.material;
+        if (Array.isArray(material)) {
+          material.forEach((item) => item.dispose());
+        } else {
+          material?.dispose();
+        }
+      });
+      mount.removeChild(renderer.domElement);
+    };
+  }, [
+    axisLabels.x,
+    axisLabels.y,
+    axisLabels.z,
+    axisInfo.x,
+    axisInfo.y,
+    axisInfo.z,
+    colorForPoint,
+    currentK,
+    height,
+    isNumericTarget,
+    points,
+    selectedId,
+    setSelectedId,
+    width,
+  ]);
+
+  return (
+    <div
+      className="relative rounded-md border border-gray-200"
+      style={{ width, height }}
+    >
+      <div ref={mountRef} />
+      {tooltip && (
+        <div
+          className="pointer-events-none absolute z-20 rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 shadow-lg"
+          style={{ left: tooltip.x, top: tooltip.y }}
+        >
+          {tooltip.html}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function extent(values: number[]): [number, number] {
+  const finiteValues = values.filter((value) => Number.isFinite(value));
+  if (!finiteValues.length) return [0, 1];
+
+  const min = Math.min(...finiteValues);
+  const max = Math.max(...finiteValues);
+  return Math.abs(max - min) < Number.EPSILON ? [min - 0.5, max + 0.5] : [min, max];
+}
+
+function createScale(min: number, max: number) {
+  const span = max - min || 1;
+  return (value: number) => ((value - min) / span) * 8 - 4;
+}
+
+type AxisTick = {
+  value: number;
+  label: string;
+};
+
+type RenderAxis = {
+  label: string;
+  min: number;
+  max: number;
+  ticks: AxisTick[];
+};
+
+function buildAxisTicks(
+  axis: AxisInfo | undefined,
+  fallbackLabel: string,
+  range: [number, number],
+): RenderAxis {
+  const explicitTicks = (axis?.ticks ?? [])
+    .map((tick) => ({
+      value: Number(tick.value),
+      label: String(tick.label ?? ""),
+    }))
+    .filter((tick) => Number.isFinite(tick.value) && tick.label);
+  if (explicitTicks.length > 0) {
+    const isDiscreteAxis =
+      axis?.measure === "nominal" || axis?.measure === "ordinal";
+    const firstTick = explicitTicks[0].value;
+    const lastTick = explicitTicks[explicitTicks.length - 1].value;
+
+    return {
+      label: axis?.name ?? fallbackLabel,
+      min: isDiscreteAxis ? Math.min(0, firstTick) : Math.min(range[0], firstTick),
+      max: isDiscreteAxis
+        ? Math.max(range[1], lastTick + 0.5)
+        : Math.max(range[1], lastTick),
+      ticks: explicitTicks,
+    };
+  }
+
+  const categories = axis?.categories?.filter(Boolean) ?? [];
+  if (categories.length > 0) {
+    return {
+      label: axis?.name ?? fallbackLabel,
+      min: 0,
+      max: Math.max(1, categories.length - 1),
+      ticks: categories.map((label, value) => ({ value, label })),
+    };
+  }
+
+  const ticks = createNiceTicks(range[0], range[1]);
+  return {
+    label: axis?.name ?? fallbackLabel,
+    min: range[0],
+    max: range[1],
+    ticks: ticks.map((value) => ({ value, label: formatTick(value) })),
+  };
+}
+
+function drawDashedGrid(
+  group: THREE.Group,
+  axes: { depth: RenderAxis; vertical: RenderAxis; horizontal: RenderAxis },
+  scale: {
+    depth: (value: number) => number;
+    vertical: (value: number) => number;
+    horizontal: (value: number) => number;
+  },
+  material: THREE.LineDashedMaterial,
+) {
+  for (const tick of axes.depth.ticks) {
+    const depth = -scale.depth(tick.value);
+    addLine(group, [-4, -4, depth], [4, -4, depth], material);
+    addLine(group, [-4, -4, depth], [-4, 4, depth], material);
+  }
+
+  for (const tick of axes.horizontal.ticks) {
+    const horizontal = scale.horizontal(tick.value);
+    addLine(group, [horizontal, -4, 4], [horizontal, -4, -4], material);
+    addLine(group, [horizontal, -4, 4], [horizontal, 4, 4], material);
+  }
+
+  for (const tick of axes.vertical.ticks) {
+    const vertical = scale.vertical(tick.value);
+    addLine(group, [-4, vertical, 4], [4, vertical, 4], material);
+    addLine(group, [-4, vertical, 4], [-4, vertical, -4], material);
+  }
+}
+
+function addTickLabels(
+  scene: THREE.Scene,
+  axes: { depth: RenderAxis; vertical: RenderAxis; horizontal: RenderAxis },
+  scale: {
+    depth: (value: number) => number;
+    vertical: (value: number) => number;
+    horizontal: (value: number) => number;
+  },
+) {
+  for (const tick of axes.depth.ticks) {
+    scene.add(
+      makeTextSprite(
+        tick.label,
+        new THREE.Vector3(-4.45, -4.32, -scale.depth(tick.value)),
+        1.05,
+      ),
+    );
+  }
+
+  for (const tick of axes.vertical.ticks) {
+    scene.add(
+      makeTextSprite(
+        tick.label,
+        new THREE.Vector3(-4.55, scale.vertical(tick.value), 4.25),
+        1.05,
+      ),
+    );
+  }
+
+  for (const tick of axes.horizontal.ticks) {
+    scene.add(
+      makeTextSprite(
+        tick.label,
+        new THREE.Vector3(scale.horizontal(tick.value), -4.32, 4.28),
+        1.05,
+      ),
+    );
+  }
+}
+
+function addLine(
+  group: THREE.Group,
+  start: number[],
+  end: number[],
+  material: THREE.LineBasicMaterial | THREE.LineDashedMaterial,
+): THREE.Line {
+  const geometry = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(start[0], start[1], start[2]),
+    new THREE.Vector3(end[0], end[1], end[2]),
+  ]);
+  const line = new THREE.Line(geometry, material);
+  line.computeLineDistances();
+  group.add(line);
+  return line;
+}
+
+function makeTextSprite(text: string, position: THREE.Vector3, widthScale = 1.6) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 64;
+  const context = canvas.getContext("2d");
+  if (context) {
+    context.font = "28px sans-serif";
+    context.fillStyle = "#374151";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(text, canvas.width / 2, canvas.height / 2);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+  const sprite = new THREE.Sprite(material);
+  sprite.position.copy(position);
+  sprite.scale.set(widthScale, 0.4, 1);
+  return sprite;
 }
 
 function LegendSection({ title }: { title: string }) {

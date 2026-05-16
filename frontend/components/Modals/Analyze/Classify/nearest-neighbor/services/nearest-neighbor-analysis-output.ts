@@ -358,7 +358,8 @@ function createPredictorSpaceChart(predictorSpace?: any) {
   if (!dimension) return null;
 
   const labels = splitDimensionName(dimension.name);
-  const hasZ = dimension.points.some((point: any) => Number.isFinite(Number(point.z)) && Number(point.z) !== 0);
+  const axes = Array.isArray(dimension.axes) ? dimension.axes : [];
+  const hasZ = Boolean(labels.z) && dimension.points.some((point: any) => Number.isFinite(Number(point.z)));
   const chartData = dimension.points
     .map((point: any) => ({
       id: point.id,
@@ -402,6 +403,11 @@ function createPredictorSpaceChart(predictorSpace?: any) {
             x: labels.x,
             y: labels.y,
             z: hasZ ? labels.z : "",
+          },
+          axisInfo: {
+            x: axes[0] ?? { name: labels.x, measure: "", categories: [], ticks: [] },
+            y: axes[1] ?? { name: labels.y, measure: "", categories: [], ticks: [] },
+            z: axes[2] ?? { name: labels.z, measure: "", categories: [], ticks: [] },
           },
           predictorSpace: {
             selectedK: Number(predictorSpace.k_value ?? 1),

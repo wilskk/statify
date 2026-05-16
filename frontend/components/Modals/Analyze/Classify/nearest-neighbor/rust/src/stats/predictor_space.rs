@@ -1,7 +1,12 @@
+use std::collections::HashMap;
+
 use crate::models::{
     config::KnnConfig,
-    data::{AnalysisData, DataValue, KnnData, VariableMeasure},
-    result::{DataPoint, NeighborDetail, PredictorDimension, PredictorSpace},
+    data::{AnalysisData, DataValue, KnnData, VariableDefinition, VariableMeasure},
+    result::{
+        DataPoint, NeighborDetail, PredictorAxis, PredictorAxisTick, PredictorDimension,
+        PredictorSpace,
+    },
 };
 
 use super::core::{
@@ -21,16 +26,8 @@ pub fn calculate_predictor_space(
 
     let k = determine_effective_k(&knn_data, config)?;
     let weights = build_effective_feature_weights(&knn_data, config)?;
-    let displayed_feature_indices: Vec<usize> = weights
-        .as_ref()
-        .map(|values| {
-            values
-                .iter()
-                .enumerate()
-                .filter_map(|(idx, weight)| if *weight > 0.0 { Some(idx) } else { None })
-                .collect()
-        })
-        .unwrap_or_else(|| (0..knn_data.features.len()).collect());
+    let feature_space = build_original_feature_space(data, config, &knn_data, weights.as_deref())?;
+    let displayed_feature_indices: Vec<usize> = (0..feature_space.features.len()).collect();
 
     if displayed_feature_indices.is_empty() {
         return Err("No selected features available for predictor space visualization".to_string());
@@ -39,13 +36,14 @@ pub fn calculate_predictor_space(
     let display_indices: Vec<usize> = displayed_feature_indices.iter().copied().take(3).collect();
     let dimension_name = display_indices
         .iter()
-        .filter_map(|idx| knn_data.features.get(*idx))
+        .filter_map(|idx| feature_space.features.get(*idx))
         .cloned()
         .collect::<Vec<_>>()
         .join(" vs ");
 
     let points = build_points(
         &knn_data,
+        &feature_space.display_matrix,
         &display_indices,
         k,
         config.neighbors.metric_eucli,
@@ -61,6 +59,11 @@ pub fn calculate_predictor_space(
         k_value: k,
         dimensions: vec![PredictorDimension {
             name: dimension_name,
+            axes: display_indices
+                .iter()
+                .filter_map(|idx| feature_space.axes.get(*idx))
+                .cloned()
+                .collect(),
             points,
         }],
     })
@@ -68,13 +71,13 @@ pub fn calculate_predictor_space(
 
 fn build_points(
     knn_data: &KnnData,
+    display_matrix: &[Vec<f64>],
     display_indices: &[usize],
     k: usize,
     use_euclidean: bool,
     weights: Option<&[f64]>,
 ) -> Vec<DataPoint> {
-    knn_data
-        .display_matrix
+    display_matrix
         .iter()
         .enumerate()
         .filter(|(idx, _)| {
@@ -155,6 +158,372 @@ fn build_points(
         .collect()
 }
 
+struct OriginalFeatureSpace {
+    features: Vec<String>,
+    axes: Vec<PredictorAxis>,
+    display_matrix: Vec<Vec<f64>>,
+}
+
+struct OriginalFeatureLayout {
+    name: String,
+    measure: VariableMeasure,
+    original_index: usize,
+    expanded_start: usize,
+    expanded_len: usize,
+}
+
+fn build_original_feature_space(
+    data: &AnalysisData,
+    config: &KnnConfig,
+    knn_data: &KnnData,
+    weights: Option<&[f64]>,
+) -> Result<OriginalFeatureSpace, String> {
+    let original_features = config
+        .main
+        .feature_var
+        .clone()
+        .unwrap_or_else(|| infer_original_features(data));
+
+    if original_features.is_empty() {
+        return Err("No features available for predictor space visualization".to_string());
+    }
+
+    let feature_defs: Vec<VariableDefinition> = data
+        .features_data_defs
+        .iter()
+        .flat_map(|defs| defs.clone())
+        .collect();
+    let feature_measures = original_features
+        .iter()
+        .map(|feature| derive_variable_measure(feature, &feature_defs))
+        .collect::<Vec<_>>();
+    let category_maps = build_category_maps(
+        data,
+        &original_features,
+        &feature_measures,
+        &knn_data.processed_case_indices,
+    );
+    let selected_layout = build_original_feature_layout(
+        &original_features,
+        &feature_measures,
+        &category_maps,
+    )
+    .into_iter()
+    .filter(|feature| original_feature_selected(feature, weights))
+    .collect::<Vec<_>>();
+
+    let features = selected_layout
+        .iter()
+        .map(|feature| feature.name.clone())
+        .collect::<Vec<_>>();
+    let axes = selected_layout
+        .iter()
+        .map(|feature| PredictorAxis {
+            name: feature.name.clone(),
+            measure: target_measure_label(&feature.measure).to_string(),
+            categories: feature_categories(feature, &category_maps),
+            ticks: feature_ticks(
+                feature,
+                &category_maps,
+                data,
+                &knn_data.processed_case_indices,
+            ),
+        })
+        .collect::<Vec<_>>();
+    let display_matrix = knn_data
+        .processed_case_indices
+        .iter()
+        .filter_map(|case_idx| {
+            selected_layout
+                .iter()
+                .map(|feature| {
+                    original_feature_display_value(*case_idx, feature, &category_maps, data)
+                })
+                .collect::<Option<Vec<_>>>()
+        })
+        .collect::<Vec<_>>();
+
+    Ok(OriginalFeatureSpace {
+        features,
+        axes,
+        display_matrix,
+    })
+}
+
+fn infer_original_features(data: &AnalysisData) -> Vec<String> {
+    let mut features = Vec::new();
+
+    for dataset in &data.features_data {
+        for record in dataset {
+            for key in record.values.keys() {
+                if !features.contains(key) {
+                    features.push(key.clone());
+                }
+            }
+        }
+    }
+
+    features
+}
+
+fn derive_variable_measure(variable: &str, defs: &[VariableDefinition]) -> VariableMeasure {
+    defs.iter()
+        .find(|def| def.name == variable)
+        .map(|def| def.measure.clone())
+        .unwrap_or(VariableMeasure::Unknown)
+}
+
+fn build_category_maps(
+    data: &AnalysisData,
+    features: &[String],
+    feature_measures: &[VariableMeasure],
+    case_indices: &[usize],
+) -> Vec<HashMap<String, usize>> {
+    let mut category_maps: Vec<HashMap<String, usize>> = vec![HashMap::new(); features.len()];
+
+    for &case_idx in case_indices {
+        for (feature_idx, feature) in features.iter().enumerate() {
+            let measure = feature_measures
+                .get(feature_idx)
+                .unwrap_or(&VariableMeasure::Unknown);
+
+            if !is_categorical(measure) {
+                continue;
+            }
+
+            if let Some(category) = category_key(find_feature_value(case_idx, feature, data)) {
+                if !category_maps[feature_idx].contains_key(&category) {
+                    let next_idx = category_maps[feature_idx].len();
+                    category_maps[feature_idx].insert(category, next_idx);
+                }
+            }
+        }
+    }
+
+    category_maps
+}
+
+fn build_original_feature_layout(
+    features: &[String],
+    feature_measures: &[VariableMeasure],
+    category_maps: &[HashMap<String, usize>],
+) -> Vec<OriginalFeatureLayout> {
+    let mut expanded_start = 0;
+
+    features
+        .iter()
+        .enumerate()
+        .map(|(feature_idx, name)| {
+            let measure = feature_measures
+                .get(feature_idx)
+                .cloned()
+                .unwrap_or(VariableMeasure::Unknown);
+            let expanded_len = if measure == VariableMeasure::Nominal {
+                category_maps
+                    .get(feature_idx)
+                    .map(|category_map| category_map.len())
+                    .unwrap_or(1)
+                    .max(1)
+            } else {
+                1
+            };
+            let layout = OriginalFeatureLayout {
+                name: name.clone(),
+                measure,
+                original_index: feature_idx,
+                expanded_start,
+                expanded_len,
+            };
+            expanded_start += expanded_len;
+            layout
+        })
+        .collect()
+}
+
+fn original_feature_selected(feature: &OriginalFeatureLayout, weights: Option<&[f64]>) -> bool {
+    let Some(weights) = weights else {
+        return true;
+    };
+
+    (feature.expanded_start..feature.expanded_start + feature.expanded_len)
+        .any(|idx| weights.get(idx).copied().unwrap_or(0.0) > 0.0)
+}
+
+fn original_feature_display_value(
+    case_idx: usize,
+    feature: &OriginalFeatureLayout,
+    category_maps: &[HashMap<String, usize>],
+    data: &AnalysisData,
+) -> Option<f64> {
+    match feature.measure {
+        VariableMeasure::Nominal => category_index(case_idx, feature, category_maps, data),
+        VariableMeasure::Ordinal => match find_feature_value(case_idx, &feature.name, data) {
+            Some(DataValue::Number(value)) if value.is_finite() => Some(*value),
+            Some(DataValue::Text(_)) | Some(DataValue::Boolean(_)) => {
+                category_index(case_idx, feature, category_maps, data)
+            }
+            _ => None,
+        },
+        _ => match find_feature_value(case_idx, &feature.name, data) {
+            Some(DataValue::Number(value)) if value.is_finite() => Some(*value),
+            _ => None,
+        },
+    }
+}
+
+fn category_index(
+    case_idx: usize,
+    feature: &OriginalFeatureLayout,
+    category_maps: &[HashMap<String, usize>],
+    data: &AnalysisData,
+) -> Option<f64> {
+    let category = category_key(find_feature_value(case_idx, &feature.name, data))?;
+    category_maps
+        .get(feature.original_index)
+        .and_then(|category_map| category_map.get(&category).copied())
+        .map(|idx| idx as f64 + 1.0)
+}
+
+fn feature_categories(
+    feature: &OriginalFeatureLayout,
+    category_maps: &[HashMap<String, usize>],
+) -> Vec<String> {
+    if !is_categorical(&feature.measure) {
+        return Vec::new();
+    }
+
+    category_labels(feature, category_maps)
+}
+
+fn feature_ticks(
+    feature: &OriginalFeatureLayout,
+    category_maps: &[HashMap<String, usize>],
+    data: &AnalysisData,
+    case_indices: &[usize],
+) -> Vec<PredictorAxisTick> {
+    if feature.measure == VariableMeasure::Ordinal
+        && ordinal_uses_numeric_display(feature, data, case_indices)
+    {
+        return numeric_ordinal_ticks(feature, data, case_indices);
+    }
+
+    if !is_categorical(&feature.measure) {
+        return Vec::new();
+    }
+
+    category_labels(feature, category_maps)
+        .into_iter()
+        .enumerate()
+        .map(|(idx, label)| PredictorAxisTick {
+            value: idx as f64 + 1.0,
+            label,
+        })
+        .collect()
+}
+
+fn category_labels(
+    feature: &OriginalFeatureLayout,
+    category_maps: &[HashMap<String, usize>],
+) -> Vec<String> {
+    let mut categories = category_maps
+        .get(feature.original_index)
+        .map(|category_map| category_map.iter().collect::<Vec<_>>())
+        .unwrap_or_default();
+    categories.sort_by_key(|(_, idx)| **idx);
+    categories
+        .into_iter()
+        .map(|(category, _)| category.clone())
+        .collect()
+}
+
+fn numeric_ordinal_ticks(
+    feature: &OriginalFeatureLayout,
+    data: &AnalysisData,
+    case_indices: &[usize],
+) -> Vec<PredictorAxisTick> {
+    let mut values = case_indices
+        .iter()
+        .filter_map(|case_idx| match find_feature_value(*case_idx, &feature.name, data) {
+            Some(DataValue::Number(value)) if value.is_finite() => Some(*value),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    values.sort_by(|left, right| left.total_cmp(right));
+    values.dedup_by(|left, right| (*left - *right).abs() <= f64::EPSILON);
+    values
+        .into_iter()
+        .map(|value| PredictorAxisTick {
+            value,
+            label: data_value_label(&DataValue::Number(value)),
+        })
+        .collect()
+}
+
+fn ordinal_uses_numeric_display(
+    feature: &OriginalFeatureLayout,
+    data: &AnalysisData,
+    case_indices: &[usize],
+) -> bool {
+    if feature.measure != VariableMeasure::Ordinal {
+        return false;
+    }
+
+    case_indices.iter().all(|case_idx| {
+        matches!(
+            find_feature_value(*case_idx, &feature.name, data),
+            Some(DataValue::Number(value)) if value.is_finite()
+        )
+    })
+}
+
+fn find_feature_value<'a>(
+    case_idx: usize,
+    var: &str,
+    data: &'a AnalysisData,
+) -> Option<&'a DataValue> {
+    for dataset in &data.features_data {
+        if case_idx < dataset.len() {
+            if let Some(value) = dataset[case_idx].values.get(var) {
+                return Some(value);
+            }
+        }
+    }
+
+    for dataset in &data.target_data {
+        if case_idx < dataset.len() {
+            if let Some(value) = dataset[case_idx].values.get(var) {
+                return Some(value);
+            }
+        }
+    }
+
+    if let Some(case_data) = &data.case_data {
+        for dataset in case_data {
+            if case_idx < dataset.len() {
+                if let Some(value) = dataset[case_idx].values.get(var) {
+                    return Some(value);
+                }
+            }
+        }
+    }
+
+    None
+}
+
+fn category_key(value: Option<&DataValue>) -> Option<String> {
+    match value {
+        Some(DataValue::Text(text)) if !text.trim().is_empty() => Some(text.clone()),
+        Some(DataValue::Boolean(value)) => Some(value.to_string()),
+        Some(DataValue::Number(value)) if value.is_finite() => Some(value.to_string()),
+        _ => None,
+    }
+}
+
+fn is_categorical(measure: &VariableMeasure) -> bool {
+    *measure == VariableMeasure::Nominal || *measure == VariableMeasure::Ordinal
+}
+
 fn feature_value(row: &[f64], display_indices: &[usize], position: usize) -> Option<f64> {
     display_indices
         .get(position)
@@ -179,5 +548,240 @@ fn target_measure_label(measure: &VariableMeasure) -> &'static str {
         VariableMeasure::Ordinal => "ordinal",
         VariableMeasure::Nominal => "nominal",
         VariableMeasure::Unknown => "unknown",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use crate::models::{
+        config::{
+            FeaturesConfig, KnnConfig, MainConfig, NeighborsConfig, OutputConfig, PartitionConfig,
+            SaveConfig,
+        },
+        data::{
+            AnalysisData, DataRecord, DataValue, VariableAlign, VariableDefinition,
+            VariableMeasure, VariableRole, VariableType,
+        },
+    };
+
+    use super::calculate_predictor_space;
+
+    #[test]
+    fn categorical_predictor_is_collapsed_to_one_chart_dimension() {
+        let data = AnalysisData {
+            target_data: vec![vec![
+                record("class", DataValue::Text("A".to_string())),
+                record("class", DataValue::Text("B".to_string())),
+                record("class", DataValue::Text("A".to_string())),
+            ]],
+            features_data: vec![vec![
+                record_many(vec![
+                    ("x", DataValue::Number(1.0)),
+                    ("group", DataValue::Text("red".to_string())),
+                    ("y", DataValue::Number(10.0)),
+                ]),
+                record_many(vec![
+                    ("x", DataValue::Number(2.0)),
+                    ("group", DataValue::Text("blue".to_string())),
+                    ("y", DataValue::Number(20.0)),
+                ]),
+                record_many(vec![
+                    ("x", DataValue::Number(3.0)),
+                    ("group", DataValue::Text("red".to_string())),
+                    ("y", DataValue::Number(30.0)),
+                ]),
+            ]],
+            focal_case_data: Vec::new(),
+            case_data: None,
+            target_data_defs: vec![vec![variable_def("class", VariableMeasure::Nominal)]],
+            features_data_defs: vec![vec![
+                variable_def("x", VariableMeasure::Scale),
+                variable_def("group", VariableMeasure::Nominal),
+                variable_def("y", VariableMeasure::Scale),
+            ]],
+            focal_case_data_defs: Vec::new(),
+            case_data_defs: None,
+        };
+
+        let space = calculate_predictor_space(&data, &config()).unwrap();
+        let dimension = &space.dimensions[0];
+
+        assert_eq!(space.model_predictors, 3);
+        assert_eq!(space.actual_predictors, 3);
+        assert_eq!(dimension.name, "x vs group vs y");
+        assert_eq!(dimension.points[0].x, 1.0);
+        assert_eq!(dimension.points[0].y, 1.0);
+        assert_eq!(dimension.points[0].z, 10.0);
+        assert_eq!(dimension.points[1].y, 2.0);
+        assert_eq!(dimension.axes[1].name, "group");
+        assert_eq!(dimension.axes[1].categories, vec!["red", "blue"]);
+    }
+
+    #[test]
+    fn numeric_ordinal_predictor_keeps_numeric_ticks() {
+        let data = AnalysisData {
+            target_data: vec![vec![
+                record("class", DataValue::Text("A".to_string())),
+                record("class", DataValue::Text("B".to_string())),
+                record("class", DataValue::Text("A".to_string())),
+            ]],
+            features_data: vec![vec![
+                record_many(vec![
+                    ("rank", DataValue::Number(1.0)),
+                    ("score", DataValue::Number(10.0)),
+                ]),
+                record_many(vec![
+                    ("rank", DataValue::Number(2.0)),
+                    ("score", DataValue::Number(20.0)),
+                ]),
+                record_many(vec![
+                    ("rank", DataValue::Number(3.0)),
+                    ("score", DataValue::Number(30.0)),
+                ]),
+            ]],
+            focal_case_data: Vec::new(),
+            case_data: None,
+            target_data_defs: vec![vec![variable_def("class", VariableMeasure::Nominal)]],
+            features_data_defs: vec![vec![
+                variable_def("rank", VariableMeasure::Ordinal),
+                variable_def("score", VariableMeasure::Scale),
+            ]],
+            focal_case_data_defs: Vec::new(),
+            case_data_defs: None,
+        };
+
+        let mut config = config();
+        config.main.feature_var = Some(vec!["rank".to_string(), "score".to_string()]);
+
+        let space = calculate_predictor_space(&data, &config).unwrap();
+        let dimension = &space.dimensions[0];
+
+        assert_eq!(dimension.axes[0].measure, "ordinal");
+        assert_eq!(dimension.axes[0].categories, vec!["1", "2", "3"]);
+        assert_eq!(
+            dimension.axes[0]
+                .ticks
+                .iter()
+                .map(|tick| (tick.value, tick.label.clone()))
+                .collect::<Vec<_>>(),
+            vec![
+                (1.0, "1".to_string()),
+                (2.0, "2".to_string()),
+                (3.0, "3".to_string()),
+            ]
+        );
+        assert_eq!(dimension.points[0].x, 1.0);
+        assert_eq!(dimension.points[2].x, 3.0);
+    }
+
+    fn config() -> KnnConfig {
+        KnnConfig {
+            main: MainConfig {
+                target_var: Some("class".to_string()),
+                feature_var: Some(vec![
+                    "x".to_string(),
+                    "group".to_string(),
+                    "y".to_string(),
+                ]),
+                case_iden_var: None,
+                focal_case_iden_var: None,
+                norm_covar: false,
+            },
+            neighbors: NeighborsConfig {
+                specify: true,
+                auto_selection: false,
+                specify_k: 1,
+                min_k: None,
+                max_k: None,
+                metric_eucli: true,
+                metric_manhattan: false,
+                weight: false,
+                predictions_mean: false,
+                predictions_median: false,
+            },
+            features: FeaturesConfig {
+                forward_selection: None,
+                forced_entry_var: None,
+                features_to_evaluate: 0,
+                forced_features: 0,
+                perform_selection: false,
+                max_reached: true,
+                below_min: false,
+                max_to_select: None,
+                min_change: 0.01,
+            },
+            partition: PartitionConfig {
+                src_var: None,
+                partitioning_variable: None,
+                use_randomly: false,
+                use_variable: false,
+                v_fold_partitioning_variable: None,
+                v_fold_use_randomly: false,
+                v_fold_use_partitioning_var: false,
+                training_number: 70,
+                num_partition: 2,
+                set_seed: false,
+                seed: None,
+            },
+            save: SaveConfig {
+                auto_name: true,
+                custom_name: false,
+                max_cats_to_save: None,
+                has_target_var: false,
+                is_cate_target_var: true,
+                random_assign_to_partition: false,
+                random_assign_to_fold: false,
+            },
+            output: OutputConfig {
+                case_summary: true,
+                feature_selection_summary: true,
+                k_selection_chart: true,
+                predictor_space: true,
+                prediction_results: true,
+                confusion_matrix: true,
+                show_neighbor_detail: false,
+                chart_and_table: true,
+                export_model_xml: false,
+                xml_file_path: None,
+                export_distance: false,
+                create_dataset: false,
+                write_data_file: false,
+                new_data_file_path: None,
+                dataset_name: None,
+            },
+        }
+    }
+
+    fn record(name: &str, value: DataValue) -> DataRecord {
+        record_many(vec![(name, value)])
+    }
+
+    fn record_many(values: Vec<(&str, DataValue)>) -> DataRecord {
+        DataRecord {
+            values: values
+                .into_iter()
+                .map(|(name, value)| (name.to_string(), value))
+                .collect::<HashMap<_, _>>(),
+        }
+    }
+
+    fn variable_def(name: &str, measure: VariableMeasure) -> VariableDefinition {
+        VariableDefinition {
+            id: None,
+            column_index: 0,
+            name: name.to_string(),
+            r#type: VariableType::Numeric,
+            width: 8,
+            decimals: 0,
+            label: None,
+            values: Vec::new(),
+            missing: Vec::new(),
+            columns: 8,
+            align: VariableAlign::Right,
+            measure,
+            role: VariableRole::Input,
+        }
     }
 }
