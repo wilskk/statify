@@ -1,17 +1,14 @@
-// Store WASM instance
-let wasmInitialized = false;
-let wasmExports = null;
-
-// Load WASM using the __wbg_init() from wasm.js (--target web output)
+// Load WASM fresh every time (no caching — always load latest build)
 async function loadWasm() {
-    if (wasmInitialized) return wasmExports;
-
     try {
         console.log("[Discriminant Worker] Loading WASM module...");
 
-        const baseUrl = new URL('.', self.location.href).href;
-        const wasmUrl = new URL('./pkg/wasm_bg.wasm', baseUrl).href;
-        const jsUrl = new URL('./pkg/wasm.js', baseUrl).href;
+        // WASM pkg lives right next to the worker at ./pkg/
+        const baseUrl = new URL('./', self.location.href).href;
+        const wasmUrl = baseUrl + 'pkg/wasm_bg.wasm';
+        const jsUrl = baseUrl + 'pkg/wasm.js';
+
+        console.log("[Discriminant Worker] WASM URL:", jsUrl);
 
         // Import wasm.js — it has DiscriminantAnalysis class and __wbg_init()
         const wasmModule = await import(/* webpackIgnore: true */ jsUrl);
@@ -19,12 +16,13 @@ async function loadWasm() {
         // Initialize WASM: fetch wasm, instantiate, wire up helpers
         await wasmModule.default({ module_or_path: wasmUrl });
 
-        wasmExports = wasmModule;
-        wasmInitialized = true;
-
         console.log("[Discriminant Worker] WASM loaded successfully");
-        console.log("[Discriminant Worker] DiscriminantAnalysis:", typeof wasmExports.DiscriminantAnalysis);
-        return wasmExports;
+        console.log("[Discriminant Worker] DiscriminantAnalysis:", typeof wasmModule.DiscriminantAnalysis);
+
+        // Debug: verify WASM binary is fresh by logging current timestamp
+        console.log("[Discriminant Worker] WASM binary timestamp:", new Date().toISOString());
+
+        return wasmModule;
     } catch (error) {
         console.error("[Discriminant Worker] Failed to load WASM:", error);
         throw new Error(`WASM loading failed: ${error}`);

@@ -4,6 +4,7 @@
 //! including univariate F tests, Wilks' Lambda, and tolerance calculations.
 
 use rayon::prelude::*;
+use nalgebra::{DMatrix, DVector};
 
 use crate::{
     models::{ result::WilksLambdaTest, AnalysisData, DiscriminantConfig },
@@ -15,6 +16,7 @@ use super::core::{
     calculate_eigen_statistics,
     calculate_p_value_from_chi_square,
     extract_analyzed_dataset,
+    get_stepwise_selected_variables,
 };
 
 /// Calculate univariate F test for a variable
@@ -213,10 +215,16 @@ pub fn calculate_overall_f_statistic(
 /// explained by the other independent variables in the model. Low tolerance
 /// indicates multicollinearity.
 ///
+/// This implementation uses the **multivariate** approach: regress the target
+/// variable on ALL other variables simultaneously, then compute
+/// tolerance = 1 - R² (where R² is from that multivariate regression).
+///
+/// This matches SPSS's "Tolerance" column in stepwise output.
+///
 /// # Parameters
 /// * `variable` - The variable to test
 /// * `dataset` - The analyzed dataset containing group data and means
-/// * `other_variables` - Other variables in the model
+/// * `other_variables` - Other variables already in the model
 ///
 /// # Returns
 /// A tuple of (tolerance, minimum tolerance)
@@ -229,79 +237,105 @@ pub fn calculate_tolerance(
         return (1.0, 1.0);
     }
 
-    // Extract values for target variable
-    let mut target_values = Vec::new();
+    // Collect ALL observation vectors: target + all predictors
+    let num_preds = other_variables.len();
+    let mut all_values: Vec<Vec<f64>> = Vec::new();
 
-    for group_label in &dataset.group_labels {
-        if let Some(values) = dataset.group_data.get(variable).and_then(|g| g.get(group_label)) {
-            target_values.extend(values.iter().copied());
-        }
+    // Row 0 = target variable
+    all_values.push(collect_variable_values(dataset, variable));
+
+    // Rows 1..k = each predictor in other_variables
+    for pred in other_variables {
+        all_values.push(collect_variable_values(dataset, pred));
     }
 
-    if target_values.is_empty() {
+    // Determine common length across all rows
+    let n = all_values.iter().map(|v| v.len()).min().unwrap_or(0);
+    if n <= num_preds {
         return (0.0, 0.0);
     }
 
-    // Calculate R² between this variable and others
-    if other_variables.len() == 1 {
-        // Simple case with one predictor - calculate correlation coefficient
-        let other_var = &other_variables[0];
-
-        let mut other_values = Vec::new();
-
-        for group_label in &dataset.group_labels {
-            if
-                let Some(values) = dataset.group_data
-                    .get(other_var)
-                    .and_then(|g| g.get(group_label))
-            {
-                other_values.extend(values.iter().copied());
-            }
-        }
-
-        if other_values.len() == target_values.len() && !other_values.is_empty() {
-            let r = calculate_correlation(&target_values, &other_values);
-            let r_squared = r.powi(2);
-            let tolerance = 1.0 - r_squared;
-            let min_tolerance = tolerance * 0.8; // 80% of current tolerance
-
-            return (tolerance, min_tolerance);
-        }
+    // Truncate all rows to n observations (already matching by construction)
+    for row in &mut all_values {
+        row.truncate(n);
     }
 
-    // Multiple predictors - more accurate computation with parallelism
-    let r_squared_values: Vec<f64> = other_variables
-        .par_iter()
-        .filter_map(|other_var| {
-            let mut other_values = Vec::new();
+    let target_row = &all_values[0];
+    let predictor_rows = &all_values[1..];
 
-            for group_label in &dataset.group_labels {
-                if
-                    let Some(values) = dataset.group_data
-                        .get(other_var)
-                        .and_then(|g| g.get(group_label))
-                {
-                    other_values.extend(values.iter().copied());
-                }
+    // Build design matrix X [n x (p+1)] with intercept column
+    let mut x_data: Vec<f64> = Vec::with_capacity(n * (num_preds + 1));
+    for i in 0..n {
+        x_data.push(1.0); // intercept
+        for pred_row in predictor_rows {
+            x_data.push(pred_row[i]);
+        }
+    }
+    let x_matrix = DMatrix::from_vec(n, num_preds + 1, x_data);
+
+    // Target vector y
+    let y_vector = DVector::from_vec(target_row.clone());
+
+    // Compute R² via OLS: b = (X'X)^-1 X'y
+    // then R² = 1 - RSS/TSS
+    let xt = x_matrix.transpose();
+    let xtx = &xt * &x_matrix;
+
+    // Add regularization for numerical stability
+    let mut xtx_reg = xtx.clone();
+    for i in 0..xtx_reg.ncols() {
+        xtx_reg[(i, i)] += EPSILON;
+    }
+
+    let r_squared = match xtx_reg.try_inverse() {
+        Some(xtx_inv) => {
+            let xty = &xt * &y_vector;
+            let b = &xtx_inv * &xty;     // coefficients [p+1]
+            let y_hat = &x_matrix * &b;   // predicted values
+            let y_mean = y_vector.mean();
+
+            // TSS = Σ(y_i - ȳ)²
+            let tss: f64 = y_vector.iter()
+                .map(|&y| (y - y_mean).powi(2))
+                .sum();
+
+            // RSS = Σ(y_i - ŷ_i)²
+            let rss: f64 = y_vector.iter()
+                .zip(y_hat.iter())
+                .map(|(y, yh)| (y - yh).powi(2))
+                .sum();
+
+            if tss > EPSILON { 1.0 - (rss / tss) } else { 0.0 }
+        }
+        None => {
+            // Fallback: use bivariate R² with the strongest predictor
+            let mut max_r2 = 0.0_f64;
+            for pred_row in predictor_rows {
+                let r = calculate_correlation(target_row, pred_row);
+                let r2 = r.powi(2);
+                if r2 > max_r2 { max_r2 = r2; }
             }
+            max_r2
+        }
+    };
 
-            if other_values.len() == target_values.len() && !other_values.is_empty() {
-                let r = calculate_correlation(&target_values, &other_values);
-                Some(r.powi(2))
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    // Use maximum correlation for tolerance
-    let max_r_squared = r_squared_values
-        .iter()
-        .fold(0.0, |max_val, &val| (max_val as f64).max(val));
-    let tolerance = 1.0 - max_r_squared;
-    let min_tolerance = tolerance * 0.8; // 80% of current tolerance
+    let tolerance = 1.0 - r_squared;
+    // min_tolerance = the variable's own multivariate tolerance
+    let min_tolerance = tolerance;
 
     (tolerance, min_tolerance)
+}
+
+/// Collect all observation values for a variable across all groups.
+/// Returns a flat Vec<f64> of all observations.
+fn collect_variable_values(dataset: &AnalyzedDataset, variable: &str) -> Vec<f64> {
+    let mut values = Vec::new();
+    for group_label in &dataset.group_labels {
+        if let Some(vals) = dataset.group_data.get(variable).and_then(|g| g.get(group_label)) {
+            values.extend(vals.iter().copied());
+        }
+    }
+    values
 }
 
 /// Calculate Wilks' lambda test for discriminant functions
@@ -344,7 +378,13 @@ pub fn calculate_wilks_lambda_test(
     let mut df = Vec::with_capacity(num_functions);
     let mut significance = Vec::with_capacity(num_functions);
 
-    let variables = &config.main.independent_variables;
+    let grouping_var = &config.main.grouping_variable;
+    let variables: Vec<String> = if config.main.stepwise {
+        get_stepwise_selected_variables(data, config)?
+    } else {
+        config.main.independent_variables.iter().filter(|v| *v != grouping_var).cloned().collect()
+    };
+
     let p = variables.len() as i32;
     let g = dataset.num_groups as i32;
     let n = dataset.total_cases as f64;

@@ -243,6 +243,96 @@ pub fn calculate_pooled_within_matrix(
     pooled_within
 }
 
+/// Calculate pooled within-groups covariance matrix WITHOUT EPSILON diagonal regularization.
+///
+/// This is identical to `calculate_pooled_within_matrix` but does NOT add EPSILON
+/// to the diagonal. Used for:
+/// - Log Determinants table (must match Box's M internal computation)
+/// - Box's M test (pooled log determinant must match table value)
+///
+/// The matrix is calculated as:
+/// W = Σ(nᵢ-1)Sᵢ / (n-g)
+///
+/// # Parameters
+/// * `dataset` - The analyzed dataset
+/// * `variables` - The variables to include in the matrix
+///
+/// # Returns
+/// The pooled within-groups covariance matrix (no EPSILON added)
+pub fn calculate_pooled_within_matrix_no_epsilon(
+    dataset: &AnalyzedDataset,
+    variables: &[String],
+) -> DMatrix<f64> {
+    let num_vars = variables.len();
+    let mut pooled_within = DMatrix::zeros(num_vars, num_vars);
+    let mut total_df = 0;
+
+    // Process each group in parallel
+    let group_contributions: Vec<(DMatrix<f64>, usize)> = dataset
+        .group_labels
+        .par_iter()
+        .filter_map(|group_label| {
+            let mut group_within = DMatrix::zeros(num_vars, num_vars);
+
+            let n = dataset
+                .group_data
+                .get(&variables[0])
+                .and_then(|g| g.get(group_label))
+                .map_or(0, |v| v.len());
+
+            if n <= 1 {
+                return None;
+            }
+
+            let df = n - 1;
+
+            for (i, var_i) in variables.iter().enumerate() {
+                for (j, var_j) in variables.iter().enumerate() {
+                    if let (Some(values_i), Some(values_j)) = (
+                        dataset
+                            .group_data
+                            .get(var_i)
+                            .and_then(|g| g.get(group_label)),
+                        dataset
+                            .group_data
+                            .get(var_j)
+                            .and_then(|g| g.get(group_label)),
+                    ) {
+                        if values_i.len() > 1 && values_i.len() == values_j.len() {
+                            let mean_i = dataset.group_means[group_label][var_i];
+                            let mean_j = dataset.group_means[group_label][var_j];
+
+                            let cov = calculate_covariance(
+                                values_i,
+                                values_j,
+                                Some(mean_i),
+                                Some(mean_j),
+                            );
+
+                            group_within[(i, j)] = (df as f64) * cov;
+                        }
+                    }
+                }
+            }
+
+            Some((group_within, df))
+        })
+        .collect();
+
+    for (group_within, df) in group_contributions {
+        pooled_within += &group_within;
+        total_df += df;
+    }
+
+    if total_df > 0 {
+        pooled_within /= total_df as f64;
+    }
+
+    // NO EPSILON added here — this is the key difference from calculate_pooled_within_matrix
+
+    pooled_within
+}
+
 /// Calculate pooled within-groups covariance and correlation matrices
 ///
 /// This function computes both the pooled within-groups covariance matrix and

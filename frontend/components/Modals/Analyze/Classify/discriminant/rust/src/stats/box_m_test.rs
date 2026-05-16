@@ -1,15 +1,12 @@
 use nalgebra::DMatrix;
-use statrs::distribution::ContinuousCDF;
 use rayon::prelude::*;
+use statrs::distribution::ContinuousCDF;
 
-use crate::models::{ result::BoxMTest, AnalysisData, DiscriminantConfig };
+use crate::models::{result::BoxMTest, AnalysisData, DiscriminantConfig};
 
 use super::core::{
-    AnalyzedDataset,
-    extract_analyzed_dataset,
-    calculate_log_determinant,
-    calculate_covariance,
-    EPSILON,
+    AnalyzedDataset, calculate_covariance, calculate_log_determinant,
+    extract_analyzed_dataset, get_stepwise_selected_variables, EPSILON,
 };
 
 /// Calculates Box's M test for homogeneity of covariance matrices.
@@ -39,7 +36,7 @@ use super::core::{
 /// A BoxMTest structure containing test statistics and p-value
 pub fn calculate_box_m_test(
     data: &AnalysisData,
-    config: &DiscriminantConfig
+    config: &DiscriminantConfig,
 ) -> Result<BoxMTest, String> {
     web_sys::console::log_1(&"Executing calculate_box_m_test".into());
 
@@ -51,21 +48,26 @@ pub fn calculate_box_m_test(
         }
     };
 
-    let independent_variables = &config.main.independent_variables;
-
-    // Exclude grouping variable from Box's M calculation
     let grouping_var = &config.main.grouping_variable;
-    let variables: Vec<String> = independent_variables
-        .iter()
-        .filter(|v| *v != grouping_var)
-        .cloned()
-        .collect();
+    let variables: Vec<String> = if config.main.stepwise {
+        get_stepwise_selected_variables(data, config)?
+    } else {
+        config.main.independent_variables
+            .iter()
+            .filter(|v| *v != grouping_var)
+            .cloned()
+            .collect()
+    };
+
+    web_sys::console::log_1(&format!(
+        "Box M: using {} variables: {:?}",
+        variables.len(),
+        variables
+    ).into());
 
     // Compute per-group covariance matrices and log determinants
-    let (group_covs, group_log_dets, group_sizes) = compute_group_covariances(
-        &dataset,
-        &variables
-    )?;
+    let (group_covs, group_log_dets, group_sizes) =
+        compute_group_covariances(&dataset, &variables)?;
 
     if group_covs.is_empty() {
         return Err("No valid groups for Box's M test".to_string());
@@ -101,7 +103,7 @@ pub fn calculate_box_m_test(
     // f approximation
     let f_approx = if box_m > EPSILON {
         if c2 > c1 * c1 {
-            box_m/b
+            box_m / b
         } else {
             // F = (f2 * M) / (f1 * (b - M))
             if b > box_m {
@@ -115,10 +117,19 @@ pub fn calculate_box_m_test(
     };
 
     // P-value calculation: 1 - CDF.F(F_approx, df1, df2)
-    let p_value = if f_approx.is_finite() { compute_p_value(f_approx, v1, v2) } else { 1.0 };
+    let p_value = if f_approx.is_finite() {
+        compute_p_value(f_approx, v1, v2)
+    } else {
+        1.0
+    };
 
     // Add explanatory note based on Box's M documentation
     let note = "Note: Tests null hypothesis of equal population covariance matrices.".to_string();
+
+    web_sys::console::log_1(&format!(
+        "Box M Result: M={}, f_approx={}, df1={}, df2={}, p_value={}, c1={}, c2={}, b={}",
+        box_m, f_approx, v1, v2, p_value, c1, c2, b
+    ).into());
 
     Ok(BoxMTest {
         box_m,
@@ -127,6 +138,11 @@ pub fn calculate_box_m_test(
         df2: v2,
         p_value,
         note,
+        debug_p: p,
+        debug_k: k,
+        debug_c1: c1,
+        debug_c2: c2,
+        debug_b: b,
     })
 }
 
@@ -143,14 +159,15 @@ pub fn calculate_box_m_test(
 /// A tuple containing (covariance matrices, log determinants, group sizes)
 fn compute_group_covariances(
     dataset: &AnalyzedDataset,
-    variables: &[String]
+    variables: &[String],
 ) -> Result<(Vec<DMatrix<f64>>, Vec<f64>, Vec<usize>), String> {
     let mut group_covs = Vec::new();
     let mut group_log_dets = Vec::new();
     let mut group_sizes = Vec::new();
 
     // Process each group in parallel
-    let results: Vec<Option<(DMatrix<f64>, f64, usize)>> = dataset.group_labels
+    let results: Vec<Option<(DMatrix<f64>, f64, usize)>> = dataset
+        .group_labels
         .par_iter()
         .map(|group| {
             // Check if group has enough data for covariance calculation
@@ -172,7 +189,8 @@ fn compute_group_covariances(
             }
 
             // Get group size
-            let group_size = dataset.group_data
+            let group_size = dataset
+                .group_data
                 .get(variables.first().unwrap_or(&String::new()))
                 .and_then(|v| v.get(group))
                 .map_or(0, |v| v.len());
@@ -216,13 +234,16 @@ fn compute_group_covariances(
 fn compute_group_covariance_matrix(
     dataset: &AnalyzedDataset,
     group: &str,
-    variables: &[String]
+    variables: &[String],
 ) -> Result<DMatrix<f64>, String> {
     let num_vars = variables.len();
 
     // Check if we have enough data
-    let first_var = variables.first().ok_or_else(|| "No variables provided".to_string())?;
-    let num_cases = dataset.group_data
+    let first_var = variables
+        .first()
+        .ok_or_else(|| "No variables provided".to_string())?;
+    let num_cases = dataset
+        .group_data
         .get(first_var)
         .and_then(|g| g.get(group))
         .map_or(0, |v| v.len());
@@ -236,18 +257,18 @@ fn compute_group_covariance_matrix(
 
     for (var1_idx, var1) in variables.iter().enumerate() {
         for (var2_idx, var2) in variables.iter().enumerate() {
-            if
-                let (Some(values1), Some(values2)) = (
-                    dataset.group_data.get(var1).and_then(|g| g.get(group)),
-                    dataset.group_data.get(var2).and_then(|g| g.get(group)),
-                )
-            {
+            if let (Some(values1), Some(values2)) = (
+                dataset.group_data.get(var1).and_then(|g| g.get(group)),
+                dataset.group_data.get(var2).and_then(|g| g.get(group)),
+            ) {
                 if !values1.is_empty() && !values2.is_empty() {
-                    let mean1 = dataset.group_means
+                    let mean1 = dataset
+                        .group_means
                         .get(group)
                         .and_then(|m| m.get(var1))
                         .unwrap_or(&0.0);
-                    let mean2 = dataset.group_means
+                    let mean2 = dataset
+                        .group_means
                         .get(group)
                         .and_then(|m| m.get(var2))
                         .unwrap_or(&0.0);
@@ -257,11 +278,6 @@ fn compute_group_covariance_matrix(
                 }
             }
         }
-    }
-
-    // Add small regularization for numerical stability
-    for i in 0..num_vars {
-        cov_matrix[(i, i)] += EPSILON;
     }
 
     Ok(cov_matrix)
@@ -286,7 +302,7 @@ fn compute_group_covariance_matrix(
 /// The pooled covariance matrix
 fn compute_pooled_covariance_matrix(
     group_covs: &[DMatrix<f64>],
-    group_sizes: &[usize]
+    group_sizes: &[usize],
 ) -> DMatrix<f64> {
     if group_covs.is_empty() {
         return DMatrix::zeros(0, 0);
@@ -304,11 +320,6 @@ fn compute_pooled_covariance_matrix(
 
     if total_df > 0 {
         pooled_cov /= total_df as f64;
-    }
-
-    // Add small regularization for numerical stability
-    for i in 0..p {
-        pooled_cov[(i, i)] += EPSILON;
     }
 
     pooled_cov
@@ -346,7 +357,7 @@ fn compute_c1_factor(p: usize, k: usize, group_sizes: &[usize], total_sample_siz
     let denominator = 6.0 * (p_f64 + 1.0) * (k_f64 - 1.0);
 
     if denominator > EPSILON {
-        numerator / denominator // <-- Diperbaiki: Hapus "1.0 -"
+        numerator / denominator // Karena aproksimasi F, langsung dibagi dan tidak dikurangi 1 di awal
     } else {
         0.0
     }
@@ -398,7 +409,11 @@ fn compute_c2_factor(p: usize, k: usize, group_sizes: &[usize], total_sample_siz
 /// # Returns
 /// The b-factor
 fn compute_b_factor(c1: f64, c2: f64, v1: f64, v2: f64) -> f64 {
-    if c2 > c1 * c1 { v1 / (1.0 - c1 - v1 / v2) } else { v2 / (1.0 - c1 - 2.0 / v2) }
+    if c2 > c1 * c1 {
+        v1 / (1.0 - c1 - v1 / v2)
+    } else {
+        v2 / (1.0 - c1 + 2.0 / v2) 
+    }
 }
 
 /// Computes the second degrees of freedom (df2) for F approximation.
@@ -418,7 +433,7 @@ fn compute_df2(c1: f64, c2: f64, df1: f64) -> f64 {
     if denominator > EPSILON {
         (df1 + 2.0) / denominator
     } else {
-        df1 * 2.0 
+        df1 * 2.0
     }
 }
 

@@ -142,6 +142,17 @@ pub struct BoxMTest {
     #[serde(rename = "p_value")]
     pub p_value: f64,
     pub note: String,
+    // Debug fields (visible in console.log)
+    #[serde(skip_serializing)]
+    pub debug_p: usize,
+    #[serde(skip_serializing)]
+    pub debug_k: usize,
+    #[serde(skip_serializing)]
+    pub debug_c1: f64,
+    #[serde(skip_serializing)]
+    pub debug_c2: f64,
+    #[serde(skip_serializing)]
+    pub debug_b: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -176,6 +187,9 @@ pub struct LogDeterminants {
     #[serde(rename = "pooled_log_determinant")]
     pub pooled_log_determinant: f64,
     pub note: String,
+    // Debug fields (visible in console.log)
+    #[serde(skip_serializing)]
+    pub debug_variables: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

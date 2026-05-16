@@ -411,10 +411,15 @@ pub fn calculate_correlation(values1: &[f64], values2: &[f64]) -> f64 {
 /// Calculate log determinant of a matrix
 pub fn calculate_log_determinant(matrix: &DMatrix<f64>) -> f64 {
     let svd = SVD::new(matrix.clone(), false, false);
+    let singular_values = &svd.singular_values;
 
-    svd.singular_values
+    // Use scaled threshold (same as calculate_rank_and_log_det) for consistency
+    let max_val = singular_values.iter().fold(0.0_f64, |max, &v| max.max(v));
+    let threshold = EPSILON * max_val;
+
+    singular_values
         .iter()
-        .filter(|&v| *v > EPSILON)
+        .filter(|&v| *v > threshold)
         .map(|v| v.ln())
         .sum()
 }
@@ -424,7 +429,7 @@ pub fn calculate_rank_and_log_det(matrix: &DMatrix<f64>) -> (i32, f64) {
     let svd = SVD::new(matrix.clone(), false, false);
     let singular_values = &svd.singular_values;
 
-    let max_val = singular_values.iter().fold(0.0, |max, &v| (max as f64).max(v));
+    let max_val = singular_values.iter().fold(0.0_f64, |max, &v| max.max(v));
     let threshold = EPSILON * max_val;
 
     let rank = singular_values

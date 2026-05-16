@@ -1,35 +1,27 @@
-use serde::{ Deserialize, Serialize };
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 use crate::{
     models::{
         result::{
-            PairwiseComparison,
-            StepwiseNote,
-            StepwiseStatistics,
-            VariableInAnalysis,
+            PairwiseComparison, StepwiseNote, StepwiseStatistics, VariableInAnalysis,
             VariableNotInAnalysis,
         },
-        AnalysisData,
-        DiscriminantConfig,
+        AnalysisData, DiscriminantConfig,
     },
     stats::core::{
         calculate_p_value_from_f,
-        calculate_univariate_f,
+        calculate_univariate_f, // Tetap di-import jika dipakai di tempat lain
         extract_analyzed_dataset,
         AnalyzedDataset,
     },
 };
 
 use super::core::{
-    analyze_variables_in_model,
-    analyze_variables_not_in_model,
-    calculate_overall_wilks_lambda,
-    determine_method_type,
-    filter_dataset,
-    find_best_variable_to_enter,
-    find_worst_variable_to_remove,
-    generate_pairwise_comparisons,
+    analyze_variables_in_model, analyze_variables_not_in_model, calculate_overall_wilks_lambda,
+    determine_method_type, filter_dataset, find_best_variable_to_enter,
+    find_worst_variable_to_remove, generate_pairwise_comparisons,
 };
 
 /// Method type enum for different stepwise methods
@@ -74,7 +66,7 @@ struct StepData {
 /// A StepwiseStatistics object with variable selection results
 pub fn calculate_stepwise_statistics(
     data: &AnalysisData,
-    config: &DiscriminantConfig
+    config: &DiscriminantConfig,
 ) -> Result<StepwiseStatistics, String> {
     // Check if stepwise analysis is requested
     if !config.main.stepwise {
@@ -86,7 +78,7 @@ pub fn calculate_stepwise_statistics(
     let variables = &config.main.independent_variables;
 
     let dataset = match extract_analyzed_dataset(data, config) {
-        Ok(ds) => { ds }
+        Ok(ds) => ds,
         Err(e) => {
             return Err(e);
         }
@@ -103,7 +95,7 @@ pub fn calculate_stepwise_statistics(
     // Perform stepwise analysis
     let steps_data = if config.method.f_value || config.method.f_probability {
         match perform_stepwise_analysis(&dataset, variables, config) {
-            Ok(data) => { data }
+            Ok(data) => data,
             Err(e) => {
                 return Err(e);
             }
@@ -114,8 +106,8 @@ pub fn calculate_stepwise_statistics(
 
     // Convert step data to output format
     match convert_steps_to_output(steps_data, config) {
-        Ok(result) => { Ok(result) }
-        Err(e) => { Err(e) }
+        Ok(result) => Ok(result),
+        Err(e) => Err(e),
     }
 }
 
@@ -134,58 +126,130 @@ pub fn calculate_stepwise_statistics(
 fn perform_stepwise_analysis(
     dataset: &AnalyzedDataset,
     variables: &Vec<String>,
-    config: &DiscriminantConfig
+    config: &DiscriminantConfig,
 ) -> Result<Vec<StepData>, String> {
-    // Initialize variables for stepwise analysis
     let mut current_variables: Vec<String> = Vec::new();
     let mut remaining_variables: Vec<String> = variables.clone();
     let mut steps_data: Vec<StepData> = Vec::new();
 
-    // Add initial step
+    // [ANTI-OSILASI]: Tracker kombinasi variabel
+    let mut seen_states: HashSet<String> = HashSet::new();
+    seen_states.insert(String::new());
+
+    // Add initial step (Step 0)
     let initial_step = create_initial_step(dataset, variables, config);
     steps_data.push(initial_step.clone());
 
-    // Determine which method to use
     let method_type = determine_method_type(config);
-
-    // Maximum number of steps (at most all variables × 2)
-    let max_steps = variables.len() * 2; // Account for both additions and removals
-
-    // Perform stepwise selection
+    let max_steps = variables.len() * 2;
     let mut step = 0;
+
     while step < max_steps {
-        // Safety check - ensure we don't get stuck in an infinite loop
-        if current_variables.len() > variables.len() {
-            break;
-        }
+        let mut step_action_taken = false;
 
-        // Process one step of variable selection
-        let step_result = match
-            process_selection_step(
-                dataset,
-                &mut current_variables,
-                &mut remaining_variables,
-                step,
-                method_type,
-                config
-            )
-        {
-            Ok(result) => result,
-            Err(e) => {
-                return Err(e);
+        // PRIORITAS 1: Cek apakah ada variabel yang harus di-REMOVE
+        if current_variables.len() > 1 {
+            let (worst_var_to_remove, worst_stats) =
+                find_worst_variable_to_remove(&current_variables, dataset, method_type, config);
+
+            let should_remove = should_remove_variable(
+                &worst_var_to_remove,
+                &worst_stats,
+                dataset.num_groups,
+                dataset.total_cases,
+                current_variables.len(),
+                config,
+            );
+
+            if should_remove {
+                if let Some(var_name) = worst_var_to_remove {
+                    // Cek apakah state ini memicu infinite loop
+                    let mut next_state = current_variables.clone();
+                    next_state.retain(|v| v != &var_name);
+                    next_state.sort();
+                    let state_key = next_state.join(",");
+
+                    if seen_states.contains(&state_key) {
+                        break; // Loop terdeteksi, hentikan analisis!
+                    }
+                    seen_states.insert(state_key);
+
+                    // Eksekusi Removal
+                    current_variables.retain(|v| v != &var_name);
+                    remaining_variables.push(var_name.clone());
+                    step_action_taken = true;
+
+                    let step_data = create_step_data(
+                        dataset,
+                        &current_variables,
+                        &remaining_variables,
+                        None,                   
+                        Some(var_name.clone()), 
+                        (step as i32) + 1,
+                        method_type,
+                        config,
+                    );
+                    steps_data.push(step_data);
+                    
+                    step += 1;
+                    continue;
+                }
             }
-        };
-
-        // If no changes made, break
-        if !step_result.changes_made {
-            break;
         }
 
-        // Add step data
-        steps_data.extend(step_result.step_data);
+        // PRIORITAS 2: Jika tidak ada yang di-remove, cek apakah ada yang bisa di-ENTER
+        if !step_action_taken && !remaining_variables.is_empty() {
+            let (best_var_to_enter, best_stats) = find_best_variable_to_enter(
+                &remaining_variables,
+                dataset,
+                &current_variables,
+                method_type,
+                config,
+            );
 
-        // If all variables are in the model, break
-        if remaining_variables.is_empty() {
+            let should_enter = should_enter_variable(
+                &best_var_to_enter,
+                &best_stats,
+                dataset.num_groups,
+                dataset.total_cases,
+                current_variables.len(),
+                config,
+            );
+
+            if should_enter {
+                if let Some(var_name) = best_var_to_enter {
+                    // Cek apakah state ini memicu infinite loop
+                    let mut next_state = current_variables.clone();
+                    next_state.push(var_name.clone());
+                    next_state.sort();
+                    let state_key = next_state.join(",");
+
+                    if seen_states.contains(&state_key) {
+                        break; // Loop terdeteksi, hentikan analisis!
+                    }
+                    seen_states.insert(state_key);
+
+                    // Eksekusi Entry
+                    current_variables.push(var_name.clone());
+                    remaining_variables.retain(|v| v != &var_name);
+                    step_action_taken = true;
+
+                    let step_data = create_step_data(
+                        dataset,
+                        &current_variables,
+                        &remaining_variables,
+                        Some(var_name.clone()), 
+                        None,                   
+                        (step as i32) + 1,
+                        method_type,
+                        config,
+                    );
+                    steps_data.push(step_data);
+                }
+            }
+        }
+
+        if !step_action_taken {
             break;
         }
 
@@ -202,314 +266,103 @@ struct StepResult {
     step_data: Vec<StepData>,
 }
 
-/// Process one step of variable selection
-///
-/// This function either adds a variable to the model or removes one,
-/// depending on the statistical criteria.
-///
-/// # Parameters
-/// * `dataset` - The analyzed dataset
-/// * `current_variables` - Variables currently in the model
-/// * `remaining_variables` - Variables not yet in the model
-/// * `step` - Current step number
-/// * `method_type` - The method to use for variable selection
-/// * `config` - The discriminant analysis configuration
-///
-/// # Returns
-/// A StepResult with changes made and step data
-fn process_selection_step(
-    dataset: &AnalyzedDataset,
-    current_variables: &mut Vec<String>,
-    remaining_variables: &mut Vec<String>,
-    step: usize,
-    method_type: MethodType,
-    config: &DiscriminantConfig
-) -> Result<StepResult, String> {
-    let mut steps_data = Vec::new();
-    let mut changes_made = false;
-
-    // Find best variable to enter
-    let (best_var_to_enter, best_stats) = find_best_variable_to_enter(
-        remaining_variables,
-        dataset,
-        current_variables,
-        method_type,
-        config
-    );
-
-    // Check if we should enter this variable
-    let should_enter = should_enter_variable(
-        &best_var_to_enter,
-        &best_stats,
-        dataset.num_groups,
-        dataset.total_cases,
-        current_variables.len(),
-        config
-    );
-
-    // If no variable meets entry criteria, return
-    if !should_enter || best_var_to_enter.is_none() {
-        return Ok(StepResult {
-            changes_made: false,
-            step_data: steps_data,
-        });
-    }
-
-    // Add variable to model
-    if let Some(var_name) = best_var_to_enter {
-        // Only add if not already in the model (safeguard against duplicates)
-        if !current_variables.contains(&var_name) {
-            current_variables.push(var_name.clone());
-            remaining_variables.retain(|v| v != &var_name);
-            changes_made = true;
-
-            // Add step data for variable entry
-            let step_data = create_step_data(
-                dataset,
-                current_variables,
-                remaining_variables,
-                Some(var_name.clone()),
-                None,
-                (step as i32) + 1,
-                method_type,
-                config
-            );
-
-            steps_data.push(step_data);
-
-            // Check for variable removal if needed
-            if step > 0 && current_variables.len() > 1 {
-                let removal_result = match
-                    process_variable_removal(
-                        dataset,
-                        current_variables,
-                        remaining_variables,
-                        step,
-                        method_type,
-                        config
-                    )
-                {
-                    Ok(result) => result,
-                    Err(e) => {
-                        return Err(e);
-                    }
-                };
-
-                if removal_result.changes_made {
-                    steps_data.extend(removal_result.step_data);
-                }
-            }
-        }
-    }
-
-    Ok(StepResult {
-        changes_made,
-        step_data: steps_data,
-    })
-}
-
-/// Process variable removal
-///
-/// This function checks if any variables should be removed from the model
-/// based on the statistical criteria.
-///
-/// # Parameters
-/// * `dataset` - The analyzed dataset
-/// * `current_variables` - Variables currently in the model
-/// * `remaining_variables` - Variables not yet in the model
-/// * `step` - Current step number
-/// * `method_type` - The method to use for variable selection
-/// * `config` - The discriminant analysis configuration
-///
-/// # Returns
-/// A StepResult with changes made and step data
-fn process_variable_removal(
-    dataset: &AnalyzedDataset,
-    current_variables: &mut Vec<String>,
-    remaining_variables: &mut Vec<String>,
-    step: usize,
-    method_type: MethodType,
-    config: &DiscriminantConfig
-) -> Result<StepResult, String> {
-    let mut steps_data = Vec::new();
-    let mut changes_made = false;
-    let mut removal_attempts = 0;
-    let max_removal_attempts = current_variables.len(); // Limit removal attempts to prevent infinite loop
-    let mut step_complete = false;
-
-    while !step_complete && removal_attempts < max_removal_attempts {
-        removal_attempts += 1;
-
-        // Find worst variable to remove
-        let (worst_var_to_remove, worst_stats) = find_worst_variable_to_remove(
-            current_variables,
-            dataset,
-            method_type,
-            config
-        );
-
-        // Check if we should remove this variable
-        let should_remove = should_remove_variable(
-            &worst_var_to_remove,
-            &worst_stats,
-            dataset.num_groups,
-            dataset.total_cases,
-            current_variables.len(),
-            config
-        );
-
-        // If no variable meets removal criteria, break
-        if !should_remove || worst_var_to_remove.is_none() {
-            step_complete = true;
-            continue;
-        }
-
-        // Remove variable from model
-        if let Some(var_name) = worst_var_to_remove {
-            // Only remove if actually in the model
-            if current_variables.contains(&var_name) {
-                current_variables.retain(|v| v != &var_name);
-                if !remaining_variables.contains(&var_name) {
-                    remaining_variables.push(var_name.clone());
-                }
-                changes_made = true;
-
-                // Add step data for variable removal
-                let step_data = create_step_data(
-                    dataset,
-                    current_variables,
-                    remaining_variables,
-                    None,
-                    Some(var_name.clone()),
-                    (step as i32) + 1,
-                    method_type,
-                    config
-                );
-
-                steps_data.push(step_data);
-            }
-        }
-    }
-
-    Ok(StepResult {
-        changes_made,
-        step_data: steps_data,
-    })
-}
-
-/// Determine if a variable should be entered into the model
-///
-/// # Parameters
-/// * `var_opt` - Optional variable name
-/// * `stats` - Statistics for the variable
-/// * `num_groups` - Number of groups
-/// * `total_cases` - Total number of cases
-/// * `num_current_vars` - Number of variables currently in the model
-/// * `config` - The discriminant analysis configuration
-///
-/// # Returns
-/// Boolean indicating whether the variable should be entered
 fn should_enter_variable(
     var_opt: &Option<String>,
     stats: &VariableNotInAnalysis,
     num_groups: usize,
     total_cases: usize,
     num_current_vars: usize,
-    config: &DiscriminantConfig
+    config: &DiscriminantConfig,
 ) -> bool {
     if var_opt.is_none() {
         return false;
     }
 
-    let result = if config.method.f_value {
-        // Use direct F value comparison
-        stats.f_to_enter >= config.method.f_entry
-    } else if config.method.f_probability {
-        // Calculate p-value and compare with probability threshold
-        let p_value = calculate_p_value_from_f(
-            stats.f_to_enter,
-            (num_groups - 1) as f64,
-            (total_cases - num_groups) as f64
-        );
-        p_value <= config.method.p_entry
+    // Use SPSS defaults if thresholds are 0 or not set.
+    // Default F-to-enter = 3.84, P-to-enter = 0.05
+    let f_entry_threshold = if config.method.f_entry > 0.0 {
+        config.method.f_entry
     } else {
-        false
+        3.84
+    };
+    let p_entry_threshold = if config.method.p_entry > 0.0 {
+        config.method.p_entry
+    } else {
+        0.05
     };
 
-    result
+    if config.method.f_value {
+        stats.f_to_enter >= f_entry_threshold
+    } else if config.method.f_probability {
+        let df1 = (num_groups - 1) as f64;
+        let df2 = (total_cases - num_groups - num_current_vars) as f64;
+        let p_value = calculate_p_value_from_f(stats.f_to_enter, df1, df2);
+        p_value <= p_entry_threshold
+    } else {
+        false
+    }
 }
 
-/// Determine if a variable should be removed from the model
-///
-/// # Parameters
-/// * `var_opt` - Optional variable name
-/// * `stats` - Statistics for the variable
-/// * `num_groups` - Number of groups
-/// * `total_cases` - Total number of cases
-/// * `num_current_vars` - Number of variables currently in the model
-/// * `config` - The discriminant analysis configuration
-///
-/// # Returns
-/// Boolean indicating whether the variable should be removed
 fn should_remove_variable(
     var_opt: &Option<String>,
     stats: &VariableInAnalysis,
     num_groups: usize,
     total_cases: usize,
     num_current_vars: usize,
-    config: &DiscriminantConfig
+    config: &DiscriminantConfig,
 ) -> bool {
     if var_opt.is_none() {
         return false;
     }
 
-    let result = if config.method.f_value {
-        // Use direct F value comparison for removal
-        // For removal, the F value must be LESS THAN OR EQUAL TO the threshold
-        stats.f_to_remove <= config.method.f_removal
-    } else if config.method.f_probability {
-        // Calculate p-value and compare with probability threshold
-        // For removal, the p-value must be GREATER THAN OR EQUAL TO the threshold
-        let p_value = calculate_p_value_from_f(
-            stats.f_to_remove,
-            (num_groups - 1) as f64,
-            (total_cases - num_groups) as f64
-        );
-        p_value >= config.method.p_removal
+    // Use SPSS defaults if thresholds are 0 or not set.
+    // Default F-to-remove = 2.71, P-to-remove = 0.10
+    let f_removal_threshold = if config.method.f_removal > 0.0 {
+        config.method.f_removal
     } else {
-        false
+        2.71
+    };
+    let p_removal_threshold = if config.method.p_removal > 0.0 {
+        config.method.p_removal
+    } else {
+        0.10
     };
 
-    result
+    if config.method.f_value || config.method.f_probability {
+        let df2 = (total_cases - num_groups - num_current_vars + 1) as f64;
+        let p_value = calculate_p_value_from_f(stats.f_to_remove, (num_groups - 1) as f64, df2);
+
+        if config.method.f_value {
+            stats.f_to_remove <= f_removal_threshold
+        } else {
+            p_value >= p_removal_threshold
+        }
+    } else {
+        false
+    }
 }
 
 /// Create data for the initial step (no variables in the model)
-///
-/// # Parameters
-/// * `dataset` - The analyzed dataset
-/// * `variables` - Variables to consider
-/// * `config` - The discriminant analysis configuration
-///
-/// # Returns
-/// StepData for the initial step
 fn create_initial_step(
     dataset: &AnalyzedDataset,
     variables: &[String],
-    config: &DiscriminantConfig
+    config: &DiscriminantConfig,
 ) -> StepData {
     let initial_variables_not_in = analyze_variables_not_in_model(variables, dataset, &[], config);
+    let k = dataset.num_groups as i32;
+    let n = dataset.total_cases as i32;
 
     StepData {
         variable_entered: None,
         variable_removed: None,
-        wilks_lambda: 1.0, // No discrimination initially
+        wilks_lambda: 1.0,
         f_value: 0.0,
         df1: 0,
-        df2: 1, // df2 selalu 1
-        df3: (dataset.total_cases - dataset.num_groups) as i32, // df3 adalah total_cases - num_groups
+        df2: k - 1, // [PERBAIKAN]: Sebelumnya hardcode 1, sekarang menyesuaikan jumlah grup
+        df3: n - k,
         exact_f: 0.0,
         exact_df1: 0,
-        exact_df2: (dataset.total_cases - dataset.num_groups) as i32, // Sesuaikan dengan df3
+        exact_df2: n - k,
         significance: 1.0,
         variables_in_analysis: Vec::new(),
         variables_not_in_analysis: initial_variables_not_in,
@@ -518,19 +371,6 @@ fn create_initial_step(
 }
 
 /// Create data for a step in the stepwise procedure
-///
-/// # Parameters
-/// * `dataset` - The analyzed dataset
-/// * `current_variables` - Variables currently in the model
-/// * `remaining_variables` - Variables not yet in the model
-/// * `variable_entered` - Variable that was entered in this step
-/// * `variable_removed` - Variable that was removed in this step
-/// * `step` - Step number
-/// * `method_type` - The method being used
-/// * `config` - The discriminant analysis configuration
-///
-/// # Returns
-/// StepData for the current step
 fn create_step_data(
     dataset: &AnalyzedDataset,
     current_variables: &[String],
@@ -539,73 +379,76 @@ fn create_step_data(
     variable_removed: Option<String>,
     step: i32,
     method_type: MethodType,
-    config: &DiscriminantConfig
+    config: &DiscriminantConfig,
 ) -> StepData {
-    // Analyze variables in and out of the model
-    let vars_in_analysis = analyze_variables_in_model(
-        current_variables,
-        dataset,
-        method_type,
-        config
-    );
+    let vars_in_analysis =
+        analyze_variables_in_model(current_variables, dataset, method_type, config);
 
-    let vars_not_in_analysis = analyze_variables_not_in_model(
-        remaining_variables,
-        dataset,
-        current_variables,
-        config
-    );
+    let vars_not_in_analysis =
+        analyze_variables_not_in_model(remaining_variables, dataset, current_variables, config);
 
-    // Hitung derajat kebebasan
-    let df1 = current_variables.len() as i32; // Jumlah variabel dalam model
-    let df2 = 1; // Selalu 1 berdasarkan output di gambar
+    // Build combined_vars to calculate the overall statistics
+    let combined_vars = current_variables.to_vec();
+
+    let p = combined_vars.len() as f64;
+    let k = dataset.num_groups as f64;
+    let n = dataset.total_cases as f64;
+
+    // [PERBAIKAN]: Rumus df untuk tabel Wilks' Lambda
+    let df1 = combined_vars.len() as i32;
+    let df2 = (dataset.num_groups - 1) as i32;
     let df3 = (dataset.total_cases - dataset.num_groups) as i32;
 
-    let var = variable_entered.clone().or(variable_removed.clone()).unwrap_or_default();
-    web_sys::console::log_1(&format!("Variable entered/removed: {:?}", var).into());
-    let mut combined_vars = Vec::new();
+    // [PERBAIKAN]: Gunakan Multivariate Wilks' Lambda
+    let wilks_lambda = if combined_vars.is_empty() {
+        1.0
+    } else {
+        calculate_overall_wilks_lambda(dataset, &combined_vars)
+    };
 
-    // Only push `var` if it's not empty
-    if !var.is_empty() {
-        combined_vars.push(var.clone());
-        combined_vars.extend(remaining_variables.iter().cloned());
-    }
-    web_sys::console::log_1(&format!("Cureent vars: {:?}", current_variables).into());
-    web_sys::console::log_1(&format!("Other vars: {:?}", combined_vars).into());
-    web_sys::console::log_1(&format!("Remaining vars: {:?}", remaining_variables).into());
+    // [PERBAIKAN]: Konversi Wilks' Lambda menjadi Exact F via Rao's Approximation
+    let (exact_f, exact_df1, exact_df2) =
+        if combined_vars.is_empty() || wilks_lambda >= 1.0 || wilks_lambda <= 0.0 {
+            (0.0, 0, df3)
+        } else {
+            let p_k1 = p * (k - 1.0);
+            let exact_df1_val = p_k1;
 
-    // `other_vars` sekarang berisi semua kecuali last
-    let new_dataset = filter_dataset(&dataset, &combined_vars);
-    web_sys::console::log_1(&format!("dataset: {:?}", dataset).into());
-    web_sys::console::log_1(&format!("New dataset: {:?}", new_dataset).into());
-    let (f_value, wilks_lambda) = calculate_univariate_f(&var, &new_dataset);
+            let t = if p_k1 == 2.0 {
+                1.0
+            } else {
+                let numerator = p.powi(2) * (k - 1.0).powi(2) - 4.0;
+                let denominator = p.powi(2) + (k - 1.0).powi(2) - 5.0;
+                if denominator > 0.0 {
+                    (numerator / denominator).sqrt()
+                } else {
+                    1.0
+                }
+            };
 
-    // Untuk exact F, df1 adalah jumlah variabel dalam model
-    let exact_f = f_value;
-    let exact_df1 = df1;
+            let w = n - 1.0 - (p + k) / 2.0;
+            let exact_df2_val = w * t - (p_k1 - 2.0) / 2.0;
 
-    // exact_df2 berkurang seiring bertambahnya variabel (df3 - df1 + 1)
-    let exact_df2 = df3 - df1 + 1;
+            let l_t = wilks_lambda.powf(1.0 / t);
 
-    // Hitung signifikansi menggunakan calculate_p_value_from_f
+            // Pencegahan pembagian dengan nol jika l_t sangat kecil
+            let exact_f_val = if l_t > 0.0 {
+                ((1.0 - l_t) / l_t) * (exact_df2_val / exact_df1_val)
+            } else {
+                0.0
+            };
+
+            (exact_f_val, exact_df1_val as i32, exact_df2_val as i32)
+        };
+
+    let f_value = exact_f;
     let significance = calculate_p_value_from_f(exact_f, exact_df1 as f64, exact_df2 as f64);
 
-    // Generate pairwise comparisons if requested
     let pairwise_comparisons = if config.method.pairwise {
         generate_pairwise_comparisons(dataset, current_variables, step)
     } else {
         HashMap::new()
     };
-
-    web_sys::console::log_1(&format!("Step {}: Wilks' Lambda: {}", step, wilks_lambda).into());
-    web_sys::console::log_1(&format!("Step {}: F-value: {}", step, f_value).into());
-    web_sys::console::log_1(&format!("Step {}: Significance: {}", step, significance).into());
-    web_sys::console::log_1(&format!("Step {}: Exact F: {}", step, exact_f).into());
-    web_sys::console::log_1(&format!("Step {}: Exact df1: {}", step, exact_df1).into());
-    web_sys::console::log_1(&format!("Step {}: Exact df2: {}", step, exact_df2).into());
-    web_sys::console::log_1(&format!("Step {}: df3: {}", step, df3).into());
-    web_sys::console::log_1(&format!("Step {}: df1: {}", step, df1).into());
-    web_sys::console::log_1(&format!("Step {}: df2: {}", step, df2).into());
 
     StepData {
         variable_entered,
@@ -626,16 +469,9 @@ fn create_step_data(
 }
 
 /// Convert internal step data to the output format
-///
-/// # Parameters
-/// * `steps_data` - Vector of StepData
-/// * `config` - The discriminant analysis configuration
-///
-/// # Returns
-/// A StepwiseStatistics object for output
 fn convert_steps_to_output(
     steps_data: Vec<StepData>,
-    config: &DiscriminantConfig
+    config: &DiscriminantConfig,
 ) -> Result<StepwiseStatistics, String> {
     let mut result = StepwiseStatistics {
         variables_entered: Vec::new(),
@@ -655,13 +491,11 @@ fn convert_steps_to_output(
         note: create_stepwise_note(config),
     };
 
-    // Extract data from step data
     for (step_idx, step) in steps_data.iter().enumerate() {
-        // Add variables entered/removed
-        result.variables_entered.push(step.variable_entered.clone().unwrap_or_default());
+        result
+            .variables_entered
+            .push(step.variable_entered.clone().unwrap_or_default());
         result.variables_removed.push(step.variable_removed.clone());
-
-        // Add statistical values
         result.wilks_lambda.push(step.wilks_lambda);
         result.f_values.push(step.f_value);
         result.df1.push(step.df1);
@@ -672,23 +506,18 @@ fn convert_steps_to_output(
         result.exact_df2.push(step.exact_df2);
         result.significance.push(step.significance);
 
-        // Add variables in analysis by step
-        result.variables_in_analysis.insert(
-            (step_idx + 1).to_string(),
-            step.variables_in_analysis.clone()
-        );
+        result
+            .variables_in_analysis
+            .insert(step_idx.to_string(), step.variables_in_analysis.clone());
 
-        // Add variables not in analysis by step
-        result.variables_not_in_analysis.insert(
-            step_idx.to_string(),
-            step.variables_not_in_analysis.clone()
-        );
+        result
+            .variables_not_in_analysis
+            .insert(step_idx.to_string(), step.variables_not_in_analysis.clone());
 
-        // Add pairwise comparisons if available
         if !step.pairwise_comparisons.is_empty() {
             result.pairwise_comparisons.insert(
                 (step_idx + 1).to_string(),
-                step.pairwise_comparisons.clone()
+                step.pairwise_comparisons.clone(),
             );
         }
     }
@@ -696,31 +525,41 @@ fn convert_steps_to_output(
     Ok(result)
 }
 
-/// Create a StepwiseNote with configuration information
-///
-/// # Parameters
-/// * `config` - The discriminant analysis configuration
-///
-/// # Returns
-/// A StepwiseNote object with method details
 fn create_stepwise_note(config: &DiscriminantConfig) -> StepwiseNote {
     let max_steps = config.main.independent_variables.len() * 2;
 
-    // Choose the appropriate message based on whether we're using F-values or p-values
     let (entry_msg, removal_msg) = if config.method.f_value {
         (
-            format!("b. Minimum partial F to enter is {}.", config.method.f_entry),
-            format!("c. Maximum partial F to remove is {}.", config.method.f_removal),
+            format!(
+                "b. Minimum partial F to enter is {}.",
+                config.method.f_entry
+            ),
+            format!(
+                "c. Maximum partial F to remove is {}.",
+                config.method.f_removal
+            ),
         )
     } else if config.method.f_probability {
         (
-            format!("b. Maximum probability of F to enter is {}.", config.method.p_entry),
-            format!("c. Minimum probability of F to remove is {}.", config.method.p_removal),
+            format!(
+                "b. Maximum probability of F to enter is {}.",
+                config.method.p_entry
+            ),
+            format!(
+                "c. Minimum probability of F to remove is {}.",
+                config.method.p_removal
+            ),
         )
     } else {
         (
-            format!("b. Minimum partial F to enter is {}.", config.method.f_entry),
-            format!("c. Maximum partial F to remove is {}.", config.method.f_removal),
+            format!(
+                "b. Minimum partial F to enter is {}.",
+                config.method.f_entry
+            ),
+            format!(
+                "c. Maximum partial F to remove is {}.",
+                config.method.f_removal
+            ),
         )
     };
 

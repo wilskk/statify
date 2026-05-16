@@ -100,11 +100,13 @@ fn calculate_f_to_enter_wilks(
     let new_wilks = calculate_overall_wilks_lambda(dataset, &new_variables);
 
     // Calculate F-to-enter
+    // Formula: F = [(Λ_C - Λ_N) / Λ_C] × (df2 / df1)
+    // where Λ_C = Wilks' lambda of current model, Λ_N = Wilks' lambda of new model
     let df1 = dataset.num_groups - 1;
     let df2 = dataset.total_cases - current_variables.len() - 1 - df1;
 
     let f_value = if df2 > 0 && new_wilks < current_wilks {
-        (((current_wilks - new_wilks) / new_wilks) * (df2 as f64)) / (df1 as f64)
+        (((current_wilks - new_wilks) / current_wilks) * (df2 as f64)) / (df1 as f64)
     } else {
         0.0
     };
@@ -142,9 +144,12 @@ fn calculate_f_to_remove_wilks(
         calculate_overall_wilks_lambda(dataset, &reduced_variables)
     };
 
-    // Calculate F-to-remove
+    // F-to-remove formula: F = ((Λ_R - Λ_C) / Λ_C) × (df2 / df1)
+    // where Λ_R = Wilks' lambda of reduced model (var removed)
+    //       Λ_C = Wilks' lambda of current model (var included)
+    // df1 = g - 1, df2 = n - p - g (same as F-to-enter for symmetry)
     let df1 = dataset.num_groups - 1;
-    let df2 = dataset.total_cases - current_variables.len() + 1 - df1;
+    let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups;
 
     let f_value = if df2 > 0 && reduced_wilks > current_wilks && current_wilks > 0.0 {
         (((reduced_wilks - current_wilks) / current_wilks) * (df2 as f64)) / (df1 as f64)
@@ -185,15 +190,14 @@ fn calculate_f_to_enter_unexplained(
 
     let new_sum = calculate_total_unexplained_variation(dataset, &new_variables);
 
-    // Calculate reduction in unexplained variation
-    let reduction = current_sum - new_sum;
-
     // Calculate F value based on reduction
+    // Formula: F = [(S_C - S_N) / S_C] × (df2 / df1)
+    // where S_C = unexplained variation of current model, S_N = new model
     let df1 = dataset.num_groups - 1;
     let df2 = dataset.total_cases - current_variables.len() - 1 - df1;
 
-    let f_value = if df2 > 0 && new_sum > 0.0 {
-        ((reduction / new_sum) * (df2 as f64)) / (df1 as f64)
+    let f_value = if df2 > 0 && new_sum > 0.0 && current_sum > 0.0 {
+        (((current_sum - new_sum) / current_sum) * (df2 as f64)) / (df1 as f64)
     } else {
         0.0
     };
@@ -242,10 +246,12 @@ fn calculate_f_to_remove_unexplained(
     let increase = reduced_sum - current_sum;
 
     // Calculate F value based on increase
+    // Formula: F = [(S_R - S_C) / S_C] × (df2 / df1)
+    // df1 = g - 1, df2 = n - p - g (same as F-to-enter)
     let df1 = dataset.num_groups - 1;
-    let df2 = dataset.total_cases - current_variables.len() + 1 - df1;
+    let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups;
 
-    let f_value = if df2 > 0 && current_sum > 0.0 {
+    let f_value = if df2 > 0 && increase > 0.0 && current_sum > 0.0 {
         ((increase / current_sum) * (df2 as f64)) / (df1 as f64)
     } else {
         0.0
@@ -297,12 +303,12 @@ fn calculate_f_to_enter_mahalanobis(
     let n = dataset.total_cases as f64;
     let g = dataset.num_groups as f64;
 
-    // F value formula
-    let f_value = (min_d2 * (n - g - p + 1.0)) / (p * (n - g));
+    // F value formula: use df2 = n - g - p to match F-to-enter consistency
+    let f_value = (min_d2 * (n - g - p)) / (p * (n - g));
 
     // Estimate Wilks' lambda from F
     let wilks_lambda = if f_value > 0.0 {
-        (n - g - p + 1.0) / (n - g - p + 1.0 + p * f_value)
+        (n - g - p) / (n - g - p + p * f_value)
     } else {
         1.0
     };
@@ -348,14 +354,14 @@ fn calculate_f_to_remove_mahalanobis(
     let n = dataset.total_cases as f64;
     let g = dataset.num_groups as f64;
 
-    // F value formula
-    let f_value = (decrease * (n - g - p + 2.0)) / ((n - g) * (1.0 + decrease / (n - g)));
+    // F value formula: use df2 = n - g - p (consistent with F-to-enter)
+    let f_value = (decrease * (n - g - p)) / ((n - g) * (1.0 + decrease / (n - g)));
 
     // Estimate Wilks' lambda from F
     let wilks_lambda = if reduced_variables.is_empty() {
         1.0
     } else if f_value > 0.0 {
-        (n - g - p + 2.0) / (n - g - p + 2.0 + f_value)
+        (n - g - p) / (n - g - p + f_value)
     } else {
         1.0
     };
@@ -393,7 +399,7 @@ fn calculate_f_to_enter_fratio(
 
     // For Wilks' lambda, estimate from F
     let _df1 = 1; // For pairwise comparisons
-    let df2 = dataset.total_cases - dataset.num_groups - new_variables.len() + 1;
+    let df2 = dataset.total_cases - dataset.num_groups - new_variables.len();
 
     let wilks_lambda = if min_f_ratio > 0.0 && df2 > 0 {
         (df2 as f64) / ((df2 as f64) + min_f_ratio)
@@ -434,7 +440,7 @@ fn calculate_f_to_remove_fratio(
         calculate_min_f_ratio(dataset, &reduced_variables)
     };
 
-    // Calculate decrease in minimum F ratio
+    // F value formula: use df2 = n - g - p (consistent with F-to-enter)
     let f_value = current_min_f - reduced_min_f;
 
     // For Wilks' lambda, estimate from F
@@ -442,7 +448,7 @@ fn calculate_f_to_remove_fratio(
         1.0
     } else {
         let _df1 = 1; // For pairwise comparisons
-        let df2 = dataset.total_cases - dataset.num_groups - reduced_variables.len() + 1;
+        let df2 = dataset.total_cases - dataset.num_groups - current_variables.len();
 
         if reduced_min_f > 0.0 && df2 > 0 {
             (df2 as f64) / ((df2 as f64) + reduced_min_f)
@@ -538,8 +544,9 @@ fn calculate_f_to_remove_raos(
     let decrease = current_v - reduced_v;
 
     // Calculate F value for the decrease
+    // df1 = g - 1, df2 = n - p - g (same as F-to-enter for symmetry)
     let df1 = dataset.num_groups - 1;
-    let df2 = dataset.total_cases - current_variables.len() + 1 - dataset.num_groups;
+    let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups;
 
     let f_value = if df2 > 0 { decrease / (df1 as f64) } else { 0.0 };
 

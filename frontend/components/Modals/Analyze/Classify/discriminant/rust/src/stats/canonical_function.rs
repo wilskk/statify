@@ -40,13 +40,21 @@ pub fn calculate_eigen_statistics(
 
     // Exclude grouping variable from canonical function calculation
     let grouping_var = &config.main.grouping_variable;
-    let variables_to_use: Vec<String> = config
-        .main
-        .independent_variables
-        .iter()
-        .filter(|v| *v != grouping_var)
-        .cloned()
-        .collect();
+
+    // If stepwise, only use variables selected by stepwise procedure
+    let variables_to_use: Vec<String> = if config.main.stepwise {
+        get_stepwise_selected_variables(data, config)?
+    } else {
+        config
+            .main
+            .independent_variables
+            .iter()
+            .filter(|v| *v != grouping_var)
+            .cloned()
+            .collect()
+    };
+
+    web_sys::console::log_1(&format!("Eigen: using {} variables: {:?}", variables_to_use.len(), variables_to_use).into());
 
     // Calculate number of discriminant functions
     let num_functions = std::cmp::min(dataset.num_groups - 1, variables_to_use.len());
@@ -125,15 +133,21 @@ pub fn calculate_canonical_functions(
     // Extract analyzed dataset
     let dataset = extract_analyzed_dataset(data, config)?;
 
-    // Exclude grouping variable from canonical function calculation
+    // Use same variable filtering as calculate_eigen_statistics
     let grouping_var = &config.main.grouping_variable;
-    let variables_to_use: Vec<String> = config
-        .main
-        .independent_variables
-        .iter()
-        .filter(|v| *v != grouping_var)
-        .cloned()
-        .collect();
+    let variables_to_use: Vec<String> = if config.main.stepwise {
+        get_stepwise_selected_variables(data, config)?
+    } else {
+        config
+            .main
+            .independent_variables
+            .iter()
+            .filter(|v| *v != grouping_var)
+            .cloned()
+            .collect()
+    };
+
+    web_sys::console::log_1(&format!("Canonical: using {} variables: {:?}", variables_to_use.len(), variables_to_use).into());
 
     // Calculate number of discriminant functions
     let num_functions = std::cmp::min(dataset.num_groups - 1, variables_to_use.len());
@@ -432,18 +446,39 @@ pub fn get_stepwise_selected_variables(
 ) -> Result<Vec<String>, String> {
     let grouping_var = &config.main.grouping_variable;
 
+    web_sys::console::log_1(&format!(
+        "get_stepwise_selected_variables called, stepwise={}, independent_vars={:?}",
+        config.main.stepwise,
+        config.main.independent_variables
+    ).into());
+
     if !config.main.stepwise {
-        return Ok(config
+        let result = config
             .main
             .independent_variables
             .iter()
             .filter(|v| *v != grouping_var)
             .cloned()
-            .collect());
+            .collect();
+        web_sys::console::log_1(&format!("[Enter] Returning all vars: {:?}", result).into());
+        return Ok(result);
     }
 
     match calculate_stepwise_statistics(data, config) {
         Ok(stepwise_stats) => {
+            web_sys::console::log_1(&format!(
+                "Stepwise stats: vars_entered={:?}, vars_removed={:?}, num_steps={}",
+                stepwise_stats.variables_entered,
+                stepwise_stats.variables_removed,
+                stepwise_stats.variables_entered.len()
+            ).into());
+
+            web_sys::console::log_1(&format!(
+                "variables_in_analysis keys: {:?}",
+                stepwise_stats.variables_in_analysis.keys().collect::<Vec<_>>()
+            ).into());
+
+            // Find final step (highest step number)
             let final_step = stepwise_stats
                 .variables_in_analysis
                 .keys()
@@ -452,38 +487,52 @@ pub fn get_stepwise_selected_variables(
                 .unwrap_or(0)
                 .to_string();
 
+            web_sys::console::log_1(&format!("Final step key: '{}'", final_step).into());
+
             if let Some(vars_in_model) = stepwise_stats.variables_in_analysis.get(&final_step) {
                 let selected_vars: Vec<String> =
                     vars_in_model.iter().map(|v| v.variable.clone()).collect();
+                web_sys::console::log_1(&format!(
+                    "Variables in model at final step {}: {:?}",
+                    final_step, selected_vars
+                ).into());
 
                 if selected_vars.is_empty() {
-                    Ok(config
+                    web_sys::console::log_1(&format!(
+                        "WARNING: vars_in_model at final step is EMPTY! Falling back to all vars."
+                    ).into());
+                    return Ok(config
                         .main
                         .independent_variables
                         .iter()
                         .filter(|v| *v != grouping_var)
                         .cloned()
-                        .collect())
-                } else {
-                    Ok(selected_vars)
+                        .collect());
                 }
+                return Ok(selected_vars);
             } else {
-                Ok(config
+                web_sys::console::log_1(&format!(
+                    "WARNING: No vars_in_model for final step ' Falling back."
+                ).into());
+                return Ok(config
                     .main
                     .independent_variables
                     .iter()
                     .filter(|v| *v != grouping_var)
                     .cloned()
-                    .collect())
+                    .collect());
             }
         }
-        Err(_) => Ok(config
-            .main
-            .independent_variables
-            .iter()
-            .filter(|v| *v != grouping_var)
-            .cloned()
-            .collect()),
+        Err(e) => {
+            web_sys::console::log_1(&format!("ERROR in get_stepwise_selected_variables: {}", e).into());
+            return Ok(config
+                .main
+                .independent_variables
+                .iter()
+                .filter(|v| *v != grouping_var)
+                .cloned()
+                .collect());
+        }
     }
 }
 
