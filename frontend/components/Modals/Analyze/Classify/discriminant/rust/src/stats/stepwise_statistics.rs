@@ -41,13 +41,9 @@ struct StepData {
     variable_removed: Option<String>,
     min_d_squared: f64,
     wilks_lambda: f64,
-    f_value: f64,
-    df1: i32,
-    df2: i32,
-    df3: i32,
-    exact_f: f64,
-    exact_df1: i32,
-    exact_df2: i32,
+    f_to_enter: f64,
+    f_to_enter_df1: i32,
+    f_to_enter_df2: i32,
     significance: f64,
     variables_in_analysis: Vec<VariableInAnalysis>,
     variables_not_in_analysis: Vec<VariableNotInAnalysis>,
@@ -360,13 +356,9 @@ fn create_initial_step(
         variable_removed: None,
         min_d_squared: 0.0,
         wilks_lambda: 1.0,
-        f_value: 0.0,
-        df1: 0,
-        df2: k - 1, // [PERBAIKAN]: Sebelumnya hardcode 1, sekarang menyesuaikan jumlah grup
-        df3: n - k,
-        exact_f: 0.0,
-        exact_df1: 0,
-        exact_df2: n - k,
+        f_to_enter: 0.0,
+        f_to_enter_df1: 0,
+        f_to_enter_df2: 0,
         significance: 1.0,
         variables_in_analysis: Vec::new(),
         variables_not_in_analysis: initial_variables_not_in,
@@ -394,68 +386,66 @@ fn create_step_data(
     // Build combined_vars to calculate the overall statistics
     let combined_vars = current_variables.to_vec();
 
-    let p = combined_vars.len() as f64;
-    let k = dataset.num_groups as f64;
-    let n = dataset.total_cases as f64;
-
-    // [PERBAIKAN]: Rumus df untuk tabel Wilks' Lambda
-    let df1 = combined_vars.len() as i32;
-    let df2 = (dataset.num_groups - 1) as i32;
-    let df3 = (dataset.total_cases - dataset.num_groups) as i32;
-
-    // [PERBAIKAN]: Gunakan Multivariate Wilks' Lambda
     let wilks_lambda = if combined_vars.is_empty() {
         1.0
     } else {
         calculate_overall_wilks_lambda(dataset, &combined_vars)
     };
 
-    // [PERBAIKAN]: Konversi Wilks' Lambda menjadi Exact F via Rao's Approximation
-    let (exact_f, exact_df1, exact_df2) =
-        if combined_vars.is_empty() || wilks_lambda >= 1.0 || wilks_lambda <= 0.0 {
-            (0.0, 0, df3)
-        } else {
-            let p_k1 = p * (k - 1.0);
-            let exact_df1_val = p_k1;
-
-            let t = if p_k1 == 2.0 {
-                1.0
-            } else {
-                let numerator = p.powi(2) * (k - 1.0).powi(2) - 4.0;
-                let denominator = p.powi(2) + (k - 1.0).powi(2) - 5.0;
-                if denominator > 0.0 {
-                    (numerator / denominator).sqrt()
-                } else {
-                    1.0
-                }
-            };
-
-            let w = n - 1.0 - (p + k) / 2.0;
-            let exact_df2_val = w * t - (p_k1 - 2.0) / 2.0;
-
-            let l_t = wilks_lambda.powf(1.0 / t);
-
-            // Pencegahan pembagian dengan nol jika l_t sangat kecil
-            let exact_f_val = if l_t > 0.0 {
-                ((1.0 - l_t) / l_t) * (exact_df2_val / exact_df1_val)
-            } else {
-                0.0
-            };
-
-            (exact_f_val, exact_df1_val as i32, exact_df2_val as i32)
-        };
-
-    let f_value = exact_f;
-    let significance = calculate_p_value_from_f(exact_f, exact_df1 as f64, exact_df2 as f64);
-
     // Compute Min D² for Mahalanobis method output (SPSS column: "Min. D Squared")
     let min_d_squared = if combined_vars.is_empty() {
         0.0
     } else {
-        let d2 = calculate_min_mahalanobis_distance(dataset, &combined_vars);
-        web_sys::console::log_1(&format!("[DEBUG] Step {:?}: combined_vars={:?}, min_d_squared={}", step, combined_vars, d2).into());
-        d2
+        calculate_min_mahalanobis_distance(dataset, &combined_vars)
     };
+
+    // Compute partial F-to-enter for the entered variable (SPSS "Exact F" column)
+    // Formula: F = ((Λ_C - Λ_N) / Λ_N) * (df2 / df1)
+    // df1 = g - 1, df2 = n - p - g
+    // At entry time: Λ_C = Wilks' of current model (before entry), Λ_N = Wilks' of new model (after entry)
+    let (f_to_enter, f_to_enter_df1, f_to_enter_df2) = if let Some(ref var_name) = variable_entered {
+        let current_wilks = if combined_vars.len() == 1 {
+            1.0
+        } else {
+            calculate_overall_wilks_lambda(dataset, current_variables)
+        };
+        let mut new_vars_check = current_variables.to_vec();
+        new_vars_check.push(var_name.clone());
+        let new_wilks = calculate_overall_wilks_lambda(dataset, &new_vars_check);
+
+        let df1 = dataset.num_groups - 1;
+        let df2 = dataset.total_cases - combined_vars.len() - dataset.num_groups;
+
+        let f_val = if df2 > 0 && new_wilks < current_wilks && new_wilks > 0.0 {
+            (((current_wilks - new_wilks) / new_wilks) * (df2 as f64)) / (df1 as f64)
+        } else {
+            0.0
+        };
+        (f_val, df1 as i32, df2 as i32)
+    } else if let Some(ref var_name) = variable_removed {
+        // For removal step: Λ_C = current Wilks (with var), Λ_R = reduced Wilks (without var)
+        let current_wilks = wilks_lambda;
+        let reduced_vars: Vec<String> = current_variables.iter().filter(|v| *v != var_name).cloned().collect();
+        let reduced_wilks = if reduced_vars.is_empty() {
+            1.0
+        } else {
+            calculate_overall_wilks_lambda(dataset, &reduced_vars)
+        };
+
+        let df1 = dataset.num_groups - 1;
+        let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups;
+
+        let f_val = if df2 > 0 && reduced_wilks > current_wilks && current_wilks > 0.0 {
+            (((reduced_wilks - current_wilks) / current_wilks) * (df2 as f64)) / (df1 as f64)
+        } else {
+            0.0
+        };
+        (f_val, df1 as i32, df2 as i32)
+    } else {
+        (0.0, 0, 0)
+    };
+
+    let significance = calculate_p_value_from_f(f_to_enter, f_to_enter_df1 as f64, f_to_enter_df2 as f64);
 
     let pairwise_comparisons = if config.method.pairwise {
         generate_pairwise_comparisons(dataset, current_variables, step)
@@ -468,13 +458,9 @@ fn create_step_data(
         variable_removed,
         min_d_squared,
         wilks_lambda,
-        f_value,
-        df1,
-        df2,
-        df3,
-        exact_f,
-        exact_df1,
-        exact_df2,
+        f_to_enter,
+        f_to_enter_df1,
+        f_to_enter_df2,
         significance,
         variables_in_analysis: vars_in_analysis,
         variables_not_in_analysis: vars_not_in_analysis,
@@ -492,13 +478,9 @@ fn convert_steps_to_output(
         variables_removed: Vec::new(),
         min_d_squared: Vec::new(),
         wilks_lambda: Vec::new(),
-        f_values: Vec::new(),
-        df1: Vec::new(),
-        df2: Vec::new(),
-        df3: Vec::new(),
-        exact_f: Vec::new(),
-        exact_df1: Vec::new(),
-        exact_df2: Vec::new(),
+        f_to_enter: Vec::new(),
+        f_to_enter_df1: Vec::new(),
+        f_to_enter_df2: Vec::new(),
         significance: Vec::new(),
         variables_in_analysis: HashMap::new(),
         variables_not_in_analysis: HashMap::new(),
@@ -519,13 +501,9 @@ fn convert_steps_to_output(
         result.variables_removed.push(step.variable_removed.clone());
         result.min_d_squared.push(step.min_d_squared);
         result.wilks_lambda.push(step.wilks_lambda);
-        result.f_values.push(step.f_value);
-        result.df1.push(step.df1);
-        result.df2.push(step.df2);
-        result.df3.push(step.df3);
-        result.exact_f.push(step.exact_f);
-        result.exact_df1.push(step.exact_df1);
-        result.exact_df2.push(step.exact_df2);
+        result.f_to_enter.push(step.f_to_enter);
+        result.f_to_enter_df1.push(step.f_to_enter_df1);
+        result.f_to_enter_df2.push(step.f_to_enter_df2);
         result.significance.push(step.significance);
 
         result

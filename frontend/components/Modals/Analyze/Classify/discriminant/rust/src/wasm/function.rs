@@ -308,7 +308,18 @@ pub fn run_analysis(
 
 pub fn get_results(result: &Option<DiscriminantResult>) -> Result<JsValue, JsValue> {
     match result {
-        Some(result) => Ok(serde_wasm_bindgen::to_value(result).unwrap()),
+        Some(result) => {
+            if let Some(ref step_stats) = result.stepwise_statistics {
+                web_sys::console::log_1(&format!(
+                    "[get_results] min_d_squared: {:?}, len={}",
+                    step_stats.min_d_squared,
+                    step_stats.min_d_squared.len()
+                ).into());
+            }
+            let js_val = serde_wasm_bindgen::to_value(result).unwrap();
+            web_sys::console::log_1(&format!("[get_results] serialized").into());
+            Ok(js_val)
+        }
         None => Err(string_to_js_error("No analysis results available".to_string())),
     }
 }

@@ -202,17 +202,12 @@ pub struct StepwiseStatistics {
     pub min_d_squared: Vec<f64>,
     #[serde(rename = "wilks_lambda")]
     pub wilks_lambda: Vec<f64>,
-    #[serde(rename = "f_values")]
-    pub f_values: Vec<f64>,
-    pub df1: Vec<i32>,
-    pub df2: Vec<i32>,
-    pub df3: Vec<i32>,
-    #[serde(rename = "exact_f")]
-    pub exact_f: Vec<f64>,
-    #[serde(rename = "exact_df1")]
-    pub exact_df1: Vec<i32>,
-    #[serde(rename = "exact_df2")]
-    pub exact_df2: Vec<i32>,
+    #[serde(rename = "f_to_enter")]
+    pub f_to_enter: Vec<f64>,
+    #[serde(rename = "f_to_enter_df1")]
+    pub f_to_enter_df1: Vec<i32>,
+    #[serde(rename = "f_to_enter_df2")]
+    pub f_to_enter_df2: Vec<i32>,
     #[serde(rename = "significance")]
     pub significance: Vec<f64>,
     #[serde(rename = "variables_in_analysis")]

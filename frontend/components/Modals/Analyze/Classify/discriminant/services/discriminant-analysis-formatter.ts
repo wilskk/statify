@@ -883,6 +883,12 @@ export function transformDiscriminantResult(data: any): ResultJson {
 
         const stepsCount = data.stepwise_statistics.variables_entered.length;
 
+        // DEBUG: Log what WASM actually returned
+        console.log("[FORMATTER] rawResults keys:", Object.keys(data));
+        console.log("[FORMATTER] stepwise_statistics keys:", Object.keys(data.stepwise_statistics));
+        console.log("[FORMATTER] min_d_squared from WASM:", data.stepwise_statistics.min_d_squared);
+        console.log("[FORMATTER] f_to_enter from WASM:", data.stepwise_statistics.f_to_enter);
+
         for (let i = 0; i < stepsCount; i++) {
             table.rows.push({
                 rowHeader: [""],
@@ -896,16 +902,16 @@ export function transformDiscriminantResult(data: any): ResultJson {
                 ),
                 between_groups: "",  // Filled dynamically if pairwise data available
                 f_statistic: formatDisplayNumber(
-                    data.stepwise_statistics.exact_f[i]
+                    data.stepwise_statistics.f_to_enter?.[i] ?? 0
                 ),
                 f_df1: formatDisplayNumber(
-                    data.stepwise_statistics.exact_df1[i]
+                    data.stepwise_statistics.f_to_enter_df1?.[i] ?? 0
                 ),
                 f_df2: formatDisplayNumber(
-                    data.stepwise_statistics.exact_df2[i]
+                    data.stepwise_statistics.f_to_enter_df2?.[i] ?? 0
                 ),
                 sig: formatDisplayNumber(
-                    data.stepwise_statistics.significance[i]
+                    data.stepwise_statistics.significance?.[i] ?? 1
                 ),
             });
         }
