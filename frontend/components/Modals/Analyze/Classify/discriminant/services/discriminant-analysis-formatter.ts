@@ -853,20 +853,18 @@ export function transformDiscriminantResult(data: any): ResultJson {
     ) {
         const table: Table = {
             key: "stepwise_statistics",
-            title: "Stepwise Statistics",
+            title: "Variables Entered/Removed",
             columnHeaders: [
                 { header: "", key: "step_header" },
                 { header: "Step", key: "step" },
                 { header: "Entered", key: "entered" },
                 { header: "Removed", key: "removed" },
                 {
-                    header: "Wilks' Lambda",
-                    key: "wilks_lambda",
+                    header: "Min. D Squared",
+                    key: "min_d_squared",
                     children: [
-                        { header: "Statistic", key: "statistic" },
-                        { header: "df1", key: "df1" },
-                        { header: "df2", key: "df2" },
-                        { header: "df3", key: "df3" },
+                        { header: "Statistic", key: "d_statistic" },
+                        { header: "Between Groups", key: "between_groups" },
                     ],
                 },
                 {
@@ -893,12 +891,10 @@ export function transformDiscriminantResult(data: any): ResultJson {
                 removed: data.stepwise_statistics.variables_removed[i]
                     ? data.stepwise_statistics.variables_removed[i]
                     : "",
-                statistic: formatDisplayNumber(
-                    data.stepwise_statistics.wilks_lambda[i]
+                d_statistic: formatDisplayNumber(
+                    data.stepwise_statistics.min_d_squared?.[i] ?? 0
                 ),
-                df1: formatDisplayNumber(data.stepwise_statistics.df1[i]),
-                df2: formatDisplayNumber(data.stepwise_statistics.df2[i]),
-                df3: formatDisplayNumber(data.stepwise_statistics.df3[i]),
+                between_groups: "",  // Filled dynamically if pairwise data available
                 f_statistic: formatDisplayNumber(
                     data.stepwise_statistics.exact_f[i]
                 ),
@@ -917,11 +913,11 @@ export function transformDiscriminantResult(data: any): ResultJson {
         // Add footnotes
         table.rows.push({
             rowHeader: [
-                "At each step, the variable that minimizes the overall Wilks' Lambda is entered.",
+                "At each step, the variable that maximizes the Mahalanobis distance between the two closest groups is entered.",
             ],
         });
         table.rows.push({
-            rowHeader: ["a. Maximum number of steps is 4."],
+            rowHeader: ["a. Maximum number of steps is 18."],
         });
         table.rows.push({
             rowHeader: ["b. Minimum partial F to enter is 3.84."],

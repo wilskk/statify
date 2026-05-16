@@ -117,6 +117,9 @@ export const useDiscriminantState = (
 
                 const configData = newFormData;
 
+                // DEBUG: Log method config before sending
+                console.log("[Discriminant] Method config to send:", configData.method);
+
                 const GroupingVariable = mainData.GroupingVariable
                     ? [mainData.GroupingVariable]
                     : [];

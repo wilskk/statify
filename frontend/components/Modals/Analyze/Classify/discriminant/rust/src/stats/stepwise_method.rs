@@ -4,14 +4,9 @@
 //! computing F-to-enter and F-to-remove statistics in stepwise discriminant analysis.
 
 use super::core::{
-    calculate_min_f_ratio,
-    calculate_min_mahalanobis_distance,
-    calculate_overall_wilks_lambda,
-    calculate_raos_v,
-    calculate_total_unexplained_variation,
-    calculate_univariate_f,
-    AnalyzedDataset,
-    MethodType,
+    calculate_min_f_ratio, calculate_min_mahalanobis_distance, calculate_overall_wilks_lambda,
+    calculate_raos_v, calculate_total_unexplained_variation, calculate_univariate_f,
+    AnalyzedDataset, MethodType,
 };
 
 /// Calculate F-to-enter for a variable based on the selected method
@@ -28,14 +23,16 @@ pub fn calculate_variable_f_to_enter(
     variable: &str,
     dataset: &AnalyzedDataset,
     current_variables: &[String],
-    method_type: MethodType
+    method_type: MethodType,
 ) -> (f64, f64) {
     match method_type {
         MethodType::Wilks => calculate_f_to_enter_wilks(variable, dataset, current_variables),
-        MethodType::Unexplained =>
-            calculate_f_to_enter_unexplained(variable, dataset, current_variables),
-        MethodType::Mahalanobis =>
-            calculate_f_to_enter_mahalanobis(variable, dataset, current_variables),
+        MethodType::Unexplained => {
+            calculate_f_to_enter_unexplained(variable, dataset, current_variables)
+        }
+        MethodType::Mahalanobis => {
+            calculate_f_to_enter_mahalanobis(variable, dataset, current_variables)
+        }
         MethodType::FRatio => calculate_f_to_enter_fratio(variable, dataset, current_variables),
         MethodType::Raos => calculate_f_to_enter_raos(variable, dataset, current_variables),
     }
@@ -55,14 +52,16 @@ pub fn calculate_variable_f_to_remove(
     variable: &str,
     dataset: &AnalyzedDataset,
     current_variables: &[String],
-    method_type: MethodType
+    method_type: MethodType,
 ) -> (f64, f64) {
     match method_type {
         MethodType::Wilks => calculate_f_to_remove_wilks(variable, dataset, current_variables),
-        MethodType::Unexplained =>
-            calculate_f_to_remove_unexplained(variable, dataset, current_variables),
-        MethodType::Mahalanobis =>
-            calculate_f_to_remove_mahalanobis(variable, dataset, current_variables),
+        MethodType::Unexplained => {
+            calculate_f_to_remove_unexplained(variable, dataset, current_variables)
+        }
+        MethodType::Mahalanobis => {
+            calculate_f_to_remove_mahalanobis(variable, dataset, current_variables)
+        }
         MethodType::FRatio => calculate_f_to_remove_fratio(variable, dataset, current_variables),
         MethodType::Raos => calculate_f_to_remove_raos(variable, dataset, current_variables),
     }
@@ -83,30 +82,24 @@ pub fn calculate_variable_f_to_remove(
 fn calculate_f_to_enter_wilks(
     variable: &str,
     dataset: &AnalyzedDataset,
-    current_variables: &[String]
+    current_variables: &[String],
 ) -> (f64, f64) {
-    // If no current variables, use univariate F test
     if current_variables.is_empty() {
         return calculate_univariate_f(variable, dataset);
     }
 
-    // Calculate Wilks' lambda for current model
     let current_wilks = calculate_overall_wilks_lambda(dataset, current_variables);
 
-    // Calculate Wilks' lambda with new variable added
     let mut new_variables = current_variables.to_vec();
     new_variables.push(variable.to_string());
-
     let new_wilks = calculate_overall_wilks_lambda(dataset, &new_variables);
 
-    // Calculate F-to-enter
-    // Formula: F = [(Λ_C - Λ_N) / Λ_C] × (df2 / df1)
-    // where Λ_C = Wilks' lambda of current model, Λ_N = Wilks' lambda of new model
     let df1 = dataset.num_groups - 1;
     let df2 = dataset.total_cases - current_variables.len() - 1 - df1;
 
-    let f_value = if df2 > 0 && new_wilks < current_wilks {
-        (((current_wilks - new_wilks) / current_wilks) * (df2 as f64)) / (df1 as f64)
+    // [PERBAIKAN KRUSIAL]: Pembagi harus new_wilks!
+    let f_value = if df2 > 0 && new_wilks < current_wilks && new_wilks > 0.0 {
+        (((current_wilks - new_wilks) / new_wilks) * (df2 as f64)) / (df1 as f64)
     } else {
         0.0
     };
@@ -126,7 +119,7 @@ fn calculate_f_to_enter_wilks(
 fn calculate_f_to_remove_wilks(
     variable: &str,
     dataset: &AnalyzedDataset,
-    current_variables: &[String]
+    current_variables: &[String],
 ) -> (f64, f64) {
     // Calculate Wilks' lambda for current model
     let current_wilks = calculate_overall_wilks_lambda(dataset, current_variables);
@@ -175,7 +168,7 @@ fn calculate_f_to_remove_wilks(
 fn calculate_f_to_enter_unexplained(
     variable: &str,
     dataset: &AnalyzedDataset,
-    current_variables: &[String]
+    current_variables: &[String],
 ) -> (f64, f64) {
     // Calculate current unexplained variation
     let current_sum = if current_variables.is_empty() {
@@ -224,7 +217,7 @@ fn calculate_f_to_enter_unexplained(
 fn calculate_f_to_remove_unexplained(
     variable: &str,
     dataset: &AnalyzedDataset,
-    current_variables: &[String]
+    current_variables: &[String],
 ) -> (f64, f64) {
     // Calculate current unexplained variation
     let current_sum = calculate_total_unexplained_variation(dataset, current_variables);
@@ -284,39 +277,43 @@ fn calculate_f_to_remove_unexplained(
 fn calculate_f_to_enter_mahalanobis(
     variable: &str,
     dataset: &AnalyzedDataset,
-    current_variables: &[String]
+    current_variables: &[String],
 ) -> (f64, f64) {
-    // If no current variables, use univariate F test
-    if current_variables.is_empty() {
-        return calculate_univariate_f(variable, dataset);
-    }
-
-    // Add the new variable to the set
+    // Build candidate set: current variables + this variable
     let mut new_variables = current_variables.to_vec();
     new_variables.push(variable.to_string());
 
-    // Calculate minimum Mahalanobis distance between any two groups
-    let min_d2 = calculate_min_mahalanobis_distance(dataset, &new_variables);
+    // Get min D² for this candidate set (maximizes group separation)
+    let new_min_d2 = calculate_min_mahalanobis_distance(dataset, &new_variables);
 
-    // Convert to F statistic
-    let p = new_variables.len() as f64;
-    let n = dataset.total_cases as f64;
-    let g = dataset.num_groups as f64;
-
-    // F value formula: use df2 = n - g - p to match F-to-enter consistency
-    let f_value = (min_d2 * (n - g - p)) / (p * (n - g));
-
-    // Estimate Wilks' lambda from F
-    let wilks_lambda = if f_value > 0.0 {
-        (n - g - p) / (n - g - p + p * f_value)
-    } else {
+    // Gatekeeper: compute partial F via Wilks' Lambda formula
+    let current_wilks = if current_variables.is_empty() {
         1.0
+    } else {
+        calculate_overall_wilks_lambda(dataset, current_variables)
     };
+    let new_wilks = calculate_overall_wilks_lambda(dataset, &new_variables);
+
+    let df1 = dataset.num_groups - 1;
+    let df2 = (dataset.total_cases as i32) - (current_variables.len() as i32) - 1 - (df1 as i32);
+
+    let f_value = if df2 > 0 && new_wilks < current_wilks && new_wilks > 0.0 {
+        (((current_wilks - new_wilks) / new_wilks) * (df2 as f64)) / (df1 as f64)
+    } else {
+        0.0
+    };
+
+    // wilks_lambda as proxy: -new_min_d2
+    // Lowest wilks_lambda = highest min D² = best candidate
+    let wilks_lambda = -new_min_d2;
 
     (f_value, wilks_lambda)
 }
 
 /// Calculate F-to-remove using Mahalanobis Distance method
+///
+/// This method measures the decrease in minimum Mahalanobis distance
+/// when a variable is removed from the model.
 ///
 /// # Parameters
 /// * `variable` - The variable to test
@@ -324,16 +321,16 @@ fn calculate_f_to_enter_mahalanobis(
 /// * `current_variables` - Variables currently in the model
 ///
 /// # Returns
-/// A tuple of (F-to-remove, Wilks' lambda)
+/// A tuple of (F-to-remove, Wilks' lambda proxy)
 fn calculate_f_to_remove_mahalanobis(
     variable: &str,
     dataset: &AnalyzedDataset,
-    current_variables: &[String]
+    current_variables: &[String],
 ) -> (f64, f64) {
-    // Calculate current minimum Mahalanobis distance
-    let current_min_d2 = calculate_min_mahalanobis_distance(dataset, current_variables);
+    // 1. Dapatkan nilai Standard Partial F (sebagai Gatekeeper)
+    let (f_value, _) = calculate_f_to_remove_wilks(variable, dataset, current_variables);
 
-    // Calculate minimum distance with variable removed
+    // 2. Dapatkan nilai Mahalanobis D² (sebagai Ranking)
     let reduced_variables: Vec<String> = current_variables
         .iter()
         .filter(|&v| v != variable)
@@ -346,24 +343,10 @@ fn calculate_f_to_remove_mahalanobis(
         calculate_min_mahalanobis_distance(dataset, &reduced_variables)
     };
 
-    // Calculate decrease in Mahalanobis distance
-    let decrease = current_min_d2 - reduced_min_d2;
-
-    // Convert to F statistic
-    let p = current_variables.len() as f64;
-    let n = dataset.total_cases as f64;
-    let g = dataset.num_groups as f64;
-
-    // F value formula: use df2 = n - g - p (consistent with F-to-enter)
-    let f_value = (decrease * (n - g - p)) / ((n - g) * (1.0 + decrease / (n - g)));
-
-    // Estimate Wilks' lambda from F
     let wilks_lambda = if reduced_variables.is_empty() {
         1.0
-    } else if f_value > 0.0 {
-        (n - g - p) / (n - g - p + f_value)
     } else {
-        1.0
+        -reduced_min_d2
     };
 
     (f_value, wilks_lambda)
@@ -383,7 +366,7 @@ fn calculate_f_to_remove_mahalanobis(
 fn calculate_f_to_enter_fratio(
     variable: &str,
     dataset: &AnalyzedDataset,
-    current_variables: &[String]
+    current_variables: &[String],
 ) -> (f64, f64) {
     // If no current variables, use univariate F test
     if current_variables.is_empty() {
@@ -422,7 +405,7 @@ fn calculate_f_to_enter_fratio(
 fn calculate_f_to_remove_fratio(
     variable: &str,
     dataset: &AnalyzedDataset,
-    current_variables: &[String]
+    current_variables: &[String],
 ) -> (f64, f64) {
     // Calculate current minimum F ratio
     let current_min_f = calculate_min_f_ratio(dataset, current_variables);
@@ -475,7 +458,7 @@ fn calculate_f_to_remove_fratio(
 fn calculate_f_to_enter_raos(
     variable: &str,
     dataset: &AnalyzedDataset,
-    current_variables: &[String]
+    current_variables: &[String],
 ) -> (f64, f64) {
     // If no current variables, use univariate F test
     if current_variables.is_empty() {
@@ -498,7 +481,11 @@ fn calculate_f_to_enter_raos(
     let df1 = dataset.num_groups - 1;
     let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups;
 
-    let f_value = if df2 > 0 { increase / (df1 as f64) } else { 0.0 };
+    let f_value = if df2 > 0 {
+        increase / (df1 as f64)
+    } else {
+        0.0
+    };
 
     // For Wilks' lambda, estimate from Rao's V
     let wilks_lambda = if new_v > 0.0 {
@@ -522,7 +509,7 @@ fn calculate_f_to_enter_raos(
 fn calculate_f_to_remove_raos(
     variable: &str,
     dataset: &AnalyzedDataset,
-    current_variables: &[String]
+    current_variables: &[String],
 ) -> (f64, f64) {
     // Calculate current Rao's V
     let current_v = calculate_raos_v(dataset, current_variables);
@@ -548,7 +535,11 @@ fn calculate_f_to_remove_raos(
     let df1 = dataset.num_groups - 1;
     let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups;
 
-    let f_value = if df2 > 0 { decrease / (df1 as f64) } else { 0.0 };
+    let f_value = if df2 > 0 {
+        decrease / (df1 as f64)
+    } else {
+        0.0
+    };
 
     // For Wilks' lambda, estimate from Rao's V
     let wilks_lambda = if reduced_variables.is_empty() {

@@ -43,6 +43,9 @@ self.onmessage = async (event) => {
             selectionDataLength: selection_data?.length,
         });
 
+        // DEBUG: Log method config being sent to WASM
+        console.log("[Discriminant Worker] Method config being sent:", config_data?.method);
+
         // Create discriminant analysis instance
         const discriminant = new wasm.DiscriminantAnalysis(
             group_data,

@@ -559,21 +559,27 @@ pub fn calculate_total_unexplained_variation(
 /// is scale-invariant, making it useful for multivariate analysis.
 pub fn calculate_min_mahalanobis_distance(dataset: &AnalyzedDataset, variables: &[String]) -> f64 {
     if variables.is_empty() || dataset.group_labels.len() < 2 {
+        web_sys::console::log_1(&format!("[DEBUG] calculate_min_mahalanobis_distance: early exit - vars={:?}, groups={}", variables.len(), dataset.group_labels.len()).into());
         return 0.0;
     }
 
-    // Use simpler approach for parallel computation
+    web_sys::console::log_1(&format!("[DEBUG] calculate_min_mahalanobis_distance: vars={:?}, groups={:?}", variables, dataset.group_labels).into());
+
     let mut distances = Vec::new();
 
     for (i, group_i) in dataset.group_labels.iter().enumerate() {
         let group_distances: Vec<f64> = dataset.group_labels[i + 1..]
             .par_iter()
             .map(|group_j| {
-                calculate_group_mahalanobis_distance(dataset, group_i, group_j, variables)
+                let d = calculate_group_mahalanobis_distance(dataset, group_i, group_j, variables);
+                web_sys::console::log_1(&format!("[DEBUG] D2({}, {}) = {}", group_i, group_j, d).into());
+                d
             })
             .collect();
         distances.extend(group_distances);
     }
+
+    web_sys::console::log_1(&format!("[DEBUG] All distances: {:?}", distances).into());
 
     // Find minimum distance
     if distances.is_empty() {
@@ -643,13 +649,23 @@ pub fn calculate_min_f_ratio(dataset: &AnalyzedDataset, variables: &[String]) ->
     }
 }
 
-/// Helper function to calculate Mahalanobis distance between two groups
+/// Calculate Mahalanobis distance between two groups
+///
+/// Uses the pooled within-groups covariance matrix from ALL groups in the dataset,
+/// matching SPSS's discriminant analysis implementation.
 fn calculate_group_mahalanobis_distance(
     dataset: &AnalyzedDataset,
     group_i: &str,
     group_j: &str,
     variables: &[String],
 ) -> f64 {
+    if variables.is_empty() {
+        web_sys::console::log_1(&format!("[DEBUG] calc_group_mahal: empty vars").into());
+        return 0.0;
+    }
+
+    web_sys::console::log_1(&format!("[DEBUG] calc_group_mahal: groups={}, {}, vars={:?}", group_i, group_j, variables).into());
+
     // Extract means for both groups as vectors
     let mut mean_diff = DVector::zeros(variables.len());
 
@@ -666,72 +682,33 @@ fn calculate_group_mahalanobis_distance(
             .and_then(|m| m.get(var))
             .copied()
             .unwrap_or(0.0);
-        mean_diff[idx] = mean_i - mean_j;
+        let diff = mean_i - mean_j;
+        mean_diff[idx] = diff;
+        web_sys::console::log_1(&format!("[DEBUG] mean_diff[{}] {} - {} = {}", idx, mean_i, mean_j, diff).into());
     }
 
-    // Build pooled covariance matrix
-    let mut pooled_cov = DMatrix::zeros(variables.len(), variables.len());
-    let mut total_df = 0;
+    // Use pooled within-groups covariance from ALL groups (matches SPSS)
+    let pooled_cov = calculate_pooled_within_matrix_no_epsilon(dataset, variables);
+    web_sys::console::log_1(&format!("[DEBUG] pooled_cov shape: {}x{}", pooled_cov.nrows(), pooled_cov.ncols()).into());
 
-    for group_label in [group_i, group_j] {
-        let n_g = dataset
-            .group_data
-            .get(&variables[0])
-            .and_then(|g| g.get(group_label))
-            .map_or(0, |v| v.len());
-
-        if n_g <= 1 {
-            continue;
-        }
-
-        let df = n_g - 1;
-        total_df += df;
-
-        // Calculate covariance contribution for this group
-        for (i, var_i) in variables.iter().enumerate() {
-            for (j, var_j) in variables.iter().enumerate() {
-                if let (Some(values_i), Some(values_j)) = (
-                    dataset
-                        .group_data
-                        .get(var_i)
-                        .and_then(|g| g.get(group_label)),
-                    dataset
-                        .group_data
-                        .get(var_j)
-                        .and_then(|g| g.get(group_label)),
-                ) {
-                    if values_i.len() == values_j.len() && values_i.len() > 1 {
-                        let mean_i = dataset.group_means[group_label][var_i];
-                        let mean_j = dataset.group_means[group_label][var_j];
-
-                        // Calculate covariance
-                        let cov =
-                            calculate_covariance(values_i, values_j, Some(mean_i), Some(mean_j));
-
-                        pooled_cov[(i, j)] += (df as f64) * cov;
-                    }
-                }
-            }
-        }
-    }
-
-    // Normalize pooled covariance
-    if total_df > 0 {
-        pooled_cov /= total_df as f64;
-    } else {
-        // If no valid covariance, return a simple Euclidean distance
-        return mean_diff.norm_squared();
-    }
-
-    // Add small regularization for numerical stability
+    // Add small regularization for numerical stability before inversion
+    let mut reg_cov = pooled_cov.clone();
     for i in 0..variables.len() {
-        pooled_cov[(i, i)] += EPSILON;
+        reg_cov[(i, i)] += EPSILON;
     }
 
-    // Calculate Mahalanobis distance
-    match pooled_cov.try_inverse() {
-        Some(inv_cov) => (mean_diff.transpose() * (inv_cov * mean_diff))[0],
-        None => mean_diff.norm_squared(), // Fallback to Euclidean distance
+    // Calculate Mahalanobis distance: D² = δ' * S⁻¹ * δ
+    match reg_cov.try_inverse() {
+        Some(inv_cov) => {
+            let d2 = (mean_diff.transpose() * (&inv_cov * mean_diff))[0];
+            web_sys::console::log_1(&format!("[DEBUG] D2({} vs {}) = {} (fallback=false)", group_i, group_j, d2).into());
+            d2
+        }
+        None => {
+            let d2 = mean_diff.norm_squared();
+            web_sys::console::log_1(&format!("[DEBUG] D2({} vs {}) = {} (fallback=true)", group_i, group_j, d2).into());
+            d2
+        }
     }
 }
 

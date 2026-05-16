@@ -198,6 +198,8 @@ pub struct StepwiseStatistics {
     pub variables_entered: Vec<String>,
     #[serde(rename = "variables_removed")]
     pub variables_removed: Vec<Option<String>>,
+    #[serde(rename = "min_d_squared")]
+    pub min_d_squared: Vec<f64>,
     #[serde(rename = "wilks_lambda")]
     pub wilks_lambda: Vec<f64>,
     #[serde(rename = "f_values")]

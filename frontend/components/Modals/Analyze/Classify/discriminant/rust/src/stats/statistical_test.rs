@@ -96,12 +96,9 @@ pub fn calculate_univariate_f(variable: &str, dataset: &AnalyzedDataset) -> (f64
 /// determinant, and measures the proportion of variance not explained by group
 /// differences.
 ///
-/// # Parameters
-/// * `dataset` - The analyzed dataset containing group data and means
-/// * `variables` - The set of variables to include in the calculation
-///
-/// # Returns
-/// The Wilks' lambda value (between 0 and 1)
+/// Uses raw SSCP matrices: Λ = |W| / |B + W|
+/// where W = Σ(nᵢ-1)Sᵢ (NOT divided by n-k)
+/// This matches SPSS and standard textbook formulas.
 pub fn calculate_overall_wilks_lambda(dataset: &AnalyzedDataset, variables: &[String]) -> f64 {
     if variables.is_empty() {
         return 1.0;
@@ -110,20 +107,28 @@ pub fn calculate_overall_wilks_lambda(dataset: &AnalyzedDataset, variables: &[St
     // Calculate between-groups and within-groups matrices
     let (between_mat, within_mat) = calculate_between_within_matrices(dataset, variables);
 
-    // Wilks' lambda = |W| / |B + W|
+    // IMPORTANT: within_mat is divided by total_df=(n-k) by calculate_between_within_matrices
+    // (which is correct for covariance display purposes).
+    // But Wilks' Lambda requires raw SSCP W: W_raw = W_cov * (n-k).
+    // |W_raw| = |W_cov| * (n-k)^p  where p = number of variables.
+    let total_df = dataset.total_cases - dataset.num_groups;
+    let p = variables.len();
+    let scale_factor = (total_df as f64).powi(p as i32);
+
+    // Wilks' lambda = |W_raw| / |B + W_raw|
+    // where W_raw = within_mat * (n-k)^p
     let within_det = match within_mat.clone().determinant() {
-        det if det > 0.0 => { det }
-        _ => {
-            1.0 // Fallback for singular matrix
-        }
+        det if det > 0.0 => det * scale_factor,
+        _ => 1.0,
     };
 
-    let total_mat = &between_mat + &within_mat;
+    // For total: |B + W_raw| = |B + W_cov * (n-k)| = |(n-k) * (B/(n-k) + W_cov)|
+    // = (n-k)^p * |B/(n-k) + W_cov|
+    // But simpler: just compute B + W_raw directly
+    let total_mat = &between_mat + &within_mat * (total_df as f64);
     let total_det = match total_mat.determinant() {
-        det if det > 0.0 => { det }
-        _ => {
-            1.0 // Fallback for singular matrix
-        }
+        det if det > 0.0 => det,
+        _ => 1.0,
     };
 
     let lambda = if total_det > 0.0 { within_det / total_det } else { 1.0 };
@@ -135,17 +140,15 @@ pub fn calculate_overall_wilks_lambda(dataset: &AnalyzedDataset, variables: &[St
 ///
 /// This approximates the significance of Wilks' lambda using Rao's F approximation.
 ///
-/// The F statistic is calculated as:
-/// F = ((1 - Λ^(1/s)) / Λ^(1/s)) × ((n - g - p + 1) / (p × (g - 1)))
+/// F = ((1 - Λ^(1/s)) / Λ^(1/s)) × (df2 / df1)
 ///
 /// Where:
-/// - Λ = Wilks' Lambda
-/// - s = sqrt((p² × (g-1)² - 4) / (p² + (g-1)² - 5))
-/// - p = number of variables
-/// - g = number of groups
-/// - n = total number of cases
+/// - s = sqrt((p²×(g-1)² - 4) / (p² + (g-1)² - 5))
+/// - df1 = p × (g - 1)
+/// - df2 = (n - 1 - (p+g)/2) × s - (p×(g-1) - 2) / 2
+/// - p = number of variables, g = number of groups, n = total cases
 ///
-/// This is the Rao's approximate F-test for Wilks' Lambda.
+/// This matches SPSS and the standard Rao approximation formula.
 ///
 /// # Parameters
 /// * `wilks_lambda` - The Wilks' lambda value
@@ -166,26 +169,28 @@ pub fn calculate_overall_f_statistic(
     let n = total_cases as f64;
 
     // Calculate s for the approximation
-    // s = sqrt((p*(g-1))² - 4) / (p + (g-1) - 2)) if applicable
+    // s = sqrt((p*(g-1))² - 4) / (p + (g-1) - 2))
+    // i.e. s = sqrt((numerator) / (denominator))
+    let numerator = p.powi(2) * (g - 1.0).powi(2) - 4.0;
     let denominator = p.powi(2) + (g - 1.0).powi(2) - 5.0;
-    let s = if denominator > EPSILON {
-        ((p * (g - 1.0)).powi(2) - 4.0 / denominator).sqrt()
+    let s = if denominator > EPSILON && numerator > 0.0 {
+        (numerator / denominator).sqrt()
     } else {
         1.0
     };
 
     // Calculate df1 and df2
     // df1 = p * (g - 1)
-    // df2 = s * (n - g - (p + g) / 2 + 1) or similar approximation
+    // df2 = (n - 1 - (p + g) / 2) * s - (p * (g - 1) - 2) / 2
     let df1 = (p * (g - 1.0)).round() as i32;
 
-    // For the denominator df, use the formula: df2 = s * (n - g - p/2 + 1)
-    // or a simpler approximation based on sample size
-    let temp_df2 = n - g - p / 2.0 + 1.0;
+    let w = n - 1.0 - (p + g) / 2.0;
+    let p_k1 = p * (g - 1.0);
     let df2 = if s > EPSILON {
-        (s * temp_df2).round() as i32
+        (w * s - (p_k1 - 2.0) / 2.0).round() as i32
     } else {
-        (temp_df2 * 2.0).round() as i32
+        // fallback when s ≈ 1 (i.e., p*(g-1) = 2)
+        (w * 1.0 - (p_k1 - 2.0) / 2.0).round() as i32
     };
 
     // Calculate F statistic using Rao's approximation

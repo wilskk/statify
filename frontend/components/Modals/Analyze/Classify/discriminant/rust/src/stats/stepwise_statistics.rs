@@ -19,8 +19,8 @@ use crate::{
 };
 
 use super::core::{
-    analyze_variables_in_model, analyze_variables_not_in_model, calculate_overall_wilks_lambda,
-    determine_method_type, filter_dataset, find_best_variable_to_enter,
+    analyze_variables_in_model, analyze_variables_not_in_model, calculate_min_mahalanobis_distance,
+    calculate_overall_wilks_lambda, determine_method_type, find_best_variable_to_enter,
     find_worst_variable_to_remove, generate_pairwise_comparisons,
 };
 
@@ -39,6 +39,7 @@ pub enum MethodType {
 struct StepData {
     variable_entered: Option<String>,
     variable_removed: Option<String>,
+    min_d_squared: f64,
     wilks_lambda: f64,
     f_value: f64,
     df1: i32,
@@ -329,7 +330,9 @@ fn should_remove_variable(
     };
 
     if config.method.f_value || config.method.f_probability {
-        let df2 = (total_cases - num_groups - num_current_vars + 1) as f64;
+        // df2 must match how F-to-remove was computed in calculate_f_to_remove_wilks:
+        // df2 = n - p - g (where p = num_current_vars)
+        let df2 = (total_cases - num_groups - num_current_vars) as f64;
         let p_value = calculate_p_value_from_f(stats.f_to_remove, (num_groups - 1) as f64, df2);
 
         if config.method.f_value {
@@ -355,6 +358,7 @@ fn create_initial_step(
     StepData {
         variable_entered: None,
         variable_removed: None,
+        min_d_squared: 0.0,
         wilks_lambda: 1.0,
         f_value: 0.0,
         df1: 0,
@@ -444,6 +448,15 @@ fn create_step_data(
     let f_value = exact_f;
     let significance = calculate_p_value_from_f(exact_f, exact_df1 as f64, exact_df2 as f64);
 
+    // Compute Min D² for Mahalanobis method output (SPSS column: "Min. D Squared")
+    let min_d_squared = if combined_vars.is_empty() {
+        0.0
+    } else {
+        let d2 = calculate_min_mahalanobis_distance(dataset, &combined_vars);
+        web_sys::console::log_1(&format!("[DEBUG] Step {:?}: combined_vars={:?}, min_d_squared={}", step, combined_vars, d2).into());
+        d2
+    };
+
     let pairwise_comparisons = if config.method.pairwise {
         generate_pairwise_comparisons(dataset, current_variables, step)
     } else {
@@ -453,6 +466,7 @@ fn create_step_data(
     StepData {
         variable_entered,
         variable_removed,
+        min_d_squared,
         wilks_lambda,
         f_value,
         df1,
@@ -476,6 +490,7 @@ fn convert_steps_to_output(
     let mut result = StepwiseStatistics {
         variables_entered: Vec::new(),
         variables_removed: Vec::new(),
+        min_d_squared: Vec::new(),
         wilks_lambda: Vec::new(),
         f_values: Vec::new(),
         df1: Vec::new(),
@@ -492,10 +507,17 @@ fn convert_steps_to_output(
     };
 
     for (step_idx, step) in steps_data.iter().enumerate() {
+        // SKIP the initial step (index 0) — it's not a real SPSS step
+        // The initial step only populates "Variables Not in Analysis" at the beginning
+        if step_idx == 0 {
+            continue;
+        }
+
         result
             .variables_entered
             .push(step.variable_entered.clone().unwrap_or_default());
         result.variables_removed.push(step.variable_removed.clone());
+        result.min_d_squared.push(step.min_d_squared);
         result.wilks_lambda.push(step.wilks_lambda);
         result.f_values.push(step.f_value);
         result.df1.push(step.df1);
@@ -508,15 +530,15 @@ fn convert_steps_to_output(
 
         result
             .variables_in_analysis
-            .insert(step_idx.to_string(), step.variables_in_analysis.clone());
+            .insert((step_idx).to_string(), step.variables_in_analysis.clone());
 
         result
             .variables_not_in_analysis
-            .insert(step_idx.to_string(), step.variables_not_in_analysis.clone());
+            .insert((step_idx).to_string(), step.variables_not_in_analysis.clone());
 
         if !step.pairwise_comparisons.is_empty() {
             result.pairwise_comparisons.insert(
-                (step_idx + 1).to_string(),
+                (step_idx).to_string(),
                 step.pairwise_comparisons.clone(),
             );
         }

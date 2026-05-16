@@ -12,7 +12,7 @@ use crate::models::{
 
 use super::core::{
     calculate_p_value_from_f, calculate_tolerance, calculate_variable_f_to_enter,
-    calculate_variable_f_to_remove, AnalyzedDataset, MethodType, TOLERANCE_THRESHOLD,
+    calculate_variable_f_to_remove, AnalyzedDataset, MethodType, TOLERANCE_THRESHOLD, EPSILON,
 };
 
 /// Determine the method type from configuration
@@ -62,9 +62,14 @@ pub fn analyze_variables_not_in_model(
             let (tolerance, min_tolerance) =
                 calculate_tolerance(var_name, dataset, current_variables);
 
-            // [PERBAIKAN 1]: Tolerance check - Variabel ditolak jika tolerance-nya
-            // sendiri jelek ATAU merusak tolerance variabel lain yang sudah ada di model.
+            // Tolerance check: reject if tolerance < 0.001 (SPSS default)
+            // [PERBAIKAN]: Also add VIN check — if VIN > 10 (tolerance < 0.1), reject
             if tolerance < TOLERANCE_THRESHOLD || min_tolerance < TOLERANCE_THRESHOLD {
+                return None;
+            }
+            let vin = if tolerance > EPSILON { 1.0 / tolerance } else { f64::MAX };
+            if vin > 10.0 {
+                // VIN > 10 indicates severe multicollinearity — reject variable
                 return None;
             }
 
@@ -86,12 +91,26 @@ pub fn analyze_variables_not_in_model(
     let mut variables_not_in_analysis: Vec<VariableNotInAnalysis> =
         results.into_iter().filter_map(|x| x).collect();
 
-    // Sort variables by F-to-enter (descending)
-    variables_not_in_analysis.sort_unstable_by(|a, b| {
-        b.f_to_enter
-            .partial_cmp(&a.f_to_enter)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
+    // Sort variables — method-dependent ranking:
+    // Mahalanobis: wilks_lambda is -min_D² (proxy for max min D²), lowest = best
+    // All others: sort by F-to-enter descending (highest F = best)
+    match method_type {
+        MethodType::Mahalanobis => {
+            // Lowest wilks_lambda = highest min D² = best candidate
+            variables_not_in_analysis.sort_unstable_by(|a, b| {
+                a.wilks_lambda
+                    .partial_cmp(&b.wilks_lambda)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+        }
+        _ => {
+            variables_not_in_analysis.sort_unstable_by(|a, b| {
+                b.f_to_enter
+                    .partial_cmp(&a.f_to_enter)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+        }
+    }
 
     variables_not_in_analysis
 }
@@ -194,12 +213,21 @@ pub fn find_best_variable_to_enter(
         return (None, default_result);
     }
 
-    // Find best candidate based on method.
-    // IMPORTANT: For ALL methods, the correct criterion for choosing which variable
-    // to enter is the one with the HIGHEST F-to-enter (greatest improvement in
-    // discriminant function). The Wilks' lambda is stored for display purposes,
-    // but the selection itself should always use F-to-enter as the ranking metric.
+    // For Mahalanobis method: rank by new_min_d2 directly (stored as -new_min_d2 in wilks_lambda).
+    // The candidate with LOWEST wilks_lambda (most negative = highest min D²) is best.
+    // For other methods (Wilks, Unexplained, FRatio, Raos): rank by F-to-enter (descending).
     let best_candidate = match method_type {
+        MethodType::Mahalanobis => {
+            // wilks_lambda proxy is -new_min_d2, so lowest wilks_lambda = highest new_min_d2
+            candidates
+                .iter()
+                .min_by(|a, b| {
+                    a.wilks_lambda
+                        .partial_cmp(&b.wilks_lambda)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
+                .cloned()
+        }
         MethodType::Raos => {
             // For Rao's V, also use max F-to-enter (same reasoning)
             candidates
@@ -215,7 +243,7 @@ pub fn find_best_variable_to_enter(
                 .cloned()
         }
         _ => {
-            // For Wilks, Mahalanobis, F-ratio — use highest F-to-enter.
+            // For Wilks, Unexplained, F-ratio — use highest F-to-enter.
             // candidates is already sorted descending by f_to_enter from
             // analyze_variables_not_in_model, so first element is best.
             candidates.first().cloned()
