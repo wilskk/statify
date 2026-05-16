@@ -3,7 +3,10 @@ use std::collections::{HashMap, HashSet};
 use crate::models::{
     config::KnnConfig,
     data::{AnalysisData, KnnData},
-    result::{PredictorImportance, PredictorImportanceEntry},
+    result::{
+        FeatureWeightDetail, PredictorImportance, PredictorImportanceEntry,
+        PredictorWeightExpansionDebug,
+    },
 };
 
 use super::{
@@ -73,10 +76,14 @@ pub fn compute_knn_feature_importance_for_subset(
     let mut entries = Vec::with_capacity(selected_groups.len());
 
     for feature_name in selected_groups {
-        let remove_indices: HashSet<usize> =
+        let mut remove_indices_vec =
             feature_indices_for_variable(&knn_data.features, &feature_name)
                 .into_iter()
-                .collect();
+                .filter(|idx| selected_indices.contains(idx))
+                .collect::<Vec<_>>();
+        remove_indices_vec.sort_unstable();
+        remove_indices_vec.dedup();
+        let remove_indices: HashSet<usize> = remove_indices_vec.iter().copied().collect();
         let remaining_indices: Vec<usize> = selected_indices
             .iter()
             .copied()
@@ -88,11 +95,8 @@ pub fn compute_knn_feature_importance_for_subset(
             evaluate_knn_feature_importance_error(&knn_data, config, k, &remaining_indices)?;
         let delta_error = error_without_feature - base_error;
         let error_ratio = calculate_error_ratio_spss_style(error_without_feature, base_error);
-        let raw_feature_importance = calculate_raw_importance_spss_style(
-            error_without_feature,
-            base_error,
-            m,
-        );
+        let raw_feature_importance =
+            calculate_raw_importance_spss_style(error_without_feature, base_error, m);
         let direct_error_ratio = if error_without_feature.is_finite()
             && base_error.is_finite()
             && base_error > f64::EPSILON
@@ -116,6 +120,21 @@ pub fn compute_knn_feature_importance_for_subset(
             raw_feature_importance,
             normalized_importance: 0.0,
             rank: 0,
+            remove_indices: if target_is_numeric_scale {
+                Some(remove_indices_vec)
+            } else {
+                None
+            },
+            remaining_indices: if target_is_numeric_scale {
+                Some(remaining_indices.clone())
+            } else {
+                None
+            },
+            error_ratio: if target_is_numeric_scale && error_ratio.is_finite() {
+                Some(error_ratio)
+            } else {
+                None
+            },
         });
     }
 
@@ -136,12 +155,16 @@ pub fn compute_knn_feature_importance_for_subset(
         .iter()
         .map(|entry| (entry.feature_name.clone(), entry.normalized_importance))
         .collect::<HashMap<_, _>>();
+    let (weight_expansion_debug, final_expanded_feature_weights) =
+        build_weight_expansion_debug(&knn_data.features, selected_indices, &entries);
 
     Ok(PredictorImportance {
         predictors,
         target: target_var.to_string(),
         entries,
         k,
+        weight_expansion_debug: Some(weight_expansion_debug),
+        final_expanded_feature_weights: Some(final_expanded_feature_weights),
     })
 }
 
@@ -167,14 +190,8 @@ fn calculate_raw_importance_spss_style(
         + (1.0 / original_feature_count)
 }
 
-fn calculate_error_ratio_spss_style(
-    error_without_feature: f64,
-    base_error: f64,
-) -> f64 {
-    if !error_without_feature.is_finite()
-        || !base_error.is_finite()
-        || base_error <= f64::EPSILON
-    {
+fn calculate_error_ratio_spss_style(error_without_feature: f64, base_error: f64) -> f64 {
+    if !error_without_feature.is_finite() || !base_error.is_finite() || base_error <= f64::EPSILON {
         return f64::NAN;
     }
 
@@ -182,18 +199,30 @@ fn calculate_error_ratio_spss_style(
 }
 
 pub fn normalize_feature_importance(entries: &mut [PredictorImportanceEntry]) {
-    let sum = entries
-        .iter()
-        .map(|entry| entry.raw_feature_importance.max(0.0))
-        .sum::<f64>();
+    if entries.is_empty() {
+        return;
+    }
 
-    if sum > f64::EPSILON {
+    let raw_values_are_valid = entries
+        .iter()
+        .all(|entry| entry.raw_feature_importance.is_finite());
+    let sum = if raw_values_are_valid {
+        entries
+            .iter()
+            .map(|entry| entry.raw_feature_importance.max(0.0))
+            .sum::<f64>()
+    } else {
+        f64::NAN
+    };
+
+    if sum.is_finite() && sum > f64::EPSILON {
         for entry in entries.iter_mut() {
             entry.normalized_importance = entry.raw_feature_importance.max(0.0) / sum;
         }
     } else {
+        let uniform_importance = 1.0 / entries.len() as f64;
         for entry in entries.iter_mut() {
-            entry.normalized_importance = 0.0;
+            entry.normalized_importance = uniform_importance;
         }
     }
 
@@ -210,8 +239,74 @@ pub fn normalize_feature_importance(entries: &mut [PredictorImportanceEntry]) {
     }
 }
 
-fn log_diagnostic(_message: &str) {
+fn build_weight_expansion_debug(
+    features: &[String],
+    selected_indices: &[usize],
+    entries: &[PredictorImportanceEntry],
+) -> (Vec<PredictorWeightExpansionDebug>, Vec<FeatureWeightDetail>) {
+    let selected_set = selected_indices.iter().copied().collect::<HashSet<_>>();
+    let normalized_by_predictor = entries
+        .iter()
+        .map(|entry| (entry.feature_name.clone(), entry.normalized_importance))
+        .collect::<HashMap<_, _>>();
+    let weight_expansion_debug = entries
+        .iter()
+        .map(|entry| {
+            let encoded_column_indices =
+                feature_indices_for_variable(features, &entry.feature_name)
+                    .into_iter()
+                    .filter(|idx| selected_set.contains(idx))
+                    .collect::<Vec<_>>();
+            let encoded_columns = encoded_column_indices
+                .iter()
+                .filter_map(|idx| features.get(*idx).cloned())
+                .collect::<Vec<_>>();
+            let encoded_column_weights = encoded_column_indices
+                .iter()
+                .filter_map(|idx| {
+                    features.get(*idx).map(|feature| FeatureWeightDetail {
+                        feature: feature.clone(),
+                        weight: entry.normalized_importance,
+                    })
+                })
+                .collect::<Vec<_>>();
+
+            PredictorWeightExpansionDebug {
+                predictor: entry.feature_name.clone(),
+                normalized_predictor_weight: entry.normalized_importance,
+                encoded_columns,
+                encoded_column_weights,
+            }
+        })
+        .collect::<Vec<_>>();
+    let final_expanded_feature_weights = features
+        .iter()
+        .enumerate()
+        .map(|(idx, feature)| {
+            let predictor = feature
+                .split_once('=')
+                .map(|(prefix, _)| prefix)
+                .unwrap_or(feature.as_str());
+            let weight = if selected_set.contains(&idx) {
+                normalized_by_predictor
+                    .get(predictor)
+                    .copied()
+                    .unwrap_or(0.0)
+            } else {
+                0.0
+            };
+
+            FeatureWeightDetail {
+                feature: feature.clone(),
+                weight,
+            }
+        })
+        .collect::<Vec<_>>();
+
+    (weight_expansion_debug, final_expanded_feature_weights)
 }
+
+fn log_diagnostic(_message: &str) {}
 
 #[cfg(test)]
 mod tests {
@@ -291,8 +386,7 @@ mod tests {
             .entries
             .iter()
             .all(|entry| if entry.base_error > f64::EPSILON {
-                let expected =
-                    (entry.error_without_feature / entry.base_error) + (1.0 / 2.0);
+                let expected = (entry.error_without_feature / entry.base_error) + (1.0 / 2.0);
                 (entry.raw_feature_importance - expected).abs() <= f64::EPSILON
             } else {
                 entry.raw_feature_importance.is_finite()
@@ -304,6 +398,95 @@ mod tests {
             .map(|entry| entry.normalized_importance)
             .sum::<f64>();
         assert!((normalized_sum - 1.0).abs() <= f64::EPSILON);
+    }
+
+    #[test]
+    fn invalid_raw_importance_falls_back_to_uniform_normalized_weights() {
+        let knn_data = KnnData {
+            features: vec![
+                "x1".to_string(),
+                "x2".to_string(),
+                "x3".to_string(),
+                "x4".to_string(),
+                "x5".to_string(),
+            ],
+            data_matrix: vec![
+                vec![0.0, 0.0, 0.0, 0.0, 0.0],
+                vec![1.0, 1.0, 1.0, 1.0, 1.0],
+                vec![2.0, 2.0, 2.0, 2.0, 2.0],
+                vec![3.0, 3.0, 3.0, 3.0, 3.0],
+                vec![4.0, 4.0, 4.0, 4.0, 4.0],
+            ],
+            display_matrix: vec![
+                vec![0.0, 0.0, 0.0, 0.0, 0.0],
+                vec![1.0, 1.0, 1.0, 1.0, 1.0],
+                vec![2.0, 2.0, 2.0, 2.0, 2.0],
+                vec![3.0, 3.0, 3.0, 3.0, 3.0],
+                vec![4.0, 4.0, 4.0, 4.0, 4.0],
+            ],
+            target_values: vec![
+                DataValue::Text("A".to_string()),
+                DataValue::Text("A".to_string()),
+                DataValue::Text("A".to_string()),
+                DataValue::Text("A".to_string()),
+                DataValue::Text("A".to_string()),
+            ],
+            target_measure: VariableMeasure::Nominal,
+            case_identifiers: vec![1, 2, 3, 4, 5],
+            case_labels: vec![
+                "1".to_string(),
+                "2".to_string(),
+                "3".to_string(),
+                "4".to_string(),
+                "5".to_string(),
+            ],
+            processed_case_indices: vec![0, 1, 2, 3, 4],
+            training_indices: vec![0, 1, 2],
+            holdout_indices: vec![3, 4],
+            excluded_indices: Vec::new(),
+            cross_validation_folds: vec![0; 5],
+            focal_indices: Vec::new(),
+        };
+        let mut config = test_config();
+        config.neighbors.weight = true;
+        config.features.perform_selection = false;
+        config.main.feature_var = Some(vec![
+            "x1".to_string(),
+            "x2".to_string(),
+            "x3".to_string(),
+            "x4".to_string(),
+            "x5".to_string(),
+        ]);
+        let selected_indices = vec![0, 1, 2, 3, 4];
+
+        let importance = compute_knn_feature_importance_for_subset(
+            &knn_data,
+            &config,
+            "target",
+            1,
+            &selected_indices,
+        )
+        .unwrap();
+        let normalized_weights = importance
+            .entries
+            .iter()
+            .map(|entry| entry.normalized_importance)
+            .collect::<Vec<_>>();
+
+        assert_eq!(importance.entries.len(), 5);
+        assert!(importance
+            .entries
+            .iter()
+            .all(|entry| entry.base_error == 0.0));
+        assert!(importance
+            .entries
+            .iter()
+            .all(|entry| !entry.raw_feature_importance.is_finite()));
+        assert!(normalized_weights
+            .iter()
+            .all(|weight| (*weight - 0.2).abs() <= f64::EPSILON));
+        assert!(normalized_weights.iter().all(|weight| *weight > 0.0));
+        assert!((normalized_weights.iter().sum::<f64>() - 1.0).abs() <= f64::EPSILON);
     }
 
     fn test_config() -> KnnConfig {

@@ -244,5 +244,4 @@ fn format_indices(indices: &[usize]) -> String {
         .join(",")
 }
 
-fn log_diagnostic(_message: &str) {
-}
+fn log_diagnostic(_message: &str) {}

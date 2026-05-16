@@ -18,11 +18,7 @@ pub fn calculate_predictions(
             Some(DataValue::Text(_) | DataValue::Boolean(_))
         )
     {
-        return calculate_categorical_prediction_with_weights(
-            neighbors,
-            target_values,
-            config.neighbors.weight,
-        );
+        return calculate_categorical_prediction_with_weights(neighbors, target_values, false);
     }
 
     if matches!(first_value, Some(DataValue::Number(_))) {

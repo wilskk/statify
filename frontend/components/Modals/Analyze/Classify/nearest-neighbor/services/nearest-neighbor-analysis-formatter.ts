@@ -32,6 +32,14 @@ export function transformNearestNeighborResult(data: any): ResultJson {
   if (data.predictor_importance) {
     tables.push(buildPredictorImportance(data.predictor_importance));
     tables.push(buildPredictorWeights(data.predictor_importance));
+    const weightExpansionTable = buildWeightExpansionDebug(data.predictor_importance);
+    if (weightExpansionTable) {
+      tables.push(weightExpansionTable);
+    }
+    const debugTable = buildRegressionFeatureImportanceDebug(data.predictor_importance);
+    if (debugTable) {
+      tables.push(debugTable);
+    }
   }
 
   if (data.predictor_space) {
@@ -265,6 +273,94 @@ function buildPredictorWeights(importance: any): Table {
   };
 }
 
+function buildWeightExpansionDebug(importance: any): Table | null {
+  const rows = [];
+  const debugEntries = importance.weightExpansionDebug ?? importance.weight_expansion_debug ?? [];
+
+  for (const entry of debugEntries) {
+    rows.push({
+      rowHeader: [String(entry.predictor ?? "")],
+      predictor: entry.predictor ?? "",
+      normalized_predictor_weight: optionalNumber(
+        entry.normalizedPredictorWeight ?? entry.normalized_predictor_weight,
+      ),
+      encoded_columns: formatList(entry.encodedColumns ?? entry.encoded_columns),
+      encoded_column_weights: formatFeatureWeights(
+        entry.encodedColumnWeights ?? entry.encoded_column_weights,
+      ),
+    });
+  }
+
+  const finalVector = importance.finalExpandedFeatureWeights ?? importance.final_expanded_feature_weights ?? [];
+  if (Array.isArray(finalVector) && finalVector.length) {
+    rows.push({
+      rowHeader: ["Final Expanded Vector"],
+      predictor: "Final Expanded Vector",
+      normalized_predictor_weight: "",
+      encoded_columns: finalVector.map((entry: any) => entry.feature ?? entry.name ?? "").join(", "),
+      encoded_column_weights: formatFeatureWeights(finalVector),
+    });
+  }
+
+  if (!rows.length) {
+    return null;
+  }
+
+  return {
+    key: "weight_expansion_debug",
+    title: "Weight Expansion Debug",
+    columnHeaders: [
+      { header: "Original Predictor", key: "predictor" },
+      { header: "Normalized Predictor Weight", key: "normalized_predictor_weight" },
+      { header: "Encoded Columns", key: "encoded_columns" },
+      { header: "Encoded Column Weights", key: "encoded_column_weights" },
+    ],
+    rows,
+    note: "Normalized predictor importance is expanded to encoded columns without re-normalizing or splitting categorical predictor weights.",
+  };
+}
+
+function buildRegressionFeatureImportanceDebug(importance: any): Table | null {
+  const entries = Array.isArray(importance.entries) ? importance.entries : [];
+  const debugEntries = entries.filter((entry: any) =>
+    Array.isArray(entry.removeIndices ?? entry.remove_indices) ||
+    Array.isArray(entry.remainingIndices ?? entry.remaining_indices)
+  );
+
+  if (!debugEntries.length) {
+    return null;
+  }
+
+  return {
+    key: "regression_feature_importance_debug",
+    title: "Regression Feature Importance Debug",
+    columnHeaders: [
+      { header: "Predictor", key: "predictor" },
+      { header: "Remove Indices", key: "remove_indices" },
+      { header: "Remaining Indices", key: "remaining_indices" },
+      { header: "Base Error", key: "base_error" },
+      { header: "Error Without Predictor", key: "error_without_p" },
+      { header: "Error Ratio", key: "error_ratio" },
+      { header: "FI", key: "fi" },
+      { header: "Normalized Weight", key: "normalized_weight" },
+    ],
+    rows: debugEntries.map((entry: any, index: number) => ({
+      rowHeader: [String(entry.featureName ?? entry.feature_name ?? entry.name ?? index + 1)],
+      predictor: entry.featureName ?? entry.feature_name ?? entry.name ?? "",
+      remove_indices: formatIndexList(entry.removeIndices ?? entry.remove_indices),
+      remaining_indices: formatIndexList(entry.remainingIndices ?? entry.remaining_indices),
+      base_error: optionalNumber(entry.baseError ?? entry.base_error),
+      error_without_p: optionalNumber(entry.errorWithoutFeature ?? entry.error_without_feature),
+      error_ratio: optionalNumber(entry.errorRatio ?? entry.error_ratio),
+      fi: optionalNumber(
+        entry.rawFeatureImportance ?? entry.raw_feature_importance ?? entry.rawImportance ?? entry.raw_importance,
+      ),
+      normalized_weight: optionalNumber(entry.normalizedImportance ?? entry.normalized_importance ?? entry.value),
+    })),
+    note: "Debug values for KNN Regression weighted feature importance. Indices refer to final encoded model feature columns.",
+  };
+}
+
 function buildPredictorSpaceSummary(space: any): Table {
   const dimension = space.dimensions?.[0];
   return {
@@ -480,6 +576,22 @@ function normalizePredictorImportanceEntries(predictors: any) {
 function formatList(values: any[] | undefined) {
   if (!values?.length) return "(none)";
   return values.join(", ");
+}
+
+function formatIndexList(values: any[] | undefined) {
+  if (!Array.isArray(values) || !values.length) return "(none)";
+  return values.map((value) => String(value)).join(", ");
+}
+
+function formatFeatureWeights(weights: any[] | undefined) {
+  if (!Array.isArray(weights) || !weights.length) return "(none)";
+  return weights
+    .map((entry) => {
+      const feature = entry.feature ?? entry.name ?? "";
+      const weight = entry.weight ?? entry.value;
+      return `${feature}=${optionalNumber(weight)}`;
+    })
+    .join(", ");
 }
 
 function formatStoppingMethod(value: string | undefined) {

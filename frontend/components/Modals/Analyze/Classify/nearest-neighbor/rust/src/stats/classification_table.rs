@@ -26,6 +26,9 @@ pub fn calculate_classification_table(
 
     // Preprocess data
     let knn_data = preprocess_knn_data(data, config)?;
+    if !knn_data.target_is_categorical() {
+        return Err("Classification table is only available for categorical targets".to_string());
+    }
 
     // Determine k value
     let k = determine_effective_k(&knn_data, config)?;
@@ -46,7 +49,7 @@ pub fn calculate_classification_table(
         k,
         use_euclidean,
         weights.as_deref(),
-        config.neighbors.weight,
+        false,
         true,
     );
 
@@ -58,7 +61,7 @@ pub fn calculate_classification_table(
             k,
             use_euclidean,
             weights.as_deref(),
-            config.neighbors.weight,
+            false,
             false,
         );
 

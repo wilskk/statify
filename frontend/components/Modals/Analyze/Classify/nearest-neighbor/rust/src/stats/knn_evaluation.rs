@@ -17,7 +17,7 @@ pub fn evaluate_knn_error(
     k: usize,
     selected_features: &[usize],
 ) -> Result<f64, String> {
-    evaluate_knn_error_with_scale_mode(knn_data, config, k, selected_features, false)
+    evaluate_knn_error_with_options(knn_data, config, k, selected_features, false, false)
 }
 
 pub fn evaluate_knn_feature_importance_error(
@@ -26,15 +26,16 @@ pub fn evaluate_knn_feature_importance_error(
     k: usize,
     selected_features: &[usize],
 ) -> Result<f64, String> {
-    evaluate_knn_error_with_scale_mode(knn_data, config, k, selected_features, true)
+    evaluate_knn_error_with_options(knn_data, config, k, selected_features, true, true)
 }
 
-fn evaluate_knn_error_with_scale_mode(
+fn evaluate_knn_error_with_options(
     knn_data: &KnnData,
     config: &KnnConfig,
     k: usize,
     selected_features: &[usize],
-    return_scale_sse: bool,
+    use_unit_feature_weights_for_evaluation: bool,
+    return_sse_for_numeric_target: bool,
 ) -> Result<f64, String> {
     if knn_data.target_values.is_empty()
         || knn_data
@@ -45,7 +46,11 @@ fn evaluate_knn_error_with_scale_mode(
         return Err("Target values are required for KNN evaluation".to_string());
     }
 
-    let weights = selected_feature_weights(knn_data, config, selected_features);
+    let weights = if use_unit_feature_weights_for_evaluation {
+        selected_unit_feature_weights(knn_data, selected_features)
+    } else {
+        selected_feature_weights(knn_data, config, selected_features)
+    };
     let evaluation_indices = evaluation_case_indices(knn_data);
     let use_holdout = !knn_data.holdout_indices.is_empty();
     let evaluation_strategy = if use_holdout {
@@ -129,11 +134,23 @@ fn evaluate_knn_error_with_scale_mode(
         ));
     }
 
-    if target_is_numeric && return_scale_sse {
+    if target_is_numeric && return_sse_for_numeric_target {
         Ok(total_error)
     } else {
         Ok(average_error)
     }
+}
+
+fn selected_unit_feature_weights(knn_data: &KnnData, selected_features: &[usize]) -> Vec<f64> {
+    let mut weights = vec![0.0; knn_data.features.len()];
+
+    for &feature_idx in selected_features {
+        if feature_idx < weights.len() {
+            weights[feature_idx] = 1.0;
+        }
+    }
+
+    weights
 }
 
 pub fn predict_knn(
@@ -247,8 +264,7 @@ fn format_indices(indices: &[usize]) -> String {
         .join(",")
 }
 
-fn log_diagnostic(_message: &str) {
-}
+fn log_diagnostic(_message: &str) {}
 
 #[cfg(test)]
 mod tests {

@@ -9,6 +9,24 @@ pub fn calculate_distance(
     use_euclidean: bool,
     feature_weights: Option<&[f64]>,
 ) -> f64 {
+    calculate_distance_with_debug(point1, point2, use_euclidean, feature_weights).distance
+}
+
+#[derive(Debug, Clone)]
+pub struct DistanceDebug {
+    pub distance: f64,
+    pub raw_weighted_squared_distance: f64,
+    pub final_distance: f64,
+    pub normalization_divisor: f64,
+    pub sum_effective_weights: f64,
+}
+
+pub fn calculate_distance_with_debug(
+    point1: &[f64],
+    point2: &[f64],
+    use_euclidean: bool,
+    feature_weights: Option<&[f64]>,
+) -> DistanceDebug {
     let min_len = point1.len().min(point2.len());
     let mut used_weight = 0.0;
 
@@ -29,10 +47,26 @@ pub fn calculate_distance(
             .sum::<f64>();
 
         if used_weight == 0.0 {
-            return f64::INFINITY;
+            return DistanceDebug {
+                distance: f64::INFINITY,
+                raw_weighted_squared_distance: f64::INFINITY,
+                final_distance: f64::INFINITY,
+                normalization_divisor: 0.0,
+                sum_effective_weights: 0.0,
+            };
         }
 
-        sum_squared.sqrt()
+        let normalization_divisor = 1.0;
+        let normalized_squared = sum_squared / normalization_divisor;
+        let final_distance = normalized_squared.sqrt();
+
+        DistanceDebug {
+            distance: final_distance,
+            raw_weighted_squared_distance: sum_squared,
+            final_distance,
+            normalization_divisor,
+            sum_effective_weights: used_weight,
+        }
     } else {
         let sum = (0..min_len)
             .filter_map(|i| {
@@ -50,10 +84,22 @@ pub fn calculate_distance(
             .sum::<f64>();
 
         if used_weight == 0.0 {
-            return f64::INFINITY;
+            return DistanceDebug {
+                distance: f64::INFINITY,
+                raw_weighted_squared_distance: f64::INFINITY,
+                final_distance: f64::INFINITY,
+                normalization_divisor: 1.0,
+                sum_effective_weights: 0.0,
+            };
         }
 
-        sum
+        DistanceDebug {
+            distance: sum,
+            raw_weighted_squared_distance: sum,
+            final_distance: sum,
+            normalization_divisor: 1.0,
+            sum_effective_weights: used_weight,
+        }
     }
 }
 

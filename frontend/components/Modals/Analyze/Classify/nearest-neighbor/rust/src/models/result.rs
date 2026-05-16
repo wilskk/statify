@@ -119,6 +119,18 @@ pub struct PredictorImportance {
     pub target: String,
     pub entries: Vec<PredictorImportanceEntry>,
     pub k: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weight_expansion_debug: Option<Vec<PredictorWeightExpansionDebug>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub final_expanded_feature_weights: Option<Vec<FeatureWeightDetail>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PredictorWeightExpansionDebug {
+    pub predictor: String,
+    pub normalized_predictor_weight: f64,
+    pub encoded_columns: Vec<String>,
+    pub encoded_column_weights: Vec<FeatureWeightDetail>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -131,6 +143,12 @@ pub struct PredictorImportanceEntry {
     pub raw_feature_importance: f64,
     pub normalized_importance: f64,
     pub rank: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub remove_indices: Option<Vec<usize>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub remaining_indices: Option<Vec<usize>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_ratio: Option<f64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -238,6 +256,25 @@ pub struct NeighborDetail {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub row_number: Option<usize>,
     pub distance: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub distance_debug: Option<DistanceDebugDetail>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DistanceDebugDetail {
+    pub predictor_weights: HashMap<String, f64>,
+    pub expanded_feature_weights: Vec<FeatureWeightDetail>,
+    pub sum_expanded_feature_weights: f64,
+    pub sum_effective_weights: f64,
+    pub raw_weighted_squared_distance: f64,
+    pub final_returned_distance: f64,
+    pub normalization_divisor: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FeatureWeightDetail {
+    pub feature: String,
+    pub weight: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

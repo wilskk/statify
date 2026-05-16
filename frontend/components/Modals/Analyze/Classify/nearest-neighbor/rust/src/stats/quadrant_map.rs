@@ -86,6 +86,7 @@ pub fn calculate_quadrant_map(
                 id: neighbor_id,
                 row_number: knn_data.processed_case_indices.get(idx).map(|idx| idx + 1),
                 distance,
+                distance_debug: None,
             });
             distances.push(distance);
         }

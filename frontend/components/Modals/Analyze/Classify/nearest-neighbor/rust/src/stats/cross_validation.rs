@@ -39,7 +39,6 @@ pub fn calculate_k_selection_chart(
         .max(min_k as i32) as usize;
     let use_euclidean = config.neighbors.metric_eucli;
     let use_median = config.neighbors.predictions_median;
-    let use_distance_weights = config.neighbors.weight;
     let weights = build_effective_feature_weights(knn_data, config)?;
 
     if min_k >= max_k {
@@ -125,7 +124,6 @@ pub fn calculate_k_selection_chart(
                 k,
                 use_euclidean,
                 use_median,
-                use_distance_weights,
                 weights.as_deref(),
             )?;
 
@@ -168,7 +166,6 @@ fn calculate_fold_error(
     k: usize,
     use_euclidean: bool,
     use_median: bool,
-    use_distance_weights: bool,
     weights: Option<&[f64]>,
 ) -> Result<f64, String> {
     let mut total_error = 0.0;
@@ -192,7 +189,7 @@ fn calculate_fold_error(
             let predicted = super::prediction::calculate_categorical_prediction_with_weights(
                 &neighbors,
                 &knn_data.target_values,
-                use_distance_weights,
+                false,
             );
 
             if category_key(Some(actual)) != category_key(Some(&predicted)) {

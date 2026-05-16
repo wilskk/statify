@@ -56,6 +56,16 @@ pub fn run_analysis(
         }
     }
 
+    let target_is_categorical = feature_selection_data
+        .as_ref()
+        .map(|knn_data| knn_data.target_is_categorical())
+        .or_else(|| {
+            core::preprocess_knn_data(data, config)
+                .ok()
+                .map(|knn_data| knn_data.target_is_categorical())
+        })
+        .unwrap_or(false);
+
     let mut feature_selection_summary = None;
     let mut feature_selection_steps = None;
     let mut k_feature_selection_summary = None;
@@ -118,9 +128,9 @@ pub fn run_analysis(
     };
 
     // Step 3: Classification results
-    logger.add_log("classification_results");
     let mut classification_table = None;
-    if config.output.confusion_matrix {
+    if config.output.confusion_matrix && target_is_categorical {
+        logger.add_log("classification_results");
         match core::calculate_classification_table(data, config) {
             Ok(table) => {
                 classification_table = Some(table);
@@ -227,14 +237,16 @@ pub fn run_analysis(
     }
 
     // Step 8: Error summary
-    logger.add_log("error_summary");
     let mut error_summary = None;
-    match core::calculate_error_summary(&classification_table) {
-        Ok(summary) => {
-            error_summary = Some(summary);
-        }
-        Err(e) => {
-            error_collector.add_error("error_summary", &e);
+    if target_is_categorical {
+        logger.add_log("error_summary");
+        match core::calculate_error_summary(&classification_table) {
+            Ok(summary) => {
+                error_summary = Some(summary);
+            }
+            Err(e) => {
+                error_collector.add_error("error_summary", &e);
+            }
         }
     }
 

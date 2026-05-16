@@ -138,6 +138,7 @@ fn build_points(
                     .get(neighbor_idx)
                     .map(|idx| idx + 1),
                 distance,
+                distance_debug: None,
             })
             .collect();
 
@@ -208,14 +209,11 @@ fn build_original_feature_space(
         &feature_measures,
         &knn_data.processed_case_indices,
     );
-    let selected_layout = build_original_feature_layout(
-        &original_features,
-        &feature_measures,
-        &category_maps,
-    )
-    .into_iter()
-    .filter(|feature| original_feature_selected(feature, weights))
-    .collect::<Vec<_>>();
+    let selected_layout =
+        build_original_feature_layout(&original_features, &feature_measures, &category_maps)
+            .into_iter()
+            .filter(|feature| original_feature_selected(feature, weights))
+            .collect::<Vec<_>>();
 
     let features = selected_layout
         .iter()
@@ -449,10 +447,12 @@ fn numeric_ordinal_ticks(
 ) -> Vec<PredictorAxisTick> {
     let mut values = case_indices
         .iter()
-        .filter_map(|case_idx| match find_feature_value(*case_idx, &feature.name, data) {
-            Some(DataValue::Number(value)) if value.is_finite() => Some(*value),
-            _ => None,
-        })
+        .filter_map(
+            |case_idx| match find_feature_value(*case_idx, &feature.name, data) {
+                Some(DataValue::Number(value)) if value.is_finite() => Some(*value),
+                _ => None,
+            },
+        )
         .collect::<Vec<_>>();
 
     values.sort_by(|left, right| left.total_cmp(right));
@@ -754,11 +754,7 @@ mod tests {
         KnnConfig {
             main: MainConfig {
                 target_var: Some("class".to_string()),
-                feature_var: Some(vec![
-                    "x".to_string(),
-                    "group".to_string(),
-                    "y".to_string(),
-                ]),
+                feature_var: Some(vec!["x".to_string(), "group".to_string(), "y".to_string()]),
                 case_iden_var: None,
                 focal_case_iden_var: None,
                 norm_covar: false,

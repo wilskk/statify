@@ -80,7 +80,7 @@ pub fn calculate_prediction_results(
             let predicted = calculate_categorical_prediction_with_weights(
                 &neighbors,
                 &knn_data.target_values,
-                config.neighbors.weight,
+                false,
             );
             let probability = category_key(Some(&predicted)).and_then(|predicted_key| {
                 calculate_categorical_probabilities(

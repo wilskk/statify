@@ -227,7 +227,6 @@ fn has_valid_importance_entries(
         && entries.iter().all(|entry| {
             entry.base_error.is_finite()
                 && entry.error_without_feature.is_finite()
-                && entry.raw_feature_importance.is_finite()
                 && entry.normalized_importance.is_finite()
         })
 }
@@ -312,8 +311,7 @@ fn named_weights(knn_data: &KnnData, weights: &[f64]) -> String {
         .join(", ")
 }
 
-fn log_diagnostic(_message: &str) {
-}
+fn log_diagnostic(_message: &str) {}
 
 #[cfg(test)]
 mod tests {
