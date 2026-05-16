@@ -10,7 +10,6 @@ pub fn calculate_distance(
     feature_weights: Option<&[f64]>,
 ) -> f64 {
     let min_len = point1.len().min(point2.len());
-    let mut total_weight = 0.0;
     let mut used_weight = 0.0;
 
     if use_euclidean {
@@ -19,7 +18,6 @@ pub fn calculate_distance(
                 let weight = feature_weights
                     .and_then(|w| w.get(i).copied())
                     .unwrap_or(1.0);
-                total_weight += weight;
                 if !point1[i].is_finite() || !point2[i].is_finite() {
                     return None;
                 }
@@ -34,14 +32,13 @@ pub fn calculate_distance(
             return f64::INFINITY;
         }
 
-        (sum_squared * (total_weight / used_weight)).sqrt()
+        sum_squared.sqrt()
     } else {
         let sum = (0..min_len)
             .filter_map(|i| {
                 let weight = feature_weights
                     .and_then(|w| w.get(i).copied())
                     .unwrap_or(1.0);
-                total_weight += weight;
                 if !point1[i].is_finite() || !point2[i].is_finite() {
                     return None;
                 }
@@ -56,7 +53,7 @@ pub fn calculate_distance(
             return f64::INFINITY;
         }
 
-        sum * (total_weight / used_weight)
+        sum
     }
 }
 
@@ -163,6 +160,22 @@ mod tests {
             12.5_f64.sqrt()
         );
         assert_eq!(calculate_manhattan_distance(&a, &b, Some(&weights)), 3.5);
+    }
+
+    #[test]
+    fn weighted_distances_do_not_rescale_by_used_or_total_weight() {
+        let a = [0.0, f64::NAN];
+        let b = [3.0, 4.0];
+        let weights = [0.25, 0.75];
+
+        assert_eq!(
+            calculate_euclidean_distance(&a, &b, Some(&weights)),
+            (0.25_f64 * 9.0).sqrt()
+        );
+        assert_eq!(
+            calculate_manhattan_distance(&a, &b, Some(&weights)),
+            0.25 * 3.0
+        );
     }
 
     #[test]

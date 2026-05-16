@@ -31,6 +31,7 @@ export function transformNearestNeighborResult(data: any): ResultJson {
 
   if (data.predictor_importance) {
     tables.push(buildPredictorImportance(data.predictor_importance));
+    tables.push(buildPredictorWeights(data.predictor_importance));
   }
 
   if (data.predictor_space) {
@@ -238,6 +239,29 @@ function buildPredictorImportance(importance: any): Table {
       importance: optionalNumber(entry.normalizedImportance ?? entry.normalized_importance ?? entry.value),
     })),
     note: `Target: ${importance.target ?? ""}; K = ${importance.k ?? ""}`,
+  };
+}
+
+function buildPredictorWeights(importance: any): Table {
+  const entries = Array.isArray(importance.entries) && importance.entries.length
+    ? importance.entries
+    : normalizePredictorImportanceEntries(importance.predictors);
+
+  return {
+    key: "predictor_weights",
+    title: "Predictor Weights",
+    columnHeaders: [
+      { header: "Rank", key: "rank" },
+      { header: "Predictor", key: "predictor" },
+      { header: "Weight", key: "weight" },
+    ],
+    rows: entries.map((entry: any, index: number) => ({
+      rowHeader: [String(entry.featureName ?? entry.feature_name ?? entry.name ?? index + 1)],
+      rank: formatDisplayNumber(entry.rank ?? index + 1),
+      predictor: entry.featureName ?? entry.feature_name ?? entry.name ?? "",
+      weight: optionalNumber(entry.normalizedImportance ?? entry.normalized_importance ?? entry.value),
+    })),
+    note: "Weights are normalized predictor-level feature importance values used in weighted distance.",
   };
 }
 

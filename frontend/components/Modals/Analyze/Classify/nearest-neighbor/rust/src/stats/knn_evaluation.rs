@@ -17,6 +17,25 @@ pub fn evaluate_knn_error(
     k: usize,
     selected_features: &[usize],
 ) -> Result<f64, String> {
+    evaluate_knn_error_with_scale_mode(knn_data, config, k, selected_features, false)
+}
+
+pub fn evaluate_knn_feature_importance_error(
+    knn_data: &KnnData,
+    config: &KnnConfig,
+    k: usize,
+    selected_features: &[usize],
+) -> Result<f64, String> {
+    evaluate_knn_error_with_scale_mode(knn_data, config, k, selected_features, true)
+}
+
+fn evaluate_knn_error_with_scale_mode(
+    knn_data: &KnnData,
+    config: &KnnConfig,
+    k: usize,
+    selected_features: &[usize],
+    return_scale_sse: bool,
+) -> Result<f64, String> {
     if knn_data.target_values.is_empty()
         || knn_data
             .target_values
@@ -110,7 +129,11 @@ pub fn evaluate_knn_error(
         ));
     }
 
-    Ok(average_error)
+    if target_is_numeric && return_scale_sse {
+        Ok(total_error)
+    } else {
+        Ok(average_error)
+    }
 }
 
 pub fn predict_knn(
@@ -225,4 +248,139 @@ fn format_indices(indices: &[usize]) -> String {
 }
 
 fn log_diagnostic(_message: &str) {
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::models::{
+        config::{
+            FeaturesConfig, KnnConfig, MainConfig, NeighborsConfig, OutputConfig, PartitionConfig,
+            SaveConfig,
+        },
+        data::{DataValue, KnnData, VariableMeasure},
+    };
+
+    use super::{evaluate_knn_error, evaluate_knn_feature_importance_error};
+
+    #[test]
+    fn scale_error_returns_mean_squared_error_for_general_model_evaluation() {
+        let data = scale_test_data();
+
+        let error = evaluate_knn_error(&data, &test_config(), 1, &[0]).unwrap();
+
+        assert_eq!(error, 1.0);
+    }
+
+    #[test]
+    fn scale_feature_importance_error_returns_total_sum_of_squares() {
+        let data = scale_test_data();
+
+        let error = evaluate_knn_feature_importance_error(&data, &test_config(), 1, &[0]).unwrap();
+
+        assert_eq!(error, 2.0);
+    }
+
+    fn scale_test_data() -> KnnData {
+        KnnData {
+            features: vec!["x".to_string()],
+            data_matrix: vec![vec![0.0], vec![10.0], vec![20.0], vec![1.0], vec![19.0]],
+            display_matrix: vec![vec![0.0], vec![10.0], vec![20.0], vec![1.0], vec![19.0]],
+            target_values: vec![
+                DataValue::Number(0.0),
+                DataValue::Number(10.0),
+                DataValue::Number(20.0),
+                DataValue::Number(1.0),
+                DataValue::Number(19.0),
+            ],
+            target_measure: VariableMeasure::Scale,
+            case_identifiers: vec![1, 2, 3, 4, 5],
+            case_labels: vec![
+                "1".to_string(),
+                "2".to_string(),
+                "3".to_string(),
+                "4".to_string(),
+                "5".to_string(),
+            ],
+            processed_case_indices: vec![0, 1, 2, 3, 4],
+            training_indices: vec![0, 1, 2],
+            holdout_indices: vec![3, 4],
+            excluded_indices: Vec::new(),
+            cross_validation_folds: vec![0; 5],
+            focal_indices: Vec::new(),
+        }
+    }
+
+    fn test_config() -> KnnConfig {
+        KnnConfig {
+            main: MainConfig {
+                target_var: Some("target".to_string()),
+                feature_var: Some(vec!["x".to_string()]),
+                case_iden_var: None,
+                focal_case_iden_var: None,
+                norm_covar: false,
+            },
+            neighbors: NeighborsConfig {
+                specify: true,
+                auto_selection: false,
+                specify_k: 1,
+                min_k: Some(1),
+                max_k: Some(1),
+                metric_eucli: true,
+                metric_manhattan: false,
+                weight: false,
+                predictions_mean: true,
+                predictions_median: false,
+            },
+            features: FeaturesConfig {
+                forward_selection: None,
+                forced_entry_var: None,
+                features_to_evaluate: 0,
+                forced_features: 0,
+                perform_selection: false,
+                max_reached: false,
+                below_min: false,
+                max_to_select: None,
+                min_change: 0.0,
+            },
+            partition: PartitionConfig {
+                src_var: None,
+                partitioning_variable: None,
+                use_randomly: false,
+                use_variable: false,
+                v_fold_partitioning_variable: None,
+                v_fold_use_randomly: false,
+                v_fold_use_partitioning_var: false,
+                training_number: 70,
+                num_partition: 2,
+                set_seed: false,
+                seed: None,
+            },
+            save: SaveConfig {
+                auto_name: true,
+                custom_name: false,
+                max_cats_to_save: None,
+                has_target_var: false,
+                is_cate_target_var: false,
+                random_assign_to_partition: false,
+                random_assign_to_fold: false,
+            },
+            output: OutputConfig {
+                case_summary: true,
+                feature_selection_summary: true,
+                k_selection_chart: true,
+                predictor_space: true,
+                prediction_results: true,
+                confusion_matrix: true,
+                show_neighbor_detail: false,
+                chart_and_table: true,
+                export_model_xml: false,
+                xml_file_path: None,
+                export_distance: false,
+                create_dataset: false,
+                write_data_file: false,
+                new_data_file_path: None,
+                dataset_name: None,
+            },
+        }
+    }
 }

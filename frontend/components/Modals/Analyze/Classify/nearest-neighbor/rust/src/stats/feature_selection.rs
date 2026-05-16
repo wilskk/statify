@@ -8,7 +8,7 @@ use crate::models::{
 
 use super::{
     cross_validation::determine_k_value,
-    feature_weighting::{calculate_feature_weights_for_subset_with_k, normalize_feature_weights},
+    feature_weighting::calculate_feature_weights_for_subset_with_k,
     knn_evaluation::evaluate_knn_error,
 };
 
@@ -355,6 +355,10 @@ pub(crate) fn selected_feature_weights(
     config: &KnnConfig,
     selected_features: &[usize],
 ) -> Vec<f64> {
+    if config.neighbors.weight {
+        return equal_original_predictor_weights(&knn_data.features, selected_features);
+    }
+
     let selected_set: HashSet<usize> = selected_features.iter().copied().collect();
     let mut weights = vec![0.0; knn_data.features.len()];
 
@@ -364,8 +368,46 @@ pub(crate) fn selected_feature_weights(
         }
     }
 
-    if config.neighbors.weight {
-        normalize_feature_weights(&mut weights);
+    weights
+}
+
+pub(crate) fn equal_original_predictor_weights(
+    features: &[String],
+    selected_features: &[usize],
+) -> Vec<f64> {
+    let feature_count = features.len();
+    let selected_set = selected_features
+        .iter()
+        .copied()
+        .filter(|idx| *idx < feature_count)
+        .collect::<HashSet<_>>();
+
+    if selected_set.is_empty() {
+        return vec![0.0; feature_count];
+    }
+
+    let selected_groups = expanded_feature_groups(features)
+        .into_iter()
+        .filter(|group| {
+            feature_indices_for_variable(features, group)
+                .into_iter()
+                .any(|idx| selected_set.contains(&idx))
+        })
+        .collect::<Vec<_>>();
+
+    if selected_groups.is_empty() {
+        return vec![0.0; feature_count];
+    }
+
+    let predictor_weight = 1.0 / selected_groups.len() as f64;
+    let mut weights = vec![0.0; feature_count];
+
+    for group in selected_groups {
+        for idx in feature_indices_for_variable(features, &group) {
+            if selected_set.contains(&idx) {
+                weights[idx] = predictor_weight;
+            }
+        }
     }
 
     weights

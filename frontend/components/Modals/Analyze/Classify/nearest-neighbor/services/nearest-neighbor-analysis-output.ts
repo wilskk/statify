@@ -159,6 +159,21 @@ export async function resultNearestNeighbor({
       /*
        * 🔍 Classification Table Result 🔍
        * */
+      const predictorWeights = findTable("predictor_weights");
+      if (predictorWeights) {
+        const predictorWeightsId = await addAnalytic(logId, {
+          title: `Predictor Weights`,
+          note: "",
+        });
+
+        await addStatistic(predictorWeightsId, {
+          title: `Predictor Weights`,
+          description: `Predictor Weights`,
+          output_data: predictorWeights,
+          components: `Predictor Weights`,
+        });
+      }
+
       const classificationTable = findTable("classification_table");
       if (classificationTable) {
         const classificationTableId = await addAnalytic(logId, {

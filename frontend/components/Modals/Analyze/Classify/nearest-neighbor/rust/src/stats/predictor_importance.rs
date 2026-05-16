@@ -10,7 +10,7 @@ use super::{
     feature_selection::{
         determine_effective_k, expanded_feature_groups, feature_indices_for_variable,
     },
-    knn_evaluation::evaluate_knn_error,
+    knn_evaluation::evaluate_knn_feature_importance_error,
     preprocess_data::preprocess_knn_data,
 };
 
@@ -55,7 +55,8 @@ pub fn compute_knn_feature_importance_for_subset(
     }
 
     let selected_groups = selected_original_features(&knn_data.features, &selected_indices);
-    let base_error = evaluate_knn_error(&knn_data, config, k, &selected_indices)?;
+    let base_error =
+        evaluate_knn_feature_importance_error(&knn_data, config, k, &selected_indices)?;
     let m = selected_groups.len().max(1) as f64;
     let target_is_numeric_scale = knn_data.target_is_numeric_scale();
     let evaluation_strategy = if knn_data.holdout_indices.is_empty() {
@@ -83,11 +84,16 @@ pub fn compute_knn_feature_importance_for_subset(
             .collect();
 
         // One original categorical predictor can span multiple one-hot columns.
-        let error_without_feature = evaluate_knn_error(&knn_data, config, k, &remaining_indices)?;
+        let error_without_feature =
+            evaluate_knn_feature_importance_error(&knn_data, config, k, &remaining_indices)?;
         let delta_error = error_without_feature - base_error;
-        let raw_feature_importance =
-            calculate_raw_importance_spss_style(error_without_feature, base_error, m);
-        let error_ratio = if error_without_feature.is_finite()
+        let error_ratio = calculate_error_ratio_spss_style(error_without_feature, base_error);
+        let raw_feature_importance = calculate_raw_importance_spss_style(
+            error_without_feature,
+            base_error,
+            m,
+        );
+        let direct_error_ratio = if error_without_feature.is_finite()
             && base_error.is_finite()
             && base_error > f64::EPSILON
         {
@@ -97,8 +103,8 @@ pub fn compute_knn_feature_importance_for_subset(
         };
         if target_is_numeric_scale {
             log_diagnostic(&format!(
-                "KNN scale feature importance [{}]: error_without_feature={:.12}, error_ratio={:.12}, raw_importance={:.12}",
-                feature_name, error_without_feature, error_ratio, raw_feature_importance
+                "KNN scale feature importance [{}]: error_without_feature={:.12}, direct_error_ratio={:.12}, error_ratio={:.12}, raw_importance={:.12}",
+                feature_name, error_without_feature, direct_error_ratio, error_ratio, raw_feature_importance
             ));
         }
 
@@ -157,11 +163,22 @@ fn calculate_raw_importance_spss_style(
     base_error: f64,
     original_feature_count: f64,
 ) -> f64 {
-    if error_without_feature.is_finite() && base_error.is_finite() && base_error > f64::EPSILON {
-        (error_without_feature / base_error) + (1.0 / original_feature_count)
-    } else {
-        f64::NAN
+    calculate_error_ratio_spss_style(error_without_feature, base_error)
+        + (1.0 / original_feature_count)
+}
+
+fn calculate_error_ratio_spss_style(
+    error_without_feature: f64,
+    base_error: f64,
+) -> f64 {
+    if !error_without_feature.is_finite()
+        || !base_error.is_finite()
+        || base_error <= f64::EPSILON
+    {
+        return f64::NAN;
     }
+
+    error_without_feature / base_error
 }
 
 pub fn normalize_feature_importance(entries: &mut [PredictorImportanceEntry]) {

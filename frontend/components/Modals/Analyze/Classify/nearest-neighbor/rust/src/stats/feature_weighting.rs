@@ -67,7 +67,7 @@ pub fn calculate_feature_weights_for_subset_with_k(
     let mut weights = calculate_importance_distance_weights(knn_data, config, &selected_set, k);
     if !weights.iter().any(|weight| *weight > 0.0) {
         log_diagnostic("KNN feature weighting fallback: no positive final weights after importance calculation");
-        weights = equal_normalized_weights(feature_count, &selected_set);
+        weights = equal_original_predictor_weights(knn_data, &selected_set);
     }
 
     log_final_weights(knn_data, &weights, "weighting_on_final");
@@ -95,7 +95,7 @@ fn calculate_importance_distance_weights(
         log_diagnostic(
             "KNN feature weighting fallback: compute_knn_feature_importance_for_subset failed",
         );
-        return equal_normalized_weights(feature_count, selected_set);
+        return equal_original_predictor_weights(knn_data, selected_set);
     };
 
     let mut raw_weights = vec![0.0; feature_count];
@@ -117,7 +117,6 @@ fn calculate_importance_distance_weights(
         }
 
         let normalized = normalized_by_feature.get(&group).copied().unwrap_or(0.0);
-        let per_column = normalized / group_indices.len() as f64;
 
         for idx in group_indices {
             if idx < feature_count {
@@ -127,7 +126,7 @@ fn calculate_importance_distance_weights(
                     .find(|entry| entry.feature_name == group)
                     .map(|entry| entry.raw_feature_importance)
                     .unwrap_or(0.0);
-                normalized_weights[idx] = per_column;
+                normalized_weights[idx] = normalized;
             }
         }
     }
@@ -141,14 +140,14 @@ fn calculate_importance_distance_weights(
     log_equal_importance_diagnostic(&importance.entries);
     if !has_valid_importance_entries(&importance.entries) {
         log_diagnostic("KNN feature weighting fallback: importance entries are invalid");
-        return equal_normalized_weights(feature_count, selected_set);
+        return equal_original_predictor_weights(knn_data, selected_set);
     }
 
     if !has_valid_positive_sum(&normalized_weights) {
         log_diagnostic(
             "KNN feature weighting fallback: normalized importance empty, invalid, or sum <= 0",
         );
-        return equal_normalized_weights(feature_count, selected_set);
+        return equal_original_predictor_weights(knn_data, selected_set);
     }
 
     normalized_weights
@@ -177,21 +176,38 @@ fn log_equal_importance_diagnostic(entries: &[crate::models::result::PredictorIm
     }
 }
 
-fn equal_normalized_weights(feature_count: usize, selected_set: &HashSet<usize>) -> Vec<f64> {
+fn equal_original_predictor_weights(knn_data: &KnnData, selected_set: &HashSet<usize>) -> Vec<f64> {
+    let feature_count = knn_data.features.len();
+
     if selected_set.is_empty() {
         return vec![0.0; feature_count];
     }
 
-    let equal_weight = 1.0 / selected_set.len() as f64;
-    (0..feature_count)
-        .map(|idx| {
-            if selected_set.contains(&idx) {
-                equal_weight
-            } else {
-                0.0
-            }
+    let selected_groups = expanded_feature_groups(&knn_data.features)
+        .into_iter()
+        .filter(|group| {
+            feature_indices_for_variable(&knn_data.features, group)
+                .into_iter()
+                .any(|idx| selected_set.contains(&idx))
         })
-        .collect()
+        .collect::<Vec<_>>();
+
+    if selected_groups.is_empty() {
+        return vec![0.0; feature_count];
+    }
+
+    let equal_weight = 1.0 / selected_groups.len() as f64;
+    let mut weights = vec![0.0; feature_count];
+
+    for group in selected_groups {
+        for idx in feature_indices_for_variable(&knn_data.features, &group) {
+            if selected_set.contains(&idx) {
+                weights[idx] = equal_weight;
+            }
+        }
+    }
+
+    weights
 }
 
 fn has_valid_positive_sum(weights: &[f64]) -> bool {
@@ -338,6 +354,40 @@ mod tests {
     }
 
     #[test]
+    fn weighting_fallback_uses_equal_weights_per_original_predictor() {
+        let data = KnnData {
+            features: vec![
+                "city=jakarta".to_string(),
+                "city=bandung".to_string(),
+                "device_type=mobile".to_string(),
+                "device_type=desktop".to_string(),
+                "satisfaction_level".to_string(),
+                "age".to_string(),
+                "income".to_string(),
+            ],
+            data_matrix: vec![vec![0.0; 7]],
+            display_matrix: vec![vec![0.0; 7]],
+            target_values: vec![DataValue::Text("A".to_string())],
+            target_measure: VariableMeasure::Nominal,
+            case_identifiers: vec![1],
+            case_labels: vec!["1".to_string()],
+            processed_case_indices: vec![0],
+            training_indices: vec![0],
+            holdout_indices: Vec::new(),
+            excluded_indices: Vec::new(),
+            cross_validation_folds: vec![0],
+            focal_indices: Vec::new(),
+        };
+        let mut config = test_config();
+        config.neighbors.weight = true;
+        config.features.perform_selection = false;
+
+        let weights = calculate_feature_weights(&data, &config).unwrap();
+
+        assert_eq!(weights, vec![0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]);
+    }
+
+    #[test]
     fn weighting_on_uses_leave_one_feature_out_importance_without_feature_selection() {
         let data = KnnData {
             features: vec!["informative".to_string(), "noisy".to_string()],
@@ -382,6 +432,66 @@ mod tests {
 
         assert!((weights.iter().sum::<f64>() - 1.0).abs() <= f64::EPSILON);
         assert!(weights[0] > weights[1]);
+    }
+
+    #[test]
+    fn categorical_dummy_columns_receive_full_original_predictor_weight() {
+        let data = KnnData {
+            features: vec![
+                "cat=red".to_string(),
+                "cat=blue".to_string(),
+                "num".to_string(),
+            ],
+            data_matrix: vec![
+                vec![1.0, 0.0, 0.0],
+                vec![1.0, 0.0, 0.1],
+                vec![0.0, 1.0, 5.0],
+                vec![0.0, 1.0, 5.1],
+                vec![1.0, 0.0, 0.2],
+                vec![0.0, 1.0, 5.2],
+            ],
+            display_matrix: vec![
+                vec![1.0, 0.0, 0.0],
+                vec![1.0, 0.0, 0.1],
+                vec![0.0, 1.0, 5.0],
+                vec![0.0, 1.0, 5.1],
+                vec![1.0, 0.0, 0.2],
+                vec![0.0, 1.0, 5.2],
+            ],
+            target_values: vec![
+                DataValue::Text("A".to_string()),
+                DataValue::Text("A".to_string()),
+                DataValue::Text("B".to_string()),
+                DataValue::Text("B".to_string()),
+                DataValue::Text("B".to_string()),
+                DataValue::Text("B".to_string()),
+            ],
+            target_measure: VariableMeasure::Nominal,
+            case_identifiers: vec![1, 2, 3, 4, 5, 6],
+            case_labels: vec![
+                "1".to_string(),
+                "2".to_string(),
+                "3".to_string(),
+                "4".to_string(),
+                "5".to_string(),
+                "6".to_string(),
+            ],
+            processed_case_indices: vec![0, 1, 2, 3, 4, 5],
+            training_indices: vec![0, 1, 2, 3],
+            holdout_indices: vec![4, 5],
+            excluded_indices: Vec::new(),
+            cross_validation_folds: vec![0; 6],
+            focal_indices: Vec::new(),
+        };
+        let mut config = test_config();
+        config.neighbors.weight = true;
+        config.features.perform_selection = false;
+
+        let weights = calculate_feature_weights(&data, &config).unwrap();
+
+        assert!(weights[0] > 0.0);
+        assert_eq!(weights[0], weights[1]);
+        assert!((weights[0] + weights[2] - 1.0).abs() <= f64::EPSILON);
     }
 
     #[test]

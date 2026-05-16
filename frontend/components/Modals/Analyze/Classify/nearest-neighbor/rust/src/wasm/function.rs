@@ -140,39 +140,51 @@ pub fn run_analysis(
         }
     }
 
-    // Step 4: Predictor importance if requested
+    // Step 4: Predictor importance / feature weights if requested by feature selection or weighting
     let mut predictor_importance = None;
-    if config.features.perform_selection {
+    if config.features.perform_selection || config.neighbors.weight {
         logger.add_log("predictor_importance");
-        let target_var = config.main.target_var.as_deref();
-        match (
-            feature_selection_data.as_ref(),
-            feature_selection_resolution.as_ref(),
-            target_var,
-        ) {
-            (Some(knn_data), Some(resolution), Some(target_var)) => {
-                match core::compute_knn_feature_importance_for_subset(
-                    knn_data,
-                    config,
-                    target_var,
-                    resolution.selected_k,
-                    &resolution.selected_indices,
-                ) {
-                    Ok(importance) => {
-                        predictor_importance = Some(importance);
-                    }
-                    Err(e) => {
-                        error_collector.add_error("predictor_importance", &e);
+
+        if config.features.perform_selection {
+            let target_var = config.main.target_var.as_deref();
+            match (
+                feature_selection_data.as_ref(),
+                feature_selection_resolution.as_ref(),
+                target_var,
+            ) {
+                (Some(knn_data), Some(resolution), Some(target_var)) => {
+                    match core::compute_knn_feature_importance_for_subset(
+                        knn_data,
+                        config,
+                        target_var,
+                        resolution.selected_k,
+                        &resolution.selected_indices,
+                    ) {
+                        Ok(importance) => {
+                            predictor_importance = Some(importance);
+                        }
+                        Err(e) => {
+                            error_collector.add_error("predictor_importance", &e);
+                        }
                     }
                 }
+                (_, _, None) => {
+                    error_collector.add_error(
+                        "predictor_importance",
+                        "A target variable is required for calculating feature importance",
+                    );
+                }
+                _ => {}
             }
-            (_, _, None) => {
-                error_collector.add_error(
-                    "predictor_importance",
-                    "A target variable is required for calculating feature importance",
-                );
+        } else {
+            match core::compute_knn_feature_importance(data, config) {
+                Ok(importance) => {
+                    predictor_importance = Some(importance);
+                }
+                Err(e) => {
+                    error_collector.add_error("predictor_importance", &e);
+                }
             }
-            _ => {}
         }
     }
 
