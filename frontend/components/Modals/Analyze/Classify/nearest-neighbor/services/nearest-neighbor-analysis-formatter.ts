@@ -15,6 +15,9 @@ export function transformNearestNeighborResult(data: any): ResultJson {
         data.feature_selection_steps,
       ),
     );
+    if (data.feature_selection_steps?.length) {
+      tables.push(buildFeatureSelectionSteps(data.feature_selection_steps));
+    }
   }
 
   if (data.k_feature_selection_summary?.length) {
@@ -208,6 +211,29 @@ function buildKSelectionChart(chart: any): Table {
       selected: candidate.selected ? "Yes" : "",
     })),
     note: `Metric: ${chart.metric_name ?? "validation_error"}; selected K = ${chart.selected_k}; best error = ${optionalNumber(chart.best_error ?? chart.bestError)}`,
+  };
+}
+
+function buildFeatureSelectionSteps(steps: any[]): Table {
+  return {
+    key: "feature_selection_steps",
+    title: "Feature Selection Steps",
+    columnHeaders: [
+      { header: "Step", key: "step_number" },
+      { header: "Selected Feature", key: "selected_feature" },
+      { header: "Trial Error", key: "trial_error" },
+      { header: "Improvement", key: "improvement" },
+      { header: "Selected Features After Step", key: "selected_features_after_step" },
+    ],
+    rows: steps.map((step: any) => ({
+      rowHeader: [String(step.step_number ?? "")],
+      step_number: formatDisplayNumber(step.step_number),
+      selected_feature: step.selected_feature ?? "",
+      trial_error: optionalNumber(step.trial_error),
+      improvement: optionalNumber(step.improvement),
+      selected_features_after_step: formatList(step.selected_features_after_step),
+    })),
+    note: "Each step is evaluated on the training set only using the current selected subset plus one candidate feature.",
   };
 }
 

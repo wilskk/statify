@@ -66,6 +66,24 @@ const normalizeFormData = (
 
   const config = stripRemovedConfig(data);
 
+  const features = {
+    ...defaults.features,
+    ...(config.features ?? {}),
+    ForwardSelection: config.features?.ForwardSelection
+      ? [...config.features.ForwardSelection]
+      : defaults.features.ForwardSelection,
+    ForcedEntryVar: config.features?.ForcedEntryVar
+      ? [...config.features.ForcedEntryVar]
+      : defaults.features.ForcedEntryVar,
+  };
+
+  if (features.BelowMin) {
+    features.MaxReached = false;
+  } else {
+    features.MaxReached = true;
+    features.BelowMin = false;
+  }
+
   return {
     main: {
       ...defaults.main,
@@ -75,16 +93,7 @@ const normalizeFormData = (
         : defaults.main.FeatureVar,
     },
     neighbors: { ...defaults.neighbors, ...(config.neighbors ?? {}) },
-    features: {
-      ...defaults.features,
-      ...(config.features ?? {}),
-      ForwardSelection: config.features?.ForwardSelection
-        ? [...config.features.ForwardSelection]
-        : defaults.features.ForwardSelection,
-      ForcedEntryVar: config.features?.ForcedEntryVar
-        ? [...config.features.ForcedEntryVar]
-        : defaults.features.ForcedEntryVar,
-    },
+    features,
     partition: { ...defaults.partition, ...(config.partition ?? {}) },
     save: { ...defaults.save, ...(config.save ?? {}) },
     output: { ...defaults.output, ...(config.output ?? {}) },
@@ -144,6 +153,12 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
       [section]: {
         ...prev[section],
         [field]: value,
+        ...(section === "features" && field === "MaxReached" && value === true
+          ? { BelowMin: false }
+          : {}),
+        ...(section === "features" && field === "BelowMin" && value === true
+          ? { MaxReached: false }
+          : {}),
       },
     }));
   };
@@ -245,12 +260,14 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
     const forwardCount = (f.ForwardSelection ?? []).filter(
       (v) => !(f.ForcedEntryVar ?? []).includes(v),
     ).length;
-    if (f.MaxReached && (!f.MaxToSelect || f.MaxToSelect <= 0)) {
+    const usesFixedNumber = f.MaxReached && !f.BelowMin;
+
+    if (usesFixedNumber && (!f.MaxToSelect || f.MaxToSelect <= 0)) {
       return "Enter a positive integer for the number of features to select.";
     }
 
     if (
-      f.MaxReached &&
+      usesFixedNumber &&
       f.MaxToSelect !== null &&
       f.MaxToSelect > forwardCount
     ) {

@@ -40,21 +40,42 @@ pub fn run_analysis(
         };
     }
 
-    let target_is_categorical = core::preprocess_knn_data(data, config)
+    let mut analysis_config = config.clone();
+    let mut feature_selection_summary = None;
+    let mut feature_selection_steps = None;
+    let mut k_feature_selection_summary = None;
+    if config.features.perform_selection {
+        logger.add_log("feature_selection");
+        match core::calculate_feature_selection(data, config) {
+            Ok(selection) => {
+                analysis_config =
+                    core::config_with_selected_features(config, &selection.selected_features);
+                if config.output.feature_selection_summary {
+                    feature_selection_summary = Some(selection.summary);
+                    feature_selection_steps = Some(selection.steps);
+                }
+                if config.output.feature_selection_summary && !selection.k_summary.is_empty() {
+                    k_feature_selection_summary = Some(selection.k_summary);
+                }
+            }
+            Err(e) => {
+                error_collector.add_error("feature_selection", &e);
+            }
+        }
+    }
+
+    let target_is_categorical = core::preprocess_knn_data(data, &analysis_config)
         .ok()
         .map(|knn_data| knn_data.target_is_categorical())
         .unwrap_or(false);
 
-    let feature_selection_summary = None;
-    let feature_selection_steps = None;
-    let k_feature_selection_summary = None;
     let k_selection_chart = None;
 
     // Step 2: Nearest neighbors
     logger.add_log("nearest_neighbors");
     let mut nearest_neighbors = None;
     if config.output.show_neighbor_detail {
-        match core::calculate_nearest_neighbors(data, config) {
+        match core::calculate_nearest_neighbors(data, &analysis_config) {
             Ok(neighbors) => {
                 nearest_neighbors = Some(neighbors);
             }
@@ -68,7 +89,7 @@ pub fn run_analysis(
     let mut classification_table = None;
     if config.output.confusion_matrix && target_is_categorical {
         logger.add_log("classification_results");
-        match core::calculate_classification_table(data, config) {
+        match core::calculate_classification_table(data, &analysis_config) {
             Ok(table) => {
                 classification_table = Some(table);
             }
@@ -84,7 +105,7 @@ pub fn run_analysis(
     let mut prediction_computation = None;
     if needs_prediction_computation {
         logger.add_log("prediction_computation");
-        match core::calculate_prediction_computation(data, config) {
+        match core::calculate_prediction_computation(data, &analysis_config) {
             Ok(computation) => prediction_computation = Some(computation),
             Err(e) => {
                 if config.output.prediction_results {
@@ -111,7 +132,7 @@ pub fn run_analysis(
     logger.add_log("predictor_space");
     let mut predictor_space = None;
     if config.output.predictor_space {
-        match core::calculate_predictor_space(data, config) {
+        match core::calculate_predictor_space(data, &analysis_config) {
             Ok(space) => {
                 predictor_space = Some(space);
             }
@@ -124,7 +145,7 @@ pub fn run_analysis(
     // Step 6: Peers chart
     logger.add_log("peers_chart");
     let mut peers_chart = None;
-    match core::calculate_peers_chart(data, config) {
+    match core::calculate_peers_chart(data, &analysis_config) {
         Ok(chart) => {
             peers_chart = Some(chart);
         }
@@ -136,7 +157,7 @@ pub fn run_analysis(
     // Step 7: Quadrant map
     logger.add_log("quadrant_map");
     let mut quadrant_map = None;
-    match core::calculate_quadrant_map(data, config) {
+    match core::calculate_quadrant_map(data, &analysis_config) {
         Ok(map) => {
             quadrant_map = Some(map);
         }
@@ -169,7 +190,7 @@ pub fn run_analysis(
         logger.add_log("saved_variables");
         if config.save.has_target_var || config.save.is_cate_target_var {
             if let Some(computation) = prediction_computation.as_ref() {
-                match core::build_saved_variables(data, config, computation) {
+                match core::build_saved_variables(data, &analysis_config, computation) {
                     Ok(saved) => {
                         saved_variables = saved;
                     }
@@ -179,7 +200,7 @@ pub fn run_analysis(
                 }
             }
         } else {
-            match core::calculate_saved_variables(data, config) {
+            match core::calculate_saved_variables(data, &analysis_config) {
                 Ok(saved) => {
                     saved_variables = saved;
                 }

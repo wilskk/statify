@@ -258,7 +258,7 @@ export const KNNFeatures = ({
 
             <section>
               <RadioGroup
-                value={data.MaxReached ? "MaxReached" : "BelowMin"}
+                value={data.BelowMin ? "BelowMin" : "MaxReached"}
                 disabled={!data.PerformSelection}
                 onValueChange={handleCriterionGrp}
               >
@@ -294,7 +294,7 @@ export const KNNFeatures = ({
                             type="number"
                             placeholder=""
                             value={data.MaxToSelect ?? ""}
-                            disabled={!data.MaxReached}
+                            disabled={!data.MaxReached || data.BelowMin}
                             onChange={(e) =>
                               handleChange(
                                 "MaxToSelect",

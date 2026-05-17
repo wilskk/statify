@@ -65,6 +65,16 @@ export async function resultNearestNeighbor({
           output_data: featureSelectionSummary,
           components: `Feature Selection Summary`,
         });
+
+        const featureSelectionSteps = findTable("feature_selection_steps");
+        if (featureSelectionSteps) {
+          await addStatistic(featureSelectionSummaryId, {
+            title: `Feature Selection Steps`,
+            description: `Feature Selection Steps`,
+            output_data: featureSelectionSteps,
+            components: `Feature Selection Steps`,
+          });
+        }
       }
 
       const kFeatureSelectionSummary = findTable("k_feature_selection_summary");
