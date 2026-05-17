@@ -30,6 +30,17 @@ pub fn validate_input(input: &KMedoidsInput) -> Result<(), String> {
         return Err("Maximum iterations must be greater than 0".to_string());
     }
 
+    if input.method == "CLARA" {
+        if let Some(sample_size) = input.clara_sample_size {
+            if sample_size <= input.n_clusters {
+                return Err(format!(
+                    "CLARA sample size ({}) must be strictly greater than the number of clusters ({})",
+                    sample_size, input.n_clusters
+                ));
+            }
+        }
+    }
+
     // Validate all data points have the same dimension
     if let Some(first_point) = input.data.first() {
         let dim = first_point.len();

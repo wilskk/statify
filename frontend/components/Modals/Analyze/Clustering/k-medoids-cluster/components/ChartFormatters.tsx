@@ -6,7 +6,7 @@
 
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { KMedoidsOutput, ClusterProfile } from "../types/output";
+import type { KMedoidsOutput, ClusterProfile, IterationHistory } from "../types/output";
 
 /**
  * Format K-Medoids data for scatter plot visualization
@@ -82,6 +82,24 @@ export function formatScatterPlotData(output: KMedoidsOutput, xVar: string, yVar
             }
         }]
     };
+}
+
+/**
+ * Convert CLARA sampling data to IterationHistory format
+ * so it can be reused with the existing ConvergenceChart component
+ */
+export function formatClaraSamplingAsConvergenceData(
+    samples: { sampleIndex: number; cost: number; sampleSize?: number; pamIterations?: number }[]
+): IterationHistory[] {
+    return samples.map((s, idx) => {
+        const prevCost = idx === 0 ? s.cost : samples[idx - 1].cost;
+        return {
+            iteration: s.sampleIndex,
+            totalCost: s.cost,
+            improvement: prevCost - s.cost,   // positif = membaik
+            swapsMade: s.pamIterations ?? 0,
+        };
+    });
 }
 
 /**

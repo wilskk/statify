@@ -4,6 +4,7 @@ import type { DataRow } from "@/types/Data";
 import { toast } from "sonner";
 import { ChartService } from "@/services/chart/ChartService";
 import { useResultStore } from "@/stores/useResultStore";
+import { getTimeSeriesWorker } from "@/utils/timeseriesWorkerPool";
 
 export const useAnalyzeHook = (
     dependentVariable: Variable[],
@@ -62,10 +63,9 @@ export const useAnalyzeHook = (
                 throw new Error("Insufficient data points (minimum 10 required)");
             }
 
-            // Use Web Worker
-            const worker = new Worker("/workers/TimeSeries/worker.js", { type: "module" });
+            const client = getTimeSeriesWorker();
 
-            worker.postMessage({
+            client.post({
                 type: "ECM",
                 payload: {
                     y: yData,
@@ -75,8 +75,8 @@ export const useAnalyzeHook = (
                     max_lag_ecm: maxLagECM
                 }
             });
-            
-            worker.onmessage = async (e: any) => {
+
+            client.onMessage(async (e) => {
                 const { status, result, error } = e.data;
                 
                 if (status === "success") {
@@ -273,31 +273,31 @@ export const useAnalyzeHook = (
                         
                         setTimeout(() => {
                             onClose();
-                            worker.terminate();
+                            client.release();
                         }, 1500);
 
                     } catch (err) {
                         console.error("Processing Error", err);
                         setErrorMsg("Failed to process results.");
                     } finally {
-                        worker.terminate();
+                        client.release();
                         setIsCalculating(false);
                     }
 
                 } else {
                     setErrorMsg(error || "Unknown worker error");
                     toast.error(`Estimation Failed: ${error}`);
-                    worker.terminate();
+                    client.release();
                     setIsCalculating(false);
                 }
-            };
-            
-            worker.onerror = (err: any) => {
+            });
+
+            client.onError((err) => {
                 console.error("Worker connection error:", err);
                 setErrorMsg("Failed to connect to worker");
                 setIsCalculating(false);
-                worker.terminate();
-            };
+                client.release();
+            });
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";

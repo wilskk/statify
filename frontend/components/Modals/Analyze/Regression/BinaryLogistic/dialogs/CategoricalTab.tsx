@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Variable } from "@/types/Variable";
 import {
@@ -41,6 +40,7 @@ export const CategoricalTab: React.FC<CategoricalTabProps> = ({
   const [editContrast, setEditContrast] = useState<ContrastMethodType>(DEFAULT_CONTRAST);
   const [editReference, setEditReference] = useState<ReferenceCategoryType>(DEFAULT_REFERENCE);
 
+  // Toggle checkbox state only (not selection for editing)
   const toggleCovariate = useCallback((name: string) => {
     const current = params.covariates;
     const newSettings = { ...params.variableSettings };
@@ -69,14 +69,20 @@ export const CategoricalTab: React.FC<CategoricalTabProps> = ({
     }
   }, [params, onChange, selectedVarName]);
 
-  // When user clicks a checked variable, select it for editing
-  const handleSelectVariable = useCallback((name: string) => {
-    if (!params.covariates.includes(name)) return;
-    setSelectedVarName(name);
-    const setting = params.variableSettings[name];
-    setEditContrast(setting?.contrast ?? DEFAULT_CONTRAST);
-    setEditReference(setting?.referenceCategory ?? DEFAULT_REFERENCE);
-  }, [params.covariates, params.variableSettings]);
+  // When user clicks a row, handle check OR select-for-editing
+  const handleRowClick = useCallback((name: string) => {
+    const isChecked = params.covariates.includes(name);
+    if (isChecked) {
+      // Already checked → select for editing (load current settings into edit state)
+      setSelectedVarName(name);
+      const setting = params.variableSettings[name];
+      setEditContrast(setting?.contrast ?? DEFAULT_CONTRAST);
+      setEditReference(setting?.referenceCategory ?? DEFAULT_REFERENCE);
+    } else {
+      // Not checked → check it with default settings
+      toggleCovariate(name);
+    }
+  }, [params.covariates, params.variableSettings, toggleCovariate]);
 
   // Apply the edit to the selected variable
   const handleChange = useCallback(() => {
@@ -102,7 +108,7 @@ export const CategoricalTab: React.FC<CategoricalTabProps> = ({
   ];
   const isReferenceDisabled = methodsWithoutReference.includes(editContrast);
 
-  // Build display label for a variable showing its current setting, e.g. "sex(Indicator(Last))"
+  // Build display label for a variable showing its current setting, e.g. "Indicator(Last)"
   const getSettingLabel = useCallback((name: string): string | null => {
     if (!params.covariates.includes(name)) return null;
     const s = params.variableSettings[name];
@@ -131,9 +137,6 @@ export const CategoricalTab: React.FC<CategoricalTabProps> = ({
           <ScrollArea className="h-full p-2 w-full">
             <div className="pr-3">
               {allVariables.map((v) => {
-                const isCategoricalType =
-                  v.measure?.toLowerCase() === "nominal" ||
-                  v.measure?.toLowerCase() === "ordinal";
                 const isChecked = params.covariates.includes(v.name);
                 const isSelected = selectedVarName === v.name;
                 const settingLabel = getSettingLabel(v.name);
@@ -146,38 +149,27 @@ export const CategoricalTab: React.FC<CategoricalTabProps> = ({
                         ? "bg-primary/10 ring-1 ring-primary/30"
                         : "hover:bg-accent"
                     }`}
-                    onClick={() => {
-                      if (isChecked) {
-                        handleSelectVariable(v.name);
-                      }
-                    }}
+                    onClick={() => handleRowClick(v.name)}
                   >
                     <Checkbox
-                      id={`cat-${v.name}`}
                       checked={isChecked}
-                      onCheckedChange={() => toggleCovariate(v.name)}
+                      onCheckedChange={(e) => {
+                        // Stop propagation so the row onClick doesn't also fire
+                        e; // consume the value
+                        toggleCovariate(v.name);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
                     />
                     <div className="flex flex-col flex-grow min-w-0">
                       <div className="flex items-center justify-between w-full">
-                        <Label
-                          htmlFor={`cat-${v.name}`}
-                          className="text-sm cursor-pointer font-medium truncate"
-                        >
+                        <span className="text-sm font-medium truncate">
                           {v.name}
                           {settingLabel && (
                             <span className="text-muted-foreground font-normal ml-1">
                               ({settingLabel})
                             </span>
                           )}
-                        </Label>
-                        {isCategoricalType && (
-                          <Badge
-                            variant="secondary"
-                            className="text-[10px] h-5 px-1.5 font-normal ml-2 shrink-0"
-                          >
-                            {v.measure}
-                          </Badge>
-                        )}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -207,7 +199,7 @@ export const CategoricalTab: React.FC<CategoricalTabProps> = ({
                 </p>
               ) : (
                 <p className="text-sm text-muted-foreground italic">
-                  Check a variable, then click it to configure its contrast method.
+                  Click a checked variable to configure its contrast method and reference category.
                 </p>
               )}
             </div>

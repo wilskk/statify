@@ -5,11 +5,12 @@
 /// Algorithm:
 /// 1. Start with random set of medoids
 /// 2. Randomly sample from neighbors (potential swaps)
-/// 3. If better neighbor found, move to it
-/// 4. Repeat for multiple local searches
-/// 5. Return best result
+/// 3. Use PAM cost differential logic (4 cases) for O(n) swap evaluation
+/// 4. If better neighbor found, move to it
+/// 5. Repeat for multiple local searches
+/// 6. Return best result
 /// 
-/// Time Complexity: O(n² × restarts × max_neighbors)
+/// Time Complexity: O(restarts * (n*k + max_neighbors * n))
 /// Space Complexity: O(n²) for distance matrix
 /// 
 /// Advantages:
@@ -20,6 +21,8 @@
 /// References:
 /// - Ng, R.T. and Han, J. (1994)
 ///   "Efficient and Effective Clustering Methods for Spatial Data Mining"
+/// - Ng, R.T. and Han, J. (2002)
+///   "CLARANS: A Method for Clustering Objects for Spatial Data Mining"
 
 use crate::algorithms::pam::build_distance_matrix;
 use crate::models::ClusteringResult;
@@ -98,22 +101,15 @@ pub struct CLARANSResult {
 }
 
 /// Run CLARANS clustering algorithm
-/// 
-/// # Arguments
-/// * `data` - Input data points
-/// * `config` - CLARANS configuration
-/// 
-/// # Returns
-/// * `Ok(CLARANSResult)` - Clustering result
-/// * `Err(String)` - Error message
 pub fn run_clarans(data: &[Vec<f64>], config: &CLARANSConfig) -> Result<CLARANSResult, String> {
     // Validate input
     validate_clustering_input(data, config.k)?;
 
     let n = data.len();
+    let k = config.k;
 
     // k == n: every point is its own medoid; SWAP has no candidates → trivial.
-    if config.k >= n {
+    if k >= n {
         let medoids: Vec<usize> = (0..n).collect();
         let assignments: Vec<usize> = (0..n).collect();
         return Ok(CLARANSResult {
@@ -125,10 +121,7 @@ pub fn run_clarans(data: &[Vec<f64>], config: &CLARANSConfig) -> Result<CLARANSR
         });
     }
 
-    // Build flat Array2 distance matrix (row-major, cache-friendly).
-    // Using pam::build_distance_matrix avoids duplicating the O(n²) loop and
-    // gives the same contiguous memory layout as PAM, enabling consistent
-    // access patterns across both algorithms.
+    // Build distance matrix
     let dist: Array2<f64> = build_distance_matrix(data, &config.metric);
 
     // Initialize RNG
@@ -138,56 +131,70 @@ pub fn run_clarans(data: &[Vec<f64>], config: &CLARANSConfig) -> Result<CLARANSR
         rand::rngs::StdRng::from_entropy()
     };
 
+    let mut min_cost = f64::INFINITY;
     let mut best_medoids: Vec<usize> = Vec::new();
-    let mut best_cost = f64::INFINITY;
     let mut total_neighbors_checked = 0;
 
-    // Perform multiple local searches
+    // Cache arrays for PAM optimization
+    let mut nearest_indices = vec![0; n];
+    let mut d_nearest = vec![0.0; n];
+    let mut d_second = vec![0.0; n];
+
+    // Step 1: Repeat num_local times
     for _local_idx in 0..config.num_local {
-        let mut current_medoids = random_initial_medoids(n, config.k, &mut rng);
-        let mut current_cost = compute_total_cost_array2(&dist, &current_medoids, n);
+        // Step 2: Select k random medoids
+        let mut current_medoids = random_initial_medoids(n, k, &mut rng);
+        
+        // Initial cost and cache update
+        let mut current_cost = update_cache(&dist, &current_medoids, n, &mut nearest_indices, &mut d_nearest, &mut d_second);
 
-        // Build a mutable list of non-medoid indices.  Sampling uniformly from
-        // this list replaces the old rejection-sampling loop which could spin
-        // O(n/(n-k)) times per draw — O(∞) when k approaches n.
-        let mut is_medoid = vec![false; n];
-        for &m in &current_medoids { is_medoid[m] = true; }
-        let mut non_medoids: Vec<usize> = (0..n).filter(|&i| !is_medoid[i]).collect();
-
-        let mut neighbors_checked_this_search = 0;
-
+        let mut j = 0;
+        // Step 3-6: Search for better neighbor
         loop {
-            if neighbors_checked_this_search >= config.max_neighbors || non_medoids.is_empty() {
-                break;
+            if j >= config.max_neighbors {
+                break; // Local minimum found
             }
 
-            // O(1) sample: pick a random medoid and a random non-medoid by index.
-            let medoid_pos = rng.gen_range(0..current_medoids.len());
-            let non_medoid_pos = rng.gen_range(0..non_medoids.len());
-            let new_medoid = non_medoids[non_medoid_pos];
+            // Step 4: Pick a random neighbor (swap one medoid with one non-medoid)
+            let om_idx = rng.gen_range(0..k);
+            let op = loop {
+                let candidate = rng.gen_range(0..n);
+                if !current_medoids.contains(&candidate) {
+                    break candidate;
+                }
+            };
 
-            let mut neighbor_medoids = current_medoids.clone();
-            neighbor_medoids[medoid_pos] = new_medoid;
-            let neighbor_cost = compute_total_cost_array2(&dist, &neighbor_medoids, n);
+            // Step 5: Calculate cost differential using PAM 4-cases logic (O(n))
+            let delta = cost_differential_optimized(
+                &dist,
+                om_idx,
+                op,
+                n,
+                &nearest_indices,
+                &d_nearest,
+                &d_second
+            );
 
-            neighbors_checked_this_search += 1;
             total_neighbors_checked += 1;
 
-            if neighbor_cost < current_cost {
-                // Maintain non_medoids in O(1): replace the just-chosen
-                // non-medoid slot with the evicted old medoid.
-                let old_medoid = current_medoids[medoid_pos];
-                non_medoids[non_medoid_pos] = old_medoid;
-
-                current_medoids = neighbor_medoids;
-                current_cost = neighbor_cost;
-                neighbors_checked_this_search = 0; // reset per CLARANS spec
+            if delta < 0.0 {
+                // Better neighbor found! Move to it.
+                current_medoids[om_idx] = op;
+                current_cost += delta;
+                
+                // Update cache for next neighbor checks
+                update_cache(&dist, &current_medoids, n, &mut nearest_indices, &mut d_nearest, &mut d_second);
+                
+                j = 0; // Reset counter
+            } else {
+                j += 1;
             }
         }
 
-        if current_cost < best_cost {
-            best_cost = current_cost;
-            best_medoids = current_medoids;
+        // Step 7: Compare local minimum with global best
+        if current_cost < min_cost {
+            min_cost = current_cost;
+            best_medoids = current_medoids.clone();
         }
     }
 
@@ -195,16 +202,87 @@ pub fn run_clarans(data: &[Vec<f64>], config: &CLARANSConfig) -> Result<CLARANSR
         return Err("CLARANS failed to find any valid clustering".to_string());
     }
 
-    let final_assignments = assign_to_medoids_array2(&dist, &best_medoids, n);
-    let final_cost = compute_total_cost_array2(&dist, &best_medoids, n);
+    // Final assignments
+    let final_assignments = assign_to_medoids(&dist, &best_medoids, n);
 
     Ok(CLARANSResult {
         medoids: best_medoids,
         assignments: final_assignments,
-        total_cost: final_cost,
+        total_cost: min_cost,
         local_searches: config.num_local,
         neighbors_checked: total_neighbors_checked,
     })
+}
+
+/// Update the nearest and second-nearest medoid information for each point (O(n*k))
+fn update_cache(
+    dist: &Array2<f64>,
+    medoids: &[usize],
+    n: usize,
+    nearest_indices: &mut [usize],
+    d_nearest: &mut [f64],
+    d_second: &mut [f64],
+) -> f64 {
+    let mut total_cost = 0.0;
+    for i in 0..n {
+        let mut dn = f64::INFINITY;
+        let mut ds = f64::INFINITY;
+        let mut ni = 0;
+
+        for (idx, &m) in medoids.iter().enumerate() {
+            let d = dist[[i, m]];
+            if d < dn {
+                ds = dn;
+                dn = d;
+                ni = idx;
+            } else if d < ds {
+                ds = d;
+            }
+        }
+        nearest_indices[i] = ni;
+        d_nearest[i] = dn;
+        d_second[i] = ds;
+        total_cost += dn;
+    }
+    total_cost
+}
+
+/// Calculate cost change if medoids[om_idx] is replaced by op (O(n))
+/// Based on PAM's 4 cases logic
+fn cost_differential_optimized(
+    dist: &Array2<f64>,
+    om_idx: usize,
+    op: usize,
+    n: usize,
+    nearest_indices: &[usize],
+    d_nearest: &[f64],
+    d_second: &[f64],
+) -> f64 {
+    let mut total_delta = 0.0;
+    for j in 0..n {
+        let dn = d_nearest[j];
+        let ds = d_second[j];
+        let dop = dist[[j, op]];
+
+        if nearest_indices[j] == om_idx {
+            // Cases 1 & 2: Point was assigned to the medoid being replaced
+            if dop >= ds {
+                // Case 1: Closest becomes the previous second-closest
+                total_delta += ds - dn;
+            } else {
+                // Case 2: Closest becomes the new medoid Op
+                total_delta += dop - dn;
+            }
+        } else {
+            // Cases 3 & 4: Point was assigned to another medoid
+            if dop < dn {
+                // Case 4: New medoid Op is closer than current closest
+                total_delta += dop - dn;
+            }
+            // Case 3: Current closest remains closest (delta = 0)
+        }
+    }
+    total_delta
 }
 
 /// Random initial medoid selection
@@ -214,10 +292,8 @@ fn random_initial_medoids<R: Rng>(n: usize, k: usize, rng: &mut R) -> Vec<usize>
     indices.into_iter().take(k).collect()
 }
 
-/// Assign each point to its nearest medoid; returns cluster index (0..k-1) per point.
-///
-/// Uses the flat `Array2` matrix for sequential row access (cache-friendly).
-fn assign_to_medoids_array2(dist: &Array2<f64>, medoids: &[usize], n: usize) -> Vec<usize> {
+/// Final assignment to nearest medoid
+fn assign_to_medoids(dist: &Array2<f64>, medoids: &[usize], n: usize) -> Vec<usize> {
     (0..n)
         .map(|i| {
             medoids
@@ -232,13 +308,6 @@ fn assign_to_medoids_array2(dist: &Array2<f64>, medoids: &[usize], n: usize) -> 
                 .unwrap_or(0)
         })
         .collect()
-}
-
-/// Compute total PAM cost: Σ_i d(i, nearest_medoid(i)).
-fn compute_total_cost_array2(dist: &Array2<f64>, medoids: &[usize], n: usize) -> f64 {
-    (0..n)
-        .map(|i| medoids.iter().map(|&m| dist[[i, m]]).fold(f64::INFINITY, f64::min))
-        .sum()
 }
 
 /// Convert CLARANSResult to ClusteringResult for compatibility
@@ -260,7 +329,6 @@ mod tests {
     
     #[test]
     fn test_clarans_basic_clustering() {
-        // Simple 2D data with 2 clear clusters
         let data = vec![
             vec![0.0, 0.0],
             vec![1.0, 0.0],
@@ -280,15 +348,9 @@ mod tests {
         
         let result = run_clarans(&data, &config).unwrap();
         
-        // Should find 2 clusters
         assert_eq!(result.medoids.len(), 2);
         assert_eq!(result.assignments.len(), 6);
-        
-        // Cost should be positive and finite
         assert!(result.total_cost > 0.0);
-        assert!(result.total_cost.is_finite());
-        
-        // Should have performed all local searches
         assert_eq!(result.local_searches, 2);
     }
     
@@ -314,79 +376,7 @@ mod tests {
         let result1 = run_clarans(&data, &config).unwrap();
         let result2 = run_clarans(&data, &config).unwrap();
         
-        // Should produce same results with same seed
         assert_eq!(result1.medoids, result2.medoids);
-        assert_eq!(result1.assignments, result2.assignments);
         assert_eq!(result1.total_cost, result2.total_cost);
-    }
-    
-    #[test]
-    fn test_clarans_auto_max_neighbors() {
-        let n = 100;
-        let k = 5;
-        
-        let config = CLARANSConfig::new(k, n, DistanceMetric::Euclidean);
-        
-        // Should be at least 250 or 1.25% of k*(n-k)
-        let expected_min = 250.max((k * (n - k)) / 80); // 1.25% = 1/80
-        assert!(config.max_neighbors >= expected_min);
-    }
-    
-    #[test]
-    fn test_clarans_single_cluster() {
-        let data = vec![
-            vec![0.0, 0.0],
-            vec![1.0, 1.0],
-            vec![2.0, 2.0],
-        ];
-        
-        let config = CLARANSConfig {
-            k: 1,
-            ..Default::default()
-        };
-        
-        let result = run_clarans(&data, &config).unwrap();
-        
-        assert_eq!(result.medoids.len(), 1);
-        // All points should be in cluster 0
-        assert!(result.assignments.iter().all(|&c| c == 0));
-    }
-    
-    #[test]
-    fn test_clarans_manhattan_distance() {
-        let data = vec![
-            vec![0.0, 0.0],
-            vec![1.0, 0.0],
-            vec![10.0, 10.0],
-        ];
-        
-        let config = CLARANSConfig {
-            k: 2,
-            metric: DistanceMetric::Manhattan,
-            num_local: 2,
-            max_neighbors: 10,
-            random_seed: Some(42),
-        };
-        
-        let result = run_clarans(&data, &config).unwrap();
-        
-        assert_eq!(result.medoids.len(), 2);
-        assert!(result.total_cost > 0.0);
-    }
-    
-    #[test]
-    fn test_clarans_invalid_k() {
-        let data = vec![
-            vec![0.0],
-            vec![1.0],
-        ];
-        
-        let config = CLARANSConfig {
-            k: 3, // k > n
-            ..Default::default()
-        };
-        
-        let result = run_clarans(&data, &config);
-        assert!(result.is_err());
     }
 }

@@ -4,6 +4,7 @@ import type { DataRow } from "@/types/Data";
 import { toast } from "sonner";
 import { ChartService } from "@/services/chart/ChartService";
 import { useResultStore } from "@/stores/useResultStore";
+import { getTimeSeriesWorker } from "@/utils/timeseriesWorkerPool";
 
 export const useAnalyzeHook = (
     dependentVariable: Variable[],
@@ -77,10 +78,9 @@ export const useAnalyzeHook = (
                 ? qOrders 
                 : Array(independentVariables.length).fill(qOrders[0] || 1);
             
-            // Use Web Worker
-            const worker = new Worker("/workers/TimeSeries/worker.js", { type: "module" });
-            
-            worker.onmessage = async (e) => {
+            const client = getTimeSeriesWorker();
+
+            client.onMessage(async (e) => {
                 const { status, result, error } = e.data;
                 
                 if (status === "success") {
@@ -287,33 +287,33 @@ export const useAnalyzeHook = (
 
                         setTimeout(() => {
                             onClose();
-                            worker.terminate();
+                            client.release();
                         }, 1500);
 
                     } catch (err) {
                         console.error("Processing Error", err);
                         setErrorMsg("Failed to process results.");
                     } finally {
-                        worker.terminate();
+                        client.release();
                         setIsCalculating(false);
                     }
-                    
+
                 } else {
                     setErrorMsg(error || "Unknown worker error");
                     toast.error(`Estimation Failed: ${error}`);
-                    worker.terminate();
+                    client.release();
                     setIsCalculating(false);
                 }
-            };
-            
-            worker.onerror = (err) => {
+            });
+
+            client.onError((err) => {
                 console.error("Worker connection error:", err);
                 setErrorMsg("Failed to connect to worker");
                 setIsCalculating(false);
-                worker.terminate();
-            };
-            
-            worker.postMessage({
+                client.release();
+            });
+
+            client.post({
                 type: "ARDL",
                 payload: {
                     y: yData,

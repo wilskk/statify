@@ -30,21 +30,25 @@ impl DistanceMetric {
 
 /// Menghitung Euclidean distance antara dua titik
 pub fn euclidean_distance(point1: &[f64], point2: &[f64]) -> f64 {
-    point1
+    let d = point1
         .iter()
         .zip(point2.iter())
         .map(|(a, b)| (a - b).powi(2))
         .sum::<f64>()
-        .sqrt()
+        .sqrt();
+    
+    if d.is_finite() { d } else { 1e10 } // Safeguard against NaN/Inf
 }
 
 /// Menghitung Manhattan distance antara dua titik
 pub fn manhattan_distance(point1: &[f64], point2: &[f64]) -> f64 {
-    point1
+    let d: f64 = point1
         .iter()
         .zip(point2.iter())
         .map(|(a, b)| (a - b).abs())
-        .sum()
+        .sum::<f64>();
+    
+    if d.is_finite() { d } else { 1e10 } // Safeguard against NaN/Inf
 }
 
 /// Calculate distance based on specified metric
