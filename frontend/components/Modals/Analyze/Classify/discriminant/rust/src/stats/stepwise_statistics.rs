@@ -10,18 +10,14 @@ use crate::{
         },
         AnalysisData, DiscriminantConfig,
     },
-    stats::core::{
-        calculate_p_value_from_f,
-        calculate_univariate_f, // Tetap di-import jika dipakai di tempat lain
-        extract_analyzed_dataset,
-        AnalyzedDataset,
-    },
+    stats::core::{calculate_p_value_from_f, extract_analyzed_dataset, AnalyzedDataset},
 };
 
 use super::core::{
     analyze_variables_in_model, analyze_variables_not_in_model, calculate_min_mahalanobis_distance,
-    calculate_overall_wilks_lambda, determine_method_type, find_best_variable_to_enter,
-    find_worst_variable_to_remove, generate_pairwise_comparisons,
+    calculate_min_mahalanobis_distance_with_groups, calculate_overall_wilks_lambda,
+    determine_method_type, find_best_variable_to_enter, find_worst_variable_to_remove,
+    generate_pairwise_comparisons,
 };
 
 /// Method type enum for different stepwise methods
@@ -180,14 +176,14 @@ fn perform_stepwise_analysis(
                         dataset,
                         &current_variables,
                         &remaining_variables,
-                        None,                   
-                        Some(var_name.clone()), 
+                        None,
+                        Some(var_name.clone()),
                         (step as i32) + 1,
                         method_type,
                         config,
                     );
                     steps_data.push(step_data);
-                    
+
                     step += 1;
                     continue;
                 }
@@ -235,8 +231,8 @@ fn perform_stepwise_analysis(
                         dataset,
                         &current_variables,
                         &remaining_variables,
-                        Some(var_name.clone()), 
-                        None,                   
+                        Some(var_name.clone()),
+                        None,
                         (step as i32) + 1,
                         method_type,
                         config,
@@ -383,8 +379,10 @@ fn create_step_data(
     let vars_not_in_analysis =
         analyze_variables_not_in_model(remaining_variables, dataset, current_variables, config);
 
-    // Build combined_vars to calculate the overall statistics
     let combined_vars = current_variables.to_vec();
+    let p = combined_vars.len() as f64;
+    let k = dataset.num_groups as f64;
+    let n = dataset.total_cases as f64;
 
     let wilks_lambda = if combined_vars.is_empty() {
         1.0
@@ -392,60 +390,11 @@ fn create_step_data(
         calculate_overall_wilks_lambda(dataset, &combined_vars)
     };
 
-    // Compute Min D² for Mahalanobis method output (SPSS column: "Min. D Squared")
     let min_d_squared = if combined_vars.is_empty() {
         0.0
     } else {
         calculate_min_mahalanobis_distance(dataset, &combined_vars)
     };
-
-    // Compute partial F-to-enter for the entered variable (SPSS "Exact F" column)
-    // Formula: F = ((Λ_C - Λ_N) / Λ_N) * (df2 / df1)
-    // df1 = g - 1, df2 = n - p - g
-    // At entry time: Λ_C = Wilks' of current model (before entry), Λ_N = Wilks' of new model (after entry)
-    let (f_to_enter, f_to_enter_df1, f_to_enter_df2) = if let Some(ref var_name) = variable_entered {
-        let current_wilks = if combined_vars.len() == 1 {
-            1.0
-        } else {
-            calculate_overall_wilks_lambda(dataset, current_variables)
-        };
-        let mut new_vars_check = current_variables.to_vec();
-        new_vars_check.push(var_name.clone());
-        let new_wilks = calculate_overall_wilks_lambda(dataset, &new_vars_check);
-
-        let df1 = dataset.num_groups - 1;
-        let df2 = dataset.total_cases - combined_vars.len() - dataset.num_groups;
-
-        let f_val = if df2 > 0 && new_wilks < current_wilks && new_wilks > 0.0 {
-            (((current_wilks - new_wilks) / new_wilks) * (df2 as f64)) / (df1 as f64)
-        } else {
-            0.0
-        };
-        (f_val, df1 as i32, df2 as i32)
-    } else if let Some(ref var_name) = variable_removed {
-        // For removal step: Λ_C = current Wilks (with var), Λ_R = reduced Wilks (without var)
-        let current_wilks = wilks_lambda;
-        let reduced_vars: Vec<String> = current_variables.iter().filter(|v| *v != var_name).cloned().collect();
-        let reduced_wilks = if reduced_vars.is_empty() {
-            1.0
-        } else {
-            calculate_overall_wilks_lambda(dataset, &reduced_vars)
-        };
-
-        let df1 = dataset.num_groups - 1;
-        let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups;
-
-        let f_val = if df2 > 0 && reduced_wilks > current_wilks && current_wilks > 0.0 {
-            (((reduced_wilks - current_wilks) / current_wilks) * (df2 as f64)) / (df1 as f64)
-        } else {
-            0.0
-        };
-        (f_val, df1 as i32, df2 as i32)
-    } else {
-        (0.0, 0, 0)
-    };
-
-    let significance = calculate_p_value_from_f(f_to_enter, f_to_enter_df1 as f64, f_to_enter_df2 as f64);
 
     let pairwise_comparisons = if config.method.pairwise {
         generate_pairwise_comparisons(dataset, current_variables, step)
@@ -453,14 +402,87 @@ fn create_step_data(
         HashMap::new()
     };
 
+    // --- LOGIKA EXACT F UNTUK TABEL DISPLAY ---
+    let (exact_f, exact_df1, exact_df2) = if combined_vars.is_empty() {
+        (0.0, 0, (n - k) as i32)
+    } else if method_type == MethodType::Mahalanobis {
+        // MAHALANOBIS: Gunakan Exact F dari dua grup terdekat (between-groups)
+        //
+        // SPSS's "Between Groups" Exact F (Mahalanobis method):
+        //   F = [(n - g - p + 1) / (p * (n - g))] * [n_i * n_j / (n_i + n_j)] * D²_min
+        //
+        // Sumber: SPSS Algorithmic documentation, Section "F-to-enter and F-to-remove
+        // for Mahalanobis method", dan referensi akademis tentang stepwise DFA.
+        //
+        // Derivation:
+        //   - df1 = p  (number of variables discriminating)
+        //   - df2 = n - g - p + 1  (pooled df)
+        //   - n_i, n_j = sizes of the two closest groups
+        //   - D²_min = squared Mahalanobis distance between closest groups
+        //
+        // Key insight: SPSS uses the MINIMUM D² (closest groups) for the table's
+        // "Between Groups" Exact F. The variable entry/remove decision is based on
+        // comparing F-to-enter/F-to-remove thresholds, so this Exact F in the
+        // display table reflects the pairwise significance of the closest groups
+        // with the current variable set.
+        let min_result = calculate_min_mahalanobis_distance_with_groups(dataset, &combined_vars);
+        let df1 = p; // p variables
+        let df2 = n - k - p + 1.0;
+
+        // Exact F formula: F = [(n - g - p + 1) / (p * (n - g))] * [n_i * n_j / (n_i + n_j)] * D²_min
+        let n_i = min_result.n_i as f64;
+        let n_j = min_result.n_j as f64;
+        let d2_min = min_result.min_d2;
+
+        let f_val = if df2 > 0.0 && p > 0.0 && (n - k) > 0.0 && (n_i + n_j) > 0.0 {
+            ((n - k - p + 1.0) / (p * (n - k))) * ((n_i * n_j) / (n_i + n_j)) * d2_min
+        } else {
+            0.0
+        };
+
+        (f_val, df1 as i32, df2 as i32)
+    } else {
+        // 2. WILKS' LAMBDA (DAN LAINNYA): Gunakan Rao's Approximation (Kodemu yang sudah benar)
+        let p_k1 = p * (k - 1.0);
+        let exact_df1_val = p_k1;
+
+        let t = if p_k1 == 2.0 {
+            1.0
+        } else {
+            let numerator = p.powi(2) * (k - 1.0).powi(2) - 4.0;
+            let denominator = p.powi(2) + (k - 1.0).powi(2) - 5.0;
+            if denominator > 0.0 {
+                (numerator / denominator).sqrt()
+            } else {
+                1.0
+            }
+        };
+
+        let w = n - 1.0 - (p + k) / 2.0;
+        let exact_df2_val = w * t - (p_k1 - 2.0) / 2.0;
+        let l_t = wilks_lambda.powf(1.0 / t);
+
+        let f_val = if l_t > 0.0 && l_t <= 1.0 {
+            ((1.0 - l_t) / l_t) * (exact_df2_val / exact_df1_val)
+        } else {
+            0.0
+        };
+
+        (f_val, exact_df1_val as i32, exact_df2_val as i32)
+    };
+
+    // Hitung Sig. (p-value) menggunakan kalkulasi Exact F yang baru saja didapat
+    let significance = calculate_p_value_from_f(exact_f, exact_df1 as f64, exact_df2 as f64);
+
     StepData {
         variable_entered,
         variable_removed,
         min_d_squared,
         wilks_lambda,
-        f_to_enter,
-        f_to_enter_df1,
-        f_to_enter_df2,
+        // Mapping ke nama properti struct lama yang kamu tulis di snippet
+        f_to_enter: exact_f,
+        f_to_enter_df1: exact_df1,
+        f_to_enter_df2: exact_df2,
         significance,
         variables_in_analysis: vars_in_analysis,
         variables_not_in_analysis: vars_not_in_analysis,
@@ -510,15 +532,15 @@ fn convert_steps_to_output(
             .variables_in_analysis
             .insert((step_idx).to_string(), step.variables_in_analysis.clone());
 
-        result
-            .variables_not_in_analysis
-            .insert((step_idx).to_string(), step.variables_not_in_analysis.clone());
+        result.variables_not_in_analysis.insert(
+            (step_idx).to_string(),
+            step.variables_not_in_analysis.clone(),
+        );
 
         if !step.pairwise_comparisons.is_empty() {
-            result.pairwise_comparisons.insert(
-                (step_idx).to_string(),
-                step.pairwise_comparisons.clone(),
-            );
+            result
+                .pairwise_comparisons
+                .insert((step_idx).to_string(), step.pairwise_comparisons.clone());
         }
     }
 

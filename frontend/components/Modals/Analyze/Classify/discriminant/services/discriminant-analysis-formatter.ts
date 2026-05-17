@@ -884,10 +884,12 @@ export function transformDiscriminantResult(data: any): ResultJson {
         const stepsCount = data.stepwise_statistics.variables_entered.length;
 
         // DEBUG: Log what WASM actually returned
-        console.log("[FORMATTER] rawResults keys:", Object.keys(data));
-        console.log("[FORMATTER] stepwise_statistics keys:", Object.keys(data.stepwise_statistics));
-        console.log("[FORMATTER] min_d_squared from WASM:", data.stepwise_statistics.min_d_squared);
-        console.log("[FORMATTER] f_to_enter from WASM:", data.stepwise_statistics.f_to_enter);
+        console.log("[FORMATTER] stepwise_statistics:", {
+            f_to_enter: data.stepwise_statistics.f_to_enter,
+            f_to_enter_df1: data.stepwise_statistics.f_to_enter_df1,
+            f_to_enter_df2: data.stepwise_statistics.f_to_enter_df2,
+            significance: data.stepwise_statistics.significance,
+        });
 
         for (let i = 0; i < stepsCount; i++) {
             table.rows.push({

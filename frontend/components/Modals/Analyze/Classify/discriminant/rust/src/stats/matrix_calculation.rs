@@ -553,42 +553,91 @@ pub fn calculate_total_unexplained_variation(
     unexplained_values.iter().sum()
 }
 
+/// Result containing minimum Mahalanobis distance and the two closest groups
+#[derive(Debug, Clone)]
+pub struct MinMahalanobisResult {
+    /// The minimum squared Mahalanobis distance
+    pub min_d2: f64,
+    /// First group of the closest pair
+    pub group_i: String,
+    /// Second group of the closest pair
+    pub group_j: String,
+    /// Sample size of first group
+    pub n_i: usize,
+    /// Sample size of second group
+    pub n_j: usize,
+}
+
 /// Calculate minimum Mahalanobis distance between any two groups
 ///
 /// Mahalanobis distance accounts for correlations in the data and
 /// is scale-invariant, making it useful for multivariate analysis.
 pub fn calculate_min_mahalanobis_distance(dataset: &AnalyzedDataset, variables: &[String]) -> f64 {
+    calculate_min_mahalanobis_distance_with_groups(dataset, variables).min_d2
+}
+
+/// Calculate minimum Mahalanobis distance between any two groups with group information
+///
+/// This version returns detailed information about which groups are closest,
+/// which is needed for the Exact F calculation in the Mahalanobis method.
+pub fn calculate_min_mahalanobis_distance_with_groups(
+    dataset: &AnalyzedDataset,
+    variables: &[String]
+) -> MinMahalanobisResult {
     if variables.is_empty() || dataset.group_labels.len() < 2 {
-        web_sys::console::log_1(&format!("[DEBUG] calculate_min_mahalanobis_distance: early exit - vars={:?}, groups={}", variables.len(), dataset.group_labels.len()).into());
-        return 0.0;
+        web_sys::console::log_1(&format!("[DEBUG] calculate_min_mahalanobis_distance_with_groups: early exit - vars={:?}, groups={}", variables.len(), dataset.group_labels.len()).into());
+        return MinMahalanobisResult {
+            min_d2: 0.0,
+            group_i: String::new(),
+            group_j: String::new(),
+            n_i: 0,
+            n_j: 0,
+        };
     }
 
-    web_sys::console::log_1(&format!("[DEBUG] calculate_min_mahalanobis_distance: vars={:?}, groups={:?}", variables, dataset.group_labels).into());
+    web_sys::console::log_1(&format!("[DEBUG] calculate_min_mahalanobis_distance_with_groups: vars={:?}, groups={:?}", variables, dataset.group_labels).into());
 
-    let mut distances = Vec::new();
+    let mut min_result = MinMahalanobisResult {
+        min_d2: f64::MAX,
+        group_i: String::new(),
+        group_j: String::new(),
+        n_i: 0,
+        n_j: 0,
+    };
 
     for (i, group_i) in dataset.group_labels.iter().enumerate() {
-        let group_distances: Vec<f64> = dataset.group_labels[i + 1..]
-            .par_iter()
-            .map(|group_j| {
-                let d = calculate_group_mahalanobis_distance(dataset, group_i, group_j, variables);
-                web_sys::console::log_1(&format!("[DEBUG] D2({}, {}) = {}", group_i, group_j, d).into());
-                d
-            })
-            .collect();
-        distances.extend(group_distances);
+        for group_j in &dataset.group_labels[i + 1..] {
+            let d = calculate_group_mahalanobis_distance(dataset, group_i, group_j, variables);
+            web_sys::console::log_1(&format!("[DEBUG] D2({}, {}) = {}", group_i, group_j, d).into());
+
+            if d < min_result.min_d2 {
+                // Get group sizes
+                let n_i = dataset
+                    .group_data
+                    .get(&variables[0])
+                    .and_then(|g| g.get(group_i))
+                    .map_or(0, |v| v.len());
+
+                let n_j = dataset
+                    .group_data
+                    .get(&variables[0])
+                    .and_then(|g| g.get(group_j))
+                    .map_or(0, |v| v.len());
+
+                min_result = MinMahalanobisResult {
+                    min_d2: d,
+                    group_i: group_i.clone(),
+                    group_j: group_j.clone(),
+                    n_i,
+                    n_j,
+                };
+            }
+        }
     }
 
-    web_sys::console::log_1(&format!("[DEBUG] All distances: {:?}", distances).into());
+    web_sys::console::log_1(&format!("[DEBUG] Min D2 = {} between groups {} ({}) and {} ({})", min_result.min_d2, min_result.group_i, min_result.n_i, min_result.group_j, min_result.n_j).into());
 
-    // Find minimum distance
-    if distances.is_empty() {
-        0.0
-    } else {
-        distances
-            .into_iter()
-            .fold(f64::MAX, |min_val, val| min_val.min(val))
-    }
+    min_result
 }
 
 /// Calculate minimum F ratio between any two groups
