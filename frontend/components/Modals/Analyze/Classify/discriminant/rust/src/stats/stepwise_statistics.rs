@@ -288,7 +288,7 @@ fn should_enter_variable(
         stats.f_to_enter >= f_entry_threshold
     } else if config.method.f_probability {
         let df1 = (num_groups - 1) as f64;
-        let df2 = (total_cases - num_groups - num_current_vars) as f64;
+        let df2 = (total_cases - num_groups - num_current_vars + 1) as f64;
         let p_value = calculate_p_value_from_f(stats.f_to_enter, df1, df2);
         p_value <= p_entry_threshold
     } else {
@@ -323,8 +323,8 @@ fn should_remove_variable(
 
     if config.method.f_value || config.method.f_probability {
         // df2 must match how F-to-remove was computed in calculate_f_to_remove_wilks:
-        // df2 = n - p - g (where p = num_current_vars)
-        let df2 = (total_cases - num_groups - num_current_vars) as f64;
+        // df2 = n - p - g + 1 (where p = num_current_vars)
+        let df2 = (total_cases - num_groups - num_current_vars + 1) as f64;
         let p_value = calculate_p_value_from_f(stats.f_to_remove, (num_groups - 1) as f64, df2);
 
         if config.method.f_value {

@@ -600,6 +600,8 @@ impl FormatResult {
                                     tolerance: v.tolerance,
                                     f_to_remove: v.f_to_enter,
                                     wilks_lambda: v.wilks_lambda,
+                                    min_d_squared: v.min_d_squared,
+                                    between_groups: v.between_groups.clone(),
                                 }
                             })
                             .collect(),

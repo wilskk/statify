@@ -235,6 +235,10 @@ pub struct VariableInAnalysis {
     pub f_to_remove: f64,
     #[serde(rename = "wilks_lambda")]
     pub wilks_lambda: f64,
+    /// Min D Squared for Mahalanobis method (0.0 for other methods)
+    pub min_d_squared: f64,
+    /// Between Groups label for Mahalanobis method (e.g. "1 and 2")
+    pub between_groups: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -247,6 +251,10 @@ pub struct VariableNotInAnalysis {
     pub f_to_enter: f64,
     #[serde(rename = "wilks_lambda")]
     pub wilks_lambda: f64,
+    /// Min D Squared for Mahalanobis method (0.0 for other methods)
+    pub min_d_squared: f64,
+    /// Between Groups label for Mahalanobis method (e.g. "1 and 2")
+    pub between_groups: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

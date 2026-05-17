@@ -11,8 +11,9 @@ use crate::models::{
 };
 
 use super::core::{
-    calculate_p_value_from_f, calculate_tolerance, calculate_variable_f_to_enter,
-    calculate_variable_f_to_remove, AnalyzedDataset, MethodType, TOLERANCE_THRESHOLD, EPSILON,
+    calculate_min_mahalanobis_distance_with_groups, calculate_tolerance,
+    calculate_variable_f_to_enter, calculate_variable_f_to_remove,
+    AnalyzedDataset, MethodType, TOLERANCE_THRESHOLD, EPSILON,
 };
 
 /// Determine the method type from configuration
@@ -63,7 +64,6 @@ pub fn analyze_variables_not_in_model(
                 calculate_tolerance(var_name, dataset, current_variables);
 
             // Tolerance check: reject if tolerance < 0.001 (SPSS default)
-            // [PERBAIKAN]: Also add VIN check — if VIN > 10 (tolerance < 0.1), reject
             if tolerance < TOLERANCE_THRESHOLD || min_tolerance < TOLERANCE_THRESHOLD {
                 return None;
             }
@@ -77,12 +77,28 @@ pub fn analyze_variables_not_in_model(
             let (f_to_enter, wilks_lambda) =
                 calculate_variable_f_to_enter(var_name, dataset, current_variables, method_type);
 
+            // For Mahalanobis method: compute min D² with this candidate variable included
+            let (min_d_squared, between_groups) = if method_type == MethodType::Mahalanobis {
+                let mut candidate_vars = current_variables.to_vec();
+                candidate_vars.push(var_name.clone());
+                let min_result =
+                    calculate_min_mahalanobis_distance_with_groups(dataset, &candidate_vars);
+                (
+                    min_result.min_d2,
+                    format!("{} and {}", min_result.group_i, min_result.group_j),
+                )
+            } else {
+                (0.0, String::new())
+            };
+
             Some(VariableNotInAnalysis {
                 variable: var_name.clone(),
                 tolerance,
                 min_tolerance,
                 f_to_enter,
                 wilks_lambda,
+                min_d_squared,
+                between_groups,
             })
         })
         .collect();
@@ -152,11 +168,26 @@ pub fn analyze_variables_in_model(
             let (f_to_remove, wilks_lambda) =
                 calculate_variable_f_to_remove(var_name, dataset, variables, method_type);
 
+            // For Mahalanobis method: compute min D² with this variable EXCLUDED (reduced model)
+            // This represents the minimum separation when the variable is removed
+            let (min_d_squared, between_groups) = if method_type == MethodType::Mahalanobis {
+                let min_result =
+                    calculate_min_mahalanobis_distance_with_groups(dataset, &other_variables);
+                (
+                    min_result.min_d2,
+                    format!("{} and {}", min_result.group_i, min_result.group_j),
+                )
+            } else {
+                (0.0, String::new())
+            };
+
             VariableInAnalysis {
                 variable: var_name.clone(),
                 tolerance,
                 f_to_remove,
                 wilks_lambda,
+                min_d_squared,
+                between_groups,
             }
         })
         .collect();
@@ -200,6 +231,8 @@ pub fn find_best_variable_to_enter(
         min_tolerance: 0.0,
         f_to_enter: 0.0,
         wilks_lambda: 1.0,
+        min_d_squared: 0.0,
+        between_groups: String::new(),
     };
 
     if variables.is_empty() {
@@ -280,6 +313,8 @@ pub fn find_worst_variable_to_remove(
         tolerance: 0.0,
         f_to_remove: f64::MAX,
         wilks_lambda: 0.0,
+        min_d_squared: 0.0,
+        between_groups: String::new(),
     };
 
     if variables.is_empty() {

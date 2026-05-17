@@ -946,26 +946,49 @@ export function transformDiscriminantResult(data: any): ResultJson {
     if (
         data.stepwise_statistics?.variables_in_analysis
     ) {
+        // Detect if using Mahalanobis method (any variable has min_d_squared > 0)
+        const isFirstStep = data.stepwise_statistics.variables_in_analysis[0];
+        const isMahalanobis = isFirstStep?.variables?.some(
+            (v: any) => v.min_d_squared !== undefined && v.min_d_squared > 0
+        ) ?? false;
+
+        // Conditionally set column headers based on method
+        const columnHeaders = isMahalanobis
+            ? [
+                  { header: "Step", key: "step" },
+                  { header: "", key: "var" },
+                  { header: "Tolerance", key: "tolerance" },
+                  { header: "F to Remove", key: "f_to_remove" },
+                  { header: "Min. D Squared", key: "min_d_squared" },
+                  { header: "Between Groups", key: "between_groups" },
+              ]
+            : [
+                  { header: "Step", key: "step" },
+                  { header: "", key: "var" },
+                  { header: "Tolerance", key: "tolerance" },
+                  { header: "F to Remove", key: "f_to_remove" },
+                  { header: "Wilks' Lambda", key: "wilks_lambda" },
+              ];
+
         const table: Table = {
             key: "variables_in_analysis",
             title: "Variables in the Analysis",
-            columnHeaders: [
-                { header: "Step", key: "step" },
-                { header: "", key: "var" },
-                { header: "Tolerance", key: "tolerance" },
-                { header: "F to Remove", key: "f_to_remove" },
-                { header: "Wilks' Lambda", key: "wilks_lambda" },
-            ],
+            columnHeaders,
             rows: [],
         };
+
+        // Sort variables_in_analysis by step number (ascending)
+        const sortedSteps = [...data.stepwise_statistics.variables_in_analysis].sort(
+            (a, b) => parseInt(a.step) - parseInt(b.step)
+        );
 
         // Iterate through steps and variables
         for (
             let i = 0;
-            i < data.stepwise_statistics.variables_in_analysis.length;
+            i < sortedSteps.length;
             i++
         ) {
-            const stepData = data.stepwise_statistics.variables_in_analysis[i];
+            const stepData = sortedSteps[i];
             const step = stepData.step;
 
             // Check if variables array exists and has items
@@ -973,14 +996,22 @@ export function transformDiscriminantResult(data: any): ResultJson {
                 for (let j = 0; j < stepData.variables.length; j++) {
                     const variable = stepData.variables[j];
 
-                    table.rows.push({
-                        rowHeader: [step, variable.variable],
-                        tolerance: formatDisplayNumber(variable.tolerance),
-                        f_to_remove: formatDisplayNumber(variable.f_to_remove),
-                        wilks_lambda: formatDisplayNumber(
-                            variable.wilks_lambda
-                        ),
-                    });
+                    if (isMahalanobis) {
+                        table.rows.push({
+                            rowHeader: [step, variable.variable],
+                            tolerance: formatDisplayNumber(variable.tolerance),
+                            f_to_remove: formatDisplayNumber(variable.f_to_remove),
+                            min_d_squared: formatDisplayNumber(variable.min_d_squared || 0),
+                            between_groups: variable.between_groups || "",
+                        });
+                    } else {
+                        table.rows.push({
+                            rowHeader: [step, variable.variable],
+                            tolerance: formatDisplayNumber(variable.tolerance),
+                            f_to_remove: formatDisplayNumber(variable.f_to_remove),
+                            wilks_lambda: formatDisplayNumber(variable.wilks_lambda),
+                        });
+                    }
                 }
             }
         }
@@ -992,16 +1023,34 @@ export function transformDiscriminantResult(data: any): ResultJson {
     if (
         data.stepwise_statistics?.variables_not_in_analysis
     ) {
+        // Detect if using Mahalanobis method
+        const isFirstStep = data.stepwise_statistics.variables_not_in_analysis[0];
+        const isMahalanobis = isFirstStep?.variables?.some(
+            (v: any) => v.min_d_squared !== undefined && v.min_d_squared > 0
+        ) ?? false;
+
+        // Conditionally set column headers based on method
+        const columnHeaders = isMahalanobis
+            ? [
+                  { header: "Step", key: "step" },
+                  { header: "", key: "var" },
+                  { header: "Tolerance", key: "tolerance" },
+                  { header: "F to Enter", key: "f_to_enter" },
+                  { header: "Min. D Squared", key: "min_d_squared" },
+                  { header: "Between Groups", key: "between_groups" },
+              ]
+            : [
+                  { header: "Step", key: "step" },
+                  { header: "", key: "var" },
+                  { header: "Tolerance", key: "tolerance" },
+                  { header: "F to Enter", key: "f_to_enter" },
+                  { header: "Wilks' Lambda", key: "wilks_lambda" },
+              ];
+
         const table: Table = {
             key: "variables_not_in_analysis",
             title: "Variables Not in the Analysis",
-            columnHeaders: [
-                { header: "Step", key: "step" },
-                { header: "", key: "var" },
-                { header: "Tolerance", key: "tolerance" },
-                { header: "F to Enter", key: "f_to_enter" },
-                { header: "Wilks' Lambda", key: "wilks_lambda" },
-            ],
+            columnHeaders,
             rows: [],
         };
 
@@ -1020,14 +1069,22 @@ export function transformDiscriminantResult(data: any): ResultJson {
                 for (let j = 0; j < stepData.variables.length; j++) {
                     const variable = stepData.variables[j];
 
-                    table.rows.push({
-                        rowHeader: [step, variable.variable],
-                        tolerance: formatDisplayNumber(variable.tolerance),
-                        f_to_enter: formatDisplayNumber(variable.f_to_remove),
-                        wilks_lambda: formatDisplayNumber(
-                            variable.wilks_lambda
-                        ),
-                    });
+                    if (isMahalanobis) {
+                        table.rows.push({
+                            rowHeader: [step, variable.variable],
+                            tolerance: formatDisplayNumber(variable.tolerance),
+                            f_to_enter: formatDisplayNumber(variable.f_to_enter),
+                            min_d_squared: formatDisplayNumber(variable.min_d_squared || 0),
+                            between_groups: variable.between_groups || "",
+                        });
+                    } else {
+                        table.rows.push({
+                            rowHeader: [step, variable.variable],
+                            tolerance: formatDisplayNumber(variable.tolerance),
+                            f_to_enter: formatDisplayNumber(variable.f_to_enter),
+                            wilks_lambda: formatDisplayNumber(variable.wilks_lambda),
+                        });
+                    }
                 }
             }
         }

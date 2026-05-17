@@ -95,7 +95,7 @@ fn calculate_f_to_enter_wilks(
     let new_wilks = calculate_overall_wilks_lambda(dataset, &new_variables);
 
     let df1 = dataset.num_groups - 1;
-    let df2 = dataset.total_cases - current_variables.len() - 1 - df1;
+    let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups + 1;
 
     // [PERBAIKAN KRUSIAL]: Pembagi harus new_wilks!
     let f_value = if df2 > 0 && new_wilks < current_wilks && new_wilks > 0.0 {
@@ -142,7 +142,7 @@ fn calculate_f_to_remove_wilks(
     //       Λ_C = Wilks' lambda of current model (var included)
     // df1 = g - 1, df2 = n - p - g (same as F-to-enter for symmetry)
     let df1 = dataset.num_groups - 1;
-    let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups;
+    let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups + 1;
 
     let f_value = if df2 > 0 && reduced_wilks > current_wilks && current_wilks > 0.0 {
         (((reduced_wilks - current_wilks) / current_wilks) * (df2 as f64)) / (df1 as f64)
@@ -187,7 +187,7 @@ fn calculate_f_to_enter_unexplained(
     // Formula: F = [(S_C - S_N) / S_C] × (df2 / df1)
     // where S_C = unexplained variation of current model, S_N = new model
     let df1 = dataset.num_groups - 1;
-    let df2 = dataset.total_cases - current_variables.len() - 1 - df1;
+    let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups + 1;
 
     let f_value = if df2 > 0 && new_sum > 0.0 && current_sum > 0.0 {
         (((current_sum - new_sum) / current_sum) * (df2 as f64)) / (df1 as f64)
@@ -240,9 +240,9 @@ fn calculate_f_to_remove_unexplained(
 
     // Calculate F value based on increase
     // Formula: F = [(S_R - S_C) / S_C] × (df2 / df1)
-    // df1 = g - 1, df2 = n - p - g (same as F-to-enter)
+    // df1 = g - 1, df2 = n - p - g + 1
     let df1 = dataset.num_groups - 1;
-    let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups;
+    let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups + 1;
 
     let f_value = if df2 > 0 && increase > 0.0 && current_sum > 0.0 {
         ((increase / current_sum) * (df2 as f64)) / (df1 as f64)
@@ -295,7 +295,7 @@ fn calculate_f_to_enter_mahalanobis(
     let new_wilks = calculate_overall_wilks_lambda(dataset, &new_variables);
 
     let df1 = dataset.num_groups - 1;
-    let df2 = (dataset.total_cases as i32) - (current_variables.len() as i32) - 1 - (df1 as i32);
+    let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups + 1;
 
     let f_value = if df2 > 0 && new_wilks < current_wilks && new_wilks > 0.0 {
         (((current_wilks - new_wilks) / new_wilks) * (df2 as f64)) / (df1 as f64)
@@ -382,7 +382,7 @@ fn calculate_f_to_enter_fratio(
 
     // For Wilks' lambda, estimate from F
     let _df1 = 1; // For pairwise comparisons
-    let df2 = dataset.total_cases - dataset.num_groups - new_variables.len();
+    let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups + 1;
 
     let wilks_lambda = if min_f_ratio > 0.0 && df2 > 0 {
         (df2 as f64) / ((df2 as f64) + min_f_ratio)
@@ -431,7 +431,7 @@ fn calculate_f_to_remove_fratio(
         1.0
     } else {
         let _df1 = 1; // For pairwise comparisons
-        let df2 = dataset.total_cases - dataset.num_groups - current_variables.len();
+        let df2 = dataset.total_cases - dataset.num_groups - current_variables.len() + 1;
 
         if reduced_min_f > 0.0 && df2 > 0 {
             (df2 as f64) / ((df2 as f64) + reduced_min_f)
@@ -479,7 +479,7 @@ fn calculate_f_to_enter_raos(
 
     // Calculate approximate F value for the increase
     let df1 = dataset.num_groups - 1;
-    let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups;
+    let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups + 1;
 
     let f_value = if df2 > 0 {
         increase / (df1 as f64)
@@ -533,7 +533,7 @@ fn calculate_f_to_remove_raos(
     // Calculate F value for the decrease
     // df1 = g - 1, df2 = n - p - g (same as F-to-enter for symmetry)
     let df1 = dataset.num_groups - 1;
-    let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups;
+    let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups + 1;
 
     let f_value = if df2 > 0 {
         decrease / (df1 as f64)

@@ -242,93 +242,58 @@ pub fn calculate_tolerance(
         return (1.0, 1.0);
     }
 
-    // Collect ALL observation vectors: target + all predictors
-    let num_preds = other_variables.len();
-    let mut all_values: Vec<Vec<f64>> = Vec::new();
+    // 1. Gabungkan semua variabel yang akan dianalisis (prediktor + target)
+    let mut all_vars = other_variables.to_vec();
+    all_vars.push(variable.to_string());
+    let target_idx = all_vars.len() - 1;
 
-    // Row 0 = target variable
-    all_values.push(collect_variable_values(dataset, variable));
+    // 2. Dapatkan matriks Pooled Within-Groups Covariance (Gaya SPSS!)
+    let (_, within_cov) = calculate_between_within_matrices(dataset, &all_vars);
+    let p = all_vars.len();
 
-    // Rows 1..k = each predictor in other_variables
-    for pred in other_variables {
-        all_values.push(collect_variable_values(dataset, pred));
-    }
-
-    // Determine common length across all rows
-    let n = all_values.iter().map(|v| v.len()).min().unwrap_or(0);
-    if n <= num_preds {
-        return (0.0, 0.0);
-    }
-
-    // Truncate all rows to n observations (already matching by construction)
-    for row in &mut all_values {
-        row.truncate(n);
-    }
-
-    let target_row = &all_values[0];
-    let predictor_rows = &all_values[1..];
-
-    // Build design matrix X [n x (p+1)] with intercept column
-    let mut x_data: Vec<f64> = Vec::with_capacity(n * (num_preds + 1));
-    for i in 0..n {
-        x_data.push(1.0); // intercept
-        for pred_row in predictor_rows {
-            x_data.push(pred_row[i]);
-        }
-    }
-    let x_matrix = DMatrix::from_vec(n, num_preds + 1, x_data);
-
-    // Target vector y
-    let y_vector = DVector::from_vec(target_row.clone());
-
-    // Compute R² via OLS: b = (X'X)^-1 X'y
-    // then R² = 1 - RSS/TSS
-    let xt = x_matrix.transpose();
-    let xtx = &xt * &x_matrix;
-
-    // Add regularization for numerical stability
-    let mut xtx_reg = xtx.clone();
-    for i in 0..xtx_reg.ncols() {
-        xtx_reg[(i, i)] += EPSILON;
-    }
-
-    let r_squared = match xtx_reg.try_inverse() {
-        Some(xtx_inv) => {
-            let xty = &xt * &y_vector;
-            let b = &xtx_inv * &xty;     // coefficients [p+1]
-            let y_hat = &x_matrix * &b;   // predicted values
-            let y_mean = y_vector.mean();
-
-            // TSS = Σ(y_i - ȳ)²
-            let tss: f64 = y_vector.iter()
-                .map(|&y| (y - y_mean).powi(2))
-                .sum();
-
-            // RSS = Σ(y_i - ŷ_i)²
-            let rss: f64 = y_vector.iter()
-                .zip(y_hat.iter())
-                .map(|(y, yh)| (y - yh).powi(2))
-                .sum();
-
-            if tss > EPSILON { 1.0 - (rss / tss) } else { 0.0 }
-        }
-        None => {
-            // Fallback: use bivariate R² with the strongest predictor
-            let mut max_r2 = 0.0_f64;
-            for pred_row in predictor_rows {
-                let r = calculate_correlation(target_row, pred_row);
-                let r2 = r.powi(2);
-                if r2 > max_r2 { max_r2 = r2; }
+    // 3. Ubah Covariance menjadi Matriks Korelasi
+    let mut within_cor = nalgebra::DMatrix::zeros(p, p);
+    for i in 0..p {
+        for j in 0..p {
+            let sd_i = within_cov[(i, i)].sqrt();
+            let sd_j = within_cov[(j, j)].sqrt();
+            if sd_i > 0.0 && sd_j > 0.0 {
+                within_cor[(i, j)] = within_cov[(i, j)] / (sd_i * sd_j);
+            } else if i == j {
+                within_cor[(i, j)] = 1.0;
             }
-            max_r2
         }
-    };
+    }
 
-    let tolerance = 1.0 - r_squared;
-    // min_tolerance = the variable's own multivariate tolerance
-    let min_tolerance = tolerance;
+    // Tambahkan regularisasi kecil agar matriks tidak singular saat multikolinearitas tinggi
+    for i in 0..p {
+        within_cor[(i, i)] += EPSILON;
+    }
 
-    (tolerance, min_tolerance)
+    // 4. Invers matriks untuk mendapatkan VIF, lalu hitung Tolerance = 1 / VIF
+    match within_cor.try_inverse() {
+        Some(inv_cor) => {
+            let mut min_tol = 1.0_f64;
+            let mut target_tol = 0.0;
+
+            for i in 0..p {
+                let vif = inv_cor[(i, i)];
+                let tol = if vif > 0.0 { 1.0 / vif } else { 0.0 };
+                let clamped_tol = tol.clamp(0.0, 1.0); // Paksa aman di rentang 0 - 1
+
+                if i == target_idx {
+                    target_tol = clamped_tol;
+                }
+                
+                // Min. Tolerance adalah nilai terkecil dari SEMUA variabel di model ini
+                if clamped_tol < min_tol {
+                    min_tol = clamped_tol;
+                }
+            }
+            (target_tol, min_tol)
+        }
+        None => (0.0, 0.0), // Jika matriks gagal di-invers
+    }
 }
 
 /// Collect all observation values for a variable across all groups.
