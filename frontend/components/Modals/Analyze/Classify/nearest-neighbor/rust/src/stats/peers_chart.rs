@@ -6,7 +6,7 @@ use crate::models::{
     result::{FocalNeighborSet, NeighborDetail, PeersChart},
 };
 
-use super::core::{build_effective_feature_weights, find_k_nearest_neighbors, preprocess_knn_data};
+use super::core::{determine_effective_k, find_k_nearest_neighbors, preprocess_knn_data};
 
 pub fn calculate_peers_chart(
     data: &AnalysisData,
@@ -16,13 +16,7 @@ pub fn calculate_peers_chart(
     let knn_data = preprocess_knn_data(data, config)?;
 
     // Determine k value
-    let k = if config.neighbors.specify {
-        config.neighbors.specify_k as usize
-    } else if config.neighbors.auto_selection {
-        config.neighbors.min_k.unwrap_or(3).max(1) as usize
-    } else {
-        3 // Default k value
-    };
+    let k = determine_effective_k(&knn_data, config)?;
 
     // Determine focal indices based on focal_case_iden_var
     let focal_indices =
@@ -43,7 +37,6 @@ pub fn calculate_peers_chart(
     }
 
     let use_euclidean = config.neighbors.metric_eucli;
-    let weights = build_effective_feature_weights(&knn_data, config)?;
     let mut focal_neighbor_sets = Vec::new();
 
     // Combine training and holdout indices for finding neighbors
@@ -70,7 +63,6 @@ pub fn calculate_peers_chart(
             &candidate_indices,
             k,
             use_euclidean,
-            weights.as_deref(),
             Some(&knn_data.processed_case_indices),
         );
 

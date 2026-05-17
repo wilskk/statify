@@ -7,10 +7,7 @@ use crate::models::{
     result::{ClassificationPartition, ClassificationTable},
 };
 
-use super::core::{
-    build_effective_feature_weights, determine_effective_k, find_k_nearest_neighbors,
-    preprocess_knn_data,
-};
+use super::core::{determine_effective_k, find_k_nearest_neighbors, preprocess_knn_data};
 use super::prediction::{
     calculate_categorical_vote_probabilities, category_key, sorted_target_categories,
 };
@@ -39,8 +36,6 @@ pub fn calculate_classification_table(
 
     // Use Euclidean or Manhattan distance
     let use_euclidean = config.neighbors.metric_eucli;
-    let weights = build_effective_feature_weights(&knn_data, config)?;
-
     // Calculate confusion matrices and missing values
     let (train_confusion, train_correct, train_total, train_missing) = calculate_confusion_matrix(
         &knn_data,
@@ -48,8 +43,6 @@ pub fn calculate_classification_table(
         n_categories,
         k,
         use_euclidean,
-        weights.as_deref(),
-        false,
         true,
     );
 
@@ -60,8 +53,6 @@ pub fn calculate_classification_table(
             n_categories,
             k,
             use_euclidean,
-            weights.as_deref(),
-            false,
             false,
         );
 
@@ -120,8 +111,6 @@ fn calculate_confusion_matrix(
     n_categories: usize,
     k: usize,
     use_euclidean: bool,
-    weights: Option<&[f64]>,
-    use_distance_weights: bool,
     is_training: bool,
 ) -> (Vec<Vec<usize>>, usize, usize, Vec<usize>) {
     let mut confusion = vec![vec![0; n_categories]; n_categories];
@@ -151,7 +140,6 @@ fn calculate_confusion_matrix(
                         &knn_data.training_indices,
                         k,
                         use_euclidean,
-                        weights,
                         Some(&knn_data.processed_case_indices),
                     );
 
@@ -160,7 +148,6 @@ fn calculate_confusion_matrix(
                         &knn_data.target_values,
                         category_map,
                         n_categories,
-                        use_distance_weights,
                     );
 
                     missing[predicted_cat] += 1;
@@ -189,7 +176,6 @@ fn calculate_confusion_matrix(
                 &train_indices,
                 k,
                 use_euclidean,
-                weights,
                 Some(&knn_data.processed_case_indices),
             )
         } else {
@@ -200,7 +186,6 @@ fn calculate_confusion_matrix(
                 &knn_data.training_indices,
                 k,
                 use_euclidean,
-                weights,
                 Some(&knn_data.processed_case_indices),
             )
         };
@@ -211,7 +196,6 @@ fn calculate_confusion_matrix(
             &knn_data.target_values,
             category_map,
             n_categories,
-            use_distance_weights,
         );
 
         // Update confusion matrix
@@ -235,10 +219,8 @@ fn predict_category(
     target_values: &[DataValue],
     category_map: &HashMap<String, usize>,
     n_categories: usize,
-    use_distance_weights: bool,
 ) -> usize {
-    let probabilities =
-        calculate_categorical_vote_probabilities(neighbors, target_values, use_distance_weights);
+    let probabilities = calculate_categorical_vote_probabilities(neighbors, target_values);
     let mut best_idx = 0;
     let mut best_probability = f64::NEG_INFINITY;
 

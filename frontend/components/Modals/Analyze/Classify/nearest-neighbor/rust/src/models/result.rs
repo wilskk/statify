@@ -57,6 +57,7 @@ pub struct KFeatureSelectionSummary {
 pub struct KSelectionChart {
     pub candidates: Vec<KSelectionCandidate>,
     pub selected_k: usize,
+    pub best_error: f64,
     pub metric_name: String,
 }
 
@@ -64,7 +65,29 @@ pub struct KSelectionChart {
 pub struct KSelectionCandidate {
     pub k: usize,
     pub average_error: f64,
+    pub fold_errors: Vec<f64>,
+    pub fold_n: Vec<usize>,
+    pub fold_total_errors: Vec<f64>,
+    pub cv_fold_debug: Vec<KSelectionFoldDebug>,
     pub selected: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct KSelectionFoldDebug {
+    pub validation_fold_id: usize,
+    pub validation_case_ids: Vec<i32>,
+    pub cv_training_case_ids: Vec<i32>,
+    pub validation_cases: Vec<KSelectionValidationCaseDebug>,
+    pub has_same_fold_neighbor: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct KSelectionValidationCaseDebug {
+    pub validation_case_id: i32,
+    pub neighbor_candidate_ids: Vec<i32>,
+    pub nearest_neighbor_ids: Vec<i32>,
+    pub has_same_fold_neighbor: bool,
+    pub same_fold_neighbor_ids: Vec<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -3,103 +3,32 @@ use std::cmp::Ordering;
 const NEIGHBOR_TIE_EPSILON: f64 = 1e-12;
 
 /// Calculates distance between two points using specified metric.
-pub fn calculate_distance(
-    point1: &[f64],
-    point2: &[f64],
-    use_euclidean: bool,
-    feature_weights: Option<&[f64]>,
-) -> f64 {
-    calculate_distance_with_debug(point1, point2, use_euclidean, feature_weights).distance
-}
-
-#[derive(Debug, Clone)]
-pub struct DistanceDebug {
-    pub distance: f64,
-    pub raw_weighted_squared_distance: f64,
-    pub final_distance: f64,
-    pub normalization_divisor: f64,
-    pub sum_effective_weights: f64,
-}
-
-pub fn calculate_distance_with_debug(
-    point1: &[f64],
-    point2: &[f64],
-    use_euclidean: bool,
-    feature_weights: Option<&[f64]>,
-) -> DistanceDebug {
+pub fn calculate_distance(point1: &[f64], point2: &[f64], use_euclidean: bool) -> f64 {
     let min_len = point1.len().min(point2.len());
-    let mut used_weight = 0.0;
 
     if use_euclidean {
         let sum_squared = (0..min_len)
             .filter_map(|i| {
-                let weight = feature_weights
-                    .and_then(|w| w.get(i).copied())
-                    .unwrap_or(1.0);
                 if !point1[i].is_finite() || !point2[i].is_finite() {
                     return None;
                 }
 
-                used_weight += weight;
                 let diff = point1[i] - point2[i];
-                Some(weight * diff * diff)
+                Some(diff * diff)
             })
             .sum::<f64>();
 
-        if used_weight == 0.0 {
-            return DistanceDebug {
-                distance: f64::INFINITY,
-                raw_weighted_squared_distance: f64::INFINITY,
-                final_distance: f64::INFINITY,
-                normalization_divisor: 0.0,
-                sum_effective_weights: 0.0,
-            };
-        }
-
-        let normalization_divisor = 1.0;
-        let normalized_squared = sum_squared / normalization_divisor;
-        let final_distance = normalized_squared.sqrt();
-
-        DistanceDebug {
-            distance: final_distance,
-            raw_weighted_squared_distance: sum_squared,
-            final_distance,
-            normalization_divisor,
-            sum_effective_weights: used_weight,
-        }
+        sum_squared.sqrt()
     } else {
-        let sum = (0..min_len)
+        (0..min_len)
             .filter_map(|i| {
-                let weight = feature_weights
-                    .and_then(|w| w.get(i).copied())
-                    .unwrap_or(1.0);
                 if !point1[i].is_finite() || !point2[i].is_finite() {
                     return None;
                 }
 
-                used_weight += weight;
-                let diff = (point1[i] - point2[i]).abs();
-                Some(weight * diff)
+                Some((point1[i] - point2[i]).abs())
             })
-            .sum::<f64>();
-
-        if used_weight == 0.0 {
-            return DistanceDebug {
-                distance: f64::INFINITY,
-                raw_weighted_squared_distance: f64::INFINITY,
-                final_distance: f64::INFINITY,
-                normalization_divisor: 1.0,
-                sum_effective_weights: 0.0,
-            };
-        }
-
-        DistanceDebug {
-            distance: sum,
-            raw_weighted_squared_distance: sum,
-            final_distance: sum,
-            normalization_divisor: 1.0,
-            sum_effective_weights: used_weight,
-        }
+            .sum::<f64>()
     }
 }
 
@@ -109,19 +38,13 @@ pub fn find_k_nearest_neighbors(
     indices: &[usize],
     k: usize,
     use_euclidean: bool,
-    feature_weights: Option<&[f64]>,
     original_case_indices: Option<&[usize]>,
 ) -> Vec<(usize, f64)> {
     let mut distances: Vec<(usize, f64)> = indices
         .iter()
         .filter_map(|&idx| {
             if idx < data_matrix.len() {
-                let distance = calculate_distance(
-                    query_point,
-                    &data_matrix[idx],
-                    use_euclidean,
-                    feature_weights,
-                );
+                let distance = calculate_distance(query_point, &data_matrix[idx], use_euclidean);
                 Some((idx, distance))
             } else {
                 None
@@ -164,20 +87,12 @@ fn compare_neighbors(
     })
 }
 
-pub fn calculate_euclidean_distance(
-    point1: &[f64],
-    point2: &[f64],
-    feature_weights: Option<&[f64]>,
-) -> f64 {
-    calculate_distance(point1, point2, true, feature_weights)
+pub fn calculate_euclidean_distance(point1: &[f64], point2: &[f64]) -> f64 {
+    calculate_distance(point1, point2, true)
 }
 
-pub fn calculate_manhattan_distance(
-    point1: &[f64],
-    point2: &[f64],
-    feature_weights: Option<&[f64]>,
-) -> f64 {
-    calculate_distance(point1, point2, false, feature_weights)
+pub fn calculate_manhattan_distance(point1: &[f64], point2: &[f64]) -> f64 {
+    calculate_distance(point1, point2, false)
 }
 
 #[cfg(test)]
@@ -191,37 +106,8 @@ mod tests {
         let a = [0.0, 0.0];
         let b = [3.0, 4.0];
 
-        assert_eq!(calculate_euclidean_distance(&a, &b, None), 5.0);
-        assert_eq!(calculate_manhattan_distance(&a, &b, None), 7.0);
-    }
-
-    #[test]
-    fn euclidean_and_manhattan_apply_normalized_feature_weights() {
-        let a = [0.0, 0.0];
-        let b = [3.0, 4.0];
-        let weights = [0.5, 0.5];
-
-        assert_eq!(
-            calculate_euclidean_distance(&a, &b, Some(&weights)),
-            12.5_f64.sqrt()
-        );
-        assert_eq!(calculate_manhattan_distance(&a, &b, Some(&weights)), 3.5);
-    }
-
-    #[test]
-    fn weighted_distances_do_not_rescale_by_used_or_total_weight() {
-        let a = [0.0, f64::NAN];
-        let b = [3.0, 4.0];
-        let weights = [0.25, 0.75];
-
-        assert_eq!(
-            calculate_euclidean_distance(&a, &b, Some(&weights)),
-            (0.25_f64 * 9.0).sqrt()
-        );
-        assert_eq!(
-            calculate_manhattan_distance(&a, &b, Some(&weights)),
-            0.25 * 3.0
-        );
+        assert_eq!(calculate_euclidean_distance(&a, &b), 5.0);
+        assert_eq!(calculate_manhattan_distance(&a, &b), 7.0);
     }
 
     #[test]
@@ -230,10 +116,10 @@ mod tests {
         let desktop = [0.0, 0.0, 1.0];
 
         assert_eq!(
-            calculate_euclidean_distance(&android, &desktop, None),
+            calculate_euclidean_distance(&android, &desktop),
             2.0_f64.sqrt()
         );
-        assert_eq!(calculate_manhattan_distance(&android, &desktop, None), 2.0);
+        assert_eq!(calculate_manhattan_distance(&android, &desktop), 2.0);
     }
 
     #[test]
@@ -246,7 +132,6 @@ mod tests {
             &[1, 2, 3],
             3,
             true,
-            None,
             Some(&original_case_indices),
         );
 
@@ -266,7 +151,6 @@ mod tests {
             &[1, 2],
             2,
             false,
-            None,
             Some(&original_case_indices),
         );
 

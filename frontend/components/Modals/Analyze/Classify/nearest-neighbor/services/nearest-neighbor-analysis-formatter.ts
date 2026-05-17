@@ -23,6 +23,10 @@ export function transformNearestNeighborResult(data: any): ResultJson {
 
   if (data.k_selection_chart?.candidates?.length) {
     tables.push(buildKSelectionChart(data.k_selection_chart));
+    const cvDebugTable = buildKSelectionCvDebug(data.k_selection_chart);
+    if (cvDebugTable) {
+      tables.push(cvDebugTable);
+    }
   }
 
   if (data.system_settings) {
@@ -187,15 +191,101 @@ function buildKSelectionChart(chart: any): Table {
     columnHeaders: [
       { header: "K", key: "k" },
       { header: "Average Error", key: "average_error" },
+      { header: "Fold Errors", key: "fold_errors" },
+      { header: "Fold N", key: "fold_n" },
+      { header: "Fold Total Error", key: "fold_total_errors" },
       { header: "Selected", key: "selected" },
     ],
     rows: chart.candidates.map((candidate: any) => ({
       rowHeader: [String(candidate.k)],
       k: candidate.k,
       average_error: formatDisplayNumber(candidate.average_error),
+      fold_errors: formatNumericList(candidate.fold_errors ?? candidate.foldErrors),
+      fold_n: formatIndexList(candidate.fold_n ?? candidate.foldN),
+      fold_total_errors: formatNumericList(
+        candidate.fold_total_errors ?? candidate.foldTotalErrors,
+      ),
       selected: candidate.selected ? "Yes" : "",
     })),
-    note: `Metric: ${chart.metric_name ?? "validation_error"}; selected K = ${chart.selected_k}`,
+    note: `Metric: ${chart.metric_name ?? "validation_error"}; selected K = ${chart.selected_k}; best error = ${optionalNumber(chart.best_error ?? chart.bestError)}`,
+  };
+}
+
+function buildKSelectionCvDebug(chart: any): Table | null {
+  const rows = [];
+
+  for (const candidate of chart.candidates ?? []) {
+    const foldDebug = candidate.cv_fold_debug ?? candidate.cvFoldDebug ?? [];
+
+    for (const fold of foldDebug) {
+      const validationCases =
+        fold.validation_cases ?? fold.validationCases ?? [];
+
+      for (const validationCase of validationCases) {
+        rows.push({
+          rowHeader: [
+            String(candidate.k),
+            String(fold.validation_fold_id ?? fold.validationFoldId ?? ""),
+            String(
+              validationCase.validation_case_id ??
+                validationCase.validationCaseId ??
+                "",
+            ),
+          ],
+          k: candidate.k,
+          validation_fold_id: fold.validation_fold_id ?? fold.validationFoldId,
+          validation_case_ids: formatIndexList(
+            fold.validation_case_ids ?? fold.validationCaseIds,
+          ),
+          cv_training_case_ids: formatIndexList(
+            fold.cv_training_case_ids ?? fold.cvTrainingCaseIds,
+          ),
+          validation_case_id:
+            validationCase.validation_case_id ??
+            validationCase.validationCaseId,
+          neighbor_candidate_ids: formatIndexList(
+            validationCase.neighbor_candidate_ids ??
+              validationCase.neighborCandidateIds,
+          ),
+          nearest_neighbor_ids: formatIndexList(
+            validationCase.nearest_neighbor_ids ??
+              validationCase.nearestNeighborIds,
+          ),
+          has_same_fold_neighbor: (
+            validationCase.has_same_fold_neighbor ??
+            validationCase.hasSameFoldNeighbor
+          )
+            ? "Yes"
+            : "No",
+          same_fold_neighbor_ids: formatIndexList(
+            validationCase.same_fold_neighbor_ids ??
+              validationCase.sameFoldNeighborIds,
+          ),
+        });
+      }
+    }
+  }
+
+  if (!rows.length) {
+    return null;
+  }
+
+  return {
+    key: "k_selection_cv_debug",
+    title: "K Selection Cross-Validation Debug",
+    columnHeaders: [
+      { header: "K", key: "k" },
+      { header: "Validation Fold", key: "validation_fold_id" },
+      { header: "Validation Fold Case IDs", key: "validation_case_ids" },
+      { header: "CV Training Case IDs", key: "cv_training_case_ids" },
+      { header: "Validation Case ID", key: "validation_case_id" },
+      { header: "Neighbor Candidate IDs", key: "neighbor_candidate_ids" },
+      { header: "Nearest Neighbor IDs", key: "nearest_neighbor_ids" },
+      { header: "Same-Fold Neighbor?", key: "has_same_fold_neighbor" },
+      { header: "Same-Fold Neighbor IDs", key: "same_fold_neighbor_ids" },
+    ],
+    rows,
+    note: "Candidate neighbors must come only from folds other than the validation fold.",
   };
 }
 
@@ -620,6 +710,11 @@ function formatList(values: any[] | undefined) {
 function formatIndexList(values: any[] | undefined) {
   if (!Array.isArray(values) || !values.length) return "(none)";
   return values.map((value) => String(value)).join(", ");
+}
+
+function formatNumericList(values: any[] | undefined) {
+  if (!Array.isArray(values) || !values.length) return "(none)";
+  return values.map((value) => optionalNumber(value)).join(", ");
 }
 
 function formatFeatureWeights(weights: any[] | undefined) {

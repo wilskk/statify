@@ -9,10 +9,7 @@ use crate::models::{
     },
 };
 
-use super::core::{
-    build_effective_feature_weights, determine_effective_k, find_k_nearest_neighbors,
-    preprocess_knn_data,
-};
+use super::core::{determine_effective_k, find_k_nearest_neighbors, preprocess_knn_data};
 
 pub fn calculate_predictor_space(
     data: &AnalysisData,
@@ -25,8 +22,7 @@ pub fn calculate_predictor_space(
     }
 
     let k = determine_effective_k(&knn_data, config)?;
-    let weights = build_effective_feature_weights(&knn_data, config)?;
-    let feature_space = build_original_feature_space(data, config, &knn_data, weights.as_deref())?;
+    let feature_space = build_original_feature_space(data, config, &knn_data)?;
     let displayed_feature_indices: Vec<usize> = (0..feature_space.features.len()).collect();
 
     if displayed_feature_indices.is_empty() {
@@ -47,7 +43,6 @@ pub fn calculate_predictor_space(
         &display_indices,
         k,
         config.neighbors.metric_eucli,
-        weights.as_deref(),
     );
 
     Ok(PredictorSpace {
@@ -75,7 +70,6 @@ fn build_points(
     display_indices: &[usize],
     k: usize,
     use_euclidean: bool,
-    weights: Option<&[f64]>,
 ) -> Vec<DataPoint> {
     display_matrix
         .iter()
@@ -127,7 +121,6 @@ fn build_points(
                 &candidate_indices,
                 k,
                 use_euclidean,
-                weights,
                 Some(&knn_data.processed_case_indices),
             )
             .into_iter()
@@ -174,15 +167,12 @@ struct OriginalFeatureLayout {
     name: String,
     measure: VariableMeasure,
     original_index: usize,
-    expanded_start: usize,
-    expanded_len: usize,
 }
 
 fn build_original_feature_space(
     data: &AnalysisData,
     config: &KnnConfig,
     knn_data: &KnnData,
-    weights: Option<&[f64]>,
 ) -> Result<OriginalFeatureSpace, String> {
     let original_features = config
         .main
@@ -209,11 +199,7 @@ fn build_original_feature_space(
         &feature_measures,
         &knn_data.processed_case_indices,
     );
-    let selected_layout =
-        build_original_feature_layout(&original_features, &feature_measures, &category_maps)
-            .into_iter()
-            .filter(|feature| original_feature_selected(feature, weights))
-            .collect::<Vec<_>>();
+    let selected_layout = build_original_feature_layout(&original_features, &feature_measures);
 
     let features = selected_layout
         .iter()
@@ -310,10 +296,7 @@ fn build_category_maps(
 fn build_original_feature_layout(
     features: &[String],
     feature_measures: &[VariableMeasure],
-    category_maps: &[HashMap<String, usize>],
 ) -> Vec<OriginalFeatureLayout> {
-    let mut expanded_start = 0;
-
     features
         .iter()
         .enumerate()
@@ -322,35 +305,13 @@ fn build_original_feature_layout(
                 .get(feature_idx)
                 .cloned()
                 .unwrap_or(VariableMeasure::Unknown);
-            let expanded_len = if measure == VariableMeasure::Nominal {
-                category_maps
-                    .get(feature_idx)
-                    .map(|category_map| category_map.len())
-                    .unwrap_or(1)
-                    .max(1)
-            } else {
-                1
-            };
-            let layout = OriginalFeatureLayout {
+            OriginalFeatureLayout {
                 name: name.clone(),
                 measure,
                 original_index: feature_idx,
-                expanded_start,
-                expanded_len,
-            };
-            expanded_start += expanded_len;
-            layout
+            }
         })
         .collect()
-}
-
-fn original_feature_selected(feature: &OriginalFeatureLayout, weights: Option<&[f64]>) -> bool {
-    let Some(weights) = weights else {
-        return true;
-    };
-
-    (feature.expanded_start..feature.expanded_start + feature.expanded_len)
-        .any(|idx| weights.get(idx).copied().unwrap_or(0.0) > 0.0)
 }
 
 fn original_feature_display_value(

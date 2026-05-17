@@ -18,7 +18,7 @@ pub fn calculate_predictions(
             Some(DataValue::Text(_) | DataValue::Boolean(_))
         )
     {
-        return calculate_categorical_prediction_with_weights(neighbors, target_values, false);
+        return calculate_categorical_prediction(neighbors, target_values);
     }
 
     if matches!(first_value, Some(DataValue::Number(_))) {
@@ -36,16 +36,7 @@ pub fn calculate_categorical_prediction(
     neighbors: &[(usize, f64)],
     target_values: &[DataValue],
 ) -> DataValue {
-    calculate_categorical_prediction_with_weights(neighbors, target_values, false)
-}
-
-pub fn calculate_categorical_prediction_with_weights(
-    neighbors: &[(usize, f64)],
-    target_values: &[DataValue],
-    use_distance_weights: bool,
-) -> DataValue {
-    let probabilities =
-        calculate_categorical_vote_probabilities(neighbors, target_values, use_distance_weights);
+    let probabilities = calculate_categorical_vote_probabilities(neighbors, target_values);
 
     probabilities
         .into_iter()
@@ -108,7 +99,6 @@ pub fn calculate_categorical_probabilities(
 pub fn calculate_categorical_vote_probabilities(
     neighbors: &[(usize, f64)],
     target_values: &[DataValue],
-    use_distance_weights: bool,
 ) -> Vec<(String, f64)> {
     let categories = sorted_target_categories(target_values);
     if categories.is_empty() {
@@ -120,12 +110,7 @@ pub fn calculate_categorical_vote_probabilities(
         .map(|category| (category.clone(), 0.0))
         .collect();
 
-    let has_zero_distance = use_distance_weights
-        && neighbors
-            .iter()
-            .any(|(_, distance)| distance.is_finite() && distance.abs() <= f64::EPSILON);
-
-    for &(idx, distance) in neighbors {
+    for &(idx, _) in neighbors {
         if idx >= target_values.len() {
             continue;
         }
@@ -134,10 +119,7 @@ pub fn calculate_categorical_vote_probabilities(
             continue;
         };
 
-        let weight = neighbor_vote_weight(distance, use_distance_weights, has_zero_distance);
-        if weight > 0.0 {
-            *votes.entry(key).or_insert(0.0) += weight;
-        }
+        *votes.entry(key).or_insert(0.0) += 1.0;
     }
 
     let total_votes = votes.values().sum::<f64>();
@@ -187,24 +169,6 @@ pub fn category_key(value: Option<&DataValue>) -> Option<String> {
         Some(DataValue::Boolean(value)) => Some(value.to_string()),
         Some(DataValue::Number(value)) if value.is_finite() => Some(value.to_string()),
         _ => None,
-    }
-}
-
-fn neighbor_vote_weight(distance: f64, use_distance_weights: bool, has_zero_distance: bool) -> f64 {
-    if !use_distance_weights {
-        return 1.0;
-    }
-
-    if has_zero_distance {
-        if distance.is_finite() && distance.abs() <= f64::EPSILON {
-            1.0
-        } else {
-            0.0
-        }
-    } else if distance.is_finite() && distance > 0.0 {
-        1.0 / distance
-    } else {
-        0.0
     }
 }
 
@@ -287,13 +251,13 @@ mod tests {
     use crate::models::data::DataValue;
 
     use super::{
-        calculate_categorical_prediction_with_weights, calculate_categorical_probabilities,
+        calculate_categorical_prediction, calculate_categorical_probabilities,
         calculate_mean_prediction, calculate_median_prediction, calculate_predictions,
         sorted_target_categories_for_indices,
     };
 
     #[test]
-    fn uniform_and_distance_weights_can_choose_different_classes() {
+    fn categorical_prediction_uses_majority_vote() {
         let targets = vec![
             DataValue::Text("A".to_string()),
             DataValue::Text("B".to_string()),
@@ -302,12 +266,8 @@ mod tests {
         let neighbors = vec![(0, 0.1), (1, 10.0), (2, 11.0)];
 
         assert!(matches!(
-            calculate_categorical_prediction_with_weights(&neighbors, &targets, false),
+            calculate_categorical_prediction(&neighbors, &targets),
             DataValue::Text(value) if value == "B"
-        ));
-        assert!(matches!(
-            calculate_categorical_prediction_with_weights(&neighbors, &targets, true),
-            DataValue::Text(value) if value == "A"
         ));
     }
 
@@ -320,7 +280,7 @@ mod tests {
         let neighbors = vec![(0, 1.0), (1, 1.0)];
 
         assert!(matches!(
-            calculate_categorical_prediction_with_weights(&neighbors, &targets, false),
+            calculate_categorical_prediction(&neighbors, &targets),
             DataValue::Text(value) if value == "A"
         ));
     }

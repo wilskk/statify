@@ -255,12 +255,18 @@ fn build_fold_variable(
     folds: &[usize],
 ) -> SavedVariable {
     let mut values = vec![DataValue::Null; total_cases];
+    let uses_zero_based_folds = folds.iter().any(|&fold| fold == 0);
 
     for (processed_idx, &raw_idx) in processed_case_indices.iter().enumerate() {
         if raw_idx < values.len() {
             if let Some(fold) = folds.get(processed_idx).copied() {
                 if fold != EXCLUDED_FOLD {
-                    values[raw_idx] = DataValue::Number(fold as f64 + 1.0);
+                    let saved_fold = if uses_zero_based_folds {
+                        fold + 1
+                    } else {
+                        fold
+                    };
+                    values[raw_idx] = DataValue::Number(saved_fold as f64);
                 } else {
                     values[raw_idx] = DataValue::Number(0.0);
                 }

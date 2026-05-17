@@ -108,6 +108,16 @@ export async function resultNearestNeighbor({
             components: `K Selection Chart Plot`,
           });
         }
+
+        const kSelectionCvDebug = findTable("k_selection_cv_debug");
+        if (kSelectionCvDebug) {
+          await addStatistic(kSelectionChartId, {
+            title: `K Selection Cross-Validation Debug`,
+            description: `K Selection Cross-Validation Debug`,
+            output_data: kSelectionCvDebug,
+            components: `K Selection Cross-Validation Debug`,
+          });
+        }
       }
 
       const systemSettings = findTable("system_settings");
@@ -462,15 +472,15 @@ function createKSelectionChart(chart?: any) {
   return ChartService.createChartJSON({
     chartType: "Line Chart",
     chartData,
-    chartVariables: { x: ["K"], y: ["Average Error"] },
+    chartVariables: { x: ["Number of Neighbors (K)"], y: ["Error Rate"] },
     chartMetadata: {
-      title: "K Selection Chart",
-      description: "Average validation error by K",
+      title: "K Selection Error",
+      description: "Case-weighted cross-validation error rate by number of neighbors",
     },
     chartConfig: {
       axisLabels: {
-        x: "K",
-        y: "Average Error",
+        x: "Number of Neighbors (K)",
+        y: "Error Rate",
       },
       useLegend: false,
     },

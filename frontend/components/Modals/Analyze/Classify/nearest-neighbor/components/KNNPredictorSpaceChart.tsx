@@ -727,6 +727,7 @@ function ThreePredictorSpace({
   colorForPoint: (point: Point) => string;
 }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  const [webglUnavailable, setWebglUnavailable] = useState(false);
   const sceneStateRef = useRef<{
     lineGroup: THREE.Group;
     outlineGroup: THREE.Group;
@@ -742,13 +743,25 @@ function ThreePredictorSpace({
     const mount = mountRef.current;
     if (!mount) return;
 
+    if (!canCreateWebGLContext()) {
+      setWebglUnavailable(true);
+      return;
+    }
+
     const scene = new THREE.Scene();
     scene.background = new THREE.Color("#ffffff");
 
     const camera = new THREE.PerspectiveCamera(48, width / height, 0.1, 1000);
     camera.position.set(7, 6, 8);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+    } catch {
+      setWebglUnavailable(true);
+      return;
+    }
+    setWebglUnavailable(false);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(width, height);
     mount.appendChild(renderer.domElement);
@@ -1011,6 +1024,22 @@ function ThreePredictorSpace({
     };
   }, [currentK, points, selectedId]);
 
+  if (webglUnavailable) {
+    return (
+      <PredictorSpace2DFallback
+        points={points}
+        currentK={currentK}
+        selectedId={selectedId}
+        setSelectedId={setSelectedId}
+        width={width}
+        height={height}
+        axisLabels={axisLabels}
+        colorForPoint={colorForPoint}
+        isNumericTarget={isNumericTarget}
+      />
+    );
+  }
+
   return (
     <div
       className="relative rounded-md border border-gray-200"
@@ -1026,6 +1055,292 @@ function ThreePredictorSpace({
         </div>
       )}
     </div>
+  );
+}
+
+function canCreateWebGLContext() {
+  if (typeof document === "undefined") return false;
+
+  const canvas = document.createElement("canvas");
+  const attributes: WebGLContextAttributes = {
+    antialias: true,
+    failIfMajorPerformanceCaveat: false,
+  };
+
+  const context = (
+    canvas.getContext("webgl2", attributes) ??
+    canvas.getContext("webgl", attributes) ??
+    canvas.getContext("experimental-webgl", attributes)
+  ) as WebGLRenderingContext | WebGL2RenderingContext | null;
+
+  if (!context) return false;
+
+  const loseContext = context.getExtension("WEBGL_lose_context");
+  loseContext?.loseContext();
+  return true;
+}
+
+function PredictorSpace2DFallback({
+  points,
+  currentK,
+  selectedId,
+  setSelectedId,
+  width,
+  height,
+  axisLabels,
+  colorForPoint,
+  isNumericTarget,
+}: {
+  points: Point[];
+  currentK: number;
+  selectedId: number | string | null;
+  setSelectedId: React.Dispatch<React.SetStateAction<number | string | null>>;
+  width: number;
+  height: number;
+  axisLabels: { x?: string; y?: string; z?: string };
+  colorForPoint: (point: Point) => string;
+  isNumericTarget: boolean;
+}) {
+  const [tooltip, setTooltip] = useState<TooltipState>(null);
+  const plot = { left: 58, right: 24, top: 28, bottom: 58 };
+  const xRange = extent(points.map((point) => point.x));
+  const yRange = extent(points.map((point) => point.y));
+  const zRange = extent(points.map((point) => finiteNumber(point.z, 0)));
+  const xAxis = buildAxisTicks(undefined, axisLabels.x ?? "X", xRange);
+  const yAxis = buildAxisTicks(undefined, axisLabels.y ?? "Y", yRange);
+  const spanX = xAxis.max - xAxis.min || 1;
+  const spanY = yAxis.max - yAxis.min || 1;
+  const spanZ = zRange[1] - zRange[0] || 1;
+  const pointById = new Map(points.map((point) => [String(point.id), point]));
+  const selectedPoint =
+    selectedId === null ? null : pointById.get(String(selectedId)) ?? null;
+  const focalLinePoints = selectedPoint
+    ? [selectedPoint]
+    : points.filter((point) => point.focal);
+  const project = (point: Point) => {
+    const zRatio = (finiteNumber(point.z, zRange[0]) - zRange[0]) / spanZ;
+    return {
+      x:
+        plot.left +
+        ((point.x - xAxis.min) / spanX) * (width - plot.left - plot.right) +
+        zRatio * 34,
+      y:
+        height -
+        plot.bottom -
+        ((point.y - yAxis.min) / spanY) * (height - plot.top - plot.bottom) -
+        zRatio * 24,
+    };
+  };
+  const showTooltip = (event: React.MouseEvent, html: React.ReactNode) => {
+    const rect = (event.currentTarget as SVGElement).ownerSVGElement?.getBoundingClientRect();
+    setTooltip({
+      x: event.clientX - (rect?.left ?? 0) + 10,
+      y: event.clientY - (rect?.top ?? 0) - 42,
+      html,
+    });
+  };
+
+  return (
+    <div
+      className="relative rounded-md border border-gray-200 bg-white"
+      style={{ width, height }}
+    >
+      <svg width={width} height={height} className="overflow-visible">
+        <rect
+          x={plot.left}
+          y={plot.top}
+          width={width - plot.left - plot.right}
+          height={height - plot.top - plot.bottom}
+          fill="#ffffff"
+        />
+        {xAxis.ticks.map((tick) => {
+          const x =
+            plot.left +
+            ((tick.value - xAxis.min) / spanX) * (width - plot.left - plot.right);
+          return (
+            <g key={`fallback-x-${tick.value}-${tick.label}`}>
+              <line
+                x1={x}
+                y1={plot.top}
+                x2={x}
+                y2={height - plot.bottom}
+                stroke="#d1d5db"
+                strokeDasharray="4 4"
+              />
+              <text
+                x={x}
+                y={height - plot.bottom + 18}
+                textAnchor="middle"
+                fontSize={10}
+                fill="#4b5563"
+              >
+                {tick.label}
+              </text>
+            </g>
+          );
+        })}
+        {yAxis.ticks.map((tick) => {
+          const y =
+            height -
+            plot.bottom -
+            ((tick.value - yAxis.min) / spanY) * (height - plot.top - plot.bottom);
+          return (
+            <g key={`fallback-y-${tick.value}-${tick.label}`}>
+              <line
+                x1={plot.left}
+                y1={y}
+                x2={width - plot.right}
+                y2={y}
+                stroke="#d1d5db"
+                strokeDasharray="4 4"
+              />
+              <text
+                x={plot.left - 9}
+                y={y + 3}
+                textAnchor="end"
+                fontSize={10}
+                fill="#4b5563"
+              >
+                {tick.label}
+              </text>
+            </g>
+          );
+        })}
+        <line
+          x1={plot.left}
+          y1={height - plot.bottom}
+          x2={width - plot.right}
+          y2={height - plot.bottom}
+          stroke="#9ca3af"
+        />
+        <line
+          x1={plot.left}
+          y1={plot.top}
+          x2={plot.left}
+          y2={height - plot.bottom}
+          stroke="#9ca3af"
+        />
+        <text
+          x={width / 2}
+          y={height - 16}
+          textAnchor="middle"
+          fontSize={12}
+          fill="#374151"
+        >
+          {axisLabels.x ?? "X"}
+        </text>
+        <text
+          x={16}
+          y={height / 2}
+          textAnchor="middle"
+          fontSize={12}
+          fill="#374151"
+          transform={`rotate(-90 16 ${height / 2})`}
+        >
+          {axisLabels.y ?? "Y"}
+        </text>
+        {focalLinePoints.flatMap((focalPoint) =>
+          (focalPoint.neighbors ?? []).slice(0, currentK).map((neighbor) => {
+            const neighborPoint = pointById.get(String(neighbor.id));
+            if (!neighborPoint) return null;
+            const start = project(focalPoint);
+            const end = project(neighborPoint);
+            return (
+              <g key={`fallback-line-${focalPoint.id}-${neighbor.id}`}>
+                <line
+                  x1={start.x}
+                  y1={start.y}
+                  x2={end.x}
+                  y2={end.y}
+                  stroke="#dc2626"
+                  strokeWidth={1.6}
+                  strokeOpacity={selectedPoint ? 0.85 : 0.35}
+                />
+                <line
+                  x1={start.x}
+                  y1={start.y}
+                  x2={end.x}
+                  y2={end.y}
+                  stroke="transparent"
+                  strokeWidth={10}
+                  onMouseMove={(event) =>
+                    showTooltip(
+                      event,
+                      <>Distance: {formatDistance(Number(neighbor.distance))}</>,
+                    )
+                  }
+                  onMouseLeave={() => setTooltip(null)}
+                />
+              </g>
+            );
+          }),
+        )}
+        {points.map((point) => {
+          const projected = project(point);
+          const isSelected = String(selectedId) === String(point.id);
+          const isFocal = isSelected || (selectedId === null && Boolean(point.focal));
+          const radius = isSelected ? 6.5 : isFocal ? 5.8 : 4.8;
+          return point.type === "Holdout" && !isNumericTarget ? (
+            <path
+              key={`fallback-point-${point.id}`}
+              d={`M ${projected.x} ${projected.y - radius} L ${projected.x + radius} ${projected.y + radius} L ${projected.x - radius} ${projected.y + radius} Z`}
+              fill={colorForPoint(point)}
+              stroke={isFocal ? "#dc2626" : "#374151"}
+              strokeWidth={isFocal ? 2.2 : 1}
+              onClick={() =>
+                setSelectedId((current) =>
+                  String(current) === String(point.id) ? null : point.id,
+                )
+              }
+              onMouseMove={(event) =>
+                showTooltip(event, pointTooltip(point))
+              }
+              onMouseLeave={() => setTooltip(null)}
+            />
+          ) : (
+            <circle
+              key={`fallback-point-${point.id}`}
+              cx={projected.x}
+              cy={projected.y}
+              r={radius}
+              fill={colorForPoint(point)}
+              stroke={isFocal ? "#dc2626" : "#374151"}
+              strokeWidth={isFocal ? 2.2 : 1}
+              onClick={() =>
+                setSelectedId((current) =>
+                  String(current) === String(point.id) ? null : point.id,
+                )
+              }
+              onMouseMove={(event) =>
+                showTooltip(event, pointTooltip(point))
+              }
+              onMouseLeave={() => setTooltip(null)}
+            />
+          );
+        })}
+      </svg>
+      <div className="absolute left-3 top-2 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800">
+        3D rendering unavailable. Showing a 2D projection.
+      </div>
+      {tooltip && (
+        <div
+          className="pointer-events-none absolute z-20 rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 shadow-lg"
+          style={{ left: tooltip.x, top: tooltip.y }}
+        >
+          {tooltip.html}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function pointTooltip(point: Point) {
+  return (
+    <>
+      <strong>Label:</strong> {point.label ?? point.id}
+      <br />
+      <strong>Observed:</strong> {point.observed ?? point.target}
+    </>
   );
 }
 

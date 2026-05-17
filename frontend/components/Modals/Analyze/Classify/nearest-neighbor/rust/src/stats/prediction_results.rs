@@ -7,10 +7,10 @@ use crate::models::{
 };
 
 use super::{
-    core::{build_effective_feature_weights, determine_effective_k},
+    core::determine_effective_k,
     distance::find_k_nearest_neighbors,
     prediction::{
-        calculate_categorical_prediction_with_weights, calculate_categorical_probabilities,
+        calculate_categorical_prediction, calculate_categorical_probabilities,
         calculate_mean_prediction, calculate_median_prediction, category_key,
         sorted_target_categories_for_indices,
     },
@@ -47,7 +47,6 @@ pub fn calculate_prediction_computation_for_knn_data(
     config: &KnnConfig,
 ) -> Result<PredictionComputation, String> {
     let k = determine_effective_k(&knn_data, config)?;
-    let weights = build_effective_feature_weights(&knn_data, config)?;
     let mut ordered_indices = knn_data.holdout_indices.clone();
     ordered_indices.extend(knn_data.training_indices.iter().copied());
 
@@ -56,8 +55,7 @@ pub fn calculate_prediction_computation_for_knn_data(
     } else {
         "categorical".to_string()
     };
-    let case_predictions =
-        calculate_case_predictions_for_knn_data(&knn_data, config, k, weights.as_deref());
+    let case_predictions = calculate_case_predictions_for_knn_data(&knn_data, config, k);
     let rows = build_prediction_result_rows_from_case_predictions(
         &knn_data,
         &case_predictions,
@@ -86,10 +84,9 @@ pub fn build_prediction_result_rows_for_knn_data(
     knn_data: &KnnData,
     config: &KnnConfig,
     k: usize,
-    weights: Option<&[f64]>,
     ordered_indices: &[usize],
 ) -> Vec<PredictionResultRow> {
-    let case_predictions = calculate_case_predictions_for_knn_data(knn_data, config, k, weights);
+    let case_predictions = calculate_case_predictions_for_knn_data(knn_data, config, k);
     build_prediction_result_rows_from_case_predictions(knn_data, &case_predictions, ordered_indices)
 }
 
@@ -106,7 +103,6 @@ fn calculate_case_predictions_for_knn_data(
     knn_data: &KnnData,
     config: &KnnConfig,
     k: usize,
-    weights: Option<&[f64]>,
 ) -> CasePredictions {
     let target_is_numeric = knn_data.target_is_numeric_scale();
     let categories =
@@ -139,7 +135,6 @@ fn calculate_case_predictions_for_knn_data(
             &candidate_indices,
             k,
             config.neighbors.metric_eucli,
-            weights,
             Some(&knn_data.processed_case_indices),
         );
 
@@ -159,11 +154,7 @@ fn calculate_case_predictions_for_knn_data(
             };
             (predicted, None, None, error, squared_error)
         } else {
-            let predicted = calculate_categorical_prediction_with_weights(
-                &neighbors,
-                &knn_data.target_values,
-                false,
-            );
+            let predicted = calculate_categorical_prediction(&neighbors, &knn_data.target_values);
             let probability = category_key(Some(&predicted)).and_then(|predicted_key| {
                 calculate_categorical_probabilities(
                     &neighbors,

@@ -1,6 +1,5 @@
 use wasm_bindgen::prelude::*;
 
-use crate::models::result::{KSelectionCandidate, KSelectionChart};
 use crate::models::{config::KnnConfig, data::AnalysisData, result::NearestNeighborAnalysis};
 use crate::stats::core;
 use crate::utils::converter::format_result;
@@ -41,77 +40,15 @@ pub fn run_analysis(
         };
     }
 
-    let mut feature_selection_data = None;
-    let mut feature_selection_resolution = None;
-    if config.features.perform_selection {
-        match core::preprocess_knn_data(data, config).and_then(|knn_data| {
-            core::resolve_feature_selection(&knn_data, config)
-                .map(|resolution| (knn_data, resolution))
-        }) {
-            Ok((knn_data, resolution)) => {
-                feature_selection_data = Some(knn_data);
-                feature_selection_resolution = Some(resolution);
-            }
-            Err(e) => error_collector.add_error("feature_selection", &e),
-        }
-    }
-
-    let target_is_categorical = feature_selection_data
-        .as_ref()
+    let target_is_categorical = core::preprocess_knn_data(data, config)
+        .ok()
         .map(|knn_data| knn_data.target_is_categorical())
-        .or_else(|| {
-            core::preprocess_knn_data(data, config)
-                .ok()
-                .map(|knn_data| knn_data.target_is_categorical())
-        })
         .unwrap_or(false);
 
-    let mut feature_selection_summary = None;
-    let mut feature_selection_steps = None;
-    let mut k_feature_selection_summary = None;
-    if config.features.perform_selection && config.output.feature_selection_summary {
-        logger.add_log("feature_selection");
-        if let Some(resolution) = feature_selection_resolution.as_ref() {
-            feature_selection_summary = resolution.summary.clone();
-            feature_selection_steps = Some(resolution.steps.clone());
-            k_feature_selection_summary = if resolution.k_summaries.is_empty() {
-                None
-            } else {
-                Some(resolution.k_summaries.clone())
-            };
-        }
-    }
-
-    let mut k_selection_chart = None;
-    if config.neighbors.auto_selection && config.output.k_selection_chart {
-        logger.add_log("k_selection_chart");
-        if config.features.perform_selection {
-            if let Some(resolution) = feature_selection_resolution.as_ref() {
-                if !resolution.k_summaries.is_empty() {
-                    let summaries = resolution.k_summaries.clone();
-                    k_selection_chart = Some(KSelectionChart {
-                        selected_k: resolution.selected_k,
-                        metric_name: "feature_selection_holdout_error".to_string(),
-                        candidates: summaries
-                            .into_iter()
-                            .map(|summary| KSelectionCandidate {
-                                k: summary.k,
-                                average_error: summary.error,
-                                selected: summary.selected,
-                            })
-                            .collect(),
-                    });
-                }
-            }
-        } else {
-            match core::preprocess_knn_data(data, config)
-                .and_then(|knn_data| core::calculate_k_selection_chart(&knn_data, config))
-            {
-                Ok(chart) => k_selection_chart = chart,
-                Err(e) => error_collector.add_error("k_selection_chart", &e),
-            }
-        }
-    }
+    let feature_selection_summary = None;
+    let feature_selection_steps = None;
+    let k_feature_selection_summary = None;
+    let k_selection_chart = None;
 
     // Step 2: Nearest neighbors
     logger.add_log("nearest_neighbors");
@@ -168,53 +105,7 @@ pub fn run_analysis(
         }
     }
 
-    // Step 4: Predictor importance / feature weights if requested by feature selection or weighting
-    let mut predictor_importance = None;
-    if config.features.perform_selection || config.neighbors.weight {
-        logger.add_log("predictor_importance");
-
-        if config.features.perform_selection {
-            let target_var = config.main.target_var.as_deref();
-            match (
-                feature_selection_data.as_ref(),
-                feature_selection_resolution.as_ref(),
-                target_var,
-            ) {
-                (Some(knn_data), Some(resolution), Some(target_var)) => {
-                    match core::compute_knn_feature_importance_for_subset(
-                        knn_data,
-                        config,
-                        target_var,
-                        resolution.selected_k,
-                        &resolution.selected_indices,
-                    ) {
-                        Ok(importance) => {
-                            predictor_importance = Some(importance);
-                        }
-                        Err(e) => {
-                            error_collector.add_error("predictor_importance", &e);
-                        }
-                    }
-                }
-                (_, _, None) => {
-                    error_collector.add_error(
-                        "predictor_importance",
-                        "A target variable is required for calculating feature importance",
-                    );
-                }
-                _ => {}
-            }
-        } else {
-            match core::compute_knn_feature_importance(data, config) {
-                Ok(importance) => {
-                    predictor_importance = Some(importance);
-                }
-                Err(e) => {
-                    error_collector.add_error("predictor_importance", &e);
-                }
-            }
-        }
-    }
+    let predictor_importance = None;
 
     // Step 5: Predictor space
     logger.add_log("predictor_space");

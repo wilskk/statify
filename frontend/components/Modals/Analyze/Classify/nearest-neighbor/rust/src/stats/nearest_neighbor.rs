@@ -1,19 +1,14 @@
 use crate::models::{
     config::KnnConfig,
     data::{AnalysisData, DataValue, KnnData},
-    result::{
-        DistanceDebugDetail, FeatureWeightDetail, FocalNeighborSet, NearestNeighbors,
-        NeighborDetail,
-    },
+    result::{FocalNeighborSet, NearestNeighbors, NeighborDetail},
 };
-use std::collections::HashMap;
 
 use super::core::{
-    build_effective_feature_weights, calculate_mean_prediction, calculate_median_prediction,
-    determine_effective_k, find_k_nearest_neighbors, preprocess_knn_data,
+    calculate_mean_prediction, calculate_median_prediction, determine_effective_k,
+    find_k_nearest_neighbors, preprocess_knn_data,
 };
-use super::distance::calculate_distance_with_debug;
-use super::prediction::calculate_categorical_prediction_with_weights;
+use super::prediction::calculate_categorical_prediction;
 
 /// Calculates nearest neighbors for the whole dataset
 pub fn calculate_nearest_neighbors(
@@ -53,9 +48,6 @@ pub fn calculate_nearest_neighbors(
 
     let prediction_method = numeric_prediction_method(&knn_data, config);
 
-    // Get feature weights if enabled
-    let weights = build_effective_feature_weights(&knn_data, config)?;
-
     // Process each focal point and find their neighbors
     let focal_neighbor_sets = focal_indices
         .iter()
@@ -79,7 +71,6 @@ pub fn calculate_nearest_neighbors(
                 &candidate_indices,
                 k,
                 use_euclidean,
-                weights.as_deref(),
                 Some(&knn_data.processed_case_indices),
             );
 
@@ -91,25 +82,12 @@ pub fn calculate_nearest_neighbors(
 
             for (idx, distance) in neighbors {
                 let neighbor_id = knn_data.case_identifiers[idx];
-                let distance_debug = if config.neighbors.weight && use_euclidean {
-                    weights.as_deref().map(|weights| {
-                        build_distance_debug_detail(
-                            &knn_data,
-                            weights,
-                            focal_idx,
-                            idx,
-                            use_euclidean,
-                        )
-                    })
-                } else {
-                    None
-                };
 
                 neighbor_details.push(NeighborDetail {
                     id: neighbor_id,
                     row_number: Some(row_number(&knn_data, idx)),
                     distance,
-                    distance_debug,
+                    distance_debug: None,
                 });
                 distances.push(distance);
             }
@@ -127,7 +105,7 @@ pub fn calculate_nearest_neighbors(
     Ok(NearestNeighbors {
         k_value: k,
         distance_metric,
-        weighting_enabled: config.neighbors.weight,
+        weighting_enabled: false,
         prediction_method,
         focal_neighbor_sets,
     })
@@ -140,64 +118,6 @@ fn row_number(knn_data: &KnnData, idx: usize) -> usize {
         .copied()
         .unwrap_or(idx)
         + 1
-}
-
-fn build_distance_debug_detail(
-    knn_data: &KnnData,
-    weights: &[f64],
-    focal_idx: usize,
-    neighbor_idx: usize,
-    use_euclidean: bool,
-) -> DistanceDebugDetail {
-    let distance_debug = calculate_distance_with_debug(
-        &knn_data.data_matrix[focal_idx],
-        &knn_data.data_matrix[neighbor_idx],
-        use_euclidean,
-        Some(weights),
-    );
-    let expanded_feature_weights = knn_data
-        .features
-        .iter()
-        .enumerate()
-        .map(|(idx, feature)| FeatureWeightDetail {
-            feature: feature.clone(),
-            weight: weights.get(idx).copied().unwrap_or(0.0),
-        })
-        .collect::<Vec<_>>();
-    let sum_expanded_feature_weights = expanded_feature_weights
-        .iter()
-        .map(|entry| entry.weight)
-        .filter(|weight| weight.is_finite())
-        .sum::<f64>();
-    let mut predictor_weights = HashMap::new();
-
-    for (idx, feature) in knn_data.features.iter().enumerate() {
-        let weight = weights.get(idx).copied().unwrap_or(0.0);
-        if weight <= 0.0 || !weight.is_finite() {
-            continue;
-        }
-
-        predictor_weights
-            .entry(original_predictor_name(feature))
-            .or_insert(weight);
-    }
-
-    DistanceDebugDetail {
-        predictor_weights,
-        expanded_feature_weights,
-        sum_expanded_feature_weights,
-        sum_effective_weights: distance_debug.sum_effective_weights,
-        raw_weighted_squared_distance: distance_debug.raw_weighted_squared_distance,
-        final_returned_distance: distance_debug.final_distance,
-        normalization_divisor: distance_debug.normalization_divisor,
-    }
-}
-
-fn original_predictor_name(feature: &str) -> String {
-    feature
-        .split_once('=')
-        .map(|(prefix, _)| prefix.to_string())
-        .unwrap_or_else(|| feature.to_string())
 }
 
 fn numeric_prediction_method(
@@ -227,7 +147,7 @@ fn calculate_neighbor_prediction(
             calculate_mean_prediction(neighbors, &knn_data.target_values)
         }
     } else {
-        calculate_categorical_prediction_with_weights(neighbors, &knn_data.target_values, false)
+        calculate_categorical_prediction(neighbors, &knn_data.target_values)
     };
 
     match prediction {
