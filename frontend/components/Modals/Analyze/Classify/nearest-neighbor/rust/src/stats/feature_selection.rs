@@ -19,6 +19,7 @@ pub struct FeatureSelectionResult {
     pub summary: FeatureSelectionSummary,
     pub steps: Vec<FeatureSelectionStep>,
     pub selected_features: Vec<String>,
+    pub selected_k: Option<usize>,
     pub k_summary: Vec<KFeatureSelectionSummary>,
 }
 
@@ -29,6 +30,73 @@ struct TrialResult {
 }
 
 pub fn calculate_feature_selection(
+    data: &AnalysisData,
+    config: &KnnConfig,
+) -> Result<FeatureSelectionResult, String> {
+    if config.neighbors.auto_selection {
+        return calculate_feature_selection_with_auto_k(data, config);
+    }
+
+    let mut result = calculate_forward_feature_selection(data, config)?;
+    let k = evaluate_k(data, config, &result.selected_features).unwrap_or(0);
+    result.selected_k = (k > 0).then_some(k);
+    if k > 0 {
+        result.k_summary = vec![KFeatureSelectionSummary {
+            k,
+            selected_features: result.selected_features.clone(),
+            error: result.summary.final_error,
+            stopping_reason: result.summary.stopping_reason.clone(),
+            selected: true,
+        }];
+    }
+
+    Ok(result)
+}
+
+fn calculate_feature_selection_with_auto_k(
+    data: &AnalysisData,
+    config: &KnnConfig,
+) -> Result<FeatureSelectionResult, String> {
+    let mut trials = Vec::new();
+
+    for k in candidate_k_values(config) {
+        let trial_config = config_with_k(config, k);
+        let trial = calculate_forward_feature_selection(data, &trial_config)?;
+        trials.push((k, trial));
+    }
+
+    let Some((best_index, _)) = trials
+        .iter()
+        .enumerate()
+        .min_by(|(_, (left_k, left)), (_, (right_k, right))| {
+            left.summary
+                .final_error
+                .total_cmp(&right.summary.final_error)
+                .then_with(|| left_k.cmp(right_k))
+        })
+    else {
+        return Err("No k candidates could be evaluated for feature selection".to_string());
+    };
+
+    let mut k_summary = Vec::with_capacity(trials.len());
+    for (index, (k, trial)) in trials.iter().enumerate() {
+        k_summary.push(KFeatureSelectionSummary {
+            k: *k,
+            selected_features: trial.selected_features.clone(),
+            error: trial.summary.final_error,
+            stopping_reason: trial.summary.stopping_reason.clone(),
+            selected: index == best_index,
+        });
+    }
+
+    let (selected_k, mut best_result) = trials.swap_remove(best_index);
+    best_result.selected_k = Some(selected_k);
+    best_result.k_summary = k_summary;
+
+    Ok(best_result)
+}
+
+fn calculate_forward_feature_selection(
     data: &AnalysisData,
     config: &KnnConfig,
 ) -> Result<FeatureSelectionResult, String> {
@@ -93,6 +161,7 @@ pub fn calculate_feature_selection(
                 },
                 steps,
                 selected_features,
+                selected_k: None,
                 k_summary: Vec::new(),
             });
         }
@@ -126,6 +195,7 @@ pub fn calculate_feature_selection(
             },
             steps,
             selected_features,
+            selected_k: None,
             k_summary: Vec::new(),
         });
     }
@@ -180,18 +250,6 @@ pub fn calculate_feature_selection(
     }
 
     let removed_features = removed_features(&all_features, &selected_features);
-    let k = evaluate_k(data, config, &selected_features).unwrap_or(0);
-    let k_summary = if k > 0 {
-        vec![KFeatureSelectionSummary {
-            k,
-            selected_features: selected_features.clone(),
-            error: final_error,
-            stopping_reason: stopping_reason.clone(),
-            selected: true,
-        }]
-    } else {
-        Vec::new()
-    };
 
     Ok(FeatureSelectionResult {
         summary: FeatureSelectionSummary {
@@ -208,7 +266,8 @@ pub fn calculate_feature_selection(
         },
         steps,
         selected_features,
-        k_summary,
+        selected_k: None,
+        k_summary: Vec::new(),
     })
 }
 
@@ -221,6 +280,33 @@ pub fn config_with_selected_features(
         selected_config.main.feature_var = Some(selected_features.to_vec());
     }
     selected_config
+}
+
+pub fn config_with_selected_features_and_k(
+    config: &KnnConfig,
+    selected_features: &[String],
+    selected_k: Option<usize>,
+) -> KnnConfig {
+    let mut selected_config = config_with_selected_features(config, selected_features);
+    if let Some(k) = selected_k {
+        selected_config.neighbors.specify_k = k as i32;
+    }
+    selected_config
+}
+
+fn config_with_k(config: &KnnConfig, k: usize) -> KnnConfig {
+    let mut selected_config = config.clone();
+    selected_config.neighbors.specify_k = k as i32;
+    selected_config
+}
+
+fn candidate_k_values(config: &KnnConfig) -> Vec<usize> {
+    let min_k = config.neighbors.min_k.unwrap_or(config.neighbors.specify_k).max(1);
+    let max_k = config.neighbors.max_k.unwrap_or(min_k).max(1);
+    let start = min_k.min(max_k) as usize;
+    let end = min_k.max(max_k) as usize;
+
+    (start..=end).collect()
 }
 
 fn feature_universe(config: &KnnConfig) -> Vec<String> {

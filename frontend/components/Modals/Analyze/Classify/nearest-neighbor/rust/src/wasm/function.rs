@@ -48,8 +48,11 @@ pub fn run_analysis(
         logger.add_log("feature_selection");
         match core::calculate_feature_selection(data, config) {
             Ok(selection) => {
-                analysis_config =
-                    core::config_with_selected_features(config, &selection.selected_features);
+                analysis_config = core::config_with_selected_features_and_k(
+                    config,
+                    &selection.selected_features,
+                    selection.selected_k,
+                );
                 if config.output.feature_selection_summary {
                     feature_selection_summary = Some(selection.summary);
                     feature_selection_steps = Some(selection.steps);
