@@ -13,7 +13,9 @@ use super::{
     feature_selection::{
         determine_effective_k, expanded_feature_groups, feature_indices_for_variable,
     },
-    knn_evaluation::evaluate_knn_feature_importance_error,
+    knn_evaluation::{
+        evaluate_knn_feature_importance_error, evaluate_knn_regression_feature_importance_base,
+    },
     preprocess_data::preprocess_knn_data,
 };
 
@@ -58,10 +60,18 @@ pub fn compute_knn_feature_importance_for_subset(
     }
 
     let selected_groups = selected_original_features(&knn_data.features, &selected_indices);
-    let base_error =
-        evaluate_knn_feature_importance_error(&knn_data, config, k, &selected_indices)?;
-    let m = selected_groups.len().max(1) as f64;
     let target_is_numeric_scale = knn_data.target_is_numeric_scale();
+    let (base_error, regression_base_prediction_debug) = if target_is_numeric_scale {
+        let (base_error, debug_rows) =
+            evaluate_knn_regression_feature_importance_base(knn_data, config, k, selected_indices)?;
+        (base_error, Some(debug_rows))
+    } else {
+        (
+            evaluate_knn_feature_importance_error(knn_data, config, k, selected_indices)?,
+            None,
+        )
+    };
+    let m = selected_groups.len().max(1) as f64;
     let evaluation_strategy = if knn_data.holdout_indices.is_empty() {
         "training_loo"
     } else {
@@ -120,17 +130,9 @@ pub fn compute_knn_feature_importance_for_subset(
             raw_feature_importance,
             normalized_importance: 0.0,
             rank: 0,
-            remove_indices: if target_is_numeric_scale {
-                Some(remove_indices_vec)
-            } else {
-                None
-            },
-            remaining_indices: if target_is_numeric_scale {
-                Some(remaining_indices.clone())
-            } else {
-                None
-            },
-            error_ratio: if target_is_numeric_scale && error_ratio.is_finite() {
+            remove_indices: Some(remove_indices_vec),
+            remaining_indices: Some(remaining_indices.clone()),
+            error_ratio: if error_ratio.is_finite() {
                 Some(error_ratio)
             } else {
                 None
@@ -163,6 +165,7 @@ pub fn compute_knn_feature_importance_for_subset(
         target: target_var.to_string(),
         entries,
         k,
+        regression_base_prediction_debug,
         weight_expansion_debug: Some(weight_expansion_debug),
         final_expanded_feature_weights: Some(final_expanded_feature_weights),
     })
@@ -487,6 +490,171 @@ mod tests {
             .all(|weight| (*weight - 0.2).abs() <= f64::EPSILON));
         assert!(normalized_weights.iter().all(|weight| *weight > 0.0));
         assert!((normalized_weights.iter().sum::<f64>() - 1.0).abs() <= f64::EPSILON);
+    }
+
+    #[test]
+    fn regression_importance_base_debug_matches_unweighted_base_predictions() {
+        let knn_data = KnnData {
+            features: vec!["informative".to_string(), "constant".to_string()],
+            data_matrix: vec![
+                vec![0.0, 0.0],
+                vec![10.0, 0.0],
+                vec![20.0, 0.0],
+                vec![1.0, 0.0],
+                vec![19.0, 0.0],
+            ],
+            display_matrix: vec![
+                vec![0.0, 0.0],
+                vec![10.0, 0.0],
+                vec![20.0, 0.0],
+                vec![1.0, 0.0],
+                vec![19.0, 0.0],
+            ],
+            target_values: vec![
+                DataValue::Number(0.0),
+                DataValue::Number(10.0),
+                DataValue::Number(20.0),
+                DataValue::Number(1.0),
+                DataValue::Number(19.0),
+            ],
+            target_measure: VariableMeasure::Scale,
+            case_identifiers: vec![1, 2, 3, 4, 5],
+            case_labels: vec![
+                "1".to_string(),
+                "2".to_string(),
+                "3".to_string(),
+                "4".to_string(),
+                "5".to_string(),
+            ],
+            processed_case_indices: vec![0, 1, 2, 3, 4],
+            training_indices: vec![0, 1, 2],
+            holdout_indices: vec![3, 4],
+            excluded_indices: Vec::new(),
+            cross_validation_folds: vec![0; 5],
+            focal_indices: Vec::new(),
+        };
+        let mut config = test_config();
+        config.neighbors.weight = true;
+        config.features.perform_selection = false;
+        config.main.feature_var = Some(vec!["informative".to_string(), "constant".to_string()]);
+
+        let importance =
+            compute_knn_feature_importance_for_subset(&knn_data, &config, "target", 1, &[0, 1])
+                .unwrap();
+        let debug_rows = importance
+            .regression_base_prediction_debug
+            .as_ref()
+            .expect("scale predictor importance should include base prediction debug rows");
+        let base_error = importance.entries[0].base_error;
+        let debug_sse = debug_rows
+            .iter()
+            .map(|row| {
+                assert_eq!(row.yhat_unweighted_normal, row.yhat_feature_importance_base);
+                row.squared_error
+            })
+            .sum::<f64>();
+
+        assert_eq!(debug_rows.len(), 3);
+        assert!((debug_sse - base_error).abs() <= f64::EPSILON);
+    }
+
+    #[test]
+    fn leave_one_predictor_keeps_all_other_predictors_for_classification_and_regression() {
+        let classification_data = KnnData {
+            features: vec![
+                "age".to_string(),
+                "income".to_string(),
+                "city=jakarta".to_string(),
+                "city=bandung".to_string(),
+            ],
+            data_matrix: vec![
+                vec![20.0, 100.0, 1.0, 0.0],
+                vec![30.0, 200.0, 0.0, 1.0],
+                vec![40.0, 300.0, 1.0, 0.0],
+                vec![50.0, 400.0, 0.0, 1.0],
+            ],
+            display_matrix: vec![
+                vec![20.0, 100.0, 1.0, 0.0],
+                vec![30.0, 200.0, 0.0, 1.0],
+                vec![40.0, 300.0, 1.0, 0.0],
+                vec![50.0, 400.0, 0.0, 1.0],
+            ],
+            target_values: vec![
+                DataValue::Text("A".to_string()),
+                DataValue::Text("B".to_string()),
+                DataValue::Text("A".to_string()),
+                DataValue::Text("B".to_string()),
+            ],
+            target_measure: VariableMeasure::Nominal,
+            case_identifiers: vec![1, 2, 3, 4],
+            case_labels: vec![
+                "1".to_string(),
+                "2".to_string(),
+                "3".to_string(),
+                "4".to_string(),
+            ],
+            processed_case_indices: vec![0, 1, 2, 3],
+            training_indices: vec![0, 1],
+            holdout_indices: vec![2, 3],
+            excluded_indices: Vec::new(),
+            cross_validation_folds: vec![0; 4],
+            focal_indices: Vec::new(),
+        };
+        let mut config = test_config();
+        config.neighbors.weight = true;
+        config.features.perform_selection = false;
+        config.main.feature_var = Some(vec![
+            "age".to_string(),
+            "income".to_string(),
+            "city".to_string(),
+        ]);
+
+        let classification_importance = compute_knn_feature_importance_for_subset(
+            &classification_data,
+            &config,
+            "target",
+            1,
+            &[0, 1, 2, 3],
+        )
+        .unwrap();
+        assert_remaining_indices(&classification_importance, "age", &[1, 2, 3]);
+        assert_remaining_indices(&classification_importance, "income", &[0, 2, 3]);
+        assert_remaining_indices(&classification_importance, "city", &[0, 1]);
+
+        let mut regression_data = classification_data.clone();
+        regression_data.target_values = vec![
+            DataValue::Number(10.0),
+            DataValue::Number(20.0),
+            DataValue::Number(30.0),
+            DataValue::Number(40.0),
+        ];
+        regression_data.target_measure = VariableMeasure::Scale;
+
+        let regression_importance = compute_knn_feature_importance_for_subset(
+            &regression_data,
+            &config,
+            "target",
+            1,
+            &[0, 1, 2, 3],
+        )
+        .unwrap();
+        assert_remaining_indices(&regression_importance, "age", &[1, 2, 3]);
+        assert_remaining_indices(&regression_importance, "income", &[0, 2, 3]);
+        assert_remaining_indices(&regression_importance, "city", &[0, 1]);
+    }
+
+    fn assert_remaining_indices(
+        importance: &crate::models::result::PredictorImportance,
+        feature_name: &str,
+        expected: &[usize],
+    ) {
+        let entry = importance
+            .entries
+            .iter()
+            .find(|entry| entry.feature_name == feature_name)
+            .unwrap();
+
+        assert_eq!(entry.remaining_indices.as_deref(), Some(expected));
     }
 
     fn test_config() -> KnnConfig {

@@ -141,12 +141,30 @@ pub fn run_analysis(
         }
     };
 
+    let needs_prediction_computation = config.output.prediction_results
+        || config.save.has_target_var
+        || config.save.is_cate_target_var;
+    let mut prediction_computation = None;
+    if needs_prediction_computation {
+        logger.add_log("prediction_computation");
+        match core::calculate_prediction_computation(data, config) {
+            Ok(computation) => prediction_computation = Some(computation),
+            Err(e) => {
+                if config.output.prediction_results {
+                    error_collector.add_error("prediction_results", &e);
+                }
+                if config.save.has_target_var || config.save.is_cate_target_var {
+                    error_collector.add_error("saved_variables", &e);
+                }
+            }
+        }
+    }
+
     let mut prediction_results = None;
     if config.output.prediction_results {
         logger.add_log("prediction_results");
-        match core::calculate_prediction_results(data, config) {
-            Ok(result) => prediction_results = Some(result),
-            Err(e) => error_collector.add_error("prediction_results", &e),
+        if let Some(computation) = prediction_computation.as_ref() {
+            prediction_results = Some(core::prediction_results_from_computation(computation));
         }
     }
 
@@ -258,12 +276,25 @@ pub fn run_analysis(
         || config.save.random_assign_to_fold
     {
         logger.add_log("saved_variables");
-        match core::calculate_saved_variables(data, config) {
-            Ok(saved) => {
-                saved_variables = saved;
+        if config.save.has_target_var || config.save.is_cate_target_var {
+            if let Some(computation) = prediction_computation.as_ref() {
+                match core::build_saved_variables(data, config, computation) {
+                    Ok(saved) => {
+                        saved_variables = saved;
+                    }
+                    Err(e) => {
+                        error_collector.add_error("saved_variables", &e);
+                    }
+                }
             }
-            Err(e) => {
-                error_collector.add_error("saved_variables", &e);
+        } else {
+            match core::calculate_saved_variables(data, config) {
+                Ok(saved) => {
+                    saved_variables = saved;
+                }
+                Err(e) => {
+                    error_collector.add_error("saved_variables", &e);
+                }
             }
         }
     }

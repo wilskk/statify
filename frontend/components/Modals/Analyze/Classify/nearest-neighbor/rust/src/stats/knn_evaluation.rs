@@ -1,14 +1,12 @@
-use std::collections::HashMap;
-
 use crate::models::{
     config::KnnConfig,
     data::{DataValue, KnnData},
+    result::{PredictionResultRow, RegressionFeatureImportanceBaseDebugRow},
 };
 
 use super::{
-    distance::find_k_nearest_neighbors,
-    feature_selection::selected_feature_weights,
-    prediction::{calculate_mean_prediction, calculate_median_prediction, category_key},
+    feature_selection::selected_feature_weights, prediction::category_key,
+    prediction_results::build_prediction_result_rows_for_knn_data,
 };
 
 pub fn evaluate_knn_error(
@@ -27,6 +25,53 @@ pub fn evaluate_knn_feature_importance_error(
     selected_features: &[usize],
 ) -> Result<f64, String> {
     evaluate_knn_error_with_options(knn_data, config, k, selected_features, true, true)
+}
+
+pub fn evaluate_knn_regression_feature_importance_base(
+    knn_data: &KnnData,
+    config: &KnnConfig,
+    k: usize,
+    selected_features: &[usize],
+) -> Result<(f64, Vec<RegressionFeatureImportanceBaseDebugRow>), String> {
+    if !knn_data.target_is_numeric_scale() {
+        return Ok((0.0, Vec::new()));
+    }
+
+    let weights = selected_unit_feature_weights(knn_data, selected_features);
+    let evaluation_indices = knn_data.training_indices.clone();
+    let base_predictions =
+        unweighted_prediction_rows(knn_data, config, k, &weights, &evaluation_indices);
+    let mut rows = Vec::with_capacity(base_predictions.len());
+    let mut base_error = 0.0;
+
+    for prediction in &base_predictions {
+        if let (DataValue::Number(actual_y), DataValue::Number(yhat)) =
+            (&prediction.actual, &prediction.predicted)
+        {
+            let squared_error = (*actual_y - *yhat).powi(2);
+            base_error += squared_error;
+            rows.push(RegressionFeatureImportanceBaseDebugRow {
+                case_id: prediction.case_id,
+                row_index: prediction.row_index,
+                actual_y: *actual_y,
+                yhat_unweighted_normal: *yhat,
+                yhat_feature_importance_base: *yhat,
+                squared_error,
+            });
+        }
+    }
+
+    Ok((base_error, rows))
+}
+
+fn unweighted_prediction_rows(
+    knn_data: &KnnData,
+    config: &KnnConfig,
+    k: usize,
+    weights: &[f64],
+    ordered_indices: &[usize],
+) -> Vec<PredictionResultRow> {
+    build_prediction_result_rows_for_knn_data(knn_data, config, k, Some(weights), ordered_indices)
 }
 
 fn evaluate_knn_error_with_options(
@@ -51,9 +96,15 @@ fn evaluate_knn_error_with_options(
     } else {
         selected_feature_weights(knn_data, config, selected_features)
     };
-    let evaluation_indices = evaluation_case_indices(knn_data);
-    let use_holdout = !knn_data.holdout_indices.is_empty();
-    let evaluation_strategy = if use_holdout {
+    let target_is_numeric = knn_data.target_is_numeric_scale();
+    let evaluation_indices = if target_is_numeric && return_sse_for_numeric_target {
+        knn_data.training_indices.clone()
+    } else {
+        evaluation_case_indices(knn_data)
+    };
+    let evaluation_strategy = if target_is_numeric && return_sse_for_numeric_target {
+        "training_loo"
+    } else if !knn_data.holdout_indices.is_empty() {
         "holdout"
     } else {
         "training_loo"
@@ -63,52 +114,26 @@ fn evaluate_knn_error_with_options(
         return Ok(0.0);
     }
 
-    let target_is_numeric = knn_data.target_is_numeric_scale();
-    let training_class_counts =
-        class_counts_for_indices(&knn_data.target_values, &knn_data.training_indices);
+    let prediction_rows = build_prediction_result_rows_for_knn_data(
+        knn_data,
+        config,
+        k,
+        Some(&weights),
+        &evaluation_indices,
+    );
     let mut total_error = 0.0;
     let mut evaluated = 0usize;
 
-    for &idx in &evaluation_indices {
-        if idx >= knn_data.data_matrix.len() || idx >= knn_data.target_values.len() {
-            continue;
-        }
-
-        let training_indices: Vec<usize> = if use_holdout {
-            knn_data.training_indices.clone()
-        } else {
-            knn_data
-                .training_indices
-                .iter()
-                .copied()
-                .filter(|&candidate_idx| candidate_idx != idx)
-                .collect()
-        };
-
-        if training_indices.is_empty() {
-            continue;
-        }
-
-        let predicted = predict_knn(
-            knn_data,
-            config,
-            k,
-            idx,
-            &training_indices,
-            &weights,
-            &training_class_counts,
-            target_is_numeric,
-        );
-
+    for prediction in &prediction_rows {
         if target_is_numeric {
             if let (DataValue::Number(actual), DataValue::Number(predicted)) =
-                (&knn_data.target_values[idx], predicted)
+                (&prediction.actual, &prediction.predicted)
             {
-                total_error += (*actual - predicted).powi(2);
+                total_error += (*actual - *predicted).powi(2);
                 evaluated += 1;
             }
-        } else if let Some(actual_key) = category_key(Some(&knn_data.target_values[idx])) {
-            total_error += if Some(actual_key) == category_key(Some(&predicted)) {
+        } else if let Some(actual_key) = category_key(Some(&prediction.actual)) {
+            total_error += if Some(actual_key) == category_key(Some(&prediction.predicted)) {
                 0.0
             } else {
                 1.0
@@ -153,106 +178,11 @@ fn selected_unit_feature_weights(knn_data: &KnnData, selected_features: &[usize]
     weights
 }
 
-pub fn predict_knn(
-    knn_data: &KnnData,
-    config: &KnnConfig,
-    k: usize,
-    query_idx: usize,
-    training_indices: &[usize],
-    weights: &[f64],
-    training_class_counts: &HashMap<String, usize>,
-    target_is_numeric: bool,
-) -> DataValue {
-    let neighbors = find_k_nearest_neighbors(
-        &knn_data.data_matrix[query_idx],
-        &knn_data.data_matrix,
-        training_indices,
-        k,
-        config.neighbors.metric_eucli,
-        Some(weights),
-        Some(&knn_data.processed_case_indices),
-    );
-
-    if target_is_numeric {
-        if config.neighbors.predictions_median {
-            calculate_median_prediction(&neighbors, &knn_data.target_values)
-        } else {
-            calculate_mean_prediction(&neighbors, &knn_data.target_values)
-        }
-    } else {
-        predict_categorical_majority(&neighbors, &knn_data.target_values, training_class_counts)
-    }
-}
-
 fn evaluation_case_indices(knn_data: &KnnData) -> Vec<usize> {
     if knn_data.holdout_indices.is_empty() {
         knn_data.training_indices.clone()
     } else {
         knn_data.holdout_indices.clone()
-    }
-}
-
-fn class_counts_for_indices(
-    target_values: &[DataValue],
-    indices: &[usize],
-) -> HashMap<String, usize> {
-    let mut counts = HashMap::new();
-
-    for &idx in indices {
-        if let Some(key) = category_key(target_values.get(idx)) {
-            *counts.entry(key).or_insert(0) += 1;
-        }
-    }
-
-    counts
-}
-
-fn predict_categorical_majority(
-    neighbors: &[(usize, f64)],
-    target_values: &[DataValue],
-    training_class_counts: &HashMap<String, usize>,
-) -> DataValue {
-    let mut votes: HashMap<String, usize> = HashMap::new();
-
-    for &(idx, _) in neighbors {
-        if let Some(key) = category_key(target_values.get(idx)) {
-            *votes.entry(key).or_insert(0) += 1;
-        }
-    }
-
-    votes
-        .into_iter()
-        .max_by(|(left_key, left_votes), (right_key, right_votes)| {
-            left_votes
-                .cmp(right_votes)
-                .then_with(|| {
-                    training_class_counts
-                        .get(left_key)
-                        .copied()
-                        .unwrap_or(0)
-                        .cmp(&training_class_counts.get(right_key).copied().unwrap_or(0))
-                })
-                // Final tie-break follows SPSS-style ascending class order.
-                .then_with(|| right_key.cmp(left_key))
-        })
-        .map(|(key, _)| data_value_from_category_key(&key, target_values))
-        .unwrap_or(DataValue::Null)
-}
-
-fn data_value_from_category_key(key: &str, target_values: &[DataValue]) -> DataValue {
-    if let Some(value) = target_values
-        .iter()
-        .find(|value| category_key(Some(value)).as_deref() == Some(key))
-    {
-        return value.clone();
-    }
-
-    if key.eq_ignore_ascii_case("true") {
-        DataValue::Boolean(true)
-    } else if key.eq_ignore_ascii_case("false") {
-        DataValue::Boolean(false)
-    } else {
-        DataValue::Text(key.to_string())
     }
 }
 
@@ -288,12 +218,12 @@ mod tests {
     }
 
     #[test]
-    fn scale_feature_importance_error_returns_total_sum_of_squares() {
+    fn scale_feature_importance_error_returns_training_leave_one_out_sum_of_squares() {
         let data = scale_test_data();
 
         let error = evaluate_knn_feature_importance_error(&data, &test_config(), 1, &[0]).unwrap();
 
-        assert_eq!(error, 2.0);
+        assert_eq!(error, 300.0);
     }
 
     fn scale_test_data() -> KnnData {

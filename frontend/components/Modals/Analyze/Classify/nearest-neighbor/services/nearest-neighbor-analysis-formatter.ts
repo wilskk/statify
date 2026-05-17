@@ -40,6 +40,10 @@ export function transformNearestNeighborResult(data: any): ResultJson {
     if (debugTable) {
       tables.push(debugTable);
     }
+    const regressionBaseTable = buildRegressionFeatureImportanceBaseDebug(data.predictor_importance);
+    if (regressionBaseTable) {
+      tables.push(regressionBaseTable);
+    }
   }
 
   if (data.predictor_space) {
@@ -332,8 +336,8 @@ function buildRegressionFeatureImportanceDebug(importance: any): Table | null {
   }
 
   return {
-    key: "regression_feature_importance_debug",
-    title: "Regression Feature Importance Debug",
+    key: "feature_importance_leave_one_predictor_debug",
+    title: "Feature Importance Leave-One-Predictor Debug",
     columnHeaders: [
       { header: "Predictor", key: "predictor" },
       { header: "Remove Indices", key: "remove_indices" },
@@ -357,7 +361,42 @@ function buildRegressionFeatureImportanceDebug(importance: any): Table | null {
       ),
       normalized_weight: optionalNumber(entry.normalizedImportance ?? entry.normalized_importance ?? entry.value),
     })),
-    note: "Debug values for KNN Regression weighted feature importance. Indices refer to final encoded model feature columns.",
+    note: "Debug values for weighted feature importance. Indices refer to final encoded model feature columns; remaining indices are the predictors kept for the without-p run.",
+  };
+}
+
+function buildRegressionFeatureImportanceBaseDebug(importance: any): Table | null {
+  const rows = importance.regressionBasePredictionDebug
+    ?? importance.regression_base_prediction_debug
+    ?? [];
+
+  if (!Array.isArray(rows) || !rows.length) {
+    return null;
+  }
+
+  return {
+    key: "regression_feature_importance_base_prediction_debug",
+    title: "Regression FI Base Prediction Debug",
+    columnHeaders: [
+      { header: "Case ID", key: "case_id" },
+      { header: "Actual Y", key: "actual_y" },
+      { header: "Yhat Unweighted Normal", key: "yhat_unweighted_normal" },
+      { header: "Yhat FI Base", key: "yhat_feature_importance_base" },
+      { header: "Squared Error", key: "squared_error" },
+    ],
+    rows: rows.map((row: any, index: number) => ({
+      rowHeader: [String(row.caseId ?? row.case_id ?? index + 1)],
+      case_id: row.caseId ?? row.case_id ?? "",
+      actual_y: optionalNumber(row.actualY ?? row.actual_y),
+      yhat_unweighted_normal: optionalNumber(
+        row.yhatUnweightedNormal ?? row.yhat_unweighted_normal,
+      ),
+      yhat_feature_importance_base: optionalNumber(
+        row.yhatFeatureImportanceBase ?? row.yhat_feature_importance_base,
+      ),
+      squared_error: optionalNumber(row.squaredError ?? row.squared_error),
+    })),
+    note: "Unweighted normal and feature-importance base predictions are both computed with unit feature weights before predictor weights are normalized.",
   };
 }
 

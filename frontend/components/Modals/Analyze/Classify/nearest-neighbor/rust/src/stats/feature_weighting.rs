@@ -226,7 +226,9 @@ fn has_valid_importance_entries(
     !entries.is_empty()
         && entries.iter().all(|entry| {
             entry.base_error.is_finite()
+                && entry.base_error > f64::EPSILON
                 && entry.error_without_feature.is_finite()
+                && entry.raw_feature_importance.is_finite()
                 && entry.normalized_importance.is_finite()
         })
 }
@@ -382,7 +384,10 @@ mod tests {
 
         let weights = calculate_feature_weights(&data, &config).unwrap();
 
-        assert_eq!(weights, vec![0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]);
+        assert_eq!(weights.len(), 7);
+        assert!(weights
+            .iter()
+            .all(|weight| (*weight - 0.2).abs() <= f64::EPSILON));
     }
 
     #[test]
@@ -493,7 +498,7 @@ mod tests {
     }
 
     #[test]
-    fn numeric_scale_weighting_uses_holdout_regression_error() {
+    fn numeric_scale_weighting_uses_training_regression_error() {
         let data = KnnData {
             features: vec!["informative".to_string(), "constant".to_string()],
             data_matrix: vec![
@@ -540,8 +545,8 @@ mod tests {
         let weights = calculate_feature_weights(&data, &config).unwrap();
 
         assert!((weights.iter().sum::<f64>() - 1.0).abs() <= f64::EPSILON);
-        assert!(weights[0] > 0.9);
-        assert!(weights[1] < 0.1);
+        assert!((weights[0] - 0.625).abs() <= f64::EPSILON);
+        assert!((weights[1] - 0.375).abs() <= f64::EPSILON);
     }
 
     fn test_data(feature_count: usize) -> KnnData {

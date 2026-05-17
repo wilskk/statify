@@ -120,9 +120,22 @@ pub struct PredictorImportance {
     pub entries: Vec<PredictorImportanceEntry>,
     pub k: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub regression_base_prediction_debug: Option<Vec<RegressionFeatureImportanceBaseDebugRow>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub weight_expansion_debug: Option<Vec<PredictorWeightExpansionDebug>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub final_expanded_feature_weights: Option<Vec<FeatureWeightDetail>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RegressionFeatureImportanceBaseDebugRow {
+    pub case_id: i32,
+    pub row_index: usize,
+    pub actual_y: f64,
+    pub yhat_unweighted_normal: f64,
+    pub yhat_feature_importance_base: f64,
+    pub squared_error: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
