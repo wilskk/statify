@@ -598,6 +598,8 @@ impl FormatResult {
                                 VariableInAnalysis {
                                     variable: v.variable.clone(),
                                     tolerance: v.tolerance,
+                                    min_tolerance: v.min_tolerance,
+                                    f_to_enter: v.f_to_enter,
                                     f_to_remove: v.f_to_enter,
                                     wilks_lambda: v.wilks_lambda,
                                     min_d_squared: v.min_d_squared,

@@ -279,32 +279,17 @@ fn calculate_f_to_enter_mahalanobis(
     dataset: &AnalyzedDataset,
     current_variables: &[String],
 ) -> (f64, f64) {
-    // Build candidate set: current variables + this variable
+    // 1. Gatekeeper: Dapatkan F-to-enter murni dengan mendelegasikan tugas ke Wilks
+    // (Ini otomatis menangani df1, df2, dan pengecekan saat array kosong)
+    let (f_value, _) = calculate_f_to_enter_wilks(variable, dataset, current_variables);
+
+    // 2. Ranking: Hitung Mahalanobis D² dengan simulasi penambahan variabel ini
     let mut new_variables = current_variables.to_vec();
     new_variables.push(variable.to_string());
 
-    // Get min D² for this candidate set (maximizes group separation)
     let new_min_d2 = calculate_min_mahalanobis_distance(dataset, &new_variables);
 
-    // Gatekeeper: compute partial F via Wilks' Lambda formula
-    let current_wilks = if current_variables.is_empty() {
-        1.0
-    } else {
-        calculate_overall_wilks_lambda(dataset, current_variables)
-    };
-    let new_wilks = calculate_overall_wilks_lambda(dataset, &new_variables);
-
-    let df1 = dataset.num_groups - 1;
-    let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups + 1;
-
-    let f_value = if df2 > 0 && new_wilks < current_wilks && new_wilks > 0.0 {
-        (((current_wilks - new_wilks) / new_wilks) * (df2 as f64)) / (df1 as f64)
-    } else {
-        0.0
-    };
-
-    // wilks_lambda as proxy: -new_min_d2
-    // Lowest wilks_lambda = highest min D² = best candidate
+    // 3. Kembalikan F-to-enter standar, dan proxy -min_d2 agar sorting Mahalanobis bekerja benar
     let wilks_lambda = -new_min_d2;
 
     (f_value, wilks_lambda)

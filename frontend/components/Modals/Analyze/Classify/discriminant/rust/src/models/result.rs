@@ -231,8 +231,12 @@ pub struct StepwiseNote {
 pub struct VariableInAnalysis {
     pub variable: String,
     pub tolerance: f64,
+    #[serde(rename = "min_tolerance")]
+    pub min_tolerance: f64,
     #[serde(rename = "f_to_remove")]
     pub f_to_remove: f64,
+    #[serde(rename = "f_to_enter")]
+    pub f_to_enter: f64,
     #[serde(rename = "wilks_lambda")]
     pub wilks_lambda: f64,
     /// Min D Squared for Mahalanobis method (0.0 for other methods)

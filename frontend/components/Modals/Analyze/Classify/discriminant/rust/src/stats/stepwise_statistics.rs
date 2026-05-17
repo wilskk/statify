@@ -511,29 +511,9 @@ fn convert_steps_to_output(
     };
 
     for (step_idx, step) in steps_data.iter().enumerate() {
-        // SKIP the initial step (index 0) — it's not a real SPSS step
-        // The initial step only populates "Variables Not in Analysis" at the beginning
-        if step_idx == 0 {
-            continue;
-        }
-
-        result
-            .variables_entered
-            .push(step.variable_entered.clone().unwrap_or_default());
-        result.variables_removed.push(step.variable_removed.clone());
-        result.min_d_squared.push(step.min_d_squared);
-        result.wilks_lambda.push(step.wilks_lambda);
-        result.f_to_enter.push(step.f_to_enter);
-        result.f_to_enter_df1.push(step.f_to_enter_df1);
-        result.f_to_enter_df2.push(step.f_to_enter_df2);
-        result.significance.push(step.significance);
-
-        result
-            .variables_in_analysis
-            .insert((step_idx).to_string(), step.variables_in_analysis.clone());
-
+        // Kita butuh step 0 hanya untuk tabel "Variables Not in The Analysis" yang catat step 0:
         result.variables_not_in_analysis.insert(
-            (step_idx).to_string(),
+            step_idx.to_string(),
             step.variables_not_in_analysis.clone(),
         );
 
@@ -542,8 +522,24 @@ fn convert_steps_to_output(
                 .pairwise_comparisons
                 .insert((step_idx).to_string(), step.pairwise_comparisons.clone());
         }
-    }
 
+        if step_idx == 0 {
+            continue;
+        }
+
+        result.variables_entered.push(step.variable_entered.clone().unwrap_or_default());
+        result.variables_removed.push(step.variable_removed.clone());
+        result.wilks_lambda.push(step.wilks_lambda);
+        result.min_d_squared.push(step.min_d_squared);
+        result.f_to_enter.push(step.f_to_enter);
+        result.f_to_enter_df1.push(step.f_to_enter_df1);
+        result.f_to_enter_df2.push(step.f_to_enter_df2);
+        result.significance.push(step.significance);
+
+        result.variables_in_analysis.insert(
+            (step_idx).to_string(), step.variables_in_analysis.clone()
+        );
+    }
     Ok(result)
 }
 

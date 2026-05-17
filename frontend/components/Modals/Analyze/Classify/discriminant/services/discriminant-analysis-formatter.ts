@@ -953,11 +953,13 @@ export function transformDiscriminantResult(data: any): ResultJson {
         ) ?? false;
 
         // Conditionally set column headers based on method
+        // SPSS format: Step, Tolerance, Min. Tolerance, F to Remove, Min. D Squared, Between Groups
         const columnHeaders = isMahalanobis
             ? [
                   { header: "Step", key: "step" },
                   { header: "", key: "var" },
                   { header: "Tolerance", key: "tolerance" },
+                  { header: "Min. Tolerance", key: "min_tolerance" },
                   { header: "F to Remove", key: "f_to_remove" },
                   { header: "Min. D Squared", key: "min_d_squared" },
                   { header: "Between Groups", key: "between_groups" },
@@ -966,6 +968,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
                   { header: "Step", key: "step" },
                   { header: "", key: "var" },
                   { header: "Tolerance", key: "tolerance" },
+                  { header: "Min. Tolerance", key: "min_tolerance" },
                   { header: "F to Remove", key: "f_to_remove" },
                   { header: "Wilks' Lambda", key: "wilks_lambda" },
               ];
@@ -1000,6 +1003,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
                         table.rows.push({
                             rowHeader: [step, variable.variable],
                             tolerance: formatDisplayNumber(variable.tolerance),
+                            min_tolerance: formatDisplayNumber(variable.min_tolerance ?? variable.tolerance),
                             f_to_remove: formatDisplayNumber(variable.f_to_remove),
                             min_d_squared: formatDisplayNumber(variable.min_d_squared || 0),
                             between_groups: variable.between_groups || "",
@@ -1008,6 +1012,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
                         table.rows.push({
                             rowHeader: [step, variable.variable],
                             tolerance: formatDisplayNumber(variable.tolerance),
+                            min_tolerance: formatDisplayNumber(variable.min_tolerance ?? variable.tolerance),
                             f_to_remove: formatDisplayNumber(variable.f_to_remove),
                             wilks_lambda: formatDisplayNumber(variable.wilks_lambda),
                         });
@@ -1030,11 +1035,13 @@ export function transformDiscriminantResult(data: any): ResultJson {
         ) ?? false;
 
         // Conditionally set column headers based on method
+        // SPSS format: Step, Tolerance, Min. Tolerance, F to Enter, Min. D Squared, Between Groups
         const columnHeaders = isMahalanobis
             ? [
                   { header: "Step", key: "step" },
                   { header: "", key: "var" },
                   { header: "Tolerance", key: "tolerance" },
+                  { header: "Min. Tolerance", key: "min_tolerance" },
                   { header: "F to Enter", key: "f_to_enter" },
                   { header: "Min. D Squared", key: "min_d_squared" },
                   { header: "Between Groups", key: "between_groups" },
@@ -1043,6 +1050,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
                   { header: "Step", key: "step" },
                   { header: "", key: "var" },
                   { header: "Tolerance", key: "tolerance" },
+                  { header: "Min. Tolerance", key: "min_tolerance" },
                   { header: "F to Enter", key: "f_to_enter" },
                   { header: "Wilks' Lambda", key: "wilks_lambda" },
               ];
@@ -1054,14 +1062,18 @@ export function transformDiscriminantResult(data: any): ResultJson {
             rows: [],
         };
 
+        // Sort variables_not_in_analysis by step number (ascending)
+        const sortedNotInSteps = [...data.stepwise_statistics.variables_not_in_analysis].sort(
+            (a, b) => parseInt(a.step) - parseInt(b.step)
+        );
+
         // Iterate through steps and variables
         for (
             let i = 0;
-            i < data.stepwise_statistics.variables_not_in_analysis.length;
+            i < sortedNotInSteps.length;
             i++
         ) {
-            const stepData =
-                data.stepwise_statistics.variables_not_in_analysis[i];
+            const stepData = sortedNotInSteps[i];
             const step = stepData.step;
 
             // Check if variables array exists and has items
@@ -1073,6 +1085,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
                         table.rows.push({
                             rowHeader: [step, variable.variable],
                             tolerance: formatDisplayNumber(variable.tolerance),
+                            min_tolerance: formatDisplayNumber(variable.min_tolerance ?? variable.tolerance),
                             f_to_enter: formatDisplayNumber(variable.f_to_enter),
                             min_d_squared: formatDisplayNumber(variable.min_d_squared || 0),
                             between_groups: variable.between_groups || "",
@@ -1081,6 +1094,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
                         table.rows.push({
                             rowHeader: [step, variable.variable],
                             tolerance: formatDisplayNumber(variable.tolerance),
+                            min_tolerance: formatDisplayNumber(variable.min_tolerance ?? variable.tolerance),
                             f_to_enter: formatDisplayNumber(variable.f_to_enter),
                             wilks_lambda: formatDisplayNumber(variable.wilks_lambda),
                         });

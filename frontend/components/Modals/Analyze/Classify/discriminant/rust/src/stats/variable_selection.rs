@@ -162,7 +162,7 @@ pub fn analyze_variables_in_model(
                 .collect();
 
             // Calculate tolerance
-            let (tolerance, _) = calculate_tolerance(var_name, dataset, &other_variables);
+            let (tolerance, min_tolerance) = calculate_tolerance(var_name, dataset, &other_variables);
 
             // Calculate F-to-remove
             let (f_to_remove, wilks_lambda) =
@@ -184,7 +184,9 @@ pub fn analyze_variables_in_model(
             VariableInAnalysis {
                 variable: var_name.clone(),
                 tolerance,
+                min_tolerance,
                 f_to_remove,
+                f_to_enter: 0.0,
                 wilks_lambda,
                 min_d_squared,
                 between_groups,
@@ -311,7 +313,9 @@ pub fn find_worst_variable_to_remove(
     let default_result = VariableInAnalysis {
         variable: String::new(),
         tolerance: 0.0,
+        min_tolerance: 0.0,
         f_to_remove: f64::MAX,
+        f_to_enter: 0.0,
         wilks_lambda: 0.0,
         min_d_squared: 0.0,
         between_groups: String::new(),
