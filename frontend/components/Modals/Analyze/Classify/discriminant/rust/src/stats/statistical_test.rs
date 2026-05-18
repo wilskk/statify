@@ -382,7 +382,7 @@ pub fn calculate_wilks_lambda_test(
         // Calculate chi-square approximation using Bartlett's formula
         // χ² = -[n - (p + g + 1)/2] × ln(Λ)
         // Note: Using (p + g + 1) / 2, not (p + g) / 2
-        let chi_square_val = -(n - ((p + g) as f64 + 1.0) / 2.0) * lambda_k.ln();
+        let chi_square_val = -(n - 1.0 - ((p + g) as f64) / 2.0) * lambda_k.ln();
 
         chi_square.push(chi_square_val);
 

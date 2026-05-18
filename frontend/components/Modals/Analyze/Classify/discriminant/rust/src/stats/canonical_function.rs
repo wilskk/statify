@@ -69,9 +69,25 @@ pub fn calculate_eigen_statistics(
     // Calculate between-groups matrix
     let between_groups = calculate_between_groups_matrix(&dataset, &variables_to_use);
 
-    // Solve eigenvalue problem
+    // Ubah pooled_within jadi SSCP
+    let df_within = dataset.total_cases - dataset.num_groups;
+    let mut w_sscp = pooled_within.clone();
+    for i in 0..w_sscp.nrows() {
+        for j in 0..w_sscp.ncols(){
+            w_sscp[(i,j)] *= df_within as f64;
+        }
+    }
+
+    // Solve eigenvalue problem using RAW SSCP matrices (not divided by df).
+    // This ensures eigenvalues λ satisfy W·v = λ·B, which matches the
+    // Wilks' Lambda product formula: Λ = Π(1/(1+λ_i)) where λ_i come
+    // from the raw SSCP eigenvalue problem.
+    //
+    // Previously this passed W_cov (=W/(n-g)) and B unnormalized, which
+    // produced eigenvalues scaled down by (n-g), inflating the product
+    // Π(1/(1+λ_i)) and giving wildly wrong Wilks' Lambda values.
     let (eigenvalues, eigenvectors) =
-        solve_eigenvalue_problem(&pooled_within, &between_groups, num_functions);
+        solve_eigenvalue_problem(&w_sscp, &between_groups, num_functions);
 
     // Calculate variance statistics
     let (variance_percentage, cumulative_percentage) = calculate_variance_percentages(&eigenvalues);
@@ -90,6 +106,7 @@ pub fn calculate_eigen_statistics(
         .collect();
 
     // Flatten the eigenvectors matrix into a single vector for storage
+    let scale_factor = (df_within as f64).sqrt();
     let flat_eigenvectors: Vec<f64> = eigenvectors
         .iter()
         .flat_map(|vec| vec.iter().copied())
