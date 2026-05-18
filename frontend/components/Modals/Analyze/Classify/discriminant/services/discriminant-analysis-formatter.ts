@@ -1194,25 +1194,39 @@ export function transformDiscriminantResult(data: any): ResultJson {
 
     // 20. Casewise Statistics
     if (data.casewise_statistics) {
-        // Check if discriminant_scores exists and has entries
-        const numFunctions =
-            data.casewise_statistics.discriminant_scores &&
-            data.casewise_statistics.discriminant_scores.length > 0
-                ? data.casewise_statistics.discriminant_scores.length
-                : 0;
+        // Debug: Log what we're receiving from WASM
+        console.log("[Casewise] Raw data from WASM:", {
+            case_number: data.casewise_statistics.case_number,
+            case_number_length: data.casewise_statistics.case_number?.length,
+            actual_group: data.casewise_statistics.actual_group,
+            predicted_group: data.casewise_statistics.predicted_group,
+            discriminant_scores: data.casewise_statistics.discriminant_scores,
+            discriminant_scores_type: typeof data.casewise_statistics.discriminant_scores,
+            discriminant_scores_keys: data.casewise_statistics.discriminant_scores ?
+                (Array.isArray(data.casewise_statistics.discriminant_scores) ?
+                    "Array with " + data.casewise_statistics.discriminant_scores.length + " items" :
+                    "Object with keys: " + Object.keys(data.casewise_statistics.discriminant_scores).join(", ")) : "null/undefined",
+            highest_group: data.casewise_statistics.highest_group,
+        });
 
-        // Create dynamic function headers
+        // Check if discriminant_scores exists and has entries
+        // discriminant_scores from WASM is a JavaScript object with keys like "0", "1", "Function 1", "Function 2"
+        const scoreKeys = data.casewise_statistics.discriminant_scores &&
+            typeof data.casewise_statistics.discriminant_scores === 'object'
+            ? Object.keys(data.casewise_statistics.discriminant_scores)
+            : [];
+
+        console.log("[Casewise] Score keys:", scoreKeys);
+
+        const numFunctions = scoreKeys.length;
+
+        // Create dynamic function headers - use "Function X" format for display
         const functionChildren = [];
-        if (numFunctions > 0) {
-            for (let i = 0; i < numFunctions; i++) {
-                const func = data.casewise_statistics.discriminant_scores[i];
-                // Use the function name if available, otherwise use "Function X"
-                const functionName = func.function || `Function ${i + 1}`;
-                functionChildren.push({
-                    header: functionName,
-                    key: `function_${i + 1}`,
-                });
-            }
+        for (let i = 0; i < scoreKeys.length; i++) {
+            functionChildren.push({
+                header: `Function ${i + 1}`,
+                key: `function_${i + 1}`,
+            });
         }
 
         const table: Table = {
@@ -1275,17 +1289,25 @@ export function transformDiscriminantResult(data: any): ResultJson {
             const isMisclassified = predictedGroup !== actualGroup;
 
             // Handle discriminant scores dynamically for all functions
+            // discriminant_scores from WASM is a JavaScript object with keys like "0", "1", "Function 1", "Function 2"
+            // We need to convert it to an array format for consistent ordering
             const scoreData: any = {};
             if (
                 data.casewise_statistics.discriminant_scores &&
-                data.casewise_statistics.discriminant_scores.length > 0
+                typeof data.casewise_statistics.discriminant_scores === 'object'
             ) {
-                for (let j = 0; j < numFunctions; j++) {
-                    const func =
-                        data.casewise_statistics.discriminant_scores[j];
-                    scoreData[`function_${j + 1}`] = formatDisplayNumber(
-                        func.values[i]
-                    );
+                // Extract function keys and sort them for consistent ordering
+                const funcKeys = Object.keys(data.casewise_statistics.discriminant_scores).sort((a, b) => {
+                    // Handle both numeric keys ("0", "1") and function name keys ("Function 1", "Function 2")
+                    const numA = parseInt(a.replace(/[^0-9]/g, '')) || parseInt(a) || 0;
+                    const numB = parseInt(b.replace(/[^0-9]/g, '')) || parseInt(b) || 0;
+                    return numA - numB;
+                });
+
+                for (let j = 0; j < funcKeys.length; j++) {
+                    const funcKey = funcKeys[j];
+                    const values = data.casewise_statistics.discriminant_scores[funcKey];
+                    scoreData[`function_${j + 1}`] = formatDisplayNumber(values[i]);
                 }
             }
 

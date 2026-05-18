@@ -330,16 +330,32 @@ pub fn extract_values_by_name(records: &[DataRecord], field_name: &str) -> Vec<f
 
 /// Extract all variable values from a single case
 pub fn extract_case_values(record: &DataRecord, variables: &[String]) -> Vec<f64> {
-    variables
+    let values: Vec<f64> = variables
         .iter()
         .filter_map(|var_name| {
             if let Some(DataValue::Number(value)) = record.values.get(var_name) {
                 Some(*value)
             } else {
+                // Log missing variables for debugging
+                web_sys::console::log_1(&format!(
+                    "[extract_case_values] Variable '{}' not found or not numeric in record. Available keys: {:?}",
+                    var_name,
+                    record.values.keys().collect::<Vec<_>>()
+                ).into());
                 None
             }
         })
-        .collect()
+        .collect();
+
+    if values.len() != variables.len() {
+        web_sys::console::log_1(&format!(
+            "[extract_case_values] Length mismatch! Expected {} variables, got {} values",
+            variables.len(),
+            values.len()
+        ).into());
+    }
+
+    values
 }
 
 /// Calculate mean of values
