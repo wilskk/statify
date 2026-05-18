@@ -65,15 +65,16 @@ fn calculate_feature_selection_with_auto_k(
         trials.push((k, trial));
     }
 
-    let Some((best_index, _)) = trials
-        .iter()
-        .enumerate()
-        .min_by(|(_, (left_k, left)), (_, (right_k, right))| {
-            left.summary
-                .final_error
-                .total_cmp(&right.summary.final_error)
-                .then_with(|| left_k.cmp(right_k))
-        })
+    let Some((best_index, _)) =
+        trials
+            .iter()
+            .enumerate()
+            .min_by(|(_, (left_k, left)), (_, (right_k, right))| {
+                left.summary
+                    .final_error
+                    .total_cmp(&right.summary.final_error)
+                    .then_with(|| left_k.cmp(right_k))
+            })
     else {
         return Err("No k candidates could be evaluated for feature selection".to_string());
     };
@@ -301,7 +302,11 @@ fn config_with_k(config: &KnnConfig, k: usize) -> KnnConfig {
 }
 
 fn candidate_k_values(config: &KnnConfig) -> Vec<usize> {
-    let min_k = config.neighbors.min_k.unwrap_or(config.neighbors.specify_k).max(1);
+    let min_k = config
+        .neighbors
+        .min_k
+        .unwrap_or(config.neighbors.specify_k)
+        .max(1);
     let max_k = config.neighbors.max_k.unwrap_or(min_k).max(1);
     let start = min_k.min(max_k) as usize;
     let end = min_k.max(max_k) as usize;
@@ -418,7 +423,7 @@ fn minimum_change_stop_reason(
     None
 }
 
-fn evaluate_subset(
+pub(crate) fn evaluate_subset(
     data: &AnalysisData,
     config: &KnnConfig,
     selected_features: &[String],

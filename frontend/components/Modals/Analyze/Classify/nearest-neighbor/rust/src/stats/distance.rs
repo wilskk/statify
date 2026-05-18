@@ -4,6 +4,16 @@ const NEIGHBOR_TIE_EPSILON: f64 = 1e-12;
 
 /// Calculates distance between two points using specified metric.
 pub fn calculate_distance(point1: &[f64], point2: &[f64], use_euclidean: bool) -> f64 {
+    calculate_distance_with_weights(point1, point2, use_euclidean, None)
+}
+
+/// Calculates distance between two points using optional per-feature weights.
+pub fn calculate_distance_with_weights(
+    point1: &[f64],
+    point2: &[f64],
+    use_euclidean: bool,
+    feature_weights: Option<&[f64]>,
+) -> f64 {
     let min_len = point1.len().min(point2.len());
 
     if use_euclidean {
@@ -14,7 +24,10 @@ pub fn calculate_distance(point1: &[f64], point2: &[f64], use_euclidean: bool) -
                 }
 
                 let diff = point1[i] - point2[i];
-                Some(diff * diff)
+                let weight = feature_weights
+                    .and_then(|weights| weights.get(i).copied())
+                    .unwrap_or(1.0);
+                Some(weight * diff * diff)
             })
             .sum::<f64>();
 
@@ -26,7 +39,10 @@ pub fn calculate_distance(point1: &[f64], point2: &[f64], use_euclidean: bool) -
                     return None;
                 }
 
-                Some((point1[i] - point2[i]).abs())
+                let weight = feature_weights
+                    .and_then(|weights| weights.get(i).copied())
+                    .unwrap_or(1.0);
+                Some(weight * (point1[i] - point2[i]).abs())
             })
             .sum::<f64>()
     }
@@ -40,11 +56,36 @@ pub fn find_k_nearest_neighbors(
     use_euclidean: bool,
     original_case_indices: Option<&[usize]>,
 ) -> Vec<(usize, f64)> {
+    find_k_nearest_neighbors_with_weights(
+        query_point,
+        data_matrix,
+        indices,
+        k,
+        use_euclidean,
+        original_case_indices,
+        None,
+    )
+}
+
+pub fn find_k_nearest_neighbors_with_weights(
+    query_point: &[f64],
+    data_matrix: &[Vec<f64>],
+    indices: &[usize],
+    k: usize,
+    use_euclidean: bool,
+    original_case_indices: Option<&[usize]>,
+    feature_weights: Option<&[f64]>,
+) -> Vec<(usize, f64)> {
     let mut distances: Vec<(usize, f64)> = indices
         .iter()
         .filter_map(|&idx| {
             if idx < data_matrix.len() {
-                let distance = calculate_distance(query_point, &data_matrix[idx], use_euclidean);
+                let distance = calculate_distance_with_weights(
+                    query_point,
+                    &data_matrix[idx],
+                    use_euclidean,
+                    feature_weights,
+                );
                 Some((idx, distance))
             } else {
                 None
@@ -98,7 +139,8 @@ pub fn calculate_manhattan_distance(point1: &[f64], point2: &[f64]) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::{
-        calculate_euclidean_distance, calculate_manhattan_distance, find_k_nearest_neighbors,
+        calculate_distance_with_weights, calculate_euclidean_distance,
+        calculate_manhattan_distance, find_k_nearest_neighbors,
     };
 
     #[test]
@@ -120,6 +162,22 @@ mod tests {
             2.0_f64.sqrt()
         );
         assert_eq!(calculate_manhattan_distance(&android, &desktop), 2.0);
+    }
+
+    #[test]
+    fn weighted_euclidean_and_manhattan_apply_feature_weights() {
+        let a = [0.0, 0.0];
+        let b = [3.0, 4.0];
+        let weights = [0.25, 0.75];
+
+        assert_eq!(
+            calculate_distance_with_weights(&a, &b, true, Some(&weights)),
+            (0.25_f64 * 9.0 + 0.75_f64 * 16.0).sqrt()
+        );
+        assert_eq!(
+            calculate_distance_with_weights(&a, &b, false, Some(&weights)),
+            0.25 * 3.0 + 0.75 * 4.0
+        );
     }
 
     #[test]

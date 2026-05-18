@@ -8,6 +8,7 @@ pub use crate::stats::nearest_neighbor::*;
 pub use crate::stats::partition::*;
 pub use crate::stats::peers_chart::*;
 pub use crate::stats::prediction_results::*;
+pub use crate::stats::predictor_importance::*;
 pub use crate::stats::predictor_space::*;
 pub use crate::stats::preprocess_data::*;
 pub use crate::stats::quadrant_map::*;

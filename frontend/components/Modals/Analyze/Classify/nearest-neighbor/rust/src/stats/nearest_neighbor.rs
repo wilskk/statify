@@ -5,8 +5,8 @@ use crate::models::{
 };
 
 use super::core::{
-    calculate_mean_prediction, calculate_median_prediction, determine_effective_k,
-    find_k_nearest_neighbors, preprocess_knn_data,
+    calculate_mean_prediction, calculate_median_prediction, calculate_predictor_importance,
+    determine_effective_k, find_k_nearest_neighbors_with_weights, preprocess_knn_data,
 };
 use super::prediction::calculate_categorical_prediction;
 
@@ -38,6 +38,11 @@ pub fn calculate_nearest_neighbors(
 
     // Determine k value - use auto-selection if specified
     let k = determine_effective_k(&knn_data, config)?;
+    let feature_weights = if config.neighbors.weight {
+        Some(calculate_predictor_importance(data, config)?.expanded_feature_weights)
+    } else {
+        None
+    };
 
     let use_euclidean = config.neighbors.metric_eucli;
     let distance_metric = if use_euclidean {
@@ -65,13 +70,14 @@ pub fn calculate_nearest_neighbors(
                 .collect();
 
             // Find k nearest neighbors to this focal case
-            let neighbors = find_k_nearest_neighbors(
+            let neighbors = find_k_nearest_neighbors_with_weights(
                 &knn_data.data_matrix[focal_idx],
                 &knn_data.data_matrix,
                 &candidate_indices,
                 k,
                 use_euclidean,
                 Some(&knn_data.processed_case_indices),
+                feature_weights.as_deref(),
             );
 
             // Create neighbor details
@@ -105,7 +111,7 @@ pub fn calculate_nearest_neighbors(
     Ok(NearestNeighbors {
         k_value: k,
         distance_metric,
-        weighting_enabled: false,
+        weighting_enabled: feature_weights.is_some(),
         prediction_method,
         focal_neighbor_sets,
     })

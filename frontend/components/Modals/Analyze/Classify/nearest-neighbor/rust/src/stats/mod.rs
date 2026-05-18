@@ -13,6 +13,7 @@ pub mod partition;
 pub mod peers_chart;
 pub mod prediction;
 pub mod prediction_results;
+pub mod predictor_importance;
 pub mod predictor_space;
 pub mod preprocess_data;
 pub mod quadrant_map;

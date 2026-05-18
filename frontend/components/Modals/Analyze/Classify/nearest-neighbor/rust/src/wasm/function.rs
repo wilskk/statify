@@ -129,7 +129,18 @@ pub fn run_analysis(
         }
     }
 
-    let predictor_importance = None;
+    let mut predictor_importance = None;
+    if analysis_config.neighbors.weight {
+        logger.add_log("predictor_importance");
+        match core::calculate_predictor_importance(data, &analysis_config) {
+            Ok(result) => {
+                predictor_importance = Some(result.importance);
+            }
+            Err(e) => {
+                error_collector.add_error("predictor_importance", &e);
+            }
+        }
+    }
 
     // Step 5: Predictor space
     logger.add_log("predictor_space");

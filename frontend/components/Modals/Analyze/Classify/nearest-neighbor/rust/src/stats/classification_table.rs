@@ -7,7 +7,10 @@ use crate::models::{
     result::{ClassificationPartition, ClassificationTable},
 };
 
-use super::core::{determine_effective_k, find_k_nearest_neighbors, preprocess_knn_data};
+use super::core::{
+    calculate_predictor_importance, determine_effective_k, find_k_nearest_neighbors_with_weights,
+    preprocess_knn_data,
+};
 use super::prediction::{
     calculate_categorical_vote_probabilities, category_key, sorted_target_categories,
 };
@@ -29,6 +32,11 @@ pub fn calculate_classification_table(
 
     // Determine k value
     let k = determine_effective_k(&knn_data, config)?;
+    let feature_weights = if config.neighbors.weight {
+        Some(calculate_predictor_importance(data, config)?.expanded_feature_weights)
+    } else {
+        None
+    };
 
     // Create mapping of categorical target values to numeric indices
     let (category_map, categories) = create_category_mapping(&knn_data.target_values);
@@ -44,6 +52,7 @@ pub fn calculate_classification_table(
         k,
         use_euclidean,
         true,
+        feature_weights.as_deref(),
     );
 
     let (holdout_confusion, holdout_correct, holdout_total, holdout_missing) =
@@ -54,6 +63,7 @@ pub fn calculate_classification_table(
             k,
             use_euclidean,
             false,
+            feature_weights.as_deref(),
         );
 
     // Extract classification statistics
@@ -112,6 +122,7 @@ fn calculate_confusion_matrix(
     k: usize,
     use_euclidean: bool,
     is_training: bool,
+    feature_weights: Option<&[f64]>,
 ) -> (Vec<Vec<usize>>, usize, usize, Vec<usize>) {
     let mut confusion = vec![vec![0; n_categories]; n_categories];
     let mut correct = 0;
@@ -134,13 +145,14 @@ fn calculate_confusion_matrix(
                 // Consider this as missing value
                 if !is_training {
                     // Track missing values in holdout set
-                    let neighbors = find_k_nearest_neighbors(
+                    let neighbors = find_k_nearest_neighbors_with_weights(
                         &knn_data.data_matrix[idx],
                         &knn_data.data_matrix,
                         &knn_data.training_indices,
                         k,
                         use_euclidean,
                         Some(&knn_data.processed_case_indices),
+                        feature_weights,
                     );
 
                     let predicted_cat = predict_category(
@@ -170,23 +182,25 @@ fn calculate_confusion_matrix(
                 .copied()
                 .collect();
 
-            find_k_nearest_neighbors(
+            find_k_nearest_neighbors_with_weights(
                 &knn_data.data_matrix[idx],
                 &knn_data.data_matrix,
                 &train_indices,
                 k,
                 use_euclidean,
                 Some(&knn_data.processed_case_indices),
+                feature_weights,
             )
         } else {
             // For holdout, find neighbors from training set
-            find_k_nearest_neighbors(
+            find_k_nearest_neighbors_with_weights(
                 &knn_data.data_matrix[idx],
                 &knn_data.data_matrix,
                 &knn_data.training_indices,
                 k,
                 use_euclidean,
                 Some(&knn_data.processed_case_indices),
+                feature_weights,
             )
         };
 
