@@ -109,7 +109,7 @@ pub fn calculate_eigen_statistics(
     let scale_factor = (df_within as f64).sqrt();
     let flat_eigenvectors: Vec<f64> = eigenvectors
         .iter()
-        .flat_map(|vec| vec.iter().copied())
+        .flat_map(|vec| vec.iter().map(|&v| v * scale_factor)) // <--- KALIKAN DI SINI!
         .collect();
 
     // Create function names (Function 1, Function 2, etc.)
@@ -198,10 +198,10 @@ pub fn calculate_canonical_functions(
         num_functions,
     );
 
-    // Calculate function at group centroids
+    // Calculate function at group centroids using the unstandardized coefficients
     let function_at_centroids = calculate_function_at_group_centroids(
         &dataset,
-        &eigenvectors,
+        &coefficients,
         &variables_to_use,
         num_functions,
     );
@@ -558,9 +558,13 @@ pub fn get_stepwise_selected_variables(
 /// This function evaluates the discriminant functions at the centroid
 /// (mean) of each group.
 ///
+/// The unstandardized discriminant function for function k evaluated at group g is:
+///   D_gk = constant_k + Σ(a_ik * x̄_gi)
+/// where a_ik are the unstandardized coefficients and x̄_gi are group means.
+///
 /// # Parameters
 /// * `dataset` - The analyzed dataset
-/// * `eigenvectors` - Eigenvectors from the eigenvalue problem
+/// * `coefficients` - Unstandardized coefficients HashMap (variable -> [coef per function])
 /// * `variables` - Variables in the model
 /// * `num_functions` - Number of discriminant functions
 ///
@@ -568,11 +572,17 @@ pub fn get_stepwise_selected_variables(
 /// A hashmap of group names to function values
 pub fn calculate_function_at_group_centroids(
     dataset: &AnalyzedDataset,
-    eigenvectors: &[Vec<f64>],
+    coefficients: &HashMap<String, Vec<f64>>,
     variables: &[String],
     num_functions: usize,
 ) -> HashMap<String, Vec<f64>> {
     let mut function_at_centroids = HashMap::new();
+
+    // Get constants from the coefficients map (stored under "(Constant)")
+    let constants: Vec<f64> = coefficients
+        .get("(Constant)")
+        .cloned()
+        .unwrap_or_else(|| vec![0.0; num_functions]);
 
     // Process each group in parallel
     let results: Vec<(String, Vec<f64>)> = dataset
@@ -582,35 +592,27 @@ pub fn calculate_function_at_group_centroids(
             let mut centroid_values = vec![0.0; num_functions];
 
             for func_idx in 0..num_functions {
-                // First add constant (negative sum of coefficient * overall_mean)
-                let constant =
-                    variables
-                        .iter()
-                        .enumerate()
-                        .fold(0.0, |acc, (var_idx, variable)| {
-                            if var_idx < eigenvectors.len()
-                                && func_idx < eigenvectors[var_idx].len()
-                            {
-                                acc - eigenvectors[var_idx][func_idx]
-                                    * dataset.overall_means.get(variable).copied().unwrap_or(0.0)
-                            } else {
-                                acc
-                            }
-                        });
+                // Start with the constant
+                let mut value = if func_idx < constants.len() {
+                    constants[func_idx]
+                } else {
+                    0.0
+                };
 
-                centroid_values[func_idx] = constant;
-
-                // Then add variable contributions
+                // Add coefficient * group_mean for each variable
                 for (var_idx, variable) in variables.iter().enumerate() {
-                    if var_idx < eigenvectors.len() && func_idx < eigenvectors[var_idx].len() {
-                        if let Some(group_mean) =
-                            dataset.group_means.get(group).and_then(|m| m.get(variable))
-                        {
-                            centroid_values[func_idx] +=
-                                group_mean * eigenvectors[var_idx][func_idx];
+                    if let Some(coef_values) = coefficients.get(variable) {
+                        if func_idx < coef_values.len() {
+                            if let Some(group_mean) =
+                                dataset.group_means.get(group).and_then(|m| m.get(variable))
+                            {
+                                value += coef_values[func_idx] * group_mean;
+                            }
                         }
                     }
                 }
+
+                centroid_values[func_idx] = value;
             }
 
             (group.clone(), centroid_values)
