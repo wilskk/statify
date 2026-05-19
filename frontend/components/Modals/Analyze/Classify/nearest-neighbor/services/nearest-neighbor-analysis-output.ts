@@ -119,6 +119,29 @@ export async function resultNearestNeighbor({
           });
         }
 
+        const kSelectionErrorLog = findTable("k_selection_error_log");
+        if (kSelectionErrorLog) {
+          await addStatistic(kSelectionChartId, {
+            title: `K Selection Error Log`,
+            description: `K Selection Error Log`,
+            output_data: kSelectionErrorLog,
+            components: `K Selection Error Log`,
+          });
+        }
+
+        const kSelectionErrorLogChart = createKSelectionErrorLogChart(
+          rawResult?.k_selection_chart,
+        );
+
+        if (kSelectionErrorLogChart) {
+          await addStatistic(kSelectionChartId, {
+            title: `K Selection Error Log Plot`,
+            description: `K Selection Error Log Plot`,
+            output_data: JSON.stringify(kSelectionErrorLogChart),
+            components: `K Selection Error Log Plot`,
+          });
+        }
+
         const kSelectionCvDebug = findTable("k_selection_cv_debug");
         if (kSelectionCvDebug) {
           await addStatistic(kSelectionChartId, {
@@ -470,6 +493,14 @@ function createPredictorSpaceChart(predictorSpace?: any) {
 }
 
 function createKSelectionChart(chart?: any) {
+  return createKSelectionErrorChart(chart, "K Selection Error");
+}
+
+function createKSelectionErrorLogChart(chart?: any) {
+  return createKSelectionErrorChart(chart, "K Selection Error Log");
+}
+
+function createKSelectionErrorChart(chart: any, title: string) {
   const chartData = (chart?.candidates ?? [])
     .map((candidate: any) => ({
       x: Number(candidate.k),
@@ -479,22 +510,30 @@ function createKSelectionChart(chart?: any) {
 
   if (!chartData.length) return null;
 
+  const yLabel = isRegressionKSelectionMetric(chart?.metric_name)
+    ? "Average SSE"
+    : "Average Error Rate (%)";
+
   return ChartService.createChartJSON({
     chartType: "Line Chart",
     chartData,
-    chartVariables: { x: ["Number of Neighbors (K)"], y: ["Error Rate"] },
+    chartVariables: { x: ["Number of Neighbors (K)"], y: [yLabel] },
     chartMetadata: {
-      title: "K Selection Error",
-      description: "Case-weighted cross-validation error rate by number of neighbors",
+      title,
+      description: "Cross-validation average error by number of neighbors",
     },
     chartConfig: {
       axisLabels: {
         x: "Number of Neighbors (K)",
-        y: "Error Rate",
+        y: yLabel,
       },
       useLegend: false,
     },
   });
+}
+
+function isRegressionKSelectionMetric(metricName: unknown) {
+  return String(metricName ?? "").toLowerCase().includes("sse");
 }
 
 function createPredictorImportanceChart(table?: Table) {

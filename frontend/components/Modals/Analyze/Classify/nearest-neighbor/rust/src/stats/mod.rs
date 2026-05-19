@@ -5,6 +5,7 @@ pub mod core;
 pub mod distance;
 pub mod error_summary;
 pub mod feature_selection;
+pub mod k_selection;
 pub mod mersenne_twister;
 pub mod nearest_neighbor;
 pub mod normalization;

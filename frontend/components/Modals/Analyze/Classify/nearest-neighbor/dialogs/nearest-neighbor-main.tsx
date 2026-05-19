@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CircleHelp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -143,15 +143,15 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
     }));
   }, [formData.main.FeatureVar]);
 
-  const updateFormData = (
+  const updateFormData = useCallback((
     section: keyof KNNType,
     field: string,
     value: KNNFormValue,
   ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [section]: {
-        ...prev[section],
+    setFormData((prev) => {
+      const currentSection = prev[section] as Record<string, KNNFormValue>;
+      const nextSection = {
+        ...currentSection,
         [field]: value,
         ...(section === "features" && field === "MaxReached" && value === true
           ? { BelowMin: false }
@@ -159,9 +159,19 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
         ...(section === "features" && field === "BelowMin" && value === true
           ? { MaxReached: false }
           : {}),
-      },
-    }));
-  };
+      };
+
+      const hasChanges = Object.entries(nextSection).some(
+        ([key, nextValue]) => !Object.is(currentSection[key], nextValue),
+      );
+      if (!hasChanges) return prev;
+
+      return {
+        ...prev,
+        [section]: nextSection,
+      };
+    });
+  }, []);
 
   const executeKNN = async () => {
     closeModal();

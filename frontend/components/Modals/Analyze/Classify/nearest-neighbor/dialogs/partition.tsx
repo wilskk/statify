@@ -16,6 +16,44 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { FieldHelp } from "./field-help";
 
+const partitionFields: (keyof KNNPartitionType)[] = [
+  "PartitioningVariable",
+  "UseRandomly",
+  "UseVariable",
+  "VFoldPartitioningVariable",
+  "VFoldUseRandomly",
+  "VFoldUsePartitioningVar",
+  "TrainingNumber",
+  "NumPartition",
+  "SetSeed",
+  "Seed",
+];
+
+const normalizePartitionState = (
+  data: KNNPartitionType,
+): KNNPartitionType => ({
+  ...data,
+  UseRandomly: data.UseRandomly ?? true,
+  UseVariable: data.UseVariable ?? false,
+});
+
+const partitionStatesEqual = (
+  left: KNNPartitionType,
+  right: KNNPartitionType,
+) => partitionFields.every((field) => Object.is(left[field], right[field]));
+
+const isSeedUnavailable = (state: KNNPartitionType) =>
+  Boolean(state.UseVariable && state.VFoldUsePartitioningVar);
+
+const enforcePartitionRules = (state: KNNPartitionType): KNNPartitionType => {
+  if (!isSeedUnavailable(state) || !state.SetSeed) return state;
+
+  return {
+    ...state,
+    SetSeed: false,
+  };
+};
+
 export const KNNPartition = ({
   updateFormData,
   data,
@@ -24,20 +62,17 @@ export const KNNPartition = ({
   isFeatureSelectionActive,
   showFieldHelp = false,
 }: KNNPartitionProps) => {
-  const [partitionState, setPartitionState] = useState<KNNPartitionType>({
-    ...data,
-    UseRandomly: data.UseRandomly ?? true,
-    UseVariable: data.UseVariable ?? false,
-  });
+  const [partitionState, setPartitionState] = useState<KNNPartitionType>(() =>
+    enforcePartitionRules(normalizePartitionState(data)),
+  );
 
   const isCrossValidationEnabled = isAutoK && !isFeatureSelectionActive;
 
   useEffect(() => {
-    if (JSON.stringify(data) === JSON.stringify(partitionState)) return;
-    setPartitionState({
-      ...data,
-      UseRandomly: data.UseRandomly ?? true,
-      UseVariable: data.UseVariable ?? false,
+    const nextState = enforcePartitionRules(normalizePartitionState(data));
+    setPartitionState((prev) => {
+      if (partitionStatesEqual(prev, nextState)) return prev;
+      return nextState;
     });
   }, [data]);
 
@@ -52,34 +87,43 @@ export const KNNPartition = ({
     : partitionState.VFoldUsePartitioningVar
       ? "VFoldUsePartitioningVar"
       : "VFoldUseRandomly"; // default
-  const isUsingPartitionVariable = partitionState.UseVariable;
-  const isUsingFoldVariable = partitionState.VFoldUsePartitioningVar;
-  const isSeedDisabled = isUsingPartitionVariable || isUsingFoldVariable;
+  const isSeedDisabled = isSeedUnavailable(partitionState);
 
   useEffect(() => {
     if (isCrossValidationEnabled) {
-      setPartitionState((prev) => ({
-        ...prev,
-        VFoldUseRandomly: prev.VFoldUseRandomly ?? true,
-        VFoldUsePartitioningVar: prev.VFoldUsePartitioningVar ?? false,
-        NumPartition: prev.NumPartition ?? 10, // biasanya default 10 folds
-      }));
+      setPartitionState((prev) => {
+        const nextState = enforcePartitionRules({
+          ...prev,
+          VFoldUseRandomly: prev.VFoldUseRandomly ?? true,
+          VFoldUsePartitioningVar: prev.VFoldUsePartitioningVar ?? false,
+          NumPartition: prev.NumPartition ?? 10, // biasanya default 10 folds
+        });
+        if (partitionStatesEqual(prev, nextState)) return prev;
+        return nextState;
+      });
     } else if (isFeatureSelectionActive) {
-      setPartitionState((prev) => ({
-        ...prev,
-        VFoldUseRandomly: false,
-        VFoldUsePartitioningVar: false,
-      }));
+      setPartitionState((prev) => {
+        const nextState = enforcePartitionRules({
+          ...prev,
+          VFoldUseRandomly: false,
+          VFoldUsePartitioningVar: false,
+        });
+        if (partitionStatesEqual(prev, nextState)) return prev;
+        return nextState;
+      });
     }
   }, [isCrossValidationEnabled, isFeatureSelectionActive]);
 
   useEffect(() => {
     if (!isSeedDisabled) return;
 
-    setPartitionState((prev) => ({
-      ...prev,
-      SetSeed: false,
-    }));
+    setPartitionState((prev) => {
+      if (!prev.SetSeed) return prev;
+      return {
+        ...prev,
+        SetSeed: false,
+      };
+    });
   }, [isSeedDisabled]);
 
   const filteredAvailableVariables = availableVariables.filter(
@@ -89,22 +133,22 @@ export const KNNPartition = ({
   );
 
   useEffect(() => {
-    if (JSON.stringify(partitionState) === JSON.stringify(data)) return;
-
-    Object.entries(partitionState).forEach(([key, value]) => {
-      updateFormData(key as keyof KNNPartitionType, value);
-    });
-  }, [partitionState]);
+    for (const field of partitionFields) {
+      if (!Object.is(partitionState[field], data[field])) {
+        updateFormData(field, partitionState[field]);
+      }
+    }
+  }, [data, partitionState, updateFormData]);
 
   const handleChange = (
     field: keyof KNNPartitionType,
     value: CheckedState | number | boolean | string | null,
   ) => {
     setPartitionState((prevState) => {
-      const newState = {
+      const newState = enforcePartitionRules({
         ...prevState,
         [field]: value,
-      };
+      });
 
       //updateFormData(field, value);
 
@@ -126,7 +170,7 @@ export const KNNPartition = ({
         // updateFormData("VFoldPartitioningVariable", variable);
       }
 
-      return updatedState;
+      return enforcePartitionRules(updatedState);
     });
   };
 
@@ -144,18 +188,20 @@ export const KNNPartition = ({
         // updateFormData("VFoldPartitioningVariable", null);
       }
 
-      return updatedState;
+      return enforcePartitionRules(updatedState);
     });
   };
 
   const handlePartitionGrp = (value: string) => {
-    setPartitionState((prev) => ({
-      ...prev,
-      UseRandomly: value === "UseRandomly",
-      UseVariable: value === "UseVariable",
-      PartitioningVariable:
-        value === "UseVariable" ? prev.PartitioningVariable : null,
-    }));
+    setPartitionState((prev) =>
+      enforcePartitionRules({
+        ...prev,
+        UseRandomly: value === "UseRandomly",
+        UseVariable: value === "UseVariable",
+        PartitioningVariable:
+          value === "UseVariable" ? prev.PartitioningVariable : null,
+      }),
+    );
   };
 
   const handleFoldGrp = (value: string) => {
@@ -164,10 +210,12 @@ export const KNNPartition = ({
       VFoldUsePartitioningVar: value === "VFoldUsePartitioningVar",
     };
 
-    setPartitionState((prev) => ({
-      ...prev,
-      ...newState,
-    }));
+    setPartitionState((prev) =>
+      enforcePartitionRules({
+        ...prev,
+        ...newState,
+      }),
+    );
 
     // updateFormData("VFoldUseRandomly", newState.VFoldUseRandomly);
     // updateFormData("VFoldUsePartitioningVar", newState.VFoldUsePartitioningVar);

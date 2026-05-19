@@ -67,12 +67,27 @@ pub fn run_analysis(
         }
     }
 
+    let mut k_selection_chart = None;
+    if analysis_config.neighbors.auto_selection && !analysis_config.features.perform_selection {
+        logger.add_log("k_selection_cross_validation");
+        match core::calculate_k_selection_cross_validation(data, &analysis_config) {
+            Ok(selection) => {
+                analysis_config =
+                    core::config_with_selected_k(&analysis_config, selection.selected_k);
+                if config.output.k_selection_chart {
+                    k_selection_chart = Some(selection.chart);
+                }
+            }
+            Err(e) => {
+                error_collector.add_error("k_selection_cross_validation", &e);
+            }
+        }
+    }
+
     let target_is_categorical = core::preprocess_knn_data(data, &analysis_config)
         .ok()
         .map(|knn_data| knn_data.target_is_categorical())
         .unwrap_or(false);
-
-    let k_selection_chart = None;
 
     // Step 2: Nearest neighbors
     logger.add_log("nearest_neighbors");

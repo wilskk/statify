@@ -26,6 +26,7 @@ export function transformNearestNeighborResult(data: any): ResultJson {
 
   if (data.k_selection_chart?.candidates?.length) {
     tables.push(buildKSelectionChart(data.k_selection_chart));
+    tables.push(buildKSelectionErrorLog(data.k_selection_chart));
     const cvDebugTable = buildKSelectionCvDebug(data.k_selection_chart);
     if (cvDebugTable) {
       tables.push(cvDebugTable);
@@ -210,6 +211,48 @@ function buildKSelectionChart(chart: any): Table {
       ),
       selected: candidate.selected ? "Yes" : "",
     })),
+    note: `Metric: ${chart.metric_name ?? "validation_error"}; selected K = ${chart.selected_k}; best error = ${optionalNumber(chart.best_error ?? chart.bestError)}`,
+  };
+}
+
+function buildKSelectionErrorLog(chart: any): Table {
+  const rows = [];
+
+  for (const candidate of chart.candidates ?? []) {
+    const foldErrors = candidate.fold_errors ?? candidate.foldErrors ?? [];
+    const foldN = candidate.fold_n ?? candidate.foldN ?? [];
+    const foldTotalErrors =
+      candidate.fold_total_errors ?? candidate.foldTotalErrors ?? [];
+
+    for (let foldIndex = 0; foldIndex < foldErrors.length; foldIndex += 1) {
+      rows.push({
+        rowHeader: [String(candidate.k), String(foldIndex + 1)],
+        k: candidate.k,
+        fold: foldIndex + 1,
+        fold_n: formatDisplayNumber(Number(foldN[foldIndex] ?? 0)),
+        fold_error: optionalNumber(foldErrors[foldIndex]),
+        fold_total_error: optionalNumber(foldTotalErrors[foldIndex]),
+        average_error: optionalNumber(
+          candidate.average_error ?? candidate.averageError,
+        ),
+        selected: candidate.selected ? "Yes" : "",
+      });
+    }
+  }
+
+  return {
+    key: "k_selection_error_log",
+    title: "K Selection Error Log",
+    columnHeaders: [
+      { header: "K", key: "k" },
+      { header: "Fold", key: "fold" },
+      { header: "Fold N", key: "fold_n" },
+      { header: "Fold Error", key: "fold_error" },
+      { header: "Fold Total Error", key: "fold_total_error" },
+      { header: "Average Error", key: "average_error" },
+      { header: "Selected", key: "selected" },
+    ],
+    rows,
     note: `Metric: ${chart.metric_name ?? "validation_error"}; selected K = ${chart.selected_k}; best error = ${optionalNumber(chart.best_error ?? chart.bestError)}`,
   };
 }
