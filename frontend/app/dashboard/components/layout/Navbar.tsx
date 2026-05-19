@@ -107,6 +107,12 @@ const Navbar: React.FC = () => {
                   <MenubarItem onClick={() => openModal(ModalType.ModalBinaryLogistic)}>
                     Binary Logistic...
                   </MenubarItem>
+                  <MenubarItem onClick={() => openModal(ModalType.ModalMultinomialLogistic)}>
+                    Multinomial Logistic...
+                  </MenubarItem>
+                  <MenubarItem onClick={() => openModal(ModalType.ModalOrdinal)}>
+                    Ordinal...
+                  </MenubarItem>
                 </MenubarSubContent>
               </MenubarSub>
               <MenubarSub>
