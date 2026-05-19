@@ -1,3 +1,6 @@
+
+// perbaikan bisa (9/1/2026)
+
 use std::collections::HashMap;
 
 use nalgebra::DMatrix;
@@ -13,38 +16,25 @@ pub fn extract_data_matrix(
 ) -> Result<(DMatrix<f64>, Vec<String>), String> {
     // Get the target variables
     let var_names = if let Some(vars) = &config.main.target_var {
-        // If specific variables are provided, use them
-        let var_defs = if !data.target_data_defs.is_empty() && !data.target_data_defs[0].is_empty() {
-            &data.target_data_defs[0]
-        } else {
-            return Err("No variable definitions found".to_string());
-        };
-
-        // Map variable names (might be index-based in configs)
-        vars.iter()
-            .map(|v| {
-                if let Ok(idx) = v.parse::<usize>() {
-                    if idx < var_defs.len() { var_defs[idx].name.clone() } else { v.clone() }
-                } else {
-                    v.clone()
-                }
-            })
-            .collect::<Vec<String>>()
+        // If specific variables are provided, use them in the exact order specified
+        vars.clone()
     } else {
-        // Collect all numeric variables from all datasets
-        data.target_data
-            .iter()
-            .flat_map(|dataset| {
-                dataset.iter().flat_map(|record| {
-                    record.values
-                        .iter()
-                        .filter(|(_, value)| matches!(value, DataValue::Number(_)))
-                        .map(|(key, _)| key.clone())
-                })
-            })
-            .collect::<std::collections::HashSet<String>>()
-            .into_iter()
-            .collect::<Vec<String>>()
+        // Collect all numeric variables from all datasets while preserving order
+        let mut seen = std::collections::HashSet::new();
+        let mut ordered_vars = Vec::new();
+
+        for dataset in &data.target_data {
+            for record in dataset {
+                for (key, value) in &record.values {
+                    if matches!(value, DataValue::Number(_)) && !seen.contains(key) {
+                        seen.insert(key.clone());
+                        ordered_vars.push(key.clone());
+                    }
+                }
+            }
+        }
+
+        ordered_vars
     };
 
     if var_names.is_empty() {
@@ -149,25 +139,58 @@ pub fn extract_data_matrix(
         let mut row = Vec::new();
         let mut has_missing = false;
 
+        // for var_name in &var_names {
+        //     match record.values.get(var_name) {
+        //         Some(DataValue::Number(value)) => row.push(*value),
+        //         _ => {
+        //             has_missing = true;
+        //             if config.options.replace_mean {
+        //                 row.push(f64::NAN); // Will replace with mean later
+        //             } else {
+        //                 break; // Skip this record
+        //             }
+        //         }
+        //     }
+        // }
+
+        // if !has_missing || (has_missing && !config.options.exclude_list_wise) {
+        //     if row.len() == var_names.len() {
+        //         valid_records.push(row);
+        //     }
+        // }
+
+
+        // mulai perbaikan 21.1.2026
         for var_name in &var_names {
             match record.values.get(var_name) {
                 Some(DataValue::Number(value)) => row.push(*value),
                 _ => {
                     has_missing = true;
                     if config.options.replace_mean {
-                        row.push(f64::NAN); // Will replace with mean later
+                        row.push(f64::NAN); // Nanti diganti mean
+                    } else if config.options.exclude_pair_wise {
+                        // UPDATE PENTING:
+                        // Jika Pair-wise, kita JANGAN break. Kita masukkan NaN.
+                        // Nanti perhitungan matriks Korelasi harus pintar mengabaikan NaN ini.
+                        row.push(f64::NAN); 
                     } else {
-                        break; // Skip this record
+                        // Jika List-wise (default), kita skip row ini
+                        break; 
                     }
                 }
             }
         }
 
-        if !has_missing || (has_missing && !config.options.exclude_list_wise) {
+        // Update logika validasi row
+        // Jika Pair-wise, kita terima row meskipun has_missing (selama row length lengkap dengan NaN)
+        if !has_missing || config.options.exclude_pair_wise || (has_missing && config.options.replace_mean) {
             if row.len() == var_names.len() {
                 valid_records.push(row);
             }
         }
+        // akhir perbaikan 21.1.2026
+
+        
     }
 
     if valid_records.is_empty() {
@@ -243,5 +266,9 @@ pub fn filter_valid_cases(
         value_target_data: data.value_target_data.clone(),
         target_data_defs: data.target_data_defs.clone(),
         value_target_data_defs: data.value_target_data_defs.clone(),
+        // ===== TAMBAHAN (untuk total_variance_explained) =====
+        eigenvalues: None,
+        total_variance: None,
+        n_variables: 0,
     })
 }

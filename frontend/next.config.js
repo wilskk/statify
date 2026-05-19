@@ -1,3 +1,5 @@
+const path = require('path');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     reactStrictMode: true,
@@ -6,7 +8,20 @@ const nextConfig = {
         ignoreDuringBuilds: true,
     },
     distDir: process.env.NODE_ENV === 'production' ? '.next' : '.next-dev',
+    
     webpack: (config, { isServer }) => {
+        // Include root node_modules for npm workspaces hoisted packages
+        config.resolve.modules = [
+            path.resolve(__dirname, '..', 'node_modules'),
+            'node_modules',
+        ];
+
+        // The dashboard client layout bundle is large in development mode.
+        // Increase timeout to avoid false-positive ChunkLoadError on slower rebuilds.
+        if (!isServer) {
+            config.output.chunkLoadTimeout = 300000;
+        }
+
         if (!isServer) {
             config.module.rules.push({
                 test: /\.worker\.(js|ts)$/,
@@ -20,9 +35,29 @@ const nextConfig = {
             });
         }
 
+        // Add WASM file handling
+        config.experiments = {
+            ...config.experiments,
+            asyncWebAssembly: true,
+        };
+
         config.output.globalObject = 'self';
 
         return config;
+    },
+    // Required for SharedArrayBuffer which wasm-bindgen-rayon needs for
+    // multi-threaded WebAssembly.  Must be present on every response so the
+    // browser marks the context as "cross-origin isolated".
+    async headers() {
+        return [
+            {
+                source: "/(.*)",
+                headers: [
+                    { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+                    { key: "Cross-Origin-Embedder-Policy", value: "require-corp" },
+                ],
+            },
+        ];
     },
     async rewrites() {
         return [

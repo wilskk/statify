@@ -88,6 +88,13 @@ export enum ModalType {
     Autocorrelation = "Autocorrelation",
     UnitRootTest = "UnitRootTest",
     BoxJenkinsModel = "BoxJenkinsModel",
+    ARCH ="ARCH",
+    GARCH = "GARCH",
+    ECM = "ECM",
+    ARDL = "ARDL",
+    HomoscedasticityTest = "HomoscedasticityTest",
+    HeteroskedasticityModels = "HeteroskedasticityModels",
+    
 
     // Descriptive statistics modals
     Descriptives = "Descriptives",
@@ -116,6 +123,7 @@ export enum ModalType {
     // Classify modals
     ModalTwoStepCluster = "ModalTwoStepCluster",
     ModalKMeansCluster = "ModalKMeansCluster",
+    ModalKMedoidsCluster = "ModalKMedoidsCluster",
     ModalHierarchicalCluster = "ModalHierarchicalCluster",
     ModalClusterSilhouettes = "ModalClusterSilhouettes",
     ModalTree = "ModalTree",
@@ -282,6 +290,12 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
     [ModalType.Autocorrelation]: ModalCategory.TimeSeries,
     [ModalType.UnitRootTest]: ModalCategory.TimeSeries,
     [ModalType.BoxJenkinsModel]: ModalCategory.TimeSeries,
+    [ModalType.ARDL]: ModalCategory.TimeSeries,
+    [ModalType.ECM]: ModalCategory.TimeSeries,
+    [ModalType.ARCH]: ModalCategory.TimeSeries,
+    [ModalType.GARCH]: ModalCategory.TimeSeries,
+    [ModalType.HomoscedasticityTest]: ModalCategory.TimeSeries,
+    [ModalType.HeteroskedasticityModels]: ModalCategory.TimeSeries,
 
     // Descriptive statistics modals
     [ModalType.Descriptives]: ModalCategory.Analyze,
@@ -310,6 +324,7 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
     // Classify modals
     [ModalType.ModalTwoStepCluster]: ModalCategory.Analyze,
     [ModalType.ModalKMeansCluster]: ModalCategory.Analyze,
+    [ModalType.ModalKMedoidsCluster]: ModalCategory.Analyze,
     [ModalType.ModalHierarchicalCluster]: ModalCategory.Analyze,
     [ModalType.ModalClusterSilhouettes]: ModalCategory.Analyze,
     [ModalType.ModalTree]: ModalCategory.Analyze,
@@ -490,6 +505,12 @@ export function getModalTitle(type: ModalType): string {
         case ModalType.KRelatedSamples:
             return "K Related Samples Tests";
 
+        // Time Series
+        case ModalType.HomoscedasticityTest:
+            return "Homoscedasticity Test (ARCH-LM)";
+        case ModalType.HeteroskedasticityModels:
+            return "Heteroskedasticity Models";
+
         // General Linear Model modals
         case ModalType.ModalUnivariate:
             return "Univariate Analysis";
@@ -505,6 +526,8 @@ export function getModalTitle(type: ModalType): string {
             return "Two-Step Cluster";
         case ModalType.ModalKMeansCluster:
             return "K-Means Cluster";
+        case ModalType.ModalKMedoidsCluster:
+            return "K-Medoids Cluster";
         case ModalType.ModalHierarchicalCluster:
             return "Hierarchical Cluster";
         case ModalType.ModalClusterSilhouettes:

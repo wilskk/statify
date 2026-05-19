@@ -1,8 +1,11 @@
+// perbaikan BISA (9/1/2026)
 use serde::{ Deserialize, Serialize };
 use std::collections::HashMap;
 use nalgebra::DMatrix;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+
+// JSON untuk menampilkan output (untuk menyimpan output)
 pub struct FactorAnalysisResult {
     #[serde(rename = "descriptive_statistics")]
     pub descriptive_statistics: Option<Vec<DescriptiveStatistic>>,
@@ -12,6 +15,10 @@ pub struct FactorAnalysisResult {
     pub correlation_matrix: Option<CorrelationMatrix>,
     #[serde(rename = "inverse_correlation_matrix")]
     pub inverse_correlation_matrix: Option<InverseCorrelationMatrix>,
+    #[serde(rename = "covariance_matrix")]
+    pub covariance_matrix: Option<CovarianceMatrix>,
+    #[serde(rename = "inverse_covariance_matrix")]
+    pub inverse_covariance_matrix: Option<InverseCovarianceMatrix>,
     #[serde(rename = "kmo_bartletts_test")]
     pub kmo_bartletts_test: Option<KMOBartlettsTest>,
     #[serde(rename = "anti_image_matrices")]
@@ -24,6 +31,8 @@ pub struct FactorAnalysisResult {
     pub component_matrix: Option<ComponentMatrix>,
     #[serde(rename = "reproduced_correlations")]
     pub reproduced_correlations: Option<ReproducedCorrelations>,
+    #[serde(rename = "reproduced_covariances")]
+    pub reproduced_covariances: Option<ReproducedCovariances>,
     #[serde(rename = "rotated_component_matrix")]
     pub rotated_component_matrix: Option<RotatedComponentMatrix>,
     #[serde(rename = "component_transformation_matrix")]
@@ -32,6 +41,18 @@ pub struct FactorAnalysisResult {
     pub component_score_coefficient_matrix: Option<ComponentScoreCoefficientMatrix>,
     #[serde(rename = "component_score_covariance_matrix")]
     pub component_score_covariance_matrix: Option<ComponentScoreCovarianceMatrix>,
+    /// Menyimpan nilai skor faktor per responden (misal: FAC1_1, FAC2_1)
+    /// Key: Nama Variabel Baru (String), Value: Array nilai untuk semua baris (Vec<f64>)
+    #[serde(rename = "factor_scores")]
+    pub factor_scores: Option<HashMap<String, Vec<f64>>>,
+    #[serde(rename = "pattern_matrix")]
+    pub pattern_matrix: Option<PatternMatrix>,
+    #[serde(rename = "structure_matrix")]
+    pub structure_matrix: Option<StructureMatrix>,
+    #[serde(rename = "component_correlation_matrix")]
+    pub component_correlation_matrix: Option<ComponentCorrelationMatrix>,
+    #[serde(rename = "loading_plot")]
+    pub loading_plot: Option<LoadingPlot>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -56,11 +77,31 @@ pub struct CorrelationMatrix {
     pub correlations: HashMap<String, HashMap<String, f64>>,
     #[serde(rename = "sig_values")]
     pub sig_values: HashMap<String, HashMap<String, f64>>,
+    #[serde(rename = "variable_order")]
+    pub variable_order: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InverseCorrelationMatrix {
     pub inverse_correlations: HashMap<String, HashMap<String, f64>>,
+    #[serde(rename = "variable_order")]
+    pub variable_order: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CovarianceMatrix {
+    pub covariances: HashMap<String, HashMap<String, f64>>,
+    #[serde(rename = "variable_order")]
+    pub variable_order: Vec<String>,
+    pub determinant: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct InverseCovarianceMatrix {
+    pub inverse_covariances: HashMap<String, HashMap<String, f64>>,
+    #[serde(rename = "variable_order")]
+    pub variable_order: Vec<String>,
+    pub determinant: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -79,23 +120,51 @@ pub struct AntiImageMatrices {
     pub anti_image_covariance: HashMap<String, HashMap<String, f64>>,
     #[serde(rename = "anti_image_correlation")]
     pub anti_image_correlation: HashMap<String, HashMap<String, f64>>,
+    #[serde(rename = "variable_order")]
+    pub variable_order: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Communalities {
-    pub initial: HashMap<String, f64>,
+    // Varians Mentah (Variabel jika Kovariansi)
+    pub raw_initial: HashMap<String, f64>,
+
+    // Varians Tereskalasi (seharusnya selalu bernilai 1.0)
+    pub rescaled_initial: HashMap<String, f64>,
+    
+    // Extraction values (raw untuk covariance, nilai langsung untuk correlation)
     pub extraction: HashMap<String, f64>,
+    
+    // Rescaled Extraction values (untuk covariance mode)
+    // Ini adalah extraction / variance untuk setiap variabel
+    #[serde(rename = "rescaled_extraction")]
+    pub rescaled_extraction: HashMap<String, f64>,
+    
+    #[serde(rename = "variable_order")]
+    pub variable_order: Vec<String>,
+
+    // Track which matrix type was used for extraction
+    #[serde(rename = "extraction_matrix_type")]
+    pub extraction_matrix_type: String, // "correlation" or "covariance"
+}
+
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TotalVarianceBlock {
+    pub label: String, // "Component" | "Raw" | "Rescaled"
+    pub initial: Vec<TotalVarianceComponent>,
+    pub extraction: Vec<TotalVarianceComponent>,
+    pub rotation: Option<Vec<TotalVarianceComponent>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TotalVarianceExplained {
-    #[serde(rename = "initial_eigenvalues")]
-    pub initial_eigenvalues: Vec<TotalVarianceComponent>,
-    #[serde(rename = "extraction_sums")]
-    pub extraction_sums: Vec<TotalVarianceComponent>,
-    #[serde(rename = "rotation_sums")]
-    pub rotation_sums: Vec<TotalVarianceComponent>,
+    pub blocks: Vec<TotalVarianceBlock>,
+
+    #[serde(rename = "extraction_matrix_type")]
+    pub extraction_matrix_type: String, // "correlation" | "covariance"
 }
+
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TotalVarianceComponent {
@@ -109,17 +178,31 @@ pub struct TotalVarianceComponent {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ComponentMatrix {
     pub components: HashMap<String, Vec<f64>>,
+    #[serde(rename = "variable_order")]
+    pub variable_order: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ReproducedCorrelations {
     pub reproduced_correlation: HashMap<String, HashMap<String, f64>>,
     pub residual: HashMap<String, HashMap<String, f64>>,
+    #[serde(rename = "variable_order")]
+    pub variable_order: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ReproducedCovariances {
+    pub reproduced_covariance: HashMap<String, HashMap<String, f64>>,
+    pub residual: HashMap<String, HashMap<String, f64>>,
+    #[serde(rename = "variable_order")]
+    pub variable_order: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RotatedComponentMatrix {
     pub components: HashMap<String, Vec<f64>>,
+    #[serde(rename = "variable_order")]
+    pub variable_order: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -130,6 +213,8 @@ pub struct ComponentTransformationMatrix {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ComponentScoreCoefficientMatrix {
     pub components: HashMap<String, Vec<f64>>,
+    #[serde(rename = "variable_order")]
+    pub variable_order: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -151,4 +236,39 @@ pub struct RotationResult {
     pub rotated_loadings: DMatrix<f64>,
     pub transformation_matrix: DMatrix<f64>,
     pub factor_correlations: Option<DMatrix<f64>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PatternMatrix {
+    pub components: HashMap<String, Vec<f64>>,
+    #[serde(rename = "variable_order")]
+    pub variable_order: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct StructureMatrix {
+    pub components: HashMap<String, Vec<f64>>,
+    #[serde(rename = "variable_order")]
+    pub variable_order: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ComponentCorrelationMatrix {
+    pub correlations: Vec<Vec<f64>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LoadingPlot {
+    /// Label sumbu (misal: ["Component 1", "Component 2", "Component 3"])
+    pub axis_labels: Vec<String>,
+    /// Data titik variabel
+    pub points: Vec<LoadingPoint>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LoadingPoint {
+    /// Nama variabel (misal: "VAR0001")
+    pub label: String,
+    /// Koordinat: [x, y] atau [x, y, z]
+    pub coordinates: Vec<f64>, 
 }

@@ -18,6 +18,7 @@ export interface ColumnHeader {
     header: string;
     key?: string;
     children?: ColumnHeader[];
+    width?: string | number;
 }
 
 export interface Row {

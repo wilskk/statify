@@ -427,11 +427,19 @@ const HamburgerMenu: React.FC = () => {
                         <DrawerMenuItem disabled>
                           Discriminant...
                         </DrawerMenuItem>
-                        <DrawerMenuItem disabled>
-                          Cluster (Hierarchical)...
+                      </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="clustering" className="border-0">
+                      <NestedAccordionTrigger>Clustering</NestedAccordionTrigger>
+                      <AccordionContent className="flex flex-col space-y-0.5 pl-3 pr-0 pb-1 pt-0 bg-accent">
+                        <DrawerMenuItem onClick={() => openModal(ModalType.ModalHierarchicalCluster)}>
+                          Hierarchical Cluster...
                         </DrawerMenuItem>
-                        <DrawerMenuItem disabled>
-                          Cluster (K-Means)...
+                        <DrawerMenuItem onClick={() => openModal(ModalType.ModalKMeansCluster)}>
+                          K-Means Cluster...
+                        </DrawerMenuItem>
+                        <DrawerMenuItem onClick={() => openModal(ModalType.ModalKMedoidsCluster)}>
+                          K-Medoids Cluster...
                         </DrawerMenuItem>
                       </AccordionContent>
                     </AccordionItem>
@@ -617,6 +625,27 @@ const HamburgerMenu: React.FC = () => {
                         >
                           Box-Jenkins Model
                         </DrawerMenuItem>
+                        <DrawerMenuItem
+                          onClick={() => openModal(ModalType.ARDL)}
+                        >
+                          Autoregressive Distributed Lag
+                        </DrawerMenuItem>
+                        <DrawerMenuItem
+                          onClick={() => openModal(ModalType.ECM)}
+                        >
+                          Error Correction Model
+                        </DrawerMenuItem>
+                        <DrawerMenuItem
+                          onClick={() => openModal(ModalType.HomoscedasticityTest)}
+                        >
+                          Homoscedasticity Test (ARCH-LM)
+                        </DrawerMenuItem>
+                        <DrawerMenuItem
+                          onClick={() => openModal(ModalType.HeteroskedasticityModels)}
+                        >
+                          Heteroscedasticity Models (ARCH/GARCH)
+                        </DrawerMenuItem>
+
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>

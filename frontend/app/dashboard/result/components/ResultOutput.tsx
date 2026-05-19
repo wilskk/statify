@@ -5,6 +5,10 @@ import { Card } from "@/components/ui/card";
 import dynamic from "next/dynamic";
 import { useResultStore } from "@/stores/useResultStore";
 import GeneralChartContainer from "@/components/Output/Chart/GeneralChartContainer";
+const KMedoidsOutputRenderer = dynamic(
+  () => import("@/components/Modals/Analyze/Clustering/k-medoids-cluster/components/OutputRenderer").then(m => ({ default: m.KMedoidsOutputRenderer })),
+  { ssr: false, loading: () => <div className="p-4 text-sm text-muted-foreground">Loading...</div> }
+);
 const TiptapEditor = dynamic(
   () => import("@/components/Output/Editor/TiptapEditor"),
   {
@@ -16,6 +20,7 @@ const TiptapEditor = dynamic(
 );
 import { Edit, ChevronDown, ChevronUp } from "lucide-react";
 import TextRenderer from "@/components/Output/text/text-renderer";
+import { getStatisticsComponent } from "@/components/Output/Statistics";
 
 const ResultOutput: React.FC = () => {
   const { logs, updateStatistic } = useResultStore();
@@ -167,6 +172,16 @@ const ResultOutput: React.FC = () => {
                               data-testid={`result-output-${analytic.id}-${stat.id}`}
                             >
                               {(() => {
+                                // Check if there is a specific component for this statistic
+                                const SpecificComponent = getStatisticsComponent(stat.components);
+                                if (SpecificComponent) {
+                                  return (
+                                    <div data-testid={`result-component-${stat.id}`}>
+                                      <SpecificComponent data={stat.output_data} />
+                                    </div>
+                                  );
+                                }
+
                                 let parsedData;
                                 try {
                                   parsedData =
@@ -239,6 +254,15 @@ const ResultOutput: React.FC = () => {
                                   return (
                                     <div data-testid={`result-text-${stat.id}`}>
                                       <TextRenderer textData={parsedData.text} />
+                                    </div>
+                                  );
+                                } else if (parsedData.customRenderer === "KMedoidsOutputRenderer" && parsedData.data) {
+                                  return (
+                                    <div data-testid={`result-kmedoids-${stat.id}`}>
+                                      <KMedoidsOutputRenderer
+                                        output={parsedData.data}
+                                        variables={parsedData.data.variables ?? []}
+                                      />
                                     </div>
                                   );
                                 } else {

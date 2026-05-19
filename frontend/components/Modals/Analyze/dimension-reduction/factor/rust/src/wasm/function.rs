@@ -1,3 +1,9 @@
+
+// perbaikan 15/1/2026
+// perbaikan bisa (9/1/2026)
+
+// Peran function.rs itu orchestrator / pipeline, bukan formatter dan bukan UI adapter.
+
 use wasm_bindgen::prelude::*;
 
 use crate::models::{
@@ -46,24 +52,26 @@ pub fn run_analysis(
         }
     }
 
-    // Step 2: Calculate Correlation/Covariance Matrix based on Analyze selection
+    // Step 2: Calculate Correlation Matrix (always calculated)
     let mut correlation_matrix = None;
-    if config.extraction.correlation {
-        executed_functions.push("calculate_correlation_matrix".to_string());
-        match core::calculate_correlation_matrix(&filtered_data, config) {
-            Ok(matrix) => {
-                correlation_matrix = Some(matrix);
-            }
-            Err(e) => {
-                error_collector.add_error("calculate_correlation_matrix", &e);
-                // Continue execution despite errors for non-critical functions
-            }
+    executed_functions.push("calculate_correlation_matrix".to_string());
+    match core::calculate_correlation_matrix(&filtered_data, config) {
+        Ok(matrix) => {
+            correlation_matrix = Some(matrix);
         }
-    } else if config.extraction.covariance {
+        Err(e) => {
+            error_collector.add_error("calculate_correlation_matrix", &e);
+            // Continue execution despite errors for non-critical functions
+        }
+    }
+
+    // Step 2b: Calculate Covariance Matrix if selected
+    let mut covariance_matrix = None;
+    if config.extraction.covariance {
         executed_functions.push("calculate_covariance_matrix".to_string());
         match core::calculate_covariance_matrix(&filtered_data, config) {
             Ok(matrix) => {
-                correlation_matrix = Some(matrix); // Store in the same field
+                covariance_matrix = Some(matrix);
             }
             Err(e) => {
                 error_collector.add_error("calculate_covariance_matrix", &e);
@@ -72,9 +80,9 @@ pub fn run_analysis(
         }
     }
 
-    // Step 3: Calculate Inverse Matrix if requested
+    // Step 3: Calculate Inverse Correlation Matrix if requested
     let mut inverse_correlation_matrix = None;
-    if config.descriptives.inverse {
+    if config.descriptives.inverse && config.extraction.correlation {
         executed_functions.push("calculate_inverse_correlation_matrix".to_string());
         match core::calculate_inverse_correlation_matrix(&filtered_data, config) {
             Ok(matrix) => {
@@ -82,6 +90,21 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("calculate_inverse_correlation_matrix", &e);
+                // Continue execution despite errors for non-critical functions
+            }
+        }
+    }
+
+    // Step 3b: Calculate Inverse Covariance Matrix if requested
+    let mut inverse_covariance_matrix = None;
+    if config.descriptives.inverse && config.extraction.covariance {
+        executed_functions.push("calculate_inverse_covariance_matrix".to_string());
+        match core::calculate_inverse_covariance_matrix(&filtered_data, config) {
+            Ok(matrix) => {
+                inverse_covariance_matrix = Some(matrix);
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_inverse_covariance_matrix", &e);
                 // Continue execution despite errors for non-critical functions
             }
         }
@@ -129,9 +152,8 @@ pub fn run_analysis(
 
     // Step 7: Calculate Total Variance Explained
     executed_functions.push("calculate_total_variance_explained".to_string());
-    let total_variance_explained = match
-        core::calculate_total_variance_explained(&filtered_data, config)
-    {
+    let total_variance_explained =
+    match core::calculate_total_variance_explained_from_data(&filtered_data, config) {
         Ok(variance) => Some(variance),
         Err(e) => {
             error_collector.add_error("calculate_total_variance_explained", &e);
@@ -164,17 +186,31 @@ pub fn run_analysis(
         }
     }
 
-    // Step 10: Calculate Reproduced Correlations if requested
+    // Step 10: Calculate Reproduced Correlations or Covariances based on extraction type
     let mut reproduced_correlations = None;
+    let mut reproduced_covariances = None;
     if config.descriptives.reproduced {
-        executed_functions.push("calculate_reproduced_correlations".to_string());
-        match core::calculate_reproduced_correlations(&filtered_data, config) {
-            Ok(correlations) => {
-                reproduced_correlations = Some(correlations);
+        if config.extraction.correlation {
+            executed_functions.push("calculate_reproduced_correlations".to_string());
+            match core::calculate_reproduced_correlations(&filtered_data, config) {
+                Ok(correlations) => {
+                    reproduced_correlations = Some(correlations);
+                }
+                Err(e) => {
+                    error_collector.add_error("calculate_reproduced_correlations", &e);
+                    // Continue execution despite errors for non-critical functions
+                }
             }
-            Err(e) => {
-                error_collector.add_error("calculate_reproduced_correlations", &e);
-                // Continue execution despite errors for non-critical functions
+        } else if config.extraction.covariance {
+            executed_functions.push("calculate_reproduced_covariances".to_string());
+            match core::calculate_reproduced_covariances(&filtered_data, config) {
+                Ok(covariances) => {
+                    reproduced_covariances = Some(covariances);
+                }
+                Err(e) => {
+                    error_collector.add_error("calculate_reproduced_covariances", &e);
+                    // Continue execution despite errors for non-critical functions
+                }
             }
         }
     }
@@ -209,14 +245,81 @@ pub fn run_analysis(
         }
     }
 
-    // Step 13: Calculate Component Score Coefficient Matrix if scores are saved
+    // Step 12a: Calculate Pattern Matrix if oblique rotation is performed
+    let mut pattern_matrix = None;
+    if !config.rotation.none && config.rotation.rotated_sol && (config.rotation.oblimin || config.rotation.promax) {
+        executed_functions.push("calculate_pattern_matrix".to_string());
+        match core::calculate_pattern_matrix(&filtered_data, config) {
+            Ok(matrix) => {
+                pattern_matrix = Some(matrix);
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_pattern_matrix", &e);
+                // Continue execution despite errors for non-critical functions
+            }
+        }
+    }
+
+    // Step 12b: Calculate Structure Matrix if oblique rotation is performed
+    let mut structure_matrix = None;
+    if !config.rotation.none && config.rotation.rotated_sol && (config.rotation.oblimin || config.rotation.promax) {
+        executed_functions.push("calculate_structure_matrix".to_string());
+        match core::calculate_structure_matrix(&filtered_data, config) {
+            Ok(matrix) => {
+                structure_matrix = Some(matrix);
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_structure_matrix", &e);
+                // Continue execution despite errors for non-critical functions
+            }
+        }
+    }
+
+    // Step 12c: Calculate Component Correlation Matrix if oblique rotation is performed
+    let mut component_correlation_matrix = None;
+    if !config.rotation.none && config.rotation.rotated_sol && (config.rotation.oblimin || config.rotation.promax) {
+        executed_functions.push("calculate_component_correlation_matrix".to_string());
+        match core::calculate_component_correlation_matrix(&filtered_data, config) {
+            Ok(matrix) => {
+                component_correlation_matrix = Some(matrix);
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_component_correlation_matrix", &e);
+                // Continue execution despite errors for non-critical functions
+            }
+        }
+    }
+
+    // Inisialisasi variabel untuk menampung skor akhir (nilai per responden)
+    let mut factor_scores = None;
+
+    // Step 13: Calculate Component Score Coefficient Matrix AND Calculate Actual Scores
     let mut component_score_coefficient_matrix = None;
     if config.scores.save_var {
         executed_functions.push("calculate_component_score_coefficient_matrix".to_string());
         match core::calculate_component_score_coefficient_matrix(&filtered_data, config) {
             Ok(matrix) => {
+                // Penting: Kita clone matrix ini agar bisa digunakan untuk perhitungan skor
+                // sebelum kepemilikannya (ownership) dipindahkan ke variabel component_score_coefficient_matrix
+                let matrix_for_calculation = matrix.clone();
+
+                // 1. Simpan Matriks Koefisien untuk Laporan
                 component_score_coefficient_matrix = Some(matrix);
+
+                // 2. Hitung Skor Faktor Aktual (Data Baru) menggunakan Matriks Koefisien tadi
+                executed_functions.push("calculate_factor_scores".to_string());
+                match core::calculate_factor_scores(&filtered_data, config, &matrix_for_calculation) {
+                    Ok(scores) => {
+                        factor_scores = Some(scores);
+                        web_sys::console::log_1(&"Factor scores calculated successfully".into());
+                    }
+
+                    Err(e) => {
+                        error_collector.add_error("calculate_factor_scores", &e);
+                    }
+                }
             }
+
             Err(e) => {
                 error_collector.add_error("calculate_component_score_coefficient_matrix", &e);
                 // Continue execution despite errors for non-critical functions
@@ -239,37 +342,46 @@ pub fn run_analysis(
         }
     }
 
-    // Step 15: Generate Loading Plots if requested
-    if config.rotation.loading_plot {
-        executed_functions.push("generate_loading_plots".to_string());
-        match core::generate_loading_plots(&filtered_data, config) {
-            Ok(_) => {}
-            Err(e) => {
-                error_collector.add_error("generate_loading_plots", &e);
-                // Continue execution despite errors for non-critical functions
-            }
+
+    let mut result = FactorAnalysisResult {
+    descriptive_statistics,
+    scree_plot,
+    correlation_matrix,
+    inverse_correlation_matrix,
+    covariance_matrix,
+    inverse_covariance_matrix,
+    kmo_bartletts_test,
+    anti_image_matrices,
+    communalities,
+    total_variance_explained,
+    component_matrix,
+    reproduced_correlations,
+    reproduced_covariances,
+    rotated_component_matrix,
+    component_transformation_matrix,
+    pattern_matrix,
+    structure_matrix,
+    component_correlation_matrix,
+    component_score_coefficient_matrix,
+    component_score_covariance_matrix,
+    factor_scores,
+    loading_plot: None,
+};
+
+if config.rotation.loading_plot {
+    executed_functions.push("generate_loading_plots".to_string());
+    match core::generate_loading_plots(&result) {
+        Ok(plot) => {
+            result.loading_plot = Some(plot);
+        }
+        Err(e) => {
+            error_collector.add_error("generate_loading_plots", &e);
         }
     }
+}
 
-    // Create the final result
-    let result = FactorAnalysisResult {
-        descriptive_statistics,
-        scree_plot,
-        correlation_matrix,
-        inverse_correlation_matrix,
-        kmo_bartletts_test,
-        anti_image_matrices,
-        communalities,
-        total_variance_explained,
-        component_matrix,
-        reproduced_correlations,
-        rotated_component_matrix,
-        component_transformation_matrix,
-        component_score_coefficient_matrix,
-        component_score_covariance_matrix,
-    };
+Ok(Some(result))
 
-    Ok(Some(result))
 }
 
 pub fn get_results(result: &Option<FactorAnalysisResult>) -> Result<JsValue, JsValue> {
@@ -279,8 +391,8 @@ pub fn get_results(result: &Option<FactorAnalysisResult>) -> Result<JsValue, JsV
     }
 }
 
-pub fn get_formatted_results(result: &Option<FactorAnalysisResult>) -> Result<JsValue, JsValue> {
-    format_result(result)
+pub fn get_formatted_results(result: &Option<FactorAnalysisResult>, config: &FactorAnalysisConfig) -> Result<JsValue, JsValue> {
+    format_result(result, config)
 }
 
 pub fn get_all_errors(error_collector: &ErrorCollector) -> JsValue {
