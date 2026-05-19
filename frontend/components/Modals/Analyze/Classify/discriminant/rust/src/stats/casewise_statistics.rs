@@ -19,29 +19,14 @@ pub fn calculate_casewise_statistics(
 ) -> Result<CasewiseStatistics, String> {
     web_sys::console::log_1(&"Executing calculate_casewise_statistics".into());
 
-    // Debug: Log full classify config
-    web_sys::console::log_1(&format!(
-        "[Casewise] Full classify config: all_group_equal={}, group_size={}, case={}, limit={}, limit_value={:?}, summary={}, leave={}",
-        config.classify.all_group_equal,
-        config.classify.group_size,
-        config.classify.case,
-        config.classify.limit,
-        config.classify.limit_value,
-        config.classify.summary,
-        config.classify.leave
-    ).into());
-
     if !config.classify.case {
-        web_sys::console::log_1(&"[Casewise] case is FALSE - returning early!".into());
         return Err("Casewise statistics not requested in configuration".to_string());
     }
-
-    web_sys::console::log_1(&"[Casewise] case is TRUE - proceeding with calculation".into());
 
     let dataset = extract_analyzed_dataset(data, config)?;
     let grouping_var = &config.main.grouping_variable;
 
-    // Filter grouping variable dan gunakan variabel Stepwise (Menjawab Poin 3 Claude)
+    // Gunakan variabel hasil stepwise jika diaktifkan
     let variables_to_use: Vec<String> = if config.main.stepwise {
         get_stepwise_selected_variables(data, config)?
     } else {
@@ -80,7 +65,6 @@ pub fn calculate_casewise_statistics(
 
     let prior_probs = calculate_prior_probabilities(data, config)?;
 
-    // Pengamanan Limit agar tidak pernah bernilai 0
     let limit = if config.classify.limit {
         let val = config.classify.limit_value.unwrap_or(i32::MAX);
         if val <= 0 {
@@ -95,29 +79,34 @@ pub fn calculate_casewise_statistics(
     let mut case_idx = 0;
     let mut processed_cases = 0;
 
-    for group_idx in 0..data.group_data.len() {
-        for case_record in data.group_data[group_idx].iter() {
+    // [PERBAIKAN UTAMA]: Ekstrak data langsung dari `dataset` yang sudah terjamin matang (f64).
+    // Loop langsung berdasarkan grup yang ada di dataset untuk mencegah mismatch data.
+    for group_name in &dataset.group_labels {
+        let n_cases = dataset
+            .group_data
+            .get(&variables_to_use[0])
+            .and_then(|g| g.get(group_name))
+            .map(|v| v.len())
+            .unwrap_or(0);
+
+        for i in 0..n_cases {
             if processed_cases >= limit {
                 break;
             }
 
             case_idx += 1;
+            processed_cases += 1;
 
-            // [PERBAIKAN 1]: Mengambil grup langsung dari urutan dataset
-            let actual_group_name = dataset
-                .group_labels
-                .get(group_idx)
-                .cloned()
-                .unwrap_or_else(|| format!("Group {}", group_idx + 1));
-
-            // [PERBAIKAN 2 - SANGAT KRUSIAL]: Bulletproof extraction!
-            // Tidak akan ada lagi baris data yang di-skip/continue diam-diam.
+            // Pasti terisi angka aslinya, tidak akan lagi bernilai 0.0 semua!
             let mut case_values = Vec::with_capacity(variables_to_use.len());
             for var in &variables_to_use {
-                case_values.push(case_record.values.get(var).and_then(|v| match v {
-                    crate::models::data::DataValue::Number(n) => Some(*n),
-                    _ => None,
-                }).unwrap_or(0.0));
+                let val = dataset
+                    .group_data
+                    .get(var)
+                    .and_then(|g| g.get(group_name))
+                    .map(|v| v[i])
+                    .unwrap_or(0.0);
+                case_values.push(val);
             }
 
             let disc_scores = calculate_discriminant_scores(
@@ -131,23 +120,27 @@ pub fn calculate_casewise_statistics(
                 if let Some(scores) =
                     discriminant_scores.get_mut(&format!("Function {}", func_idx + 1))
                 {
-                    scores.push(*score);
+                    // Pastikan tidak ada NaN yang lolos ke frontend
+                    scores.push(if score.is_nan() { 0.0 } else { *score });
                 }
             }
 
             let mut group_probs = Vec::new();
             let mut group_distances = Vec::new();
 
-            for (g_idx, group_name) in dataset.group_labels.iter().enumerate() {
-                // [PERBAIKAN 3]: Mahalanobis distance di Discriminant Space = Euclidean distance
-                // Jauh lebih akurat, ringan, dan bebas dari error singular matrix!
+            for (g_idx, target_group) in dataset.group_labels.iter().enumerate() {
+                // Jarak Mahalanobis di dalam ruang Kanonikal adalah persis Jarak Euclidean
                 let mut d2 = 0.0;
-                if let Some(centroid) = canonical_functions.function_at_centroids.get(group_name) {
+                if let Some(centroid) = canonical_functions.function_at_centroids.get(target_group)
+                {
                     for (func_idx, &score) in disc_scores.iter().enumerate() {
                         if func_idx < centroid.len() {
                             d2 += (score - centroid[func_idx]).powi(2);
                         }
                     }
+                }
+                if d2.is_nan() {
+                    d2 = f64::MAX;
                 }
                 group_distances.push((g_idx, d2));
 
@@ -158,11 +151,10 @@ pub fn calculate_casewise_statistics(
                 };
 
                 let log_prior = prior.ln();
-                let log_prob = log_prior - 0.5 * d2; // Formula ini sudah 100% benar (Poin 2 Claude keliru)
+                let log_prob = log_prior - 0.5 * d2;
                 group_probs.push((g_idx, log_prob));
             }
 
-            // Urutkan probabilitas dari yang tertinggi ke terendah
             group_probs
                 .sort_by(|(_, a), (_, b)| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
 
@@ -198,10 +190,9 @@ pub fn calculate_casewise_statistics(
                 .1;
 
             case_number.push(case_idx);
-            actual_group.push(actual_group_name);
+            actual_group.push(group_name.clone());
             predicted_group.push(dataset.group_labels[highest.0].clone());
 
-            // [PERBAIKAN 4 (Saran Claude Poin 4)]: Mengonversi Jarak Mahalanobis murni ke P-Value (Chi-Square)
             let p_val_highest = calculate_p_value_from_chi_square(highest_dist, num_functions);
             let p_val_second = calculate_p_value_from_chi_square(second_dist, num_functions);
 
@@ -216,12 +207,6 @@ pub fn calculate_casewise_statistics(
             second_p_g_equals_d.push(second.1);
             second_squared_mahalanobis_distance.push(second_dist);
             second_group.push(dataset.group_labels[second.0].clone());
-
-            processed_cases += 1;
-        }
-
-        if processed_cases >= limit {
-            break;
         }
     }
 
