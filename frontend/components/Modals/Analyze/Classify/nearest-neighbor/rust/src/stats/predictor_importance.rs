@@ -3,10 +3,7 @@ use std::collections::HashMap;
 use crate::models::{
     config::KnnConfig,
     data::AnalysisData,
-    result::{
-        FeatureWeightDetail, PredictorImportance, PredictorImportanceEntry,
-        PredictorWeightExpansionDebug,
-    },
+    result::{PredictorImportance, PredictorImportanceEntry},
 };
 
 use super::{
@@ -109,7 +106,7 @@ pub fn calculate_predictor_importance(
         entry.rank = index + 1;
     }
 
-    let (expanded_feature_weights, expansion_debug, final_expanded_feature_weights) =
+    let expanded_feature_weights =
         expand_predictor_weights(&knn_data.features, &predictors, &predictor_weights);
 
     Ok(PredictorImportanceResult {
@@ -118,9 +115,6 @@ pub fn calculate_predictor_importance(
             target: config.main.target_var.clone().unwrap_or_default(),
             entries,
             k,
-            regression_base_prediction_debug: None,
-            weight_expansion_debug: Some(expansion_debug),
-            final_expanded_feature_weights: Some(final_expanded_feature_weights),
         },
         expanded_feature_weights,
     })
@@ -130,47 +124,13 @@ fn expand_predictor_weights(
     expanded_features: &[String],
     predictors: &[String],
     predictor_weights: &HashMap<String, f64>,
-) -> (
-    Vec<f64>,
-    Vec<PredictorWeightExpansionDebug>,
-    Vec<FeatureWeightDetail>,
-) {
+) -> Vec<f64> {
     let fallback_weight = if predictors.is_empty() {
         1.0
     } else {
         1.0 / predictors.len() as f64
     };
     let mut expanded_weights = Vec::with_capacity(expanded_features.len());
-    let mut final_details = Vec::with_capacity(expanded_features.len());
-    let mut expansion_debug = Vec::new();
-
-    for predictor in predictors {
-        let normalized_predictor_weight = predictor_weights
-            .get(predictor)
-            .copied()
-            .unwrap_or(fallback_weight);
-        let mut encoded_columns = Vec::new();
-        let mut encoded_column_weights = Vec::new();
-
-        for expanded_feature in expanded_features {
-            if expanded_feature == predictor
-                || expanded_feature.starts_with(&format!("{predictor}="))
-            {
-                encoded_columns.push(expanded_feature.clone());
-                encoded_column_weights.push(FeatureWeightDetail {
-                    feature: expanded_feature.clone(),
-                    weight: normalized_predictor_weight,
-                });
-            }
-        }
-
-        expansion_debug.push(PredictorWeightExpansionDebug {
-            predictor: predictor.clone(),
-            normalized_predictor_weight,
-            encoded_columns,
-            encoded_column_weights,
-        });
-    }
 
     for expanded_feature in expanded_features {
         let predictor = predictors.iter().find(|predictor| {
@@ -181,11 +141,7 @@ fn expand_predictor_weights(
             .unwrap_or(fallback_weight);
 
         expanded_weights.push(weight);
-        final_details.push(FeatureWeightDetail {
-            feature: expanded_feature.clone(),
-            weight,
-        });
     }
 
-    (expanded_weights, expansion_debug, final_details)
+    expanded_weights
 }

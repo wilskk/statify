@@ -131,7 +131,6 @@ fn build_points(
                     .get(neighbor_idx)
                     .map(|idx| idx + 1),
                 distance,
-                distance_debug: None,
             })
             .collect();
 

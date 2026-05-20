@@ -26,6 +26,16 @@ type VariableDefinitionPayload = {
   [key: string]: unknown;
 };
 
+const hiddenViewerOutputKeys = new Set([
+  "feature_selection_summary",
+  "feature_selection_steps",
+  "k_feature_selection_summary",
+  "k_selection_chart",
+  "k_selection_error_log",
+  "prediction_results",
+  "neighbor_details",
+]);
+
 function isResultJson(result: unknown): result is ResultJson {
   return (
     typeof result === "object" &&
@@ -36,6 +46,13 @@ function isResultJson(result: unknown): result is ResultJson {
 
 function hasWorkerErrors(errors: unknown): errors is string {
   return typeof errors === "string" && !errors.includes("No errors occurred.");
+}
+
+function filterViewerOutput(result: ResultJson): ResultJson {
+  return {
+    ...result,
+    tables: result.tables.filter((table) => !hiddenViewerOutputKeys.has(table.key)),
+  };
 }
 
 function normalizeKnnVarDefsForWorker(defs: unknown[][]) {
@@ -54,6 +71,29 @@ function normalizeKnnVarDefsForWorker(defs: unknown[][]) {
       };
     }),
   );
+}
+
+function withInternalChartOutputs(configData: KNNAnalysisType["configData"]) {
+  const needsKSelectionErrorChart =
+    configData.neighbors.AutoSelection && !configData.features.PerformSelection;
+  const needsKAndPredictorSelectionChart =
+    configData.neighbors.AutoSelection && configData.features.PerformSelection;
+
+  if (!needsKSelectionErrorChart && !needsKAndPredictorSelectionChart) {
+    return configData;
+  }
+
+  return {
+    ...configData,
+    output: {
+      ...configData.output,
+      KSelectionChart:
+        configData.output.KSelectionChart || needsKSelectionErrorChart,
+      FeatureSelectionSummary:
+        configData.output.FeatureSelectionSummary ||
+        needsKAndPredictorSelectionChart,
+    },
+  };
 }
 
 export async function analyzeKNN({
@@ -114,6 +154,8 @@ export async function analyzeKNN({
     getVarDefs(variables, CaseIdentifierVariable),
   );
 
+  const workerConfigData = withInternalChartOutputs(configData);
+
   const worker = new Worker(
     "/workers/Classify/NearestNeighbor/nearest-neighbor.worker.js",
     { type: "module" },
@@ -133,7 +175,7 @@ export async function analyzeKNN({
       featureDefs: varDefsForFeatures,
       focalDefs: varDefsForFocalCaseIdentifier,
       caseDefs: varDefsForCaseIdentifier,
-      config: configData,
+      config: workerConfigData,
     });
 
     worker.onmessage = async (e) => {
@@ -146,9 +188,11 @@ export async function analyzeKNN({
         const result = e.data.data;
         const workerErrors = e.data.errors;
 
-        const formattedResults = isResultJson(result)
-          ? result
-          : transformNearestNeighborResult(result);
+        const formattedResults = filterViewerOutput(
+          isResultJson(result)
+            ? result
+            : transformNearestNeighborResult(result),
+        );
 
         const hasAnalysisTables = formattedResults.tables.some(
           (table) => table.key !== "system_settings",
@@ -184,31 +228,6 @@ export async function analyzeKNN({
     };
   });
 
-  // await init();
-  // const knn = new KNNAnalysis(
-  //     slicedDataForTarget,
-  //     slicedDataForFeatures,
-  //     slicedDataForFocalCaseIdentifier,
-  //     slicedDataForCaseIdentifier,
-  //     varDefsForTarget,
-  //     varDefsForFeatures,
-  //     varDefsForFocalCaseIdentifier,
-  //     varDefsForCaseIdentifier,
-  //     configData
-  // );
-
-  // const results = knn.get_formatted_results();
-  // const error = knn.get_all_errors();
-  // const executed = knn.get_executed_functions();
-
-  // const formattedResults = transformNearestNeighborResult(results);
-
-  // // /*
-  // //  * 🎉 Final Result Process 🎯
-  // //  * */
-  // await resultNearestNeighbor({
-  //     formattedResult: formattedResults ?? [],
-  // });
 }
 
 async function saveKnnVariablesToDataViewer(
@@ -296,3 +315,4 @@ function normalizeSavedValue(value: string | number | boolean | null | undefined
   if (typeof value === "boolean") return value ? "true" : "false";
   return value;
 }
+

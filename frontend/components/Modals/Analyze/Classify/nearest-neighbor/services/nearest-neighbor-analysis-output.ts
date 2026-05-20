@@ -21,19 +21,14 @@ export async function resultNearestNeighbor({
       formattedResult.tables.find((table: Table) => table.key === key);
 
     const nearestNeighborAnalysisResult = async () => {
-      /*
-       * 🎉 Title Result 🎉
-       * */
       const titleMessage = "Nearest Neighbor Analysis";
       const logId = await addLog({ log: titleMessage });
+
       await addAnalytic(logId, {
         title: `Nearest Neighbor Analysis Result`,
         note: "",
       });
 
-      /*
-       * 📊 Case Processing Summary Result 📊
-       * */
       const caseProcessingSummary = findTable("case_processing_summary");
       if (caseProcessingSummary) {
         const caseProcessingSummaryId = await addAnalytic(logId, {
@@ -42,115 +37,43 @@ export async function resultNearestNeighbor({
         });
 
         await addStatistic(caseProcessingSummaryId, {
-            title: `Case Processing Summary`,
-            description: `Case Processing Summary`,
-            output_data: caseProcessingSummary,
-            components: `Case Processing Summary`,
+          title: `Case Processing Summary`,
+          description: `Case Processing Summary`,
+          output_data: caseProcessingSummary,
+          components: `Case Processing Summary`,
         });
       }
 
-      /*
-       * ⚙️ System Settings Result ⚙️
-       * */
-      const featureSelectionSummary = findTable("feature_selection_summary");
-      if (featureSelectionSummary) {
-        const featureSelectionSummaryId = await addAnalytic(logId, {
-          title: `Feature Selection Summary`,
+      const kAndPredictorSelectionChart = createKAndPredictorSelectionChart(rawResult);
+      if (kAndPredictorSelectionChart) {
+        const kAndPredictorSelectionId = await addAnalytic(logId, {
+          title: `k and Predictor Selection`,
           note: "",
         });
 
-        await addStatistic(featureSelectionSummaryId, {
-          title: `Feature Selection Summary`,
-          description: `Feature Selection Summary`,
-          output_data: featureSelectionSummary,
-          components: `Feature Selection Summary`,
-        });
-
-        const featureSelectionSteps = findTable("feature_selection_steps");
-        if (featureSelectionSteps) {
-          await addStatistic(featureSelectionSummaryId, {
-            title: `Feature Selection Steps`,
-            description: `Feature Selection Steps`,
-            output_data: featureSelectionSteps,
-            components: `Feature Selection Steps`,
-          });
-        }
-      }
-
-      const kFeatureSelectionSummary = findTable("k_feature_selection_summary");
-      if (kFeatureSelectionSummary) {
-        const kFeatureSelectionSummaryId = await addAnalytic(logId, {
-          title: `K and Feature Selection Summary`,
-          note: "",
-        });
-
-        await addStatistic(kFeatureSelectionSummaryId, {
-          title: `K and Feature Selection Summary`,
-          description: `K and Feature Selection Summary`,
-          output_data: kFeatureSelectionSummary,
-          components: `K and Feature Selection Summary`,
+        await addStatistic(kAndPredictorSelectionId, {
+          title: `k and Predictor Selection`,
+          description: `k and Predictor Selection`,
+          output_data: JSON.stringify(kAndPredictorSelectionChart),
+          components: `k and Predictor Selection`,
         });
       }
 
-      const kSelectionChart = findTable("k_selection_chart");
-      if (kSelectionChart) {
-        const kSelectionChartId = await addAnalytic(logId, {
-          title: `K Selection Chart`,
+      const kSelectionErrorLogLineChart = createKSelectionErrorLogLineChart(
+        rawResult?.k_selection_chart,
+      );
+      if (kSelectionErrorLogLineChart) {
+        const kSelectionErrorLogId = await addAnalytic(logId, {
+          title: `k Selection Error Log`,
           note: "",
         });
 
-        await addStatistic(kSelectionChartId, {
-          title: `K Selection Chart`,
-          description: `K Selection Chart`,
-          output_data: kSelectionChart,
-          components: `K Selection Chart`,
+        await addStatistic(kSelectionErrorLogId, {
+          title: `k Selection Error Log`,
+          description: `k Selection Error Log`,
+          output_data: JSON.stringify(kSelectionErrorLogLineChart),
+          components: `k Selection Error Log`,
         });
-
-        const kSelectionLineChart = createKSelectionChart(
-          rawResult?.k_selection_chart,
-        );
-
-        if (kSelectionLineChart) {
-          await addStatistic(kSelectionChartId, {
-            title: `K Selection Chart Plot`,
-            description: `K Selection Chart Plot`,
-            output_data: JSON.stringify(kSelectionLineChart),
-            components: `K Selection Chart Plot`,
-          });
-        }
-
-        const kSelectionErrorLog = findTable("k_selection_error_log");
-        if (kSelectionErrorLog) {
-          await addStatistic(kSelectionChartId, {
-            title: `K Selection Error Log`,
-            description: `K Selection Error Log`,
-            output_data: kSelectionErrorLog,
-            components: `K Selection Error Log`,
-          });
-        }
-
-        const kSelectionErrorLogChart = createKSelectionErrorLogChart(
-          rawResult?.k_selection_chart,
-        );
-
-        if (kSelectionErrorLogChart) {
-          await addStatistic(kSelectionChartId, {
-            title: `K Selection Error Log Plot`,
-            description: `K Selection Error Log Plot`,
-            output_data: JSON.stringify(kSelectionErrorLogChart),
-            components: `K Selection Error Log Plot`,
-          });
-        }
-
-        const kSelectionCvDebug = findTable("k_selection_cv_debug");
-        if (kSelectionCvDebug) {
-          await addStatistic(kSelectionChartId, {
-            title: `K Selection Cross-Validation Debug`,
-            description: `K Selection Cross-Validation Debug`,
-            output_data: kSelectionCvDebug,
-            components: `K Selection Cross-Validation Debug`,
-          });
-        }
       }
 
       const systemSettings = findTable("system_settings");
@@ -168,9 +91,6 @@ export async function resultNearestNeighbor({
         });
       }
 
-      /*
-       * 📈 Predictor Importance Result 📈
-       * */
       const predictorImportance = findTable("predictor_importance");
       if (predictorImportance) {
         const predictorImportanceId = await addAnalytic(logId, {
@@ -197,75 +117,6 @@ export async function resultNearestNeighbor({
             components: `Predictor Importance Chart`,
           });
         }
-      }
-
-      /*
-       * 🔍 Classification Table Result 🔍
-       * */
-      const predictorWeights = findTable("predictor_weights");
-      if (predictorWeights) {
-        const predictorWeightsId = await addAnalytic(logId, {
-          title: `Predictor Weights`,
-          note: "",
-        });
-
-        await addStatistic(predictorWeightsId, {
-          title: `Predictor Weights`,
-          description: `Predictor Weights`,
-          output_data: predictorWeights,
-          components: `Predictor Weights`,
-        });
-      }
-
-      const classificationTable = findTable("classification_table");
-      if (classificationTable) {
-        const classificationTableId = await addAnalytic(logId, {
-          title: `Classification Table`,
-          note: "",
-        });
-
-        await addStatistic(classificationTableId, {
-          title: `Classification Table`,
-          description: `Classification Table`,
-          output_data: classificationTable,
-          components: `Classification Table`,
-        });
-      }
-
-      /*
-       * ❌ Error Summary Result ❌
-       * */
-      const errorSummary = findTable("error_summary");
-      if (errorSummary) {
-        const errorSummaryId = await addAnalytic(logId, {
-          title: `Error Summary`,
-          note: "",
-        });
-
-        await addStatistic(errorSummaryId, {
-          title: `Error Summary`,
-          description: `Error Summary`,
-          output_data: errorSummary,
-          components: `Error Summary`,
-        });
-      }
-
-      /*
-       * 🔬 Predictor Space Result 🔬
-       * */
-      const predictionResults = findTable("prediction_results");
-      if (predictionResults) {
-        const predictionResultsId = await addAnalytic(logId, {
-          title: `Classification / Prediction Result`,
-          note: "",
-        });
-
-        await addStatistic(predictionResultsId, {
-          title: `Classification / Prediction Result`,
-          description: `Classification / Prediction Result`,
-          output_data: predictionResults,
-          components: `Classification / Prediction Result`,
-        });
       }
 
       const confusionMatrix = findTable("confusion_matrix");
@@ -320,88 +171,7 @@ export async function resultNearestNeighbor({
           });
         }
       }
-
-      /*
-       * 👥 Nearest Neighbors Result 👥
-       * */
-      const nearestNeighbors = findTable("neighbor_details");
-      if (nearestNeighbors) {
-        const nearestNeighborsId = await addAnalytic(logId, {
-          title: `Neighbor Detail`,
-          note: "",
-        });
-
-        await addStatistic(nearestNeighborsId, {
-          title: `Neighbor Detail`,
-          description: `Neighbor Detail`,
-          output_data: nearestNeighbors,
-          components: `Neighbor Detail`,
-        });
-      }
-
-      /*
-       * 📊 Peers Chart Data Result 📊
-       * */
-      const peersChart = findTable("peers_chart");
-      if (peersChart) {
-        const peersChartId = await addAnalytic(logId, {
-          title: `Peers Chart Data`,
-          note: "",
-        });
-
-        await addStatistic(peersChartId, {
-          title: `Peers Chart Data`,
-          description: `Peers Chart Data`,
-          output_data: peersChart,
-          components: `Peers Chart Data`,
-        });
-
-        const peerProfileChart =
-          createPeerProfileChartFromRaw(rawResult?.peers_chart) ??
-          createPeerProfileChart(findTableObject("peers_chart"));
-
-        if (peerProfileChart) {
-          await addStatistic(peersChartId, {
-            title: `Peers Chart`,
-            description: `Peers Chart`,
-            output_data: JSON.stringify(peerProfileChart),
-            components: `Peers Chart`,
-          });
-        }
-      }
-
-      /*
-       * 🗺️ Quadrant Map Data Result 🗺️
-       * */
-      const quadrantMap = findTable("quadrant_map");
-      if (quadrantMap) {
-        const quadrantMapId = await addAnalytic(logId, {
-          title: `Quadrant Map Data`,
-          note: "",
-        });
-
-        await addStatistic(quadrantMapId, {
-          title: `Quadrant Map Data`,
-          description: `Quadrant Map Data`,
-          output_data: quadrantMap,
-          components: `Quadrant Map Data`,
-        });
-
-        const quadrantChart =
-          createQuadrantMapChartFromRaw(rawResult?.quadrant_map) ??
-          createQuadrantMapChart(findTableObject("quadrant_map"));
-
-        if (quadrantChart) {
-          await addStatistic(quadrantMapId, {
-            title: `Quadrant Map`,
-            description: `Quadrant Map`,
-            output_data: JSON.stringify(quadrantChart),
-            components: `Quadrant Map`,
-          });
-        }
-      }
     };
-
     await nearestNeighborAnalysisResult();
   } catch (e) {
     console.error(e);
@@ -492,48 +262,35 @@ function createPredictorSpaceChart(predictorSpace?: any) {
   };
 }
 
-function createKSelectionChart(chart?: any) {
-  return createKSelectionErrorChart(chart, "K Selection Error");
-}
-
-function createKSelectionErrorLogChart(chart?: any) {
-  return createKSelectionErrorChart(chart, "K Selection Error Log");
-}
-
-function createKSelectionErrorChart(chart: any, title: string) {
+function createKSelectionErrorLogLineChart(chart?: any) {
   const chartData = (chart?.candidates ?? [])
     .map((candidate: any) => ({
-      x: Number(candidate.k),
-      y: Number(candidate.average_error),
+      category: String(candidate.k),
+      value: Number(candidate.average_error ?? candidate.averageError),
     }))
-    .filter((candidate: any) => Number.isFinite(candidate.x) && Number.isFinite(candidate.y));
+    .filter((candidate: any) => (
+      candidate.category && Number.isFinite(candidate.value)
+    ));
 
   if (!chartData.length) return null;
-
-  const yLabel = isRegressionKSelectionMetric(chart?.metric_name)
-    ? "Average SSE"
-    : "Average Error Rate (%)";
 
   return ChartService.createChartJSON({
     chartType: "Line Chart",
     chartData,
-    chartVariables: { x: ["Number of Neighbors (K)"], y: [yLabel] },
+    chartVariables: { x: ["K"], y: ["Error Rate"] },
     chartMetadata: {
-      title,
-      description: "Cross-validation average error by number of neighbors",
+      title: "k Selection Error Log",
+      description: "Cross-validation error rate by number of neighbors",
     },
     chartConfig: {
       axisLabels: {
-        x: "Number of Neighbors (K)",
-        y: yLabel,
+        x: "K",
+        y: "Error Rate",
       },
+      showValueTooltip: true,
       useLegend: false,
     },
   });
-}
-
-function isRegressionKSelectionMetric(metricName: unknown) {
-  return String(metricName ?? "").toLowerCase().includes("sse");
 }
 
 function createPredictorImportanceChart(table?: Table) {
@@ -559,161 +316,60 @@ function createPredictorImportanceChart(table?: Table) {
         x: "Importance",
         y: "Predictor",
       },
+      axisScaleOptions: {
+        x: {
+          min: "0",
+          max: "1",
+          majorIncrement: "0.2",
+        },
+      },
+      showValueTooltip: true,
       useLegend: false,
     },
   });
 }
 
-function createPeerProfileChart(table?: Table) {
-  const chartData = table?.rows
-    .map((row) => ({
-      x: toNumber(row.record_id ?? row.rowHeader?.[1]),
-      y: toNumber(row.value),
-      category: String(row.feature ?? row.rowHeader?.[0] ?? ""),
+function createKAndPredictorSelectionChart(rawResult?: any) {
+  const steps = rawResult?.feature_selection_steps;
+
+  if (!Array.isArray(steps) || !steps.length) return null;
+
+  const chartData = steps
+    .map((step: any) => ({
+      category:
+        step.selected_feature ??
+        step.selectedFeature ??
+        `Step ${step.step_number ?? step.stepNumber ?? ""}`,
+      value: toNumber(step.trial_error ?? step.trialError),
     }))
-    .filter((row) => Number.isFinite(row.x) && Number.isFinite(row.y) && row.category);
-
-  if (!chartData?.length) return null;
-
-  return ChartService.createChartJSON({
-    chartType: "Grouped Scatter Plot",
-    chartData,
-    chartVariables: { x: ["Record ID"], y: ["Value"], groupBy: ["Feature"] },
-    chartMetadata: {
-      title: "Peers Chart",
-      description: "Feature values across focal records and peers",
-    },
-    chartConfig: {
-      axisLabels: {
-        x: "Record ID",
-        y: "Value",
-      },
-    },
-  });
-}
-
-function createPeerProfileChartFromRaw(peersChart?: any) {
-  const features = normalizeFeatureEntries(peersChart?.features);
-  if (!features.length) return null;
-
-  const chartData = features.flatMap((feature) =>
-    feature.values.map((value, index) => ({
-      x: index + 1,
-      y: Number(value),
-      category: feature.feature,
-    })),
-  ).filter((point) => Number.isFinite(point.y));
+    .filter((row: any) => row.category && Number.isFinite(row.value));
 
   if (!chartData.length) return null;
 
+  const selectedK = (rawResult?.k_feature_selection_summary ?? []).find(
+    (summary: any) => summary.selected,
+  )?.k;
+
+  if (selectedK === null || selectedK === undefined) return null;
+
   return ChartService.createChartJSON({
-    chartType: "Grouped Scatter Plot",
+    chartType: "Line Chart",
     chartData,
-    chartVariables: { x: ["Record ID"], y: ["Value"], groupBy: ["Feature"] },
+    chartVariables: { x: ["Selected Predictor"], y: ["Error"] },
     chartMetadata: {
-      title: "Peers Chart",
-      description: "Feature values across focal records and peers",
+      title: "k and Predictor Selection",
+      subtitle: `k = ${selectedK}`,
+      description: "Feature selection error by selected predictor",
     },
     chartConfig: {
       axisLabels: {
-        x: "Record ID",
-        y: "Value",
+        x: "Selected Predictor",
+        y: "Error",
       },
+      showValueTooltip: true,
+      useLegend: false,
     },
   });
-}
-
-function createQuadrantMapChart(table?: Table) {
-  const firstRow = table?.rows.find(
-    (row) => row.feature_x !== undefined && row.feature_y !== undefined,
-  );
-
-  if (!firstRow) return null;
-
-  const featureX = String(firstRow.feature_x);
-  const featureY = String(firstRow.feature_y);
-  const chartData = table?.rows
-    .filter((row) => row.feature_x === featureX && row.feature_y === featureY)
-    .map((row) => ({
-      x: toNumber(row.x_value),
-      y: toNumber(row.y_value),
-      category: row.is_focal === "Yes" ? "Focal" : "Peer",
-    }))
-    .filter((row) => Number.isFinite(row.x) && Number.isFinite(row.y));
-
-  if (!chartData?.length) return null;
-
-  return ChartService.createChartJSON({
-    chartType: "Grouped Scatter Plot",
-    chartData,
-    chartVariables: { x: [featureX], y: [featureY], groupBy: ["Record Type"] },
-    chartMetadata: {
-      title: `Quadrant Map: ${featureX} vs ${featureY}`,
-      description: "Pairwise predictor map for focal records and peers",
-    },
-    chartConfig: {
-      axisLabels: {
-        x: featureX,
-        y: featureY,
-      },
-    },
-  });
-}
-
-function createQuadrantMapChartFromRaw(quadrantMap?: any) {
-  const features = normalizeFeatureEntries(quadrantMap?.features);
-  if (features.length < 2) return null;
-
-  const featureX = features[0];
-  const featureY = features[1];
-  const focalRecords = new Set(
-    (quadrantMap?.focal_neighbor_sets ?? []).map((set: any) => Number(set.focal_record)),
-  );
-  const pointCount = Math.min(featureX.values.length, featureY.values.length);
-  const chartData = Array.from({ length: pointCount }, (_, index) => {
-    const recordId = index + 1;
-    return {
-      x: Number(featureX.values[index]),
-      y: Number(featureY.values[index]),
-      category: focalRecords.has(recordId) ? "Focal" : "Peer",
-    };
-  }).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
-
-  if (!chartData.length) return null;
-
-  return ChartService.createChartJSON({
-    chartType: "Grouped Scatter Plot",
-    chartData,
-    chartVariables: { x: [featureX.feature], y: [featureY.feature], groupBy: ["Record Type"] },
-    chartMetadata: {
-      title: `Quadrant Map: ${featureX.feature} vs ${featureY.feature}`,
-      description: "Pairwise predictor map for focal records and peers",
-    },
-    chartConfig: {
-      axisLabels: {
-        x: featureX.feature,
-        y: featureY.feature,
-      },
-    },
-  });
-}
-
-function normalizeFeatureEntries(features: any): Array<{ feature: string; values: any[] }> {
-  if (Array.isArray(features)) {
-    return features
-      .map((feature: any) => ({
-        feature: feature.feature ?? feature.name,
-        values: feature.values,
-      }))
-      .filter((feature) => feature.feature && Array.isArray(feature.values));
-  }
-
-  return Object.entries(features ?? {})
-    .map(([feature, values]) => ({
-      feature,
-      values: Array.isArray(values) ? values : [],
-    }))
-    .filter((feature) => feature.feature && feature.values.length > 0);
 }
 
 function splitDimensionName(name: string | undefined) {

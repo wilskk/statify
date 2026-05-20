@@ -28,6 +28,7 @@ interface ChartData {
       parameters?: Record<string, number>; // Store coefficients: {a: 2, b: 3}
     }>; // For Scatter Plot With Multiple Fit Line
     showNormalCurve?: boolean; // For Histogram - show normal curve overlay
+    showValueTooltip?: boolean;
     axisLabels: {
       x: string;
       y: string;
@@ -825,7 +826,9 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                   subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
                 },
                 chartConfig?.axisLabels,
-                chartConfig?.axisScaleOptions
+                chartConfig?.axisScaleOptions,
+                undefined,
+                chartConfig?.showValueTooltip
               );
               break;
             case "Pie Chart":
@@ -911,7 +914,8 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 },
                 chartConfig?.axisLabels,
                 chartConfig?.axisScaleOptions,
-                chartConfig?.chartColor
+                chartConfig?.chartColor,
+                chartConfig?.showValueTooltip
               );
               break;
             case "Area Chart":

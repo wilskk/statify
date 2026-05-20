@@ -93,7 +93,6 @@ pub fn calculate_nearest_neighbors(
                     id: neighbor_id,
                     row_number: Some(row_number(&knn_data, idx)),
                     distance,
-                    distance_debug: None,
                 });
                 distances.push(distance);
             }

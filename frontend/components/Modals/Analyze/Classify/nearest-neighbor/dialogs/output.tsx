@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import type {
   KNNOutputProps,
   KNNOutputType,
@@ -14,21 +14,13 @@ export const KNNOutput = ({
   updateFormData,
   data,
   focalCaseVar,
-  isAutoK,
-  isFeatureSelectionActive,
   showFieldHelp = false,
 }: KNNOutputProps) => {
-  const wasFeatureSelectionActive = useRef(isFeatureSelectionActive);
-
   const outputState: KNNOutputType = {
     ...data,
     CaseSummary: data.CaseSummary ?? true,
-    FeatureSelectionSummary: data.FeatureSelectionSummary ?? true,
-    KSelectionChart: data.KSelectionChart ?? true,
     PredictorSpace: data.PredictorSpace ?? true,
-    PredictionResults: data.PredictionResults ?? true,
     ConfusionMatrix: data.ConfusionMatrix ?? true,
-    ShowNeighborDetail: data.ShowNeighborDetail ?? false,
     ChartAndTable: data.ChartAndTable ?? true,
   };
 
@@ -38,18 +30,6 @@ export const KNNOutput = ({
   ) => {
     const nextValue =
       value === "indeterminate" || typeof value === "undefined" ? false : value;
-
-    if (field === "KSelectionChart" && !isAutoK && nextValue) {
-      return;
-    }
-
-    if (
-      field === "FeatureSelectionSummary" &&
-      !isFeatureSelectionActive &&
-      nextValue
-    ) {
-      return;
-    }
 
     updateFormData(field, nextValue);
 
@@ -73,34 +53,10 @@ export const KNNOutput = ({
   const canExportDistance = !!focalCaseVar;
   const exportDistanceEnabled = canExportDistance && outputState.ExportDistance;
 
-  useEffect(() => {
-    if (!isAutoK && data.KSelectionChart) {
-      updateFormData("KSelectionChart", false);
-    }
-  }, [data.KSelectionChart, isAutoK, updateFormData]);
-
-  useEffect(() => {
-    if (
-      isFeatureSelectionActive &&
-      (!wasFeatureSelectionActive.current ||
-        data.FeatureSelectionSummary === undefined) &&
-      !data.FeatureSelectionSummary
-    ) {
-      updateFormData("FeatureSelectionSummary", true);
-    }
-
-    wasFeatureSelectionActive.current = isFeatureSelectionActive;
-  }, [
-    data.FeatureSelectionSummary,
-    isFeatureSelectionActive,
-    updateFormData,
-  ]);
-
   const viewerOutputOptions: Array<{
     field: keyof KNNOutputType;
     label: string;
     help: string;
-    disabled?: boolean;
   }> = [
     {
       field: "CaseSummary",
@@ -108,36 +64,14 @@ export const KNNOutput = ({
       help: "Menampilkan ringkasan jumlah kasus valid, missing, dan diproses.",
     },
     {
-      field: "FeatureSelectionSummary",
-      label: "Feature Selection Summary",
-      help: "Menampilkan ringkasan proses dan hasil pemilihan fitur.",
-      disabled: !isFeatureSelectionActive,
-    },
-    {
-      field: "KSelectionChart",
-      label: "K Selection Chart",
-      help: "Menampilkan chart pemilihan nilai k saat auto selection aktif.",
-      disabled: !isAutoK,
-    },
-    {
       field: "PredictorSpace",
       label: "Predictor Space Scatter Plot",
       help: "Menampilkan plot ruang prediktor untuk melihat posisi kasus.",
     },
     {
-      field: "PredictionResults",
-      label: "Classification / Prediction Result",
-      help: "Menampilkan hasil klasifikasi atau prediksi untuk model KNN.",
-    },
-    {
       field: "ConfusionMatrix",
       label: "Confusion Matrix and Metrics",
       help: "Menampilkan confusion matrix dan metrik evaluasi klasifikasi.",
-    },
-    {
-      field: "ShowNeighborDetail",
-      label: "Neighbor Detail",
-      help: "Menampilkan detail tetangga terdekat untuk kasus terkait.",
     },
   ];
 
@@ -148,21 +82,18 @@ export const KNNOutput = ({
           <div className="w-full max-w-xl rounded-lg border md:min-w-[200px]">
             <section className="flex flex-col gap-1 p-2 border-b">
                 <Label className="font-bold">Viewer Output</Label>
-                {viewerOutputOptions.map(({ field, label, help, disabled }) => (
+                {viewerOutputOptions.map(({ field, label, help }) => (
                   <div className="flex items-center space-x-2" key={field}>
                     <Checkbox
                       id={field}
-                      checked={disabled ? false : Boolean(outputState[field])}
-                      disabled={disabled}
+                      checked={Boolean(outputState[field])}
                       onCheckedChange={(checked) =>
                         handleChange(field, checked)
                       }
                     />
                     <label
                       htmlFor={field}
-                      className={`text-sm font-medium leading-none ${
-                        disabled ? "cursor-not-allowed opacity-70" : ""
-                      }`}
+                      className="text-sm font-medium leading-none"
                     >
                       {label}
                     </label>

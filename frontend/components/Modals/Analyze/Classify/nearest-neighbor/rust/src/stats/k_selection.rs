@@ -3,9 +3,7 @@ use std::collections::HashSet;
 use crate::models::{
     config::KnnConfig,
     data::{AnalysisData, DataValue, KnnData},
-    result::{
-        KSelectionCandidate, KSelectionChart, KSelectionFoldDebug, KSelectionValidationCaseDebug,
-    },
+    result::{KSelectionCandidate, KSelectionChart},
 };
 
 use super::{
@@ -132,14 +130,12 @@ fn evaluate_candidate_k(
     let mut fold_errors = Vec::with_capacity(fold_ids.len());
     let mut fold_n = Vec::with_capacity(fold_ids.len());
     let mut fold_total_errors = Vec::with_capacity(fold_ids.len());
-    let mut cv_fold_debug = Vec::with_capacity(fold_ids.len());
 
     for &fold_id in fold_ids {
         let fold_result = evaluate_fold(knn_data, config, k, fold_id)?;
         fold_errors.push(fold_result.fold_error);
         fold_n.push(fold_result.validation_n);
         fold_total_errors.push(fold_result.total_error);
-        cv_fold_debug.push(fold_result.debug);
     }
 
     let average_error = if fold_errors.is_empty() {
@@ -154,7 +150,6 @@ fn evaluate_candidate_k(
         fold_errors,
         fold_n,
         fold_total_errors,
-        cv_fold_debug,
         selected: false,
     })
 }
@@ -163,7 +158,6 @@ struct FoldEvaluation {
     fold_error: f64,
     validation_n: usize,
     total_error: f64,
-    debug: KSelectionFoldDebug,
 }
 
 fn evaluate_fold(
@@ -207,9 +201,6 @@ fn evaluate_fold(
     let mut correct = 0usize;
     let mut evaluated = 0usize;
     let mut sse = 0.0;
-    let mut validation_cases = Vec::with_capacity(validation_indices.len());
-    let mut has_same_fold_neighbor = false;
-
     for &validation_idx in &validation_indices {
         let effective_k = k.min(cv_training_indices.len()).max(1);
         let neighbors = find_k_nearest_neighbors(
@@ -220,17 +211,6 @@ fn evaluate_fold(
             config.neighbors.metric_eucli,
             Some(&knn_data.processed_case_indices),
         );
-
-        let same_fold_neighbor_ids = neighbors
-            .iter()
-            .map(|(neighbor_idx, _)| *neighbor_idx)
-            .filter(|&neighbor_idx| {
-                knn_data.cross_validation_folds.get(neighbor_idx) == Some(&validation_fold_id)
-            })
-            .map(|neighbor_idx| knn_data.case_identifiers[neighbor_idx])
-            .collect::<Vec<_>>();
-        let case_has_same_fold_neighbor = !same_fold_neighbor_ids.is_empty();
-        has_same_fold_neighbor |= case_has_same_fold_neighbor;
 
         if knn_data.target_is_numeric_scale() {
             let predicted = if config.neighbors.predictions_median {
@@ -254,20 +234,6 @@ fn evaluate_fold(
             }
             evaluated += 1;
         }
-
-        validation_cases.push(KSelectionValidationCaseDebug {
-            validation_case_id: knn_data.case_identifiers[validation_idx],
-            neighbor_candidate_ids: cv_training_indices
-                .iter()
-                .map(|&idx| knn_data.case_identifiers[idx])
-                .collect(),
-            nearest_neighbor_ids: neighbors
-                .iter()
-                .map(|(idx, _)| knn_data.case_identifiers[*idx])
-                .collect(),
-            has_same_fold_neighbor: case_has_same_fold_neighbor,
-            same_fold_neighbor_ids,
-        });
     }
 
     let (fold_error, total_error) = if knn_data.target_is_numeric_scale() {
@@ -286,18 +252,5 @@ fn evaluate_fold(
         fold_error,
         validation_n: evaluated,
         total_error,
-        debug: KSelectionFoldDebug {
-            validation_fold_id,
-            validation_case_ids: validation_indices
-                .iter()
-                .map(|&idx| knn_data.case_identifiers[idx])
-                .collect(),
-            cv_training_case_ids: cv_training_indices
-                .iter()
-                .map(|&idx| knn_data.case_identifiers[idx])
-                .collect(),
-            validation_cases,
-            has_same_fold_neighbor,
-        },
     })
 }

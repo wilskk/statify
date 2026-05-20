@@ -68,26 +68,7 @@ pub struct KSelectionCandidate {
     pub fold_errors: Vec<f64>,
     pub fold_n: Vec<usize>,
     pub fold_total_errors: Vec<f64>,
-    pub cv_fold_debug: Vec<KSelectionFoldDebug>,
     pub selected: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct KSelectionFoldDebug {
-    pub validation_fold_id: usize,
-    pub validation_case_ids: Vec<i32>,
-    pub cv_training_case_ids: Vec<i32>,
-    pub validation_cases: Vec<KSelectionValidationCaseDebug>,
-    pub has_same_fold_neighbor: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct KSelectionValidationCaseDebug {
-    pub validation_case_id: i32,
-    pub neighbor_candidate_ids: Vec<i32>,
-    pub nearest_neighbor_ids: Vec<i32>,
-    pub has_same_fold_neighbor: bool,
-    pub same_fold_neighbor_ids: Vec<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -142,31 +123,6 @@ pub struct PredictorImportance {
     pub target: String,
     pub entries: Vec<PredictorImportanceEntry>,
     pub k: usize,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub regression_base_prediction_debug: Option<Vec<RegressionFeatureImportanceBaseDebugRow>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub weight_expansion_debug: Option<Vec<PredictorWeightExpansionDebug>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub final_expanded_feature_weights: Option<Vec<FeatureWeightDetail>>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct RegressionFeatureImportanceBaseDebugRow {
-    pub case_id: i32,
-    pub row_index: usize,
-    pub actual_y: f64,
-    pub yhat_unweighted_normal: f64,
-    pub yhat_feature_importance_base: f64,
-    pub squared_error: f64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PredictorWeightExpansionDebug {
-    pub predictor: String,
-    pub normalized_predictor_weight: f64,
-    pub encoded_columns: Vec<String>,
-    pub encoded_column_weights: Vec<FeatureWeightDetail>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -292,19 +248,6 @@ pub struct NeighborDetail {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub row_number: Option<usize>,
     pub distance: f64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub distance_debug: Option<DistanceDebugDetail>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct DistanceDebugDetail {
-    pub predictor_weights: HashMap<String, f64>,
-    pub expanded_feature_weights: Vec<FeatureWeightDetail>,
-    pub sum_expanded_feature_weights: f64,
-    pub sum_effective_weights: f64,
-    pub raw_weighted_squared_distance: f64,
-    pub final_returned_distance: f64,
-    pub normalization_divisor: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
