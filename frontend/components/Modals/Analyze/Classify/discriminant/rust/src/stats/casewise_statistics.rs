@@ -1,14 +1,19 @@
-use nalgebra::{DMatrix, DVector};
+use rayon::prelude::*;
 use std::collections::HashMap;
 
 use crate::models::{
-    result::{CanonicalFunctions, CasewiseStatistics, HighestGroupStatistics},
+    data::DataValue,
+    result::{
+        CanonicalFunctions, CasewiseStatistics, CrossValidatedCasewiseStatistics,
+        HighestGroupStatistics,
+    },
     AnalysisData, DiscriminantConfig,
 };
 
 use super::core::{
     calculate_canonical_functions, calculate_eigen_statistics, calculate_p_value_from_chi_square,
-    calculate_prior_probabilities, extract_analyzed_dataset, get_stepwise_selected_variables,
+    calculate_pooled_within_matrix_no_epsilon, calculate_prior_probabilities,
+    extract_analyzed_dataset, get_stepwise_selected_variables,
     EPSILON,
 };
 
@@ -210,6 +215,21 @@ pub fn calculate_casewise_statistics(
         }
     }
 
+    // ---- CROSS-VALIDATED (Leave-One-Out) ----
+    // Only compute if config.classify.leave is true
+    let cross_validated = if config.classify.leave {
+        let cv_result = calculate_cross_validated_casewise(
+            data,
+            config,
+            &dataset,
+            &variables_to_use,
+            num_functions,
+        )?;
+        Some(cv_result)
+    } else {
+        None
+    };
+
     Ok(CasewiseStatistics {
         case_number,
         actual_group,
@@ -229,7 +249,324 @@ pub fn calculate_casewise_statistics(
             group: second_group,
         },
         discriminant_scores,
+        cross_validated,
     })
+}
+
+/// Compute cross-validated (leave-one-out) casewise statistics.
+/// Each case is classified using discriminant functions derived from all OTHER cases.
+/// Compute cross-validated (leave-one-out) casewise statistics.
+/// Each case is classified using discriminant functions derived from all OTHER cases.
+fn calculate_cross_validated_casewise(
+    data: &AnalysisData,
+    config: &DiscriminantConfig,
+    dataset: &super::core::AnalyzedDataset,
+    variables_to_use: &[String],
+    _num_functions: usize,
+) -> Result<CrossValidatedCasewiseStatistics, String> {
+    web_sys::console::log_1(&"Executing cross-validated casewise statistics".into());
+
+    // Guard against empty variables
+    if variables_to_use.is_empty() {
+        return Err("No variables available for casewise statistics".to_string());
+    }
+
+    let prior_probs = calculate_prior_probabilities(data, config)?;
+    let p_vars = variables_to_use.len();
+
+    // Collect all cases (group_name, case_index, case_values, original_idx) in order
+    // The 4th element tracks the original sequential index for correct sorting
+    let mut all_cases: Vec<(String, usize, Vec<f64>, usize)> = Vec::new();
+    let mut original_idx = 0;
+    for group_name in &dataset.group_labels {
+        let n_cases = dataset
+            .group_data
+            .get(&variables_to_use[0])
+            .and_then(|g| g.get(group_name))
+            .map(|v| v.len())
+            .unwrap_or(0);
+
+        for i in 0..n_cases {
+            let case_values: Vec<f64> = variables_to_use
+                .iter()
+                .map(|var| {
+                    dataset
+                        .group_data
+                        .get(var)
+                        .and_then(|g| g.get(group_name))
+                        .map(|v| v[i])
+                        .unwrap_or(0.0)
+                })
+                .collect();
+            all_cases.push((group_name.clone(), i, case_values, original_idx));
+            original_idx += 1;
+        }
+    }
+
+    let total_cases = all_cases.len();
+
+    // Process in parallel using rayon
+    let results: Vec<CrossValidatedCaseResult> = all_cases
+        .par_iter()
+        .enumerate()
+        .filter_map(
+            |(_local_idx, (group_name, case_idx, case_values, original_idx))| {
+                // Skip single-case groups (can't compute LOO for n=1)
+                let group_cases = all_cases
+                    .iter()
+                    .filter(|(g, _, _, _)| g == group_name)
+                    .count();
+                if group_cases <= 1 {
+                    return None;
+                }
+
+                // Create temp data with this case removed
+                let mut temp_data = data.clone();
+
+                let group_idx_in_data = temp_data.group_data.iter().position(|group_records| {
+                    group_records.iter().any(|record| {
+                        match record.values.get(&config.main.grouping_variable) {
+                            Some(crate::models::data::DataValue::Number(n)) => {
+                                n.to_string() == *group_name
+                            }
+                            Some(crate::models::data::DataValue::Text(t)) => t == group_name,
+                            _ => false,
+                        }
+                    })
+                })?;
+
+                let mut case_global_idx = 0usize;
+                for group_records in temp_data.group_data.iter() {
+                    let this_is_target_group = group_records.iter().any(|r| {
+                        match r.values.get(&config.main.grouping_variable) {
+                            Some(crate::models::data::DataValue::Number(n)) => {
+                                n.to_string() == *group_name
+                            }
+                            Some(crate::models::data::DataValue::Text(t)) => t == group_name,
+                            _ => false,
+                        }
+                    });
+                    if this_is_target_group {
+                        break;
+                    }
+                    case_global_idx += group_records.len();
+                }
+
+                let global_case_idx = case_global_idx + case_idx;
+
+                if global_case_idx >= temp_data.group_data[group_idx_in_data].len() {
+                    return None;
+                }
+
+                // Remove the case from temp data
+                temp_data.group_data[group_idx_in_data].remove(global_case_idx);
+                for var_idx in 0..temp_data.independent_data.len() {
+                    if global_case_idx < temp_data.independent_data[var_idx].len() {
+                        temp_data.independent_data[var_idx].remove(global_case_idx);
+                    }
+                }
+
+                let leave_dataset = match extract_analyzed_dataset(&temp_data, config) {
+                    Ok(ds) => ds,
+                    Err(_) => return None,
+                };
+
+                // --- PERBAIKAN SPSS: CROSS-VALIDATED MENGGUNAKAN OBSERVATION SPACE ---
+                // Hitung Pooled Covariance Matrix Inverse secara langsung (tanpa Fungsi Kanonikal)
+                let pooled_cov =
+                    calculate_pooled_within_matrix_no_epsilon(&leave_dataset, variables_to_use);
+                let mut reg_cov = pooled_cov.clone();
+                for i in 0..p_vars {
+                    reg_cov[(i, i)] += EPSILON;
+                }
+                let inv_cov = reg_cov
+                    .try_inverse()
+                    .unwrap_or_else(|| nalgebra::DMatrix::identity(p_vars, p_vars));
+
+                let mut group_probs: Vec<(usize, f64)> = Vec::new();
+                let mut group_distances: Vec<(usize, f64)> = Vec::new();
+                let x_vec = nalgebra::DVector::from_vec(case_values.clone());
+
+                // Hitung D^2 untuk setiap grup di ruang observasi
+                for (g_idx, target_group) in leave_dataset.group_labels.iter().enumerate() {
+                    let mut diff = nalgebra::DVector::zeros(p_vars);
+                    for (v_idx, var_name) in variables_to_use.iter().enumerate() {
+                        let g_mean = leave_dataset
+                            .group_means
+                            .get(target_group)
+                            .and_then(|m| m.get(var_name))
+                            .copied()
+                            .unwrap_or(0.0);
+                        diff[v_idx] = x_vec[v_idx] - g_mean;
+                    }
+
+                    // D^2 = (x - mean)^T * S^-1 * (x - mean)
+                    let d2 = (diff.transpose() * &inv_cov * &diff)[0];
+                    group_distances.push((g_idx, d2));
+
+                    let prior = if g_idx < prior_probs.prior_probabilities.len() {
+                        prior_probs.prior_probabilities[g_idx]
+                    } else {
+                        1.0 / (leave_dataset.num_groups as f64)
+                    };
+
+                    let log_prob = prior.ln() - 0.5 * d2;
+                    group_probs.push((g_idx, log_prob));
+                }
+
+                group_probs.sort_by(|(_, a), (_, b)| {
+                    b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal)
+                });
+
+                if group_probs.is_empty() {
+                    return None;
+                }
+
+                let max_log_prob = group_probs[0].1;
+                let mut sum_exp = 0.0;
+                for (_, log_prob) in &mut group_probs {
+                    *log_prob = (*log_prob - max_log_prob).exp();
+                    sum_exp += *log_prob;
+                }
+                if sum_exp > 0.0 {
+                    for (_, prob) in &mut group_probs {
+                        *prob /= sum_exp;
+                    }
+                }
+
+                let highest = &group_probs[0];
+                let second = if group_probs.len() > 1 {
+                    &group_probs[1]
+                } else {
+                    highest
+                };
+
+                let highest_dist = group_distances
+                    .iter()
+                    .find(|(idx, _)| *idx == highest.0)
+                    .unwrap()
+                    .1;
+                let second_dist = group_distances
+                    .iter()
+                    .find(|(idx, _)| *idx == second.0)
+                    .unwrap()
+                    .1;
+
+                // SPSS menggunakan df = p (jumlah variabel) untuk jarak di observation space!
+                let df_cv = p_vars;
+
+                let p_val_highest = calculate_p_value_from_chi_square(highest_dist, df_cv);
+                let p_val_second = calculate_p_value_from_chi_square(second_dist, df_cv);
+
+                let highest_group_name = leave_dataset
+                    .group_labels
+                    .get(highest.0)
+                    .cloned()
+                    .unwrap_or_default();
+                let second_group_name = leave_dataset
+                    .group_labels
+                    .get(second.0)
+                    .cloned()
+                    .unwrap_or_default();
+
+                Some(CrossValidatedCaseResult {
+                    actual_group: group_name.clone(),
+                    predicted_group: highest_group_name.clone(),
+                    highest_p_value: p_val_highest,
+                    highest_df: df_cv,
+                    highest_p_g_equals_d: highest.1,
+                    highest_squared_mahalanobis_distance: highest_dist,
+                    highest_group: highest_group_name,
+                    second_p_value: p_val_second,
+                    second_df: df_cv,
+                    second_p_g_equals_d: second.1,
+                    second_squared_mahalanobis_distance: second_dist,
+                    second_group: second_group_name,
+                    original_idx: *original_idx,
+                    discriminant_scores: None, // SPSS mengosongkan ini untuk Cross-Validated
+                })
+            },
+        )
+        .collect();
+
+    // Sort results back into original sequential case order
+    let mut sorted_results = results;
+    sorted_results.sort_by_key(|r| r.original_idx);
+
+    let case_number: Vec<usize> = (1..=total_cases).collect();
+    let actual_group: Vec<String> = all_cases.iter().map(|(g, _, _, _)| g.clone()).collect();
+    let predicted_group: Vec<String> = sorted_results
+        .iter()
+        .map(|r| r.predicted_group.clone())
+        .collect();
+
+    let highest_p_value: Vec<f64> = sorted_results.iter().map(|r| r.highest_p_value).collect();
+    let highest_df: Vec<usize> = sorted_results.iter().map(|r| r.highest_df).collect();
+    let highest_p_g_equals_d: Vec<f64> = sorted_results
+        .iter()
+        .map(|r| r.highest_p_g_equals_d)
+        .collect();
+    let highest_squared_mahalanobis_distance: Vec<f64> = sorted_results
+        .iter()
+        .map(|r| r.highest_squared_mahalanobis_distance)
+        .collect();
+    let highest_group_cv: Vec<String> = sorted_results
+        .iter()
+        .map(|r| r.highest_group.clone())
+        .collect();
+
+    let second_p_value: Vec<f64> = sorted_results.iter().map(|r| r.second_p_value).collect();
+    let second_df: Vec<usize> = sorted_results.iter().map(|r| r.second_df).collect();
+    let second_p_g_equals_d: Vec<f64> = sorted_results
+        .iter()
+        .map(|r| r.second_p_g_equals_d)
+        .collect();
+    let second_squared_mahalanobis_distance: Vec<f64> = sorted_results
+        .iter()
+        .map(|r| r.second_squared_mahalanobis_distance)
+        .collect();
+    let second_group_cv: Vec<String> = sorted_results
+        .iter()
+        .map(|r| r.second_group.clone())
+        .collect();
+
+    Ok(CrossValidatedCasewiseStatistics {
+        case_number,
+        actual_group,
+        predicted_group,
+        highest_group: HighestGroupStatistics {
+            p_value: highest_p_value,
+            df: highest_df,
+            p_g_equals_d: highest_p_g_equals_d,
+            squared_mahalanobis_distance: highest_squared_mahalanobis_distance,
+            group: highest_group_cv,
+        },
+        second_highest_group: HighestGroupStatistics {
+            p_value: second_p_value,
+            df: second_df,
+            p_g_equals_d: second_p_g_equals_d,
+            squared_mahalanobis_distance: second_squared_mahalanobis_distance,
+            group: second_group_cv,
+        },
+        discriminant_scores: None,
+    })
+}
+struct CrossValidatedCaseResult {
+    actual_group: String,
+    predicted_group: String,
+    highest_p_value: f64,
+    highest_df: usize,
+    highest_p_g_equals_d: f64,
+    highest_squared_mahalanobis_distance: f64,
+    highest_group: String,
+    second_p_value: f64,
+    second_df: usize,
+    second_p_g_equals_d: f64,
+    second_squared_mahalanobis_distance: f64,
+    second_group: String,
+    discriminant_scores: Option<Vec<f64>>,
+    /// Original sequential index for correct sorting
+    original_idx: usize,
 }
 
 /// Calculate discriminant scores for a case

@@ -1233,7 +1233,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
             key: "casewise_statistics",
             title: "Casewise Statistics",
             columnHeaders: [
-                { header: "", key: "header" },
+                { header: "", key: "type" },
                 { header: "Case Number", key: "case_number" },
                 { header: "Actual Group", key: "actual_group" },
                 { header: "Predicted Group", key: "predicted_group" },
@@ -1276,12 +1276,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
             rows: [],
         };
 
-        // Add section header
-        table.rows.push({
-            rowHeader: ["Original"],
-        });
-
-        // Process each case
+        // Process each case (Original classification)
         for (let i = 0; i < data.casewise_statistics.case_number.length; i++) {
             // Check if this is a misclassified case (add asterisk)
             const predictedGroup = data.casewise_statistics.predicted_group[i];
@@ -1312,7 +1307,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
             }
 
             table.rows.push({
-                rowHeader: [""],
+                rowHeader: ["Original"],
                 case_number: formatDisplayNumber(
                     data.casewise_statistics.case_number[i]
                 ),
@@ -1345,6 +1340,57 @@ export function transformDiscriminantResult(data: any): ResultJson {
                     data.casewise_statistics.second_highest_group.group[i],
                 ...scoreData,
             });
+        }
+
+        // ---- CROSS-VALIDATED SECTION ----
+        if (data.casewise_statistics.cross_validated) {
+            const cvData = data.casewise_statistics.cross_validated;
+
+            // Process each cross-validated case (each row now shows "Cross-validated" in the row header)
+            for (let i = 0; i < cvData.case_number.length; i++) {
+                const cvPredictedGroup = cvData.predicted_group[i];
+                const cvActualGroup = cvData.actual_group[i];
+                const isMisclassifiedCV = cvPredictedGroup !== cvActualGroup;
+
+                // Cross-validated has NO discriminant scores (SPSS leaves them blank)
+                const scoreDataCV: any = {};
+                if (
+                    data.casewise_statistics.discriminant_scores &&
+                    typeof data.casewise_statistics.discriminant_scores === 'object'
+                ) {
+                    const funcKeys = Object.keys(data.casewise_statistics.discriminant_scores).sort((a: string, b: string) => {
+                        const numA = parseInt(a.replace(/[^0-9]/g, '')) || parseInt(a) || 0;
+                        const numB = parseInt(b.replace(/[^0-9]/g, '')) || parseInt(b) || 0;
+                        return numA - numB;
+                    });
+                    for (let j = 0; j < funcKeys.length; j++) {
+                        // Leave blank for cross-validated
+                        scoreDataCV[`function_${j + 1}`] = "";
+                    }
+                }
+
+                table.rows.push({
+                    rowHeader: ["Cross-validated"],
+                    case_number: formatDisplayNumber(cvData.case_number[i]),
+                    actual_group: cvData.actual_group[i],
+                    predicted_group:
+                        cvData.predicted_group[i] +
+                        (isMisclassifiedCV ? "**" : ""),
+                    p: formatDisplayNumber(cvData.highest_group.p_value[i]),
+                    df: formatDisplayNumber(cvData.highest_group.df[i]),
+                    p_d_g: formatDisplayNumber(cvData.highest_group.p_g_equals_d[i]),
+                    mahalanobis: formatDisplayNumber(
+                        cvData.highest_group.squared_mahalanobis_distance[i]
+                    ),
+                    group: cvData.highest_group.group[i],
+                    p_g_d: formatDisplayNumber(cvData.second_highest_group.p_value[i]),
+                    second_mahalanobis: formatDisplayNumber(
+                        cvData.second_highest_group.squared_mahalanobis_distance[i]
+                    ),
+                    second_group: cvData.second_highest_group.group[i],
+                    ...scoreDataCV,
+                });
+            }
         }
 
         resultJson.tables.push(table);

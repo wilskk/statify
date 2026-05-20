@@ -14,6 +14,7 @@ use crate::models::result::{
     PairwiseComparison,
     HighestGroupStatistics,
     GroupHistogram,
+    ScoreValue,
 };
 
 // Konversi dari String error ke JsValue untuk interaksi WASM
@@ -188,12 +189,17 @@ struct FormattedCasewiseStatistics {
     highest_group: HighestGroupStatistics,
     second_highest_group: HighestGroupStatistics,
     discriminant_scores: Vec<ScoreValue>,
+    cross_validated: Option<FormattedCrossValidatedCasewiseStatistics>,
 }
 
 #[derive(Serialize)]
-struct ScoreValue {
-    function: String,
-    values: Vec<f64>,
+struct FormattedCrossValidatedCasewiseStatistics {
+    case_number: Vec<usize>,
+    actual_group: Vec<String>,
+    predicted_group: Vec<String>,
+    highest_group: HighestGroupStatistics,
+    second_highest_group: HighestGroupStatistics,
+    discriminant_scores: Option<Vec<ScoreValue>>,
 }
 
 #[derive(Serialize)]
@@ -655,6 +661,18 @@ impl FormatResult {
                 })
                 .collect();
 
+            // Transform cross-validated casewise statistics if present
+            let cross_validated = stats.cross_validated.as_ref().map(|cv| {
+                FormattedCrossValidatedCasewiseStatistics {
+                    case_number: cv.case_number.clone(),
+                    actual_group: cv.actual_group.clone(),
+                    predicted_group: cv.predicted_group.clone(),
+                    highest_group: cv.highest_group.clone(),
+                    second_highest_group: cv.second_highest_group.clone(),
+                    discriminant_scores: None, // Always None; SPSS leaves this blank
+                }
+            });
+
             FormattedCasewiseStatistics {
                 case_number: stats.case_number.clone(),
                 actual_group: stats.actual_group.clone(),
@@ -662,6 +680,7 @@ impl FormatResult {
                 highest_group: stats.highest_group.clone(),
                 second_highest_group: stats.second_highest_group.clone(),
                 discriminant_scores,
+                cross_validated,
             }
         });
 

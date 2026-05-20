@@ -281,6 +281,30 @@ pub struct WilksLambdaTest {
     pub significance: Vec<f64>,
 }
 
+/// Cross-validated casewise statistics (leave-one-out classification)
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CrossValidatedCasewiseStatistics {
+    #[serde(rename = "case_number")]
+    pub case_number: Vec<usize>,
+    #[serde(rename = "actual_group")]
+    pub actual_group: Vec<String>,
+    #[serde(rename = "predicted_group")]
+    pub predicted_group: Vec<String>,
+    #[serde(rename = "highest_group")]
+    pub highest_group: HighestGroupStatistics,
+    #[serde(rename = "second_highest_group")]
+    pub second_highest_group: HighestGroupStatistics,
+    /// No discriminant scores for cross-validated (SPSS shows blank)
+    #[serde(rename = "discriminant_scores")]
+    pub discriminant_scores: Option<Vec<ScoreValue>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ScoreValue {
+    pub function: String,
+    pub values: Vec<f64>,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CasewiseStatistics {
     #[serde(rename = "case_number")]
@@ -295,6 +319,10 @@ pub struct CasewiseStatistics {
     pub second_highest_group: HighestGroupStatistics,
     #[serde(rename = "discriminant_scores")]
     pub discriminant_scores: HashMap<String, Vec<f64>>,
+    /// Cross-validated (leave-one-out) casewise statistics
+    /// Only present when config.classify.leave is true
+    #[serde(rename = "cross_validated")]
+    pub cross_validated: Option<CrossValidatedCasewiseStatistics>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
