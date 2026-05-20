@@ -20,6 +20,10 @@ export function transformNearestNeighborResult(data: any): ResultJson {
     tables.push(buildPredictorSpaceSummary(data.predictor_space));
   }
 
+  if (data.nearest_neighbors) {
+    tables.push(buildNeighborDetails(data.nearest_neighbors));
+  }
+
   if (data.classification_table) {
     tables.push(buildConfusionMatrix(data.classification_table));
   }
@@ -161,6 +165,69 @@ function buildPredictorSpaceSummary(space: any): Table {
   };
 }
 
+export function buildNeighborDetails(nearestNeighbors: any): Table {
+  const focalNeighborSets = Array.isArray(nearestNeighbors?.focal_neighbor_sets)
+    ? nearestNeighbors.focal_neighbor_sets
+    : [];
+  const configuredK = Number(nearestNeighbors?.k_value ?? 0);
+  const kValue = Math.max(
+    0,
+    Number.isFinite(configuredK) ? configuredK : 0,
+    ...focalNeighborSets.map((set: any) =>
+      Array.isArray(set?.neighbors) ? set.neighbors.length : 0,
+    ),
+  );
+  const neighborColumns = Array.from({ length: kValue }, (_, index) => ({
+    header: String(index + 1),
+    key: neighborColumnKey(index),
+  }));
+  const distanceColumns = Array.from({ length: kValue }, (_, index) => ({
+    header: String(index + 1),
+    key: distanceColumnKey(index),
+  }));
+
+  return {
+    key: "neighbor_details",
+    title: "Neighbor Details",
+    columnHeaders: [
+      { header: "Focal Record", key: "focal_record" },
+      {
+        header: "Nearest Neighbor",
+        children: neighborColumns,
+      },
+      {
+        header: "Nearest Distance",
+        children: distanceColumns,
+      },
+    ],
+    rows: focalNeighborSets.map((set: any) => {
+      const focalRecord = recordLabel(
+        set?.focal_label,
+        set?.focal_row_number,
+        set?.focal_record,
+      );
+      const row: Row = {
+        rowHeader: [focalRecord],
+        focal_record: focalRecord,
+      };
+      const neighbors = Array.isArray(set?.neighbors) ? set.neighbors : [];
+
+      for (let index = 0; index < kValue; index += 1) {
+        const neighbor = neighbors[index];
+        row[neighborColumnKey(index)] = neighbor
+          ? recordLabel(neighbor.label, neighbor.row_number, neighbor.id)
+          : "";
+        row[distanceColumnKey(index)] =
+          neighbor && Number.isFinite(Number(neighbor.distance))
+            ? formatDistance3(Number(neighbor.distance))
+            : "";
+      }
+
+      return row;
+    }),
+  };
+}
+
 function buildConfusionMatrix(table: any): Table {
   const categories = normalizeCategories(table);
   const predictedColumns = categories.map((category, index) => ({
@@ -204,12 +271,16 @@ function buildErrorSummary(summary: any): Table {
       {
         rowHeader: ["Training"],
         partition: "Training",
-        percent_incorrectly_classified: optionalPercent(summary.training),
+        percent_incorrectly_classified: optionalPercent3Decimals(
+          summary.training,
+        ),
       },
       {
         rowHeader: ["Holdout"],
         partition: "Holdout",
-        percent_incorrectly_classified: optionalPercent(summary.holdout),
+        percent_incorrectly_classified: optionalPercent3Decimals(
+          summary.holdout,
+        ),
       },
     ],
   };
@@ -219,7 +290,9 @@ function partitionRows(partitionName: string, partition: any, categories: string
   const categoryRows: Row[] = categories.map((category, rowIndex) => {
     const row: Row = {
       rowHeader: [partitionName, category],
-      percent_correct: optionalPercent(partition?.percent_correct?.[rowIndex]),
+      percent_correct: optionalPercent1Decimal(
+        partition?.percent_correct?.[rowIndex],
+      ),
     };
 
     categories.forEach((_, columnIndex) => {
@@ -239,7 +312,7 @@ function partitionRows(partitionName: string, partition: any, categories: string
   };
 
   categories.forEach((_, index) => {
-    overallPercentRow[predictedColumnKey(index)] = optionalPercent(
+    overallPercentRow[predictedColumnKey(index)] = optionalPercent1Decimal(
       partition?.overall_percent?.[index],
     );
   });
@@ -265,6 +338,38 @@ function predictedColumnKey(index: number) {
   return `predicted_${index}`;
 }
 
+function neighborColumnKey(index: number) {
+  return `neighbor_${index + 1}`;
+}
+
+function distanceColumnKey(index: number) {
+  return `distance_${index + 1}`;
+}
+
+function recordLabel(label: unknown, rowNumber: unknown, fallback: unknown) {
+  const stringLabel = String(label ?? "").trim();
+  if (stringLabel) return stringLabel;
+
+  const numericRowNumber = Number(rowNumber);
+  if (Number.isFinite(numericRowNumber)) return String(numericRowNumber);
+
+  return String(fallback ?? "");
+}
+
+function formatDistance3(value: number) {
+  if (!Number.isFinite(value)) return "";
+
+  const sign = value < 0 ? -1 : 1;
+  const absolute = Math.abs(value);
+  const scaledToThousands = Math.floor(absolute * 1000 + Number.EPSILON);
+  const fourthDecimalDigit =
+    Math.floor(absolute * 10000 + Number.EPSILON) % 10;
+  const rounded =
+    fourthDecimalDigit >= 6 ? scaledToThousands + 1 : scaledToThousands;
+
+  return ((sign * rounded) / 1000).toFixed(3);
+}
+
 function percent(numerator: number, denominator: number) {
   if (denominator <= 0) return "";
   return `${formatDisplayNumber((numerator / denominator) * 100)}%`;
@@ -275,9 +380,31 @@ function optionalNumber(value: any) {
   return formatDisplayNumber(Number(value));
 }
 
-function optionalPercent(value: any) {
-  const formatted = optionalNumber(value);
-  return formatted ? `${formatted}%` : "";
+function optionalPercent1Decimal(value: any) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) {
+    return "";
+  }
+
+  const numericValue = Number(value);
+  const sign = numericValue < 0 ? -1 : 1;
+  const absolute = Math.abs(numericValue);
+  const scaledToTenths = Math.floor(absolute * 10 + Number.EPSILON);
+  const firstDecimalDigit = scaledToTenths % 10;
+  const secondDecimalDigit = Math.floor(absolute * 100 + Number.EPSILON) % 10;
+  const rounded =
+    secondDecimalDigit >= 6 && firstDecimalDigit !== 9
+      ? scaledToTenths + 1
+      : scaledToTenths;
+
+  return `${((sign * rounded) / 10).toFixed(1)}%`;
+}
+
+function optionalPercent3Decimals(value: any) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) {
+    return "";
+  }
+
+  return `${Number(value).toFixed(3)}%`;
 }
 
 function normalizePredictorImportanceEntries(predictors: any) {

@@ -76,7 +76,7 @@ function parsePayload(data: string | ChartPayload): ChartPayload {
 
 function formatDistance(value: number) {
   if (!Number.isFinite(value)) return "";
-  return value.toLocaleString(undefined, { maximumFractionDigits: 6 });
+  return value.toFixed(4);
 }
 
 function createNiceTicks(min: number, max: number) {

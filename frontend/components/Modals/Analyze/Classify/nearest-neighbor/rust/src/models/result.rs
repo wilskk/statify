@@ -224,6 +224,8 @@ pub struct NearestNeighbors {
 pub struct FocalNeighborSet {
     pub focal_record: i32,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub focal_label: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub focal_row_number: Option<usize>,
     pub neighbors: Vec<NeighborDetail>,
     pub distances: Vec<f64>,
@@ -233,6 +235,8 @@ pub struct FocalNeighborSet {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NeighborDetail {
     pub id: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub row_number: Option<usize>,
     pub distance: f64,

@@ -126,6 +126,7 @@ fn build_points(
             .into_iter()
             .map(|(neighbor_idx, distance)| NeighborDetail {
                 id: knn_data.case_identifiers[neighbor_idx],
+                label: knn_data.case_labels.get(neighbor_idx).cloned(),
                 row_number: knn_data
                     .processed_case_indices
                     .get(neighbor_idx)

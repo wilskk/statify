@@ -3,6 +3,7 @@ import type { KNNFinalResultType } from "@/components/Modals/Analyze/Classify/ne
 import type { Table } from "@/types/Table";
 import { useResultStore } from "@/stores/useResultStore";
 import { ChartService } from "@/services/chart/ChartService";
+import { buildNeighborDetails } from "./nearest-neighbor-analysis-formatter";
 
 export async function resultNearestNeighbor({
   formattedResult,
@@ -24,19 +25,14 @@ export async function resultNearestNeighbor({
       const titleMessage = "Nearest Neighbor Analysis";
       const logId = await addLog({ log: titleMessage });
 
-      await addAnalytic(logId, {
+      const nearestNeighborAnalysisResultId = await addAnalytic(logId, {
         title: `Nearest Neighbor Analysis Result`,
         note: "",
       });
 
       const systemSettings = findTable("system_settings");
       if (systemSettings) {
-        const systemSettingsId = await addAnalytic(logId, {
-          title: `System Settings`,
-          note: "",
-        });
-
-        await addStatistic(systemSettingsId, {
+        await addStatistic(nearestNeighborAnalysisResultId, {
           title: `System Settings`,
           description: `System Settings`,
           output_data: systemSettings,
@@ -46,12 +42,7 @@ export async function resultNearestNeighbor({
 
       const caseProcessingSummary = findTable("case_processing_summary");
       if (caseProcessingSummary) {
-        const caseProcessingSummaryId = await addAnalytic(logId, {
-          title: `Case Processing Summary`,
-          note: "",
-        });
-
-        await addStatistic(caseProcessingSummaryId, {
+        await addStatistic(nearestNeighborAnalysisResultId, {
           title: `Case Processing Summary`,
           description: `Case Processing Summary`,
           output_data: caseProcessingSummary,
@@ -61,12 +52,7 @@ export async function resultNearestNeighbor({
 
       const kAndPredictorSelectionChart = createKAndPredictorSelectionChart(rawResult);
       if (kAndPredictorSelectionChart) {
-        const kAndPredictorSelectionId = await addAnalytic(logId, {
-          title: `k and Predictor Selection`,
-          note: "",
-        });
-
-        await addStatistic(kAndPredictorSelectionId, {
+        await addStatistic(nearestNeighborAnalysisResultId, {
           title: `k and Predictor Selection`,
           description: `k and Predictor Selection`,
           output_data: JSON.stringify(kAndPredictorSelectionChart),
@@ -78,12 +64,7 @@ export async function resultNearestNeighbor({
         rawResult?.k_selection_chart,
       );
       if (kSelectionErrorLogLineChart) {
-        const kSelectionErrorLogId = await addAnalytic(logId, {
-          title: `k Selection Error Log`,
-          note: "",
-        });
-
-        await addStatistic(kSelectionErrorLogId, {
+        await addStatistic(nearestNeighborAnalysisResultId, {
           title: `k Selection Error Log`,
           description: `k Selection Error Log`,
           output_data: JSON.stringify(kSelectionErrorLogLineChart),
@@ -93,12 +74,7 @@ export async function resultNearestNeighbor({
 
       const predictorImportance = findTable("predictor_importance");
       if (predictorImportance) {
-        const predictorImportanceId = await addAnalytic(logId, {
-          title: `Predictor Importance`,
-          note: "",
-        });
-
-        await addStatistic(predictorImportanceId, {
+        await addStatistic(nearestNeighborAnalysisResultId, {
           title: `Predictor Importance`,
           description: `Predictor Importance`,
           output_data: predictorImportance,
@@ -110,7 +86,7 @@ export async function resultNearestNeighbor({
         );
 
         if (predictorImportanceChart) {
-          await addStatistic(predictorImportanceId, {
+          await addStatistic(nearestNeighborAnalysisResultId, {
             title: `Predictor Importance Chart`,
             description: `Predictor Importance Chart`,
             output_data: JSON.stringify(predictorImportanceChart),
@@ -121,27 +97,17 @@ export async function resultNearestNeighbor({
 
       const confusionMatrix = findTable("confusion_matrix");
       if (confusionMatrix) {
-        const confusionMatrixId = await addAnalytic(logId, {
+        await addStatistic(nearestNeighborAnalysisResultId, {
           title: `Classification Table`,
-          note: "",
-        });
-
-        await addStatistic(confusionMatrixId, {
-          title: `Classification Tablee`,
-          description: `Classification Tablee`,
+          description: `Classification Table`,
           output_data: confusionMatrix,
-          components: `Classification Tablee`,
+          components: `Classification Table`,
         });
       }
 
       const errorSummary = findTable("error_summary");
       if (errorSummary) {
-        const errorSummaryId = await addAnalytic(logId, {
-          title: `Error Summary`,
-          note: "",
-        });
-
-        await addStatistic(errorSummaryId, {
+        await addStatistic(nearestNeighborAnalysisResultId, {
           title: `Error Summary`,
           description: `Error Summary`,
           output_data: errorSummary,
@@ -151,12 +117,7 @@ export async function resultNearestNeighbor({
 
       const predictorSpace = findTable("predictor_space");
       if (predictorSpace) {
-        const predictorSpaceId = await addAnalytic(logId, {
-          title: `Predictor Space`,
-          note: "",
-        });
-
-        await addStatistic(predictorSpaceId, {
+        await addStatistic(nearestNeighborAnalysisResultId, {
           title: `Predictor Space`,
           description: `Predictor Space`,
           output_data: predictorSpace,
@@ -166,13 +127,26 @@ export async function resultNearestNeighbor({
         const predictorSpaceChart = createPredictorSpaceChart(rawResult?.predictor_space);
 
         if (predictorSpaceChart) {
-          await addStatistic(predictorSpaceId, {
+          await addStatistic(nearestNeighborAnalysisResultId, {
             title: `Predictor Space Chart`,
             description: `Predictor Space Chart`,
             output_data: JSON.stringify(predictorSpaceChart),
             components: `Predictor Space Chart`,
           });
         }
+      }
+
+      if (rawResult?.nearest_neighbors) {
+        const neighborDetailsTable = buildNeighborDetails(
+          rawResult.nearest_neighbors,
+        );
+
+        await addStatistic(nearestNeighborAnalysisResultId, {
+          title: `Neighbor Details`,
+          description: `Neighbor Details`,
+          output_data: JSON.stringify({ tables: [neighborDetailsTable] }),
+          components: `Neighbor Details`,
+        });
       }
     };
     await nearestNeighborAnalysisResult();
@@ -266,34 +240,51 @@ function createPredictorSpaceChart(predictorSpace?: any) {
 }
 
 function createKSelectionErrorLogLineChart(chart?: any) {
+  const isRegression = String(chart?.metric_name ?? chart?.metricName ?? "")
+    .toLowerCase()
+    .includes("sse");
   const chartData = (chart?.candidates ?? [])
-    .map((candidate: any) => ({
-      category: String(candidate.k),
-      value: Number(candidate.average_error ?? candidate.averageError),
-    }))
+    .map((candidate: any) => {
+      const rawError = Number(candidate.average_error ?? candidate.averageError);
+      return {
+        model: Number(candidate.k),
+        value: isRegression ? rawError : rawError / 100,
+        rawValue: rawError,
+      };
+    })
     .filter((candidate: any) => (
-      candidate.category && Number.isFinite(candidate.value)
+      Number.isFinite(candidate.model) && Number.isFinite(candidate.value)
     ));
 
   if (!chartData.length) return null;
 
-  return ChartService.createChartJSON({
-    chartType: "Line Chart",
-    chartData,
-    chartVariables: { x: ["K"], y: ["Error Rate"] },
-    chartMetadata: {
-      title: "k Selection Error Log",
-      description: "Cross-validation error rate by number of neighbors",
-    },
-    chartConfig: {
-      axisLabels: {
-        x: "K",
-        y: "Error Rate",
+  return {
+    charts: [
+      {
+        chartType: "KNN k Selection Error Log",
+        chartData,
+        chartMetadata: {
+          title: "k Selection Error Log",
+          description: isRegression
+            ? "Cross-validation SSE by number of neighbors"
+            : "Cross-validation error rate by number of neighbors",
+        },
+        chartConfig: {
+          width: 900,
+          height: 520,
+          axisLabels: {
+            x: "Number of Nearest Neighbor (k)",
+            y: isRegression ? "Sum Square of Error (SSE)" : "Error Rate",
+          },
+          kAndPredictorSelection: {
+            mode: isRegression ? "regression" : "classification",
+            selectedK: chart?.selected_k ?? chart?.selectedK,
+            showPointLabels: false,
+          },
+        },
       },
-      showValueTooltip: true,
-      useLegend: false,
-    },
-  });
+    ],
+  };
 }
 
 function createPredictorImportanceChart(table?: Table) {
@@ -337,15 +328,23 @@ function createKAndPredictorSelectionChart(rawResult?: any) {
 
   if (!Array.isArray(steps) || !steps.length) return null;
 
+  const isRegression =
+    rawResult?.predictor_space?.target_measure === "scale" ||
+    (!rawResult?.classification_table && !rawResult?.error_summary);
   const chartData = steps
-    .map((step: any) => ({
-      category:
+    .map((step: any, index: number) => {
+      const rawError = toNumber(step.trial_error ?? step.trialError);
+      return {
+        model: index + 1,
+        predictor:
         step.selected_feature ??
         step.selectedFeature ??
-        `Step ${step.step_number ?? step.stepNumber ?? ""}`,
-      value: toNumber(step.trial_error ?? step.trialError),
-    }))
-    .filter((row: any) => row.category && Number.isFinite(row.value));
+        `Step ${step.step_number ?? step.stepNumber ?? index + 1}`,
+        value: isRegression ? rawError : rawError / 100,
+        rawValue: rawError,
+      };
+    })
+    .filter((row: any) => row.predictor && Number.isFinite(row.value));
 
   if (!chartData.length) return null;
 
@@ -355,24 +354,34 @@ function createKAndPredictorSelectionChart(rawResult?: any) {
 
   if (selectedK === null || selectedK === undefined) return null;
 
-  return ChartService.createChartJSON({
-    chartType: "Line Chart",
-    chartData,
-    chartVariables: { x: ["Selected Predictor"], y: ["Error"] },
-    chartMetadata: {
-      title: "k and Predictor Selection",
-      subtitle: `k = ${selectedK}`,
-      description: "Feature selection error by selected predictor",
-    },
-    chartConfig: {
-      axisLabels: {
-        x: "Selected Predictor",
-        y: "Error",
+  return {
+    charts: [
+      {
+        chartType: "KNN k and Predictor Selection",
+        chartData,
+        chartMetadata: {
+          title: "k and Predictor Selection",
+          subtitle: `k = ${selectedK}`,
+          description: isRegression
+            ? "Feature selection SSE by model"
+            : "Feature selection error rate by model",
+        },
+        chartConfig: {
+          width: 900,
+          height: 520,
+          axisLabels: {
+            x: "Model",
+            y: isRegression ? "Sum Square of Error (SSE)" : "Error Rate",
+          },
+          kAndPredictorSelection: {
+            mode: isRegression ? "regression" : "classification",
+            selectedK,
+            showPointLabels: true,
+          },
+        },
       },
-      showValueTooltip: true,
-      useLegend: false,
-    },
-  });
+    ],
+  };
 }
 
 function splitDimensionName(name: string | undefined) {

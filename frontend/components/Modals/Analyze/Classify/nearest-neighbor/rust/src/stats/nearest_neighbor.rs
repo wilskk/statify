@@ -91,6 +91,7 @@ pub fn calculate_nearest_neighbors(
 
                 neighbor_details.push(NeighborDetail {
                     id: neighbor_id,
+                    label: knn_data.case_labels.get(idx).cloned(),
                     row_number: Some(row_number(&knn_data, idx)),
                     distance,
                 });
@@ -99,6 +100,7 @@ pub fn calculate_nearest_neighbors(
 
             FocalNeighborSet {
                 focal_record,
+                focal_label: knn_data.case_labels.get(focal_idx).cloned(),
                 focal_row_number: Some(row_number(&knn_data, focal_idx)),
                 neighbors: neighbor_details,
                 distances,
