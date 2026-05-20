@@ -15,9 +15,7 @@ pub struct NearestNeighborAnalysis {
     pub classification_table: Option<ClassificationTable>,
     pub error_summary: Option<ErrorSummary>,
     pub predictor_space: Option<PredictorSpace>,
-    pub peers_chart: Option<PeersChart>,
     pub nearest_neighbors: Option<NearestNeighbors>,
-    pub quadrant_map: Option<QuadrantMap>,
     pub saved_variables: Option<SavedVariables>,
 }
 
@@ -145,12 +143,14 @@ pub struct PredictorImportanceEntry {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ClassificationTable {
+    pub categories: Vec<String>,
     pub training: ClassificationPartition,
     pub holdout: ClassificationPartition,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ClassificationPartition {
+    pub confusion_matrix: Vec<Vec<usize>>,
     pub observed: Vec<usize>,
     pub predicted: Vec<usize>,
     pub missing: Vec<usize>,
@@ -218,18 +218,6 @@ pub struct NearestNeighbors {
     pub weighting_enabled: bool,
     pub prediction_method: Option<String>,
     pub focal_neighbor_sets: Vec<FocalNeighborSet>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PeersChart {
-    pub focal_neighbor_sets: Vec<FocalNeighborSet>,
-    pub features: HashMap<String, Vec<f64>>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct QuadrantMap {
-    pub focal_neighbor_sets: Vec<FocalNeighborSet>,
-    pub features: HashMap<String, Vec<f64>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

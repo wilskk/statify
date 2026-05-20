@@ -29,6 +29,21 @@ export async function resultNearestNeighbor({
         note: "",
       });
 
+      const systemSettings = findTable("system_settings");
+      if (systemSettings) {
+        const systemSettingsId = await addAnalytic(logId, {
+          title: `System Settings`,
+          note: "",
+        });
+
+        await addStatistic(systemSettingsId, {
+          title: `System Settings`,
+          description: `System Settings`,
+          output_data: systemSettings,
+          components: `System Settings`,
+        });
+      }
+
       const caseProcessingSummary = findTable("case_processing_summary");
       if (caseProcessingSummary) {
         const caseProcessingSummaryId = await addAnalytic(logId, {
@@ -76,21 +91,6 @@ export async function resultNearestNeighbor({
         });
       }
 
-      const systemSettings = findTable("system_settings");
-      if (systemSettings) {
-        const systemSettingsId = await addAnalytic(logId, {
-          title: `System Settings`,
-          note: "",
-        });
-
-        await addStatistic(systemSettingsId, {
-          title: `System Settings`,
-          description: `System Settings`,
-          output_data: systemSettings,
-          components: `System Settings`,
-        });
-      }
-
       const predictorImportance = findTable("predictor_importance");
       if (predictorImportance) {
         const predictorImportanceId = await addAnalytic(logId, {
@@ -120,30 +120,33 @@ export async function resultNearestNeighbor({
       }
 
       const confusionMatrix = findTable("confusion_matrix");
-      const metrics = findTable("metrics");
-      if (confusionMatrix || metrics) {
+      if (confusionMatrix) {
         const confusionMatrixId = await addAnalytic(logId, {
-          title: `Confusion Matrix and Metrics`,
+          title: `Classification Table`,
           note: "",
         });
 
-        if (confusionMatrix) {
-          await addStatistic(confusionMatrixId, {
-            title: `Confusion Matrix`,
-            description: `Confusion Matrix`,
-            output_data: confusionMatrix,
-            components: `Confusion Matrix`,
-          });
-        }
+        await addStatistic(confusionMatrixId, {
+          title: `Classification Tablee`,
+          description: `Classification Tablee`,
+          output_data: confusionMatrix,
+          components: `Classification Tablee`,
+        });
+      }
 
-        if (metrics) {
-          await addStatistic(confusionMatrixId, {
-            title: `Metrics`,
-            description: `Metrics`,
-            output_data: metrics,
-            components: `Metrics`,
-          });
-        }
+      const errorSummary = findTable("error_summary");
+      if (errorSummary) {
+        const errorSummaryId = await addAnalytic(logId, {
+          title: `Error Summary`,
+          note: "",
+        });
+
+        await addStatistic(errorSummaryId, {
+          title: `Error Summary`,
+          description: `Error Summary`,
+          output_data: errorSummary,
+          components: `Error Summary`,
+        });
       }
 
       const predictorSpace = findTable("predictor_space");

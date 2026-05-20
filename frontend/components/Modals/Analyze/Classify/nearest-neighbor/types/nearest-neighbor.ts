@@ -144,16 +144,10 @@ export type KNNOutputType = {
     KSelectionChart: boolean;
     PredictorSpace: boolean;
     PredictionResults: boolean;
-    ConfusionMatrix: boolean;
     ShowNeighborDetail: boolean;
+    PeersChart: boolean;
+    QuadrantMap: boolean;
     ChartAndTable: boolean;
-    ExportModelXML: boolean;
-    XMLFilePath: string | null;
-    ExportDistance: boolean;
-    CreateDataset: boolean;
-    WriteDataFile: boolean;
-    NewDataFilePath: string | null;
-    DatasetName: string | null;
 };
 
 export type KNNOutputProps = {
@@ -162,7 +156,6 @@ export type KNNOutputProps = {
         field: keyof KNNOutputType,
         value: string | boolean | null
     ) => void;
-    focalCaseVar: string | null;
     isAutoK: boolean;
     isFeatureSelectionActive: boolean;
     showFieldHelp?: boolean;

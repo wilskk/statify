@@ -1,15 +1,15 @@
 import { formatDisplayNumber } from "@/hooks/useFormatter";
-import type { ResultJson, Table } from "@/types/Table";
+import type { ResultJson, Row, Table } from "@/types/Table";
 
 export function transformNearestNeighborResult(data: any): ResultJson {
   const tables: Table[] = [];
 
-  if (data.case_processing_summary) {
-    tables.push(buildCaseProcessingSummary(data.case_processing_summary));
-  }
-
   if (data.system_settings) {
     tables.push(buildSystemSettings(data.system_settings));
+  }
+
+  if (data.case_processing_summary) {
+    tables.push(buildCaseProcessingSummary(data.case_processing_summary));
   }
 
   if (data.predictor_importance) {
@@ -22,7 +22,10 @@ export function transformNearestNeighborResult(data: any): ResultJson {
 
   if (data.classification_table) {
     tables.push(buildConfusionMatrix(data.classification_table));
-    tables.push(buildMetrics(data.classification_table, data.error_summary));
+  }
+
+  if (data.error_summary) {
+    tables.push(buildErrorSummary(data.error_summary));
   }
 
   return { tables };
@@ -159,86 +162,107 @@ function buildPredictorSpaceSummary(space: any): Table {
 }
 
 function buildConfusionMatrix(table: any): Table {
+  const categories = normalizeCategories(table);
+  const predictedColumns = categories.map((category, index) => ({
+    header: category,
+    key: predictedColumnKey(index),
+  }));
+
   return {
     key: "confusion_matrix",
-    title: "Confusion Matrix",
+    title: "Classification Tablee",
     columnHeaders: [
-      { header: "Sample", key: "sample" },
-      { header: "Class", key: "class" },
+      { header: "Partition", key: "partition" },
       { header: "Observed", key: "observed" },
-      { header: "Predicted", key: "predicted" },
-      { header: "Percent Correct", key: "percent_correct" },
+      {
+        header: "Predicted",
+        children: [
+          ...predictedColumns,
+          { header: "Percent Correct", key: "percent_correct" },
+        ],
+      },
     ],
     rows: [
-      ...partitionRows("Training", table.training),
-      ...partitionRows("Holdout", table.holdout),
+      ...partitionRows("Training", table.training, categories),
+      ...partitionRows("Holdout", table.holdout, categories),
     ],
   };
 }
 
-function buildMetrics(table: any, errorSummary: any): Table {
-  const trainingTotal = sum(table.training?.observed);
-  const holdoutTotal = sum(table.holdout?.observed);
-  const trainingAccuracy = accuracy(table.training);
-  const holdoutAccuracy = accuracy(table.holdout);
-
+function buildErrorSummary(summary: any): Table {
   return {
-    key: "metrics",
-    title: "Metrics",
+    key: "error_summary",
+    title: "Error Summary",
     columnHeaders: [
-      { header: "Sample", key: "sample" },
-      { header: "N", key: "n" },
-      { header: "Accuracy", key: "accuracy" },
-      { header: "Error Rate", key: "error_rate" },
+      { header: "Partition", key: "partition" },
+      {
+        header: "Percent of Records in Incorrectly Classified",
+        key: "percent_incorrectly_classified",
+      },
     ],
     rows: [
       {
         rowHeader: ["Training"],
-        n: formatDisplayNumber(trainingTotal),
-        accuracy: optionalNumber(trainingAccuracy),
-        error_rate: optionalNumber(errorSummary?.training ?? invert(trainingAccuracy)),
+        partition: "Training",
+        percent_incorrectly_classified: optionalPercent(summary.training),
       },
       {
         rowHeader: ["Holdout"],
-        n: formatDisplayNumber(holdoutTotal),
-        accuracy: optionalNumber(holdoutAccuracy),
-        error_rate: optionalNumber(errorSummary?.holdout ?? invert(holdoutAccuracy)),
+        partition: "Holdout",
+        percent_incorrectly_classified: optionalPercent(summary.holdout),
       },
     ],
   };
 }
 
-function partitionRows(sample: string, partition: any) {
-  return (partition?.observed ?? []).map((observed: number, index: number) => ({
-    rowHeader: [sample, String(index)],
-    sample,
-    class: String(index),
-    observed: formatDisplayNumber(observed),
-    predicted: formatDisplayNumber(partition.predicted?.[index] ?? 0),
-    percent_correct: optionalNumber(partition.percent_correct?.[index]),
-  }));
+function partitionRows(partitionName: string, partition: any, categories: string[]): Row[] {
+  const categoryRows: Row[] = categories.map((category, rowIndex) => {
+    const row: Row = {
+      rowHeader: [partitionName, category],
+      percent_correct: optionalPercent(partition?.percent_correct?.[rowIndex]),
+    };
+
+    categories.forEach((_, columnIndex) => {
+      row[predictedColumnKey(columnIndex)] = String(
+        formatDisplayNumber(
+          Number(partition?.confusion_matrix?.[rowIndex]?.[columnIndex] ?? 0),
+        ),
+      );
+    });
+
+    return row;
+  });
+
+  const overallPercentRow: Row = {
+    rowHeader: [partitionName, "Overall Percent"],
+    percent_correct: "",
+  };
+
+  categories.forEach((_, index) => {
+    overallPercentRow[predictedColumnKey(index)] = optionalPercent(
+      partition?.overall_percent?.[index],
+    );
+  });
+
+  return [...categoryRows, overallPercentRow];
 }
 
-function accuracy(partition: any): number | null {
-  const observed = partition?.observed ?? [];
-  const percentCorrect = partition?.percent_correct ?? [];
-  const total = sum(observed);
-  if (total <= 0) return null;
-
-  const correct = observed.reduce(
-    (acc: number, count: number, index: number) =>
-      acc + (count * Number(percentCorrect[index] ?? 0)) / 100,
-    0,
+function normalizeCategories(table: any): string[] {
+  const categories = Array.isArray(table?.categories) ? table.categories : [];
+  const fallbackLength = Math.max(
+    Number(table?.training?.observed?.length ?? 0),
+    Number(table?.holdout?.observed?.length ?? 0),
   );
-  return (correct / total) * 100;
+
+  const labels = categories.length
+    ? categories
+    : Array.from({ length: fallbackLength }, (_, index) => String(index));
+
+  return labels.map((category: unknown) => String(category));
 }
 
-function invert(value: number | null) {
-  return value === null ? null : 100 - value;
-}
-
-function sum(values: any[] = []) {
-  return values.reduce((acc, value) => acc + Number(value ?? 0), 0);
+function predictedColumnKey(index: number) {
+  return `predicted_${index}`;
 }
 
 function percent(numerator: number, denominator: number) {
@@ -249,6 +273,11 @@ function percent(numerator: number, denominator: number) {
 function optionalNumber(value: any) {
   if (value === null || value === undefined || !Number.isFinite(Number(value))) return "";
   return formatDisplayNumber(Number(value));
+}
+
+function optionalPercent(value: any) {
+  const formatted = optionalNumber(value);
+  return formatted ? `${formatted}%` : "";
 }
 
 function normalizePredictorImportanceEntries(predictors: any) {

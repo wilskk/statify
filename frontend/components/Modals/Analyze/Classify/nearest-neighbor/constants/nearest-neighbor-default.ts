@@ -70,16 +70,10 @@ export const KNNOutputDefault: KNNOutputType = {
     KSelectionChart: false,
     PredictorSpace: true,
     PredictionResults: false,
-    ConfusionMatrix: true,
     ShowNeighborDetail: false,
+    PeersChart: false,
+    QuadrantMap: false,
     ChartAndTable: true,
-    ExportModelXML: false,
-    XMLFilePath: null,
-    ExportDistance: false,
-    CreateDataset: true,
-    WriteDataFile: false,
-    NewDataFilePath: null,
-    DatasetName: null,
 };
 
 export const KNNDefault: KNNType = {

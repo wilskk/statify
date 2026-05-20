@@ -3,9 +3,9 @@ use wasm_bindgen::JsValue;
 
 use crate::models::result::{
     CaseProcessingSummary, ClassificationTable, ErrorSummary, FeatureSelectionStep,
-    FeatureSelectionSummary, FocalNeighborSet, KFeatureSelectionSummary,
-    KSelectionChart, NearestNeighborAnalysis, NearestNeighbors, PredictionResults,
-    PredictorImportanceEntry, PredictorSpace, SavedVariables, SystemSettings,
+    FeatureSelectionSummary, KFeatureSelectionSummary, KSelectionChart,
+    NearestNeighborAnalysis, NearestNeighbors, PredictionResults, PredictorImportanceEntry,
+    PredictorSpace, SavedVariables, SystemSettings,
 };
 
 pub fn string_to_js_error(error: String) -> JsValue {
@@ -35,9 +35,7 @@ struct FormatResult {
     classification_table: Option<ClassificationTable>,
     error_summary: Option<ErrorSummary>,
     predictor_space: Option<PredictorSpace>,
-    peers_chart: Option<FormattedPeersChart>,
     nearest_neighbors: Option<NearestNeighbors>,
-    quadrant_map: Option<FormattedQuadrantMap>,
     saved_variables: Option<SavedVariables>,
 }
 
@@ -53,24 +51,6 @@ struct FormattedPredictorImportance {
 struct PredictorEntry {
     name: String,
     value: f64,
-}
-
-#[derive(Serialize)]
-struct FormattedPeersChart {
-    focal_neighbor_sets: Vec<FocalNeighborSet>,
-    features: Vec<FeatureEntry>,
-}
-
-#[derive(Serialize)]
-struct FormattedQuadrantMap {
-    focal_neighbor_sets: Vec<FocalNeighborSet>,
-    features: Vec<FeatureEntry>,
-}
-
-#[derive(Serialize)]
-struct FeatureEntry {
-    name: String,
-    values: Vec<f64>,
 }
 
 impl FormatResult {
@@ -93,38 +73,6 @@ impl FormatResult {
             }
         });
 
-        let peers_chart = result.peers_chart.as_ref().map(|pc| {
-            let features = pc
-                .features
-                .iter()
-                .map(|(name, values)| FeatureEntry {
-                    name: name.clone(),
-                    values: values.clone(),
-                })
-                .collect();
-
-            FormattedPeersChart {
-                focal_neighbor_sets: pc.focal_neighbor_sets.clone(),
-                features,
-            }
-        });
-
-        let quadrant_map = result.quadrant_map.as_ref().map(|qm| {
-            let features = qm
-                .features
-                .iter()
-                .map(|(name, values)| FeatureEntry {
-                    name: name.clone(),
-                    values: values.clone(),
-                })
-                .collect();
-
-            FormattedQuadrantMap {
-                focal_neighbor_sets: qm.focal_neighbor_sets.clone(),
-                features,
-            }
-        });
-
         FormatResult {
             case_processing_summary: result.case_processing_summary.clone(),
             feature_selection_summary: result.feature_selection_summary.clone(),
@@ -137,9 +85,7 @@ impl FormatResult {
             classification_table: result.classification_table.clone(),
             error_summary: result.error_summary.clone(),
             predictor_space: result.predictor_space.clone(),
-            peers_chart,
             nearest_neighbors: result.nearest_neighbors.clone(),
-            quadrant_map,
             saved_variables: result.saved_variables.clone(),
         }
     }

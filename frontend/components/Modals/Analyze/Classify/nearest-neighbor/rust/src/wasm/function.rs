@@ -105,7 +105,7 @@ pub fn run_analysis(
 
     // Step 3: Classification results
     let mut classification_table = None;
-    if config.output.confusion_matrix && target_is_categorical {
+    if target_is_categorical {
         logger.add_log("classification_results");
         match core::calculate_classification_table(data, &analysis_config) {
             Ok(table) => {
@@ -171,31 +171,7 @@ pub fn run_analysis(
         }
     };
 
-    // Step 6: Peers chart
-    logger.add_log("peers_chart");
-    let mut peers_chart = None;
-    match core::calculate_peers_chart(data, &analysis_config) {
-        Ok(chart) => {
-            peers_chart = Some(chart);
-        }
-        Err(e) => {
-            error_collector.add_error("peers_chart", &e);
-        }
-    }
-
-    // Step 7: Quadrant map
-    logger.add_log("quadrant_map");
-    let mut quadrant_map = None;
-    match core::calculate_quadrant_map(data, &analysis_config) {
-        Ok(map) => {
-            quadrant_map = Some(map);
-        }
-        Err(e) => {
-            error_collector.add_error("quadrant_map", &e);
-        }
-    }
-
-    // Step 8: Error summary
+    // Step 6: Error summary
     let mut error_summary = None;
     if target_is_categorical {
         logger.add_log("error_summary");
@@ -209,7 +185,7 @@ pub fn run_analysis(
         }
     }
 
-    // Step 9: Saved variables for Data Viewer
+    // Step 7: Saved variables for Data Viewer
     let mut saved_variables = None;
     if config.save.has_target_var
         || config.save.is_cate_target_var
@@ -253,9 +229,7 @@ pub fn run_analysis(
         classification_table,
         error_summary,
         predictor_space,
-        peers_chart,
         nearest_neighbors,
-        quadrant_map,
         saved_variables,
     };
 

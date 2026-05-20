@@ -135,6 +135,12 @@ function finiteNumber(value: unknown, fallback = 0) {
   return Number.isFinite(numericValue) ? numericValue : fallback;
 }
 
+function clampInteger(value: unknown, min: number, max: number) {
+  const numericValue = Math.trunc(Number(value));
+  if (!Number.isFinite(numericValue)) return min;
+  return Math.min(max, Math.max(min, numericValue));
+}
+
 function interpolateColor(start: string, end: string, ratio: number) {
   const clamped = Math.min(1, Math.max(0, ratio));
   const parse = (hex: string) => [
@@ -177,6 +183,10 @@ export default function KNNPredictorSpaceChart({
   const [currentK, setCurrentK] = useState(maxK);
   const [selectedId, setSelectedId] = useState<number | string | null>(null);
   const [tooltip, setTooltip] = useState<TooltipState>(null);
+
+  useEffect(() => {
+    setCurrentK((value) => clampInteger(value, 1, maxK));
+  }, [maxK]);
 
   const targetCategories = useMemo(
     () => Array.from(new Set(points.map((point) => point.target || "(blank)"))),
@@ -291,6 +301,9 @@ export default function KNNPredictorSpaceChart({
       html,
     });
   };
+  const handleKChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setCurrentK(clampInteger(event.target.value, 1, maxK));
+  };
 
   if (!chart || points.length === 0) return null;
 
@@ -307,16 +320,20 @@ export default function KNNPredictorSpaceChart({
           </div>
 
           <div className="mb-2 flex items-center justify-center gap-3">
-            <label className="text-xs font-semibold">K: {currentK}</label>
+            <label htmlFor="knn-predictor-space-k-3d" className="text-xs font-semibold">
+              K
+            </label>
             <input
-              type="range"
+              id="knn-predictor-space-k-3d"
+              type="number"
               min={1}
               max={maxK}
               step={1}
               value={currentK}
-              onChange={(event) => setCurrentK(Number(event.target.value))}
-              className="w-44"
+              onChange={handleKChange}
+              className="h-8 w-20 rounded border border-gray-300 px-2 text-center text-xs"
             />
+            <span className="text-xs text-gray-500">Max {maxK}</span>
           </div>
 
           <div className="flex items-start justify-center gap-4">
@@ -392,16 +409,20 @@ export default function KNNPredictorSpaceChart({
         </div>
 
         <div className="mb-2 flex items-center justify-center gap-3">
-          <label className="text-xs font-semibold">K: {currentK}</label>
+          <label htmlFor="knn-predictor-space-k-2d" className="text-xs font-semibold">
+            K
+          </label>
           <input
-            type="range"
+            id="knn-predictor-space-k-2d"
+            type="number"
             min={1}
             max={maxK}
             step={1}
             value={currentK}
-            onChange={(event) => setCurrentK(Number(event.target.value))}
-            className="w-44"
+            onChange={handleKChange}
+            className="h-8 w-20 rounded border border-gray-300 px-2 text-center text-xs"
           />
+          <span className="text-xs text-gray-500">Max {maxK}</span>
         </div>
 
         <div className="flex items-start justify-center gap-4">

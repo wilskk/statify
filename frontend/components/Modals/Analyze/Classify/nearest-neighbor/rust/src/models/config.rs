@@ -132,19 +132,19 @@ pub struct OutputConfig {
     pub show_neighbor_detail: bool,
     #[serde(rename = "ChartAndTable")]
     pub chart_and_table: bool,
-    #[serde(rename = "ExportModelXML")]
+    #[serde(rename = "ExportModelXML", default)]
     pub export_model_xml: bool,
-    #[serde(rename = "XMLFilePath")]
+    #[serde(rename = "XMLFilePath", default)]
     pub xml_file_path: Option<String>,
-    #[serde(rename = "ExportDistance")]
+    #[serde(rename = "ExportDistance", default)]
     pub export_distance: bool,
-    #[serde(rename = "CreateDataset")]
+    #[serde(rename = "CreateDataset", default)]
     pub create_dataset: bool,
-    #[serde(rename = "WriteDataFile")]
+    #[serde(rename = "WriteDataFile", default)]
     pub write_data_file: bool,
-    #[serde(rename = "NewDataFilePath")]
+    #[serde(rename = "NewDataFilePath", default)]
     pub new_data_file_path: Option<String>,
-    #[serde(rename = "DatasetName")]
+    #[serde(rename = "DatasetName", default)]
     pub dataset_name: Option<String>,
 }
 

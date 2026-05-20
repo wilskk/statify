@@ -40,6 +40,7 @@ pub fn calculate_classification_table(
 
     // Create mapping of categorical target values to numeric indices
     let (category_map, categories) = create_category_mapping(&knn_data.target_values);
+    let category_labels = display_category_labels(data, &categories);
     let n_categories = categories.len();
 
     // Use Euclidean or Manhattan distance
@@ -85,7 +86,9 @@ pub fn calculate_classification_table(
     let _holdout_overall_accuracy = calculate_percent_correct(holdout_correct, holdout_total);
 
     Ok(ClassificationTable {
+        categories: category_labels,
         training: ClassificationPartition {
+            confusion_matrix: train_confusion,
             observed: train_observed,
             predicted: train_predicted,
             missing: train_missing,
@@ -93,6 +96,7 @@ pub fn calculate_classification_table(
             percent_correct: train_percent_correct,
         },
         holdout: ClassificationPartition {
+            confusion_matrix: holdout_confusion,
             observed: holdout_observed,
             predicted: holdout_predicted,
             missing: holdout_missing,
@@ -112,6 +116,35 @@ fn create_category_mapping(target_values: &[DataValue]) -> (HashMap<String, usiz
         .collect();
 
     (category_map, categories)
+}
+
+fn display_category_labels(data: &AnalysisData, categories: &[String]) -> Vec<String> {
+    let value_labels = data
+        .target_data_defs
+        .iter()
+        .flat_map(|group| group.iter())
+        .flat_map(|definition| definition.values.iter())
+        .collect::<Vec<_>>();
+
+    categories
+        .iter()
+        .map(|category| {
+            value_labels
+                .iter()
+                .find(|value_label| {
+                    category_key(Some(&value_label.value)).as_deref() == Some(category.as_str())
+                })
+                .and_then(|value_label| {
+                    let label = value_label.label.trim();
+                    if label.is_empty() {
+                        None
+                    } else {
+                        Some(label.to_string())
+                    }
+                })
+                .unwrap_or_else(|| category.clone())
+        })
+        .collect()
 }
 
 /// Calculate confusion matrix for either training or holdout set

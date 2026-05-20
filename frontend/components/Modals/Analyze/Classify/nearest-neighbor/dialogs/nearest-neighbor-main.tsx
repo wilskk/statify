@@ -425,7 +425,6 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
                 updateFormData={(field, value) =>
                   updateFormData("output", field, value)
                 }
-                focalCaseVar={formData.main.FocalCaseIdenVar}
                 isAutoK={isAutoK}
                 isFeatureSelectionActive={isFeatureSelectionActive}
                 showFieldHelp={showFieldHelp}
