@@ -9,7 +9,10 @@ use crate::models::{
     },
 };
 
-use super::core::{determine_effective_k, find_k_nearest_neighbors, preprocess_knn_data};
+use super::{
+    core::{determine_effective_k, find_k_nearest_neighbors, preprocess_knn_data},
+    prediction::calculate_predictions,
+};
 
 pub fn calculate_predictor_space(
     data: &AnalysisData,
@@ -43,6 +46,7 @@ pub fn calculate_predictor_space(
         &display_indices,
         k,
         config.neighbors.metric_eucli,
+        config,
     );
 
     Ok(PredictorSpace {
@@ -54,11 +58,7 @@ pub fn calculate_predictor_space(
         k_value: k,
         dimensions: vec![PredictorDimension {
             name: dimension_name,
-            axes: display_indices
-                .iter()
-                .filter_map(|idx| feature_space.axes.get(*idx))
-                .cloned()
-                .collect(),
+            axes: feature_space.axes,
             points,
         }],
     })
@@ -70,6 +70,7 @@ fn build_points(
     display_indices: &[usize],
     k: usize,
     use_euclidean: bool,
+    config: &KnnConfig,
 ) -> Vec<DataPoint> {
     display_matrix
         .iter()
@@ -92,11 +93,7 @@ fn build_points(
             };
 
             let target = knn_data.target_values.get(idx).unwrap_or(&DataValue::Null);
-            let target_label = data_value_label(target);
-            let target_number = match target {
-                DataValue::Number(value) if value.is_finite() => Some(*value),
-                _ => None,
-            };
+            let actual_label = data_value_label(target);
             let target_value = match target {
                 DataValue::Number(n) => *n > 0.5,
                 DataValue::Boolean(b) => *b,
@@ -115,25 +112,39 @@ fn build_points(
                 })
                 .collect();
 
-            let neighbors = find_k_nearest_neighbors(
+            let neighbor_pairs = find_k_nearest_neighbors(
                 model_row,
                 &knn_data.data_matrix,
                 &candidate_indices,
                 k,
                 use_euclidean,
                 Some(&knn_data.processed_case_indices),
-            )
-            .into_iter()
-            .map(|(neighbor_idx, distance)| NeighborDetail {
-                id: knn_data.case_identifiers[neighbor_idx],
-                label: knn_data.case_labels.get(neighbor_idx).cloned(),
-                row_number: knn_data
-                    .processed_case_indices
-                    .get(neighbor_idx)
-                    .map(|idx| idx + 1),
-                distance,
-            })
-            .collect();
+            );
+            let predicted_value = calculate_predictions(
+                &neighbor_pairs,
+                &knn_data.target_values,
+                config,
+                !knn_data.target_is_numeric_scale(),
+            );
+            let predicted_label = data_value_label(&predicted_value);
+            let (display_target_label, target_number) = if point_type == "Holdout" {
+                (predicted_label.clone(), data_value_number(&predicted_value))
+            } else {
+                (actual_label.clone(), data_value_number(target))
+            };
+
+            let neighbors = neighbor_pairs
+                .into_iter()
+                .map(|(neighbor_idx, distance)| NeighborDetail {
+                    id: knn_data.case_identifiers[neighbor_idx],
+                    label: knn_data.case_labels.get(neighbor_idx).cloned(),
+                    row_number: knn_data
+                        .processed_case_indices
+                        .get(neighbor_idx)
+                        .map(|idx| idx + 1),
+                    distance,
+                })
+                .collect();
 
             Some(DataPoint {
                 id: focal_record,
@@ -145,10 +156,13 @@ fn build_points(
                 x,
                 y,
                 z,
+                predictor_values: display_row.clone(),
                 focal: knn_data.focal_indices.contains(&idx),
                 target_value,
                 target_number,
-                target_label,
+                target_label: display_target_label,
+                actual_label,
+                predicted_label,
                 point_type,
                 neighbors,
             })
@@ -509,6 +523,13 @@ fn data_value_label(value: &DataValue) -> String {
     }
 }
 
+fn data_value_number(value: &DataValue) -> Option<f64> {
+    match value {
+        DataValue::Number(value) if value.is_finite() => Some(*value),
+        _ => None,
+    }
+}
+
 fn target_measure_label(measure: &VariableMeasure) -> &'static str {
     match measure {
         VariableMeasure::Scale => "scale",
@@ -704,11 +725,15 @@ mod tests {
                 .iter()
                 .map(|axis| axis.name.clone())
                 .collect::<Vec<_>>(),
-            vec!["first", "second", "third"]
+            vec!["first", "second", "third", "fourth"]
         );
         assert_eq!(dimension.points[0].x, 1.0);
         assert_eq!(dimension.points[0].y, 10.0);
         assert_eq!(dimension.points[0].z, 100.0);
+        assert_eq!(
+            dimension.points[0].predictor_values,
+            vec![1.0, 10.0, 100.0, 1000.0]
+        );
     }
 
     fn config() -> KnnConfig {

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import KNNPeersChart from "./KNNPeersChart";
 
 type Neighbor = {
   id: number | string;
@@ -17,6 +18,8 @@ type Point = {
   target: string;
   targetNumber?: number | null;
   observed?: string;
+  predicted?: string;
+  predictorValues?: number[];
   focal?: boolean;
   neighbors?: Neighbor[];
 };
@@ -47,7 +50,9 @@ type ChartPayload = {
         targetMeasure?: string;
         hasFocalCaseIdentifier?: boolean;
         displayedDimensions?: number;
+        availableAxes?: AxisInfo[];
         instruction: string;
+        peersChartEnabled?: boolean;
       };
     };
   }>;
@@ -135,6 +140,11 @@ function finiteNumber(value: unknown, fallback = 0) {
   return Number.isFinite(numericValue) ? numericValue : fallback;
 }
 
+function pointAxisValue(point: Point, axisIndex: number, fallback: number) {
+  const value = point.predictorValues?.[axisIndex];
+  return Number.isFinite(Number(value)) ? Number(value) : fallback;
+}
+
 function clampInteger(value: unknown, min: number, max: number) {
   const numericValue = Math.trunc(Number(value));
   if (!Number.isFinite(numericValue)) return min;
@@ -165,7 +175,7 @@ export default function KNNPredictorSpaceChart({
 }) {
   const payload = useMemo(() => parsePayload(data), [data]);
   const chart = payload.charts?.[0];
-  const points = useMemo(
+  const sourcePoints = useMemo(
     () =>
       (chart?.chartData ?? []).filter(
         (point) => Number.isFinite(point.x) && Number.isFinite(point.y),
@@ -183,10 +193,42 @@ export default function KNNPredictorSpaceChart({
   const [currentK, setCurrentK] = useState(maxK);
   const [selectedId, setSelectedId] = useState<number | string | null>(null);
   const [tooltip, setTooltip] = useState<TooltipState>(null);
+  const availableAxes = useMemo(() => {
+    const configuredAxes = config?.availableAxes?.filter(Boolean) ?? [];
+    if (configuredAxes.length) return configuredAxes;
+
+    const axisInfo = chart?.chartConfig?.axisInfo ?? {};
+    return [axisInfo.x, axisInfo.y, axisInfo.z].filter(Boolean) as AxisInfo[];
+  }, [chart?.chartConfig?.axisInfo, config?.availableAxes]);
+  const [selectedAxisIndexes, setSelectedAxisIndexes] = useState([0, 1, 2]);
 
   useEffect(() => {
     setCurrentK((value) => clampInteger(value, 1, maxK));
   }, [maxK]);
+
+  useEffect(() => {
+    setSelectedAxisIndexes((current) =>
+      [0, 1, 2].map((position) => {
+        const currentIndex = current[position];
+        if (currentIndex < availableAxes.length) return currentIndex;
+        return Math.min(position, Math.max(0, availableAxes.length - 1));
+      }),
+    );
+  }, [availableAxes.length]);
+
+  const points = useMemo(
+    () =>
+      sourcePoints
+        .map((point) => ({
+          ...point,
+          x: pointAxisValue(point, selectedAxisIndexes[0], point.x),
+          y: pointAxisValue(point, selectedAxisIndexes[1], point.y),
+          z: pointAxisValue(point, selectedAxisIndexes[2], finiteNumber(point.z, 0)),
+        }))
+        .filter((point) => !(isNumericTarget && point.type === "Holdout"))
+        .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y)),
+    [isNumericTarget, selectedAxisIndexes, sourcePoints],
+  );
 
   const targetCategories = useMemo(
     () => Array.from(new Set(points.map((point) => point.target || "(blank)"))),
@@ -246,8 +288,25 @@ export default function KNNPredictorSpaceChart({
     displayedDimensions >= 3 &&
     Boolean(chart?.chartConfig?.axisLabels?.z) &&
     rawZValues.some((value) => Number.isFinite(value));
-  const chartAxisInfo = chart?.chartConfig?.axisInfo ?? {};
-  const chartAxisLabels = chart?.chartConfig?.axisLabels ?? {};
+  const chartAxisInfo = {
+    x: availableAxes[selectedAxisIndexes[0]] ?? chart?.chartConfig?.axisInfo?.x,
+    y: availableAxes[selectedAxisIndexes[1]] ?? chart?.chartConfig?.axisInfo?.y,
+    z: availableAxes[selectedAxisIndexes[2]] ?? chart?.chartConfig?.axisInfo?.z,
+  };
+  const chartAxisLabels = {
+    x:
+      chartAxisInfo.x?.name ??
+      chart?.chartConfig?.axisLabels?.x ??
+      "X",
+    y:
+      chartAxisInfo.y?.name ??
+      chart?.chartConfig?.axisLabels?.y ??
+      "Y",
+    z:
+      chartAxisInfo.z?.name ??
+      chart?.chartConfig?.axisLabels?.z ??
+      "Z",
+  };
   const isSinglePredictorSpace = displayedDimensions === 1;
   const projectionNote =
     (config?.actualPredictors ?? 0) > 3
@@ -307,10 +366,31 @@ export default function KNNPredictorSpaceChart({
 
   if (!chart || points.length === 0) return null;
 
+  const axisPicker =
+    availableAxes.length > 3 ? (
+      <AxisPicker
+        axes={availableAxes}
+        selectedAxisIndexes={selectedAxisIndexes}
+        setSelectedAxisIndexes={setSelectedAxisIndexes}
+      />
+    ) : null;
+  const peersChartNode = config?.peersChartEnabled ? (
+    <KNNPeersChart
+      axes={availableAxes}
+      colorForPoint={colorForPoint}
+      currentK={currentK}
+      isNumericTarget={isNumericTarget}
+      points={points}
+      selectedId={selectedId}
+      targetVariable={config?.targetVariable ?? "Target"}
+    />
+  ) : null;
+
   if (hasZAxis) {
     return (
-      <div className="relative mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div style={{ width, minHeight: height }} className="relative">
+      <>
+        <div className="relative mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div style={{ width, minHeight: height }} className="relative">
           <div className="mb-2 text-center">
             <div className="text-base font-bold">Predictor Space</div>
             <div className="text-xs text-gray-600">
@@ -335,6 +415,7 @@ export default function KNNPredictorSpaceChart({
             />
             <span className="text-xs text-gray-500">Max {maxK}</span>
           </div>
+          {axisPicker}
 
           <div className="flex items-start justify-center gap-4">
             <ThreePredictorSpace
@@ -392,14 +473,17 @@ export default function KNNPredictorSpaceChart({
           <div className="mt-2 text-center text-xs text-gray-600">
             {config?.instruction ?? "Select points to use as focal records"}
           </div>
+          </div>
         </div>
-      </div>
+        {peersChartNode}
+      </>
     );
   }
 
   return (
-    <div className="relative mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-      <div style={{ width, minHeight: height }} className="relative">
+    <>
+      <div className="relative mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div style={{ width, minHeight: height }} className="relative">
         <div className="mb-2 text-center">
           <div className="text-base font-bold">Predictor Space</div>
           <div className="text-xs text-gray-600">
@@ -424,6 +508,7 @@ export default function KNNPredictorSpaceChart({
           />
           <span className="text-xs text-gray-500">Max {maxK}</span>
         </div>
+        {axisPicker}
 
         <div className="flex items-start justify-center gap-4">
           <svg width={svgWidth} height={svgHeight} className="overflow-visible">
@@ -622,14 +707,7 @@ export default function KNNPredictorSpaceChart({
                     String(current) === String(point.id) ? null : point.id,
                   ),
                 onMouseMove: (event: React.MouseEvent<SVGElement>) =>
-                  showTooltip(
-                    event,
-                    <>
-                      <strong>Label:</strong> {point.label ?? point.id}
-                      <br />
-                      <strong>Observed:</strong> {point.observed ?? point.target}
-                    </>,
-                  ),
+                  showTooltip(event, pointTooltip(point)),
                 onMouseLeave: () => setTooltip(null),
               };
 
@@ -719,8 +797,10 @@ export default function KNNPredictorSpaceChart({
             {tooltip.html}
           </div>
         )}
+        </div>
       </div>
-    </div>
+      {peersChartNode}
+    </>
   );
 }
 
@@ -895,11 +975,7 @@ function ThreePredictorSpace({
           x: event.clientX - rect.left + 10,
           y: event.clientY - rect.top - 42,
           html: (
-            <>
-              <strong>Label:</strong> {point.label ?? point.id}
-              <br />
-              <strong>Observed:</strong> {point.observed ?? point.target}
-            </>
+            pointTooltip(point)
           ),
         });
         return;
@@ -1356,11 +1432,13 @@ function PredictorSpace2DFallback({
 }
 
 function pointTooltip(point: Point) {
+  const shownLabel = point.type === "Holdout" ? "Predicted" : "Target";
+
   return (
     <>
       <strong>Label:</strong> {point.label ?? point.id}
       <br />
-      <strong>Observed:</strong> {point.observed ?? point.target}
+      <strong>{shownLabel}:</strong> {point.target}
     </>
   );
 }
@@ -1560,6 +1638,56 @@ function makeTextSprite(text: string, position: THREE.Vector3, widthScale = 1.6)
   sprite.position.copy(position);
   sprite.scale.set(widthScale, 0.4, 1);
   return sprite;
+}
+
+function AxisPicker({
+  axes,
+  selectedAxisIndexes,
+  setSelectedAxisIndexes,
+}: {
+  axes: AxisInfo[];
+  selectedAxisIndexes: number[];
+  setSelectedAxisIndexes: React.Dispatch<React.SetStateAction<number[]>>;
+}) {
+  const axisSlots = ["X", "Y", "Z"];
+
+  return (
+    <div className="mb-3 flex flex-wrap items-center justify-center gap-2 text-xs">
+      {axisSlots.map((slot, slotIndex) => {
+        const selectedIndex = selectedAxisIndexes[slotIndex] ?? slotIndex;
+        const replacementIndexes = axes
+          .map((_, index) => index)
+          .filter(
+            (index) =>
+              index === selectedIndex || !selectedAxisIndexes.includes(index),
+          );
+
+        return (
+          <label key={slot} className="flex items-center gap-1">
+            <span className="font-semibold">{slot}</span>
+            <select
+              value={selectedIndex}
+              onChange={(event) => {
+                const nextIndex = Number(event.target.value);
+                setSelectedAxisIndexes((current) =>
+                  current.map((value, index) =>
+                    index === slotIndex ? nextIndex : value,
+                  ),
+                );
+              }}
+              className="h-8 min-w-28 rounded border border-gray-300 bg-white px-2 text-xs"
+            >
+              {replacementIndexes.map((axisIndex) => (
+                <option key={`${slot}-${axisIndex}`} value={axisIndex}>
+                  {axes[axisIndex]?.name ?? `Variable ${axisIndex + 1}`}
+                </option>
+              ))}
+            </select>
+          </label>
+        );
+      })}
+    </div>
+  );
 }
 
 function LegendSection({ title }: { title: string }) {

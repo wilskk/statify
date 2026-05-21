@@ -203,10 +203,13 @@ pub struct DataPoint {
     pub x: f64,
     pub y: f64,
     pub z: f64,
+    pub predictor_values: Vec<f64>,
     pub focal: bool,
     pub target_value: bool,
     pub target_number: Option<f64>,
     pub target_label: String,
+    pub actual_label: String,
+    pub predicted_label: String,
     pub point_type: String,
     pub neighbors: Vec<NeighborDetail>,
 }

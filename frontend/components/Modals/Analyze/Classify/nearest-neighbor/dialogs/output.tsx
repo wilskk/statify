@@ -16,7 +16,7 @@ export const KNNOutput = ({
   const outputState: KNNOutputType = {
     ...data,
     CaseSummary: data.CaseSummary ?? true,
-    PredictorSpace: data.PredictorSpace ?? true,
+    PredictorSpace: true,
     ShowNeighborDetail: data.ShowNeighborDetail ?? false,
     PeersChart: data.PeersChart ?? false,
     QuadrantMap: data.QuadrantMap ?? false,
@@ -42,11 +42,6 @@ export const KNNOutput = ({
       field: "CaseSummary",
       label: "Case Processing Summary",
       help: "Menampilkan ringkasan jumlah kasus valid, missing, dan diproses.",
-    },
-    {
-      field: "PredictorSpace",
-      label: "Predictor Space Scatter Plot",
-      help: "Menampilkan plot ruang prediktor untuk melihat posisi kasus.",
     },
     {
       field: "ShowNeighborDetail",

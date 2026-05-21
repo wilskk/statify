@@ -3,9 +3,9 @@ use wasm_bindgen::JsValue;
 
 use crate::models::result::{
     CaseProcessingSummary, ClassificationTable, ErrorSummary, FeatureSelectionStep,
-    FeatureSelectionSummary, KFeatureSelectionSummary, KSelectionChart,
-    NearestNeighborAnalysis, NearestNeighbors, PredictionResults, PredictorImportanceEntry,
-    PredictorSpace, SavedVariables, SystemSettings,
+    FeatureSelectionSummary, KFeatureSelectionSummary, KSelectionChart, NearestNeighborAnalysis,
+    NearestNeighbors, PredictionResults, PredictorImportanceEntry, PredictorSpace, SavedVariables,
+    SystemSettings,
 };
 
 pub fn string_to_js_error(error: String) -> JsValue {

@@ -10,4 +10,5 @@ export type KNNAnalysisType = {
 export type KNNFinalResultType = {
     formattedResult: ResultJson;
     rawResult?: any;
+    configData?: KNNType;
 };

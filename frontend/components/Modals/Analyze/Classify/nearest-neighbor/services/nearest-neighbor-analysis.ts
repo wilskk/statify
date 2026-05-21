@@ -79,14 +79,11 @@ function withInternalChartOutputs(configData: KNNAnalysisType["configData"]) {
   const needsKAndPredictorSelectionChart =
     configData.neighbors.AutoSelection && configData.features.PerformSelection;
 
-  if (!needsKSelectionErrorChart && !needsKAndPredictorSelectionChart) {
-    return configData;
-  }
-
   return {
     ...configData,
     output: {
       ...configData.output,
+      PredictorSpace: true,
       KSelectionChart:
         configData.output.KSelectionChart || needsKSelectionErrorChart,
       FeatureSelectionSummary:
@@ -157,7 +154,7 @@ export async function analyzeKNN({
   const workerConfigData = withInternalChartOutputs(configData);
 
   const worker = new Worker(
-    "/workers/Classify/NearestNeighbor/nearest-neighbor.worker.js",
+    "/workers/Classify/NearestNeighbor/nearest-neighbor.worker.js?v=knn-predictor-space-axis-picker-20260521",
     { type: "module" },
   );
 
@@ -212,6 +209,7 @@ export async function analyzeKNN({
         await resultNearestNeighbor({
           formattedResult: formattedResults,
           rawResult: result,
+          configData,
         });
 
         worker.terminate();

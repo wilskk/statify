@@ -160,14 +160,12 @@ pub fn run_analysis(
     // Step 5: Predictor space
     logger.add_log("predictor_space");
     let mut predictor_space = None;
-    if config.output.predictor_space {
-        match core::calculate_predictor_space(data, &analysis_config) {
-            Ok(space) => {
-                predictor_space = Some(space);
-            }
-            Err(e) => {
-                error_collector.add_error("predictor_space", &e);
-            }
+    match core::calculate_predictor_space(data, &analysis_config) {
+        Ok(space) => {
+            predictor_space = Some(space);
+        }
+        Err(e) => {
+            error_collector.add_error("predictor_space", &e);
         }
     };
 

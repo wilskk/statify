@@ -1,4 +1,7 @@
-import init, { KNNAnalysis } from "/workers/Classify/NearestNeighbor/pkg/wasm.js";
+import init, { KNNAnalysis } from "/workers/Classify/NearestNeighbor/pkg/wasm.js?v=knn-predictor-space-axis-picker-20260521";
+
+const WASM_URL =
+  "/workers/Classify/NearestNeighbor/pkg/wasm_bg.wasm?v=knn-predictor-space-axis-picker-20260521";
 
 self.onmessage = async (e) => {
   const {
@@ -15,7 +18,7 @@ self.onmessage = async (e) => {
 
   try {
     // init WASM (WAJIB kasih path biar ga error)
-    await init("/workers/Classify/NearestNeighbor/pkg/wasm_bg.wasm");
+    await init(WASM_URL);
 
     const knn = new KNNAnalysis(
       target,

@@ -8,6 +8,7 @@ import { buildNeighborDetails } from "./nearest-neighbor-analysis-formatter";
 export async function resultNearestNeighbor({
   formattedResult,
   rawResult,
+  configData,
 }: KNNFinalResultType) {
   try {
     const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
@@ -115,25 +116,18 @@ export async function resultNearestNeighbor({
         });
       }
 
-      const predictorSpace = findTable("predictor_space");
-      if (predictorSpace) {
+      const predictorSpaceChart = createPredictorSpaceChart(
+        rawResult?.predictor_space,
+        Boolean(configData?.output?.PeersChart),
+      );
+
+      if (predictorSpaceChart) {
         await addStatistic(nearestNeighborAnalysisResultId, {
           title: `Predictor Space`,
           description: `Predictor Space`,
-          output_data: predictorSpace,
+          output_data: JSON.stringify(predictorSpaceChart),
           components: `Predictor Space`,
         });
-
-        const predictorSpaceChart = createPredictorSpaceChart(rawResult?.predictor_space);
-
-        if (predictorSpaceChart) {
-          await addStatistic(nearestNeighborAnalysisResultId, {
-            title: `Predictor Space Chart`,
-            description: `Predictor Space Chart`,
-            output_data: JSON.stringify(predictorSpaceChart),
-            components: `Predictor Space Chart`,
-          });
-        }
       }
 
       if (rawResult?.nearest_neighbors) {
@@ -155,7 +149,7 @@ export async function resultNearestNeighbor({
   }
 }
 
-function createPredictorSpaceChart(predictorSpace?: any) {
+function createPredictorSpaceChart(predictorSpace?: any, peersChartEnabled = false) {
   const dimension = predictorSpace?.dimensions?.find(
     (item: any) => Array.isArray(item.points) && item.points.length > 0,
   );
@@ -164,11 +158,11 @@ function createPredictorSpaceChart(predictorSpace?: any) {
 
   const labels = splitDimensionName(dimension.name);
   const axes = Array.isArray(dimension.axes) ? dimension.axes : [];
-  const displayedAxisCount = axes.length > 0 ? axes.length : labels.length;
+  const displayedAxisCount = Math.min(3, axes.length > 0 ? axes.length : labels.length);
   const displayedDimensions = Math.max(1, Math.min(3, displayedAxisCount));
   const hasZ =
     displayedDimensions >= 3 &&
-    Boolean(labels[2]) &&
+    Boolean(axes[2]?.name ?? labels[2]) &&
     dimension.points.some((point: any) => Number.isFinite(Number(point.z)));
   const chartData = dimension.points
     .map((point: any) => ({
@@ -182,7 +176,11 @@ function createPredictorSpaceChart(predictorSpace?: any) {
       targetNumber: Number.isFinite(Number(point.target_number))
         ? Number(point.target_number)
         : null,
-      observed: point.target_label || String(point.target_value),
+      observed: point.actual_label || point.target_label || String(point.target_value),
+      predicted: point.predicted_label || "",
+      predictorValues: Array.isArray(point.predictor_values)
+        ? point.predictor_values.map((value: any) => Number(value))
+        : [Number(point.x), Number(point.y), Number(point.z)],
       focal: Boolean(point.focal),
       neighbors: Array.isArray(point.neighbors) ? point.neighbors : [],
     }))
@@ -210,9 +208,9 @@ function createPredictorSpaceChart(predictorSpace?: any) {
           useAxis: true,
           useLegend: true,
           axisLabels: {
-            x: labels[0] ?? "X",
-            y: labels[1] ?? "Y",
-            z: hasZ ? labels[2] : "",
+            x: axes[0]?.name ?? labels[0] ?? "X",
+            y: axes[1]?.name ?? labels[1] ?? "Y",
+            z: hasZ ? axes[2]?.name ?? labels[2] : "",
           },
           axisInfo: {
             x: axes[0] ?? { name: labels[0] ?? "X", measure: "", categories: [], ticks: [] },
@@ -231,7 +229,9 @@ function createPredictorSpaceChart(predictorSpace?: any) {
             targetMeasure: predictorSpace.target_measure ?? "",
             hasFocalCaseIdentifier: Boolean(predictorSpace.has_focal_case_identifier),
             displayedDimensions,
+            availableAxes: axes,
             instruction: "Select points to use as focal records",
+            peersChartEnabled,
           },
         },
       },
