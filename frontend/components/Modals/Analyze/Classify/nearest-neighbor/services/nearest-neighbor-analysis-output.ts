@@ -119,6 +119,7 @@ export async function resultNearestNeighbor({
       const predictorSpaceChart = createPredictorSpaceChart(
         rawResult?.predictor_space,
         Boolean(configData?.output?.PeersChart),
+        Boolean(configData?.output?.QuadrantMap),
       );
 
       if (predictorSpaceChart) {
@@ -149,7 +150,11 @@ export async function resultNearestNeighbor({
   }
 }
 
-function createPredictorSpaceChart(predictorSpace?: any, peersChartEnabled = false) {
+function createPredictorSpaceChart(
+  predictorSpace?: any,
+  peersChartEnabled = false,
+  quadrantMapEnabled = false,
+) {
   const dimension = predictorSpace?.dimensions?.find(
     (item: any) => Array.isArray(item.points) && item.points.length > 0,
   );
@@ -232,6 +237,7 @@ function createPredictorSpaceChart(predictorSpace?: any, peersChartEnabled = fal
             availableAxes: axes,
             instruction: "Select points to use as focal records",
             peersChartEnabled,
+            quadrantMapEnabled,
           },
         },
       },

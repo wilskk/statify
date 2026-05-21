@@ -40,7 +40,9 @@ type KNNPeersChartProps = {
   colorForPoint: (point: KNNPeerPoint) => string;
   currentK: number;
   isNumericTarget: boolean;
+  peersChartEnabled?: boolean;
   points: KNNPeerPoint[];
+  quadrantMapEnabled?: boolean;
   selectedId: number | string | null;
   targetVariable: string;
 };
@@ -50,7 +52,9 @@ export default function KNNPeersChart({
   colorForPoint,
   currentK,
   isNumericTarget,
+  peersChartEnabled = true,
   points,
+  quadrantMapEnabled = false,
   selectedId,
   targetVariable,
 }: KNNPeersChartProps) {
@@ -100,7 +104,11 @@ export default function KNNPeersChart({
   if (!focalPoint) {
     return (
       <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">
-        <div className="text-base font-bold text-gray-900">Peers Chart</div>
+        <div className="text-base font-bold text-gray-900">
+          {quadrantMapEnabled && !peersChartEnabled
+            ? "Quadrant Map"
+            : "Peers Chart"}
+        </div>
         <div className="mt-2">
           Select a focal case in Predictor Space to show its nearest neighbors.
         </div>
@@ -109,25 +117,40 @@ export default function KNNPeersChart({
   }
 
   return (
-    <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-      <div className="mb-4 text-center">
-        <div className="text-base font-bold">Peers Chart</div>
-        <div className="text-xs text-gray-600">
-          Focal case: {focalPoint.label ?? focalPoint.id}, K = {currentK}
+    <>
+      {peersChartEnabled && (
+        <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 text-center">
+            <div className="text-base font-bold">Peers Chart</div>
+            <div className="text-xs text-gray-600">
+              Focal case: {focalPoint.label ?? focalPoint.id}, K = {currentK}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {variables.map((variable) => (
+              <PeerSmallMultiple
+                key={`${variable.isTarget ? "target" : "predictor"}-${variable.name}`}
+                colorForPoint={colorForPoint}
+                isNumericTarget={isNumericTarget}
+                peerPoints={peerPoints}
+                variable={variable}
+              />
+            ))}
+          </div>
         </div>
-      </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {variables.map((variable) => (
-          <PeerSmallMultiple
-            key={`${variable.isTarget ? "target" : "predictor"}-${variable.name}`}
-            colorForPoint={colorForPoint}
-            isNumericTarget={isNumericTarget}
-            peerPoints={peerPoints}
-            variable={variable}
-          />
-        ))}
-      </div>
-    </div>
+      )}
+      {quadrantMapEnabled && (
+        <KNNQuadrantMap
+          axes={axes}
+          colorForPoint={colorForPoint}
+          currentK={currentK}
+          focalPoint={focalPoint}
+          isNumericTarget={isNumericTarget}
+          peerPoints={peerPoints}
+          targetVariable={targetVariable}
+        />
+      )}
+    </>
   );
 }
 
@@ -280,6 +303,310 @@ function PeerSmallMultiple({
   );
 }
 
+function KNNQuadrantMap({
+  axes,
+  colorForPoint,
+  currentK,
+  focalPoint,
+  isNumericTarget,
+  peerPoints,
+  targetVariable,
+}: {
+  axes: KNNPeerAxisInfo[];
+  colorForPoint: (point: KNNPeerPoint) => string;
+  currentK: number;
+  focalPoint: KNNPeerPoint;
+  isNumericTarget: boolean;
+  peerPoints: Array<{ point: KNNPeerPoint; role: string }>;
+  targetVariable: string;
+}) {
+  const scalePredictors = axes
+    .map((axis, index) => ({ axis, index }))
+    .filter(({ axis }) => isScalePredictor(axis));
+
+  return (
+    <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="mb-4 text-center">
+        <div className="text-base font-bold">Quadrant Map</div>
+        <div className="text-xs text-gray-600">
+          Focal case: {focalPoint.label ?? focalPoint.id}, K = {currentK}
+        </div>
+      </div>
+      {scalePredictors.length ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {scalePredictors.map(({ axis, index }) => (
+            <QuadrantSmallMultiple
+              key={`${axis.name ?? "predictor"}-${index}`}
+              axis={axis}
+              colorForPoint={colorForPoint}
+              index={index}
+              isNumericTarget={isNumericTarget}
+              peerPoints={peerPoints}
+              targetVariable={targetVariable}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-md border border-gray-200 p-4 text-sm text-gray-600">
+          Quadrant Map requires at least one numeric scale predictor.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function QuadrantSmallMultiple({
+  axis,
+  colorForPoint,
+  index,
+  isNumericTarget,
+  peerPoints,
+  targetVariable,
+}: {
+  axis: KNNPeerAxisInfo;
+  colorForPoint: (point: KNNPeerPoint) => string;
+  index: number;
+  isNumericTarget: boolean;
+  peerPoints: Array<{ point: KNNPeerPoint; role: string }>;
+  targetVariable: string;
+}) {
+  const width = 300;
+  const height = 240;
+  const plot = { left: 58, right: 18, top: 24, bottom: 52 };
+  const xValues = peerPoints
+    .map(({ point }) => pointAxisValue(point, index, Number.NaN))
+    .filter((value) => Number.isFinite(value));
+  const targetCategories = isNumericTarget
+    ? []
+    : Array.from(
+        new Set(peerPoints.map(({ point }) => point.target || "(blank)")),
+      );
+  const yValues = isNumericTarget
+    ? peerPoints
+        .map(({ point }) => finiteNumber(point.targetNumber, Number.NaN))
+        .filter((value) => Number.isFinite(value))
+    : targetCategories.map((_, categoryIndex) => categoryIndex + 1);
+  const xAxis = numericPeerAxis(xValues);
+  const yAxis = isNumericTarget
+    ? numericPeerAxis(yValues)
+    : {
+        min: 0,
+        max: Math.max(2, targetCategories.length + 1),
+        ticks: targetCategories.map((label, categoryIndex) => ({
+          value: categoryIndex + 1,
+          label,
+        })),
+      };
+  const spanX = xAxis.max - xAxis.min || 1;
+  const spanY = yAxis.max - yAxis.min || 1;
+  const innerWidth = width - plot.left - plot.right;
+  const innerHeight = height - plot.top - plot.bottom;
+  const scaleX = (value: number) =>
+    plot.left + ((value - xAxis.min) / spanX) * innerWidth;
+  const scaleY = (value: number) =>
+    height - plot.bottom - ((value - yAxis.min) / spanY) * innerHeight;
+  const displayedTrainingPoints = peerPoints
+    .map(({ point }) => point)
+    .filter((point) => point.type === "Training");
+  const xMean = mean(
+    displayedTrainingPoints
+      .map((point) => pointAxisValue(point, index, Number.NaN))
+      .filter((value) => Number.isFinite(value)),
+  );
+  const yMean = isNumericTarget
+    ? mean(
+        displayedTrainingPoints
+          .map((point) => finiteNumber(point.targetNumber, Number.NaN))
+          .filter((value) => Number.isFinite(value)),
+      )
+    : Number.NaN;
+
+  return (
+    <div className="rounded-md border border-gray-200 p-3">
+      <div
+        className="mb-2 truncate text-center text-sm font-semibold"
+        title={`${axis.name ?? `Predictor ${index + 1}`} vs ${targetVariable}`}
+      >
+        {axis.name ?? `Predictor ${index + 1}`} vs {targetVariable}
+      </div>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="h-[240px] w-full overflow-visible"
+      >
+        <rect
+          x={plot.left}
+          y={plot.top}
+          width={innerWidth}
+          height={innerHeight}
+          fill="#ffffff"
+        />
+        {xAxis.ticks.map((tick) => {
+          const x = scaleX(tick.value);
+          return (
+            <g key={`quadrant-x-${axis.name}-${tick.value}`}>
+              <line
+                x1={x}
+                y1={plot.top}
+                x2={x}
+                y2={height - plot.bottom}
+                stroke="#e5e7eb"
+                strokeDasharray="3 3"
+              />
+              <text
+                x={x}
+                y={height - plot.bottom + 15}
+                textAnchor="middle"
+                fontSize={9}
+                fill="#4b5563"
+              >
+                {tick.label}
+              </text>
+            </g>
+          );
+        })}
+        {yAxis.ticks.map((tick) => {
+          const y = scaleY(tick.value);
+          return (
+            <g key={`quadrant-y-${axis.name}-${tick.value}-${tick.label}`}>
+              <line
+                x1={plot.left}
+                y1={y}
+                x2={width - plot.right}
+                y2={y}
+                stroke="#e5e7eb"
+                strokeDasharray="3 3"
+              />
+              <text
+                x={plot.left - 7}
+                y={y + 3}
+                textAnchor="end"
+                fontSize={9}
+                fill="#4b5563"
+              >
+                {tick.label}
+              </text>
+            </g>
+          );
+        })}
+        {Number.isFinite(xMean) && (
+          <line
+            x1={scaleX(xMean)}
+            y1={plot.top}
+            x2={scaleX(xMean)}
+            y2={height - plot.bottom}
+            stroke="#dc2626"
+            strokeDasharray="5 4"
+            strokeWidth={1.4}
+          >
+            <title>Displayed training mean: {formatPeerValue(xMean)}</title>
+          </line>
+        )}
+        {isNumericTarget && Number.isFinite(yMean) && (
+          <line
+            x1={plot.left}
+            y1={scaleY(yMean)}
+            x2={width - plot.right}
+            y2={scaleY(yMean)}
+            stroke="#dc2626"
+            strokeDasharray="5 4"
+            strokeWidth={1.4}
+          >
+            <title>Displayed training target mean: {formatPeerValue(yMean)}</title>
+          </line>
+        )}
+        <line
+          x1={plot.left}
+          y1={height - plot.bottom}
+          x2={width - plot.right}
+          y2={height - plot.bottom}
+          stroke="#9ca3af"
+        />
+        <line
+          x1={plot.left}
+          y1={plot.top}
+          x2={plot.left}
+          y2={height - plot.bottom}
+          stroke="#9ca3af"
+        />
+        <text
+          x={plot.left + innerWidth / 2}
+          y={height - 10}
+          textAnchor="middle"
+          fontSize={10}
+          fill="#374151"
+        >
+          {axis.name ?? `Predictor ${index + 1}`}
+        </text>
+        <text
+          x={13}
+          y={plot.top + innerHeight / 2}
+          textAnchor="middle"
+          fontSize={10}
+          fill="#374151"
+          transform={`rotate(-90 13 ${plot.top + innerHeight / 2})`}
+        >
+          {targetVariable}
+        </text>
+        {peerPoints.map(({ point, role }) => {
+          const xValue = pointAxisValue(point, index, Number.NaN);
+          const yValue = isNumericTarget
+            ? finiteNumber(point.targetNumber, Number.NaN)
+            : Math.max(
+                1,
+                targetCategories.indexOf(point.target || "(blank)") + 1,
+              );
+          if (!Number.isFinite(xValue) || !Number.isFinite(yValue)) return null;
+
+          const x = scaleX(xValue);
+          const y = scaleY(yValue);
+          const isFocal = role === "Focal";
+          const radius = isFocal ? 5.8 : 4.8;
+          const stroke = isFocal ? "#dc2626" : "#1f2937";
+          const strokeWidth = isFocal ? 2.3 : 1;
+          const label = point.label ?? String(point.id);
+          const targetDisplay = isNumericTarget
+            ? formatPeerValue(yValue)
+            : point.target || "(blank)";
+          const title = `${role}: ${label}; ${
+            axis.name ?? `Predictor ${index + 1}`
+          } = ${formatPeerValue(xValue)}; ${targetVariable} = ${targetDisplay}`;
+
+          return (
+            <g key={`quadrant-${axis.name}-${point.id}-${role}`}>
+              {point.type === "Holdout" && !isNumericTarget ? (
+                <path
+                  d={`M ${x} ${y - radius} L ${x + radius} ${y + radius} L ${
+                    x - radius
+                  } ${y + radius} Z`}
+                  fill={colorForPoint(point)}
+                  stroke={stroke}
+                  strokeWidth={strokeWidth}
+                >
+                  <title>{title}</title>
+                </path>
+              ) : (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={radius}
+                  fill={colorForPoint(point)}
+                  stroke={stroke}
+                  strokeWidth={strokeWidth}
+                >
+                  <title>{title}</title>
+                </circle>
+              )}
+              <text x={x + 7} y={y - 6} fontSize={8} fill="#374151">
+                {shortCaseLabel(label)}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
 function isPeerCategorical(variable: PeerVariable, isNumericTarget: boolean) {
   if (variable.isTarget) return !isNumericTarget;
 
@@ -289,6 +616,10 @@ function isPeerCategorical(variable: PeerVariable, isNumericTarget: boolean) {
 
   const tickLabels = variable.axis?.ticks?.map((tick) => tick.label) ?? [];
   return tickLabels.some((label) => !Number.isFinite(Number(label)));
+}
+
+function isScalePredictor(axis: KNNPeerAxisInfo) {
+  return axis.measure === "scale";
 }
 
 function peerCategories(
@@ -395,6 +726,11 @@ function pointAxisValue(
 function finiteNumber(value: unknown, fallback = 0) {
   const numericValue = Number(value);
   return Number.isFinite(numericValue) ? numericValue : fallback;
+}
+
+function mean(values: number[]) {
+  if (!values.length) return Number.NaN;
+  return values.reduce((total, value) => total + value, 0) / values.length;
 }
 
 function createNiceTicks(min: number, max: number) {

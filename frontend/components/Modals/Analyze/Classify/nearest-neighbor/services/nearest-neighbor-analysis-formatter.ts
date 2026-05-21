@@ -365,7 +365,7 @@ function formatDistance3(value: number) {
   const fourthDecimalDigit =
     Math.floor(absolute * 10000 + Number.EPSILON) % 10;
   const rounded =
-    fourthDecimalDigit >= 6 ? scaledToThousands + 1 : scaledToThousands;
+    fourthDecimalDigit >= 5 ? scaledToThousands + 1 : scaledToThousands;
 
   return ((sign * rounded) / 1000).toFixed(3);
 }

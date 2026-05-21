@@ -53,6 +53,7 @@ type ChartPayload = {
         availableAxes?: AxisInfo[];
         instruction: string;
         peersChartEnabled?: boolean;
+        quadrantMapEnabled?: boolean;
       };
     };
   }>;
@@ -374,13 +375,16 @@ export default function KNNPredictorSpaceChart({
         setSelectedAxisIndexes={setSelectedAxisIndexes}
       />
     ) : null;
-  const peersChartNode = config?.peersChartEnabled ? (
+  const peersChartNode =
+    config?.peersChartEnabled || config?.quadrantMapEnabled ? (
     <KNNPeersChart
       axes={availableAxes}
       colorForPoint={colorForPoint}
       currentK={currentK}
       isNumericTarget={isNumericTarget}
+      peersChartEnabled={Boolean(config?.peersChartEnabled)}
       points={points}
+      quadrantMapEnabled={Boolean(config?.quadrantMapEnabled)}
       selectedId={selectedId}
       targetVariable={config?.targetVariable ?? "Target"}
     />
