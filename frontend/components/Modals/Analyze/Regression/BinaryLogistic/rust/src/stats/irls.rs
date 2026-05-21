@@ -344,7 +344,6 @@ pub fn fit(
 
         // 1. Hitung Prediksi dengan sigmoid yang aman
         let mu = compute_predictions(x, &beta);
-        predictions = mu.clone();
 
         // 2. Hitung Bobot dan Residuals
         let w_diag = mu.map(|pi| {
@@ -352,7 +351,6 @@ pub fn fit(
             // Minimum weight untuk stabilitas
             if w < 1e-10 { 1e-10 } else { w }
         });
-        weights_diag = w_diag.clone();
         residuals = y - &mu;
 
         // 3. Hitung Gradient (Score Vector): X' * (y - mu)
@@ -409,7 +407,8 @@ pub fn fit(
             .fold(0.0_f64, f64::max);
         if param_change < tol && iter > 0 {
             converged = true;
-            log_likelihood_prev = ll_new;
+            log_likelihood_prev = ll_new; // Keep final LL for post-loop use
+            let _ = log_likelihood_prev; // Suppress unused assignment warning
             break;
         }
         log_likelihood_prev = ll_new;
@@ -555,7 +554,6 @@ pub fn fit_with_history(
 
         // 1. Hitung Prediksi dengan sigmoid yang aman
         let mu = compute_predictions(x, &beta);
-        predictions = mu.clone();
 
         // 2. Hitung Bobot dan Residuals
         let w_diag = mu.map(|pi| {
@@ -563,7 +561,6 @@ pub fn fit_with_history(
             // Minimum weight untuk stabilitas
             if w < 1e-10 { 1e-10 } else { w }
         });
-        weights_diag = w_diag.clone();
         residuals = y - &mu;
 
         // 3. Hitung Gradient (Score Vector): X' * (y - mu)
@@ -642,6 +639,7 @@ pub fn fit_with_history(
         if param_converged && iter > 0 {
             converged = true;
             log_likelihood_prev = ll_new;
+            let _ = log_likelihood_prev; // Suppress unused assignment warning
             break;
         }
 
@@ -763,6 +761,7 @@ pub fn fit_with_history(
 }
 
 /// Helper function to calculate log-likelihood for a given beta (legacy compatibility)
+#[allow(dead_code)]
 fn calculate_log_likelihood(x: &DMatrix<f64>, y: &DVector<f64>, beta: &DVector<f64>) -> f64 {
     let mu = compute_predictions(x, beta);
     calculate_log_likelihood_safe(y, &mu)

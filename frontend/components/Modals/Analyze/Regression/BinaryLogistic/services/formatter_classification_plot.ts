@@ -14,10 +14,11 @@
  * The displayAtLastStep option controls whether to show all steps or only the last step.
  */
 
-import {
+import type {
   LogisticResult,
   ClassificationPlotData,
-  AnalysisSection,
+  AnalysisSection} from "../types/binary-logistic";
+import {
   StepDetail,
 } from "../types/binary-logistic";
 
@@ -178,8 +179,7 @@ export const formatClassificationPlot = (
     // Filter steps that have classification_plot_data
     let stepsWithPlot = result.steps_detail.filter(
       (step) =>
-        step.classification_plot_data &&
-        step.classification_plot_data.data_points &&
+        step.classification_plot_data?.data_points &&
         step.classification_plot_data.data_points.length > 0,
     );
 
@@ -238,7 +238,7 @@ const formatSingleClassificationPlot = (
   stepNumber?: number,
   method?: string,
 ): { section: AnalysisSection | null; chart: any | null } => {
-  if (!plotData || !plotData.data_points || plotData.data_points.length === 0) {
+  if (!plotData?.data_points || plotData.data_points.length === 0) {
     return { section: null, chart: null };
   }
 

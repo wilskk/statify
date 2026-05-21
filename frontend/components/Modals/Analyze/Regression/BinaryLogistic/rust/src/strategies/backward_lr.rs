@@ -258,7 +258,7 @@ pub fn run(
         step_count += 1;
         let mut worst_group_loc: Option<usize> = None;
         let mut max_p_val = -1.0;
-        let mut worst_change_val = 0.0;
+        let mut _worst_change_val = 0.0;
 
         // Evaluate each included group by LR test (refit without group)
         if !included_group_indices.is_empty() {
@@ -288,7 +288,7 @@ pub fn run(
                 if p_val_remove > max_p_val {
                     max_p_val = p_val_remove;
                     worst_group_loc = Some(loc);
-                    worst_change_val = change_abs;
+                    _worst_change_val = change_abs;
                 }
             }
         }
@@ -537,7 +537,7 @@ fn calculate_step_snapshot(
     iteration_history: Option<IterationHistoryBlock>,
     variable_groups: &[VariableGroup], included_group_indices: &[usize],
 ) -> StepDetail {
-    let n_total_vars = full_x.ncols();
+    let _n_total_vars = full_x.ncols();
     let chi_dist_1df = ChiSquared::new(1.0).unwrap();
     let z_score = crate::utils::probability::z_score_from_confidence(config.confidence_level);
 

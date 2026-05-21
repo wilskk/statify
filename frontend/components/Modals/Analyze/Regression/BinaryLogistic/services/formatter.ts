@@ -1,4 +1,4 @@
-import {
+import type {
   LogisticResult,
   BinaryLogisticOutput,
   AnalysisSection,
@@ -14,7 +14,7 @@ import { formatIterationHistory, hasIterationHistory } from "./formatter_iterati
 import { formatStepSummary, hasStepSummary } from "./formatter_step_summary";
 import { formatClassificationPlot, hasClassificationPlot } from "./formatter_classification_plot";
 import { formatFittingWarnings, hasFittingWarnings } from "./formatter_warnings";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 
 /**
  * Options for formatting the result

@@ -130,7 +130,7 @@ export const ElbowChart: React.FC<ElbowChartProps> = ({
                 : (bestSilhouetteK ?? elbowK ?? currentK);
 
         // ── Optimal-K vertical band ───────────────────────────────────────────
-        if (selectedOptimalK !== null) {
+        if (selectedOptimalK != null) {
             const ox = xScale(selectedOptimalK)!;
             g.append("rect")
                 .attr("x", ox - 18).attr("y", 0)

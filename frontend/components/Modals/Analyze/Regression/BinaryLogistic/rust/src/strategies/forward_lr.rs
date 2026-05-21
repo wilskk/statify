@@ -862,7 +862,7 @@ fn calculate_step_snapshot(
     variable_groups: &[VariableGroup], included_group_indices: &[usize],
 ) -> StepDetail {
     let n = y_vector.len();
-    let n_total_vars = full_x.ncols();
+    let _n_total_vars = full_x.ncols();
     let chi_dist_1df = ChiSquared::new(1.0).unwrap();
     let z_score = crate::utils::probability::z_score_from_confidence(config.confidence_level);
 

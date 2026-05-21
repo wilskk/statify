@@ -28,7 +28,7 @@ pub fn run(
     variable_groups: &[VariableGroup],
 ) -> Result<LogisticResult, JsValue> {
     let n_samples = x_matrix.nrows();
-    let n_total_vars = x_matrix.ncols();
+    let _n_total_vars = x_matrix.ncols();
 
     let mut included_indices: Vec<usize> = Vec::new();
     let mut included_group_indices: Vec<usize> = Vec::new();
@@ -209,7 +209,7 @@ pub fn run(
 
         let mut best_candidate_group_idx: Option<usize> = None;
         let mut best_score_stat = 0.0;
-        let mut best_score_df = 1_i32;
+        let mut _best_score_df = 1_i32;
 
         // A. FORWARD ENTRY (Score Test - Group-aware)
         let design_matrix = build_design_matrix(x_matrix, &included_indices, n_samples, config.include_constant);
@@ -238,7 +238,7 @@ pub fn run(
 
             if p_val < config.p_entry && stat > best_score_stat {
                 best_score_stat = stat;
-                best_score_df = df;
+                _best_score_df = df;
                 best_candidate_group_idx = Some(g_idx);
             }
         }
@@ -808,7 +808,7 @@ fn calculate_step_snapshot(
     variable_groups: &[VariableGroup], included_group_indices: &[usize],
 ) -> StepDetail {
     let n = y_vector.len();
-    let n_total_vars = full_x.ncols();
+    let _n_total_vars = full_x.ncols();
     let chi_dist_1df = ChiSquared::new(1.0).unwrap();
     let z_score = crate::utils::probability::z_score_from_confidence(config.confidence_level);
 

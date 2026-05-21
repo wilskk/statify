@@ -1,4 +1,4 @@
-import { LogisticResult, AnalysisSection } from "../types/binary-logistic";
+import type { LogisticResult, AnalysisSection } from "../types/binary-logistic";
 import {
   createSection,
   safeFixed,

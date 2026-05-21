@@ -63,7 +63,7 @@ export function ScreePlot({ data }: ScreePlotProps) {
             tick={{ fontSize: 12 }}
           />
           <Tooltip 
-            formatter={(value: number) => [value.toFixed(3), "Eigenvalue"]}
+            formatter={(value: number | undefined) => [value != null ? value.toFixed(3) : "N/A", "Eigenvalue"]}
             labelFormatter={(label) => `Component ${label}`}
           />
           <Line

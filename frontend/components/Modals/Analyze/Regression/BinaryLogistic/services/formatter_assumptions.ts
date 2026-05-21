@@ -1,4 +1,4 @@
-import { LogisticResult, AnalysisSection } from "../types/binary-logistic";
+import type { LogisticResult, AnalysisSection } from "../types/binary-logistic";
 import { createSection, safeFixed, fmtSig } from "./formatter_utils";
 
 // Helper untuk menentukan Concern Level berdasarkan nilai VIF
@@ -14,7 +14,7 @@ const generateAssumptionDescription = (
   vifData: any[],
   correlationMatrix: any,
 ): string => {
-  let descriptionParts = [];
+  const descriptionParts = [];
 
   // Analisis VIF
   const highVif = vifData.filter((r) => r.vif >= 5);

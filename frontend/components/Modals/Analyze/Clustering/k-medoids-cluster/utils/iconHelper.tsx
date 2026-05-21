@@ -10,7 +10,7 @@ const NumericIcon = () => (
         height="14" 
         viewBox="0 0 14 14" 
         className="mr-1 flex-shrink-0"
-        title="Numeric data type"
+        aria-label="Numeric data type"
     >
         <text 
             x="50%" 
@@ -36,7 +36,7 @@ const CategoricalIcon = () => (
         height="14" 
         viewBox="0 0 14 14" 
         className="mr-1 flex-shrink-0"
-        title="Categorical/String data type"
+        aria-label="Categorical/String data type"
     >
         <text 
             x="50%" 
