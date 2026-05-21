@@ -808,7 +808,14 @@ fn calculate_model_if_term_removed(
 
         // 2. Jika subset kosong, berarti kembali ke Null Model
         if subset_indices.is_empty() {
-            reduced_ll = null_log_likelihood;
+            // SPSS convention: when include_constant=false and no predictors remain,
+            // the model has ZERO parameters. SPSS reports LL = 0.0 for this degenerate case.
+            // When include_constant=true, the reduced model is the intercept-only (null) model.
+            if config.include_constant {
+                reduced_ll = null_log_likelihood;
+            } else {
+                reduced_ll = 0.0;
+            }
         } else {
             // Re-fit model subset
             let x_subset = build_design_matrix(x_matrix, &subset_indices, n_samples, config.include_constant);

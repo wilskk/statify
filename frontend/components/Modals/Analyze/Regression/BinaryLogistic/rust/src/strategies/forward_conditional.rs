@@ -595,57 +595,6 @@ fn build_design_matrix(original_x: &DMatrix<f64>, indices: &[usize], rows: usize
     }
 }
 
-/// Compute log-likelihood using conditional parameter estimates.
-///
-/// SPSS "Conditional" method: when testing removal of variable j,
-/// all other parameters are adjusted using the covariance matrix:
-///   β_k_cond = β̂_k - (Cov_{k,j} / Cov_{j,j}) × β̂_j   for k ≠ j
-///   β_j_cond = 0
-///
-/// This is a one-step approximation based on the multivariate normal
-/// distribution of the MLEs. It is more accurate than simply zeroing
-/// the coefficient but cheaper than full refitting (LR test).
-///
-/// Reference: Hosmer & Lemeshow (2000), SPSS Algorithms documentation.
-fn compute_conditional_ll(
-    design_matrix: &DMatrix<f64>,
-    y_vector: &DVector<f64>,
-    beta: &DVector<f64>,
-    covariance_matrix: &DMatrix<f64>,
-    beta_idx_to_zero: usize,
-) -> f64 {
-    let mut beta_cond = beta.clone();
-    let cov_jj = covariance_matrix[(beta_idx_to_zero, beta_idx_to_zero)];
-    let beta_j = beta[beta_idx_to_zero];
-
-    // Adjust remaining parameters using the covariance partition
-    if cov_jj.abs() > 1e-15 {
-        for k in 0..beta.len() {
-            if k != beta_idx_to_zero {
-                let cov_kj = covariance_matrix[(k, beta_idx_to_zero)];
-                beta_cond[k] = beta[k] - (cov_kj / cov_jj) * beta_j;
-            }
-        }
-    }
-    beta_cond[beta_idx_to_zero] = 0.0;
-
-    let linear_pred = design_matrix * &beta_cond;
-    let mut ll = 0.0;
-    for i in 0..y_vector.len() {
-        let eta = linear_pred[i];
-        let p = if eta > 0.0 {
-            1.0 / (1.0 + (-eta).exp())
-        } else {
-            let e = eta.exp();
-            e / (1.0 + e)
-        };
-        let p_clamped = p.clamp(1e-15, 1.0 - 1e-15);
-        let y = y_vector[i];
-        ll += y * p_clamped.ln() + (1.0 - y) * (1.0 - p_clamped).ln();
-    }
-    ll
-}
-
 fn calculate_nagelkerke(null_ll: f64, model_ll: f64, n: usize) -> f64 {
     let diff = null_ll - model_ll;
     let cox_snell = 1.0 - (diff * (2.0 / n as f64)).exp();
@@ -739,59 +688,87 @@ fn calculate_overall_remainder_stats(
     })
 }
 
-// --- HELPER UNTUK MODEL IF TERM REMOVED (Conditional Parameter Estimates) ---
+// --- HELPER UNTUK MODEL IF TERM REMOVED (Conditional Parameter Estimates - Group-aware) ---
 // SPSS "Conditional" method: adjusts remaining betas using covariance matrix
 // when setting β_j = 0. Footnote: "Based on conditional parameter estimates"
+// Groups categorical dummy variables together (e.g., ChestPain with df=3)
 fn calculate_model_if_term_removed(
     model: &FittedModel,
     x_matrix: &DMatrix<f64>,
     y_vector: &DVector<f64>,
     included_indices: &[usize],
     config: &LogisticConfig,
-    feature_names: &[String],
     n_samples: usize,
+    variable_groups: &[VariableGroup],
+    included_group_indices: &[usize],
 ) -> Option<Vec<ModelIfTermRemovedRow>> {
-    if included_indices.is_empty() {
+    if included_group_indices.is_empty() {
         return None;
     }
 
     // Build the full design matrix for conditional LL computation
     let full_design = build_design_matrix(x_matrix, included_indices, n_samples, config.include_constant);
+    let beta_offset = if config.include_constant { 1 } else { 0 };
 
     let mut rows = Vec::new();
-    let chi_dist = ChiSquared::new(1.0).unwrap();
 
-    for (i, &idx_to_remove) in included_indices.iter().enumerate() {
-        // Conditional: use covariance-adjusted parameter estimates
-        let beta_idx = if config.include_constant { i + 1 } else { i };
-        let conditional_ll = compute_conditional_ll(
-            &full_design, y_vector, &model.beta,
-            &model.covariance_matrix, beta_idx,
-        );
+    for &g_idx in included_group_indices {
+        let group = &variable_groups[g_idx];
 
+        // Find beta indices for all columns in this group
+        let beta_indices: Vec<usize> = group.column_indices.iter()
+            .filter_map(|&col_idx| included_indices.iter().position(|&c| c == col_idx).map(|pos| pos + beta_offset))
+            .collect();
+
+        if beta_indices.is_empty() {
+            continue;
+        }
+
+        // Compute conditional LL by zeroing ALL betas in this group simultaneously
+        let mut beta_cond = model.beta.clone();
+        for &bi in &beta_indices {
+            let cov_jj = model.covariance_matrix[(bi, bi)];
+            let beta_j = model.beta[bi];
+            if cov_jj.abs() > 1e-15 {
+                for k in 0..beta_cond.len() {
+                    if !beta_indices.contains(&k) {
+                        let cov_kj = model.covariance_matrix[(k, bi)];
+                        beta_cond[k] -= (cov_kj / cov_jj) * beta_j;
+                    }
+                }
+            }
+            beta_cond[bi] = 0.0;
+        }
+
+        // Compute log-likelihood with conditional parameters
+        let linear_pred = &full_design * &beta_cond;
+        let mut conditional_ll = 0.0;
+        for i in 0..y_vector.len() {
+            let eta = linear_pred[i];
+            let p = if eta > 0.0 { 1.0 / (1.0 + (-eta).exp()) } else { let e = eta.exp(); e / (1.0 + e) };
+            let p_clamped = p.clamp(1e-15, 1.0 - 1e-15);
+            conditional_ll += y_vector[i] * p_clamped.ln() + (1.0 - y_vector[i]) * (1.0 - p_clamped).ln();
+        }
+
+        let group_df = group.column_indices.len() as f64;
         let change_raw = 2.0 * (model.final_log_likelihood - conditional_ll);
         let change_val = if change_raw < 1e-9 { 0.0 } else { change_raw };
 
         let sig = if change_val > 0.0 {
-            1.0 - chi_dist.cdf(change_val)
+            1.0 - ChiSquared::new(group_df).unwrap_or(ChiSquared::new(1.0).unwrap()).cdf(change_val)
         } else {
             1.0
         };
 
-        let label = if idx_to_remove < feature_names.len() {
-            feature_names[idx_to_remove].clone()
-        } else {
-            format!("Var_{}", idx_to_remove)
-        };
-
         rows.push(ModelIfTermRemovedRow {
-            label,
+            label: group.name.clone(),
             model_log_likelihood: conditional_ll,
             change_in_neg2ll: change_val,
-            df: 1,
+            df: group_df as i32,
             sig_change: sig,
         });
     }
+
     if rows.is_empty() {
         None
     } else {
@@ -858,8 +835,9 @@ fn calculate_step_snapshot(
         y_vector,
         included_indices,
         config,
-        feature_names,
         n,
+        variable_groups,
+        included_group_indices,
     );
 
     let class_table = table::calculate_classification_table(&model.predictions, y_vector, config.cutoff);
