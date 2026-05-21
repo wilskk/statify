@@ -21,8 +21,21 @@ pub struct MultinomialResult {
     pub goodness_of_fit: GoodnessOfFit,
     pub classification_table: ClassificationTable,
     pub likelihood_ratio_tests: Vec<LikelihoodRatioTest>,
+    pub stepwise_trace: Vec<StepwiseStep>,
     pub asymptotic_covariance: Vec<Vec<f64>>,
     pub asymptotic_correlation: Vec<Vec<f64>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct StepwiseStep {
+    pub step: u32,
+    pub action: String,
+    pub effect: String,
+    pub test: String,
+    pub chi_square: f64,
+    pub p_value: f64,
+    pub selected_effects: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -73,12 +73,41 @@ fn default_iterations() -> u32 {
 fn default_singularity() -> f64 {
     1e-8 // SPSS-like singularity threshold for generalized inverse fallback
 }
+fn default_delta() -> f64 {
+    0.5 // SPSS NOMREG default delta for empty cells
+}
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct MultinomialConfig {
+    #[serde(default)]
+    pub subpopulation_mode: Option<String>,
+    #[serde(default)]
+    pub subpopulation_columns: Option<Vec<u32>>,
     pub reference_category: String,
     pub confidence_interval: f64,
+    #[serde(default)]
+    pub dispersion_scale: Option<String>,
+    #[serde(default)]
+    pub dispersion_value: Option<String>,
+    #[serde(default)]
+    pub stepwise_method: Option<String>,
+    #[serde(default)]
+    pub stepwise_entry_probability: Option<String>,
+    #[serde(default)]
+    pub stepwise_entry_test: Option<String>,
+    #[serde(default)]
+    pub stepwise_removal_probability: Option<String>,
+    #[serde(default)]
+    pub stepwise_removal_test: Option<String>,
+    #[serde(default)]
+    pub minimum_stepped_effects: Option<String>,
+    #[serde(default)]
+    pub maximum_stepped_effects: Option<String>,
+    #[serde(default)]
+    pub constrain_hierarchy: Option<bool>,
+    #[serde(default)]
+    pub hierarchy_mode: Option<String>,
     #[serde(default = "default_iterations")]
     pub iterations: u32,
     pub tolerance: f64,
@@ -91,6 +120,9 @@ pub struct MultinomialConfig {
     /// Singularity criterion for matrix inversion fallback
     #[serde(default = "default_singularity")]
     pub singularity: f64,
+    /// Added to empty cells (delta) for sparse/empty category smoothing
+    #[serde(default = "default_delta")]
+    pub delta: f64,
     pub include_intercept: bool,
 }
 
