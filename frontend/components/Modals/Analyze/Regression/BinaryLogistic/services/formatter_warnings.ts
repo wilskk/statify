@@ -11,7 +11,7 @@
  * appearing at the top of the output (before the main tables).
  */
 
-import {
+import type {
   LogisticResult,
   AnalysisSection,
   FittingWarnings,

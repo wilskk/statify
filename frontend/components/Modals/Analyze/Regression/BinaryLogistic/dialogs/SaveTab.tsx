@@ -1,7 +1,7 @@
 import React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { BinaryLogisticSaveParams } from "../types/binary-logistic";
+import type { BinaryLogisticSaveParams } from "../types/binary-logistic";
 
 export const SaveTab = ({
   params,

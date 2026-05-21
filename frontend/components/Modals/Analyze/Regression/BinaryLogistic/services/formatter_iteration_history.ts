@@ -17,7 +17,7 @@
  * with Step column as row header (SPSS format).
  */
 
-import {
+import type {
   LogisticResult,
   AnalysisSection,
   IterationHistoryBlock,
@@ -63,7 +63,7 @@ const generateIterationDescription = (
 const formatBlock0IterationHistory = (
   iterHistory: IterationHistoryBlock
 ): AnalysisSection | null => {
-  if (!iterHistory || !iterHistory.rows || iterHistory.rows.length === 0) {
+  if (!iterHistory?.rows || iterHistory.rows.length === 0) {
     return null;
   }
 
@@ -163,7 +163,7 @@ const formatBlock1EnterIterationHistory = (
   iterHistory: IterationHistoryBlock,
   dependentName: string
 ): AnalysisSection | null => {
-  if (!iterHistory || !iterHistory.rows || iterHistory.rows.length === 0) {
+  if (!iterHistory?.rows || iterHistory.rows.length === 0) {
     return null;
   }
 
@@ -408,7 +408,7 @@ export const formatIterationHistory = (
   // BLOCK 0: Beginning Block (Null Model)
   // ======================================================================
   const step0 = stepsDetail.find((s) => s.step === 0);
-  if (step0 && step0.iteration_history) {
+  if (step0?.iteration_history) {
     const block0Section = formatBlock0IterationHistory(step0.iteration_history);
     if (block0Section) {
       sections.push(block0Section);
@@ -421,7 +421,7 @@ export const formatIterationHistory = (
   if (!isStepwise) {
     // Enter method - single step
     const step1 = stepsDetail.find((s) => s.step === 1);
-    if (step1 && step1.iteration_history) {
+    if (step1?.iteration_history) {
       const block1Section = formatBlock1EnterIterationHistory(
         step1.iteration_history,
         dependentName
