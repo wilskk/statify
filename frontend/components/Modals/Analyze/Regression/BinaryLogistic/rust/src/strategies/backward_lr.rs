@@ -591,11 +591,11 @@ fn calculate_step_snapshot(
         model.final_log_likelihood,
         full_x,
         y_vector,
-        included_indices,
         null_ll,
         config,
-        feature_names,
         n_samples,
+        variable_groups,
+        included_group_indices,
     );
 
     let class_table = table::calculate_classification_table(&model.predictions, y_vector, config.cutoff);
@@ -744,26 +744,41 @@ fn calculate_model_if_term_removed(
     current_model_ll: f64,
     x_matrix: &DMatrix<f64>,
     y_vector: &DVector<f64>,
-    included_indices: &[usize],
     null_log_likelihood: f64,
     config: &LogisticConfig,
-    feature_names: &[String],
     n_samples: usize,
+    variable_groups: &[VariableGroup],
+    included_group_indices: &[usize],
 ) -> Option<Vec<ModelIfTermRemovedRow>> {
-    if included_indices.is_empty() {
+    if included_group_indices.is_empty() {
         return None;
     }
-    let mut rows = Vec::new();
-    let chi_dist = ChiSquared::new(1.0).unwrap();
 
-    for (i, &idx_to_remove) in included_indices.iter().enumerate() {
-        let mut subset_indices = included_indices.to_vec();
-        subset_indices.remove(i);
+    let mut rows = Vec::new();
+
+    for (loc, &g_idx) in included_group_indices.iter().enumerate() {
+        let group = &variable_groups[g_idx];
+        // 1. Build subset without this group
+        let mut subset_groups = included_group_indices.to_vec();
+        subset_groups.remove(loc);
+
+        let subset_indices: Vec<usize> = subset_groups.iter()
+            .flat_map(|&gi| variable_groups[gi].column_indices.iter().copied()).collect();
 
         let reduced_ll;
+
+        // 2. If subset is empty, fall back to null model
         if subset_indices.is_empty() {
-            reduced_ll = null_log_likelihood;
+            // SPSS convention: when include_constant=false and no predictors remain,
+            // the model has ZERO parameters. SPSS reports LL = 0.0 for this degenerate case.
+            // When include_constant=true, the reduced model is the intercept-only (null) model.
+            if config.include_constant {
+                reduced_ll = null_log_likelihood;
+            } else {
+                reduced_ll = 0.0;
+            }
         } else {
+            // Re-fit model without this group
             let x_subset = build_design_matrix(x_matrix, &subset_indices, n_samples, config.include_constant);
             if let Ok(reduced_model) = fit(
                 &x_subset,
@@ -773,31 +788,32 @@ fn calculate_model_if_term_removed(
             ) {
                 reduced_ll = reduced_model.final_log_likelihood;
             } else {
-                continue;
+                continue; // Skip if fitting error
             }
         }
 
+        // 3. Compute Change in -2 Log Likelihood
         let change_val = 2.0 * (current_model_ll - reduced_ll).abs();
-        let sig = if change_val < 1e-9 {
-            1.0
-        } else {
-            1.0 - chi_dist.cdf(change_val)
-        };
 
-        let label = if idx_to_remove < feature_names.len() {
-            feature_names[idx_to_remove].clone()
+        // Safety: if very small, treat as 0
+        let change_val_clean = if change_val < 1e-9 { 0.0 } else { change_val };
+
+        let group_df = group.column_indices.len() as f64;
+        let sig = if change_val_clean > 0.0 {
+            1.0 - ChiSquared::new(group_df).unwrap_or(ChiSquared::new(1.0).unwrap()).cdf(change_val_clean)
         } else {
-            format!("Var_{}", idx_to_remove)
+            1.0
         };
 
         rows.push(ModelIfTermRemovedRow {
-            label,
+            label: group.name.clone(),
             model_log_likelihood: reduced_ll,
-            change_in_neg2ll: change_val,
-            df: 1,
+            change_in_neg2ll: change_val_clean,
+            df: group_df as i32,
             sig_change: sig,
         });
     }
+
     if rows.is_empty() {
         None
     } else {
