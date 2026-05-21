@@ -724,19 +724,49 @@ fn calculate_model_if_term_removed(
             continue;
         }
 
-        // Compute conditional LL by zeroing ALL betas in this group simultaneously
-        let mut beta_cond = model.beta.clone();
-        for &bi in &beta_indices {
-            let cov_jj = model.covariance_matrix[(bi, bi)];
-            let beta_j = model.beta[bi];
-            if cov_jj.abs() > 1e-15 {
-                for k in 0..beta_cond.len() {
-                    if !beta_indices.contains(&k) {
-                        let cov_kj = model.covariance_matrix[(k, bi)];
-                        beta_cond[k] -= (cov_kj / cov_jj) * beta_j;
-                    }
-                }
+        // Compute conditional LL using multivariate conditional parameter estimates.
+        // For a group with multiple betas (e.g., categorical with k-1 dummies):
+        //   β_r_cond = β̂_r - Σ_rg × Σ_gg⁻¹ × β̂_g
+        //   β_g_cond = 0
+        // This is the correct multivariate generalization. For single-beta groups (df=1),
+        // this reduces to: β_k_cond = β_k - (Cov_kj / Cov_jj) × β_j
+        let n_group = beta_indices.len();
+        let remaining_indices: Vec<usize> = (0..model.beta.len())
+            .filter(|i| !beta_indices.contains(i))
+            .collect();
+
+        // Extract Σ_gg (covariance sub-matrix for group betas)
+        let mut sigma_gg = DMatrix::zeros(n_group, n_group);
+        for (i, &bi) in beta_indices.iter().enumerate() {
+            for (j, &bj) in beta_indices.iter().enumerate() {
+                sigma_gg[(i, j)] = model.covariance_matrix[(bi, bj)];
             }
+        }
+
+        // Extract β_g (group beta sub-vector)
+        let mut beta_g = DVector::zeros(n_group);
+        for (i, &bi) in beta_indices.iter().enumerate() {
+            beta_g[i] = model.beta[bi];
+        }
+
+        // Compute Σ_gg⁻¹ × β_g
+        let sigma_gg_inv_beta_g = match sigma_gg.try_inverse() {
+            Some(inv) => inv * &beta_g,
+            None => { continue; } // Skip if singular
+        };
+
+        // Adjust remaining betas: β_r_cond = β̂_r - Σ_rg × (Σ_gg⁻¹ × β̂_g)
+        let mut beta_cond = model.beta.clone();
+        for &ri in &remaining_indices {
+            let mut adjustment = 0.0;
+            for (j, &bj) in beta_indices.iter().enumerate() {
+                adjustment += model.covariance_matrix[(ri, bj)] * sigma_gg_inv_beta_g[j];
+            }
+            beta_cond[ri] -= adjustment;
+        }
+
+        // Zero out group betas
+        for &bi in &beta_indices {
             beta_cond[bi] = 0.0;
         }
 
