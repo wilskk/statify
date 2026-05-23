@@ -11,6 +11,7 @@ use crate::models::result::{
     ComponentTransformationMatrix,
     DescriptiveStatistic,
     FactorAnalysisResult,
+    GoodnessOfFitTest,
     KMOBartlettsTest,
     ScreePlot,
     TotalVarianceComponent,
@@ -40,6 +41,8 @@ struct FormatResult {
     covariance_matrix: Option<FormattedCovariance>,
     inverse_covariance_matrix: Option<FormattedInverseCovariance>,
     kmo_bartletts_test: Option<FormattedKMOBartlettsTest>,
+    analysis_status: Option<FormattedAnalysisStatus>,
+    goodness_of_fit_test: Option<FormattedGoodnessOfFitTest>,
     anti_image_matrices: Option<FormattedAntiImage>,
     communalities: Option<FormattedCommunalities>,
     // total_variance_explained: Option<FormattedTotalVarianceExplained>,
@@ -123,12 +126,30 @@ struct FormattedKMOBartlettsTest {
 }
 
 #[derive(Serialize)]
+struct FormattedAnalysisStatus {
+    is_converged: bool,
+    extracted_factors: usize,
+    terminated_early: bool,
+    termination_reason: Option<String>,
+    has_heywood_case: bool,
+}
+
+#[derive(Serialize)]
+struct FormattedGoodnessOfFitTest {
+    chi_square: String,
+    df: usize,
+    significance: String,
+}
+
+#[derive(Serialize)]
 struct FormattedCommunalities {
     raw_initial: Vec<VariableValue>,
     rescaled_initial: Vec<VariableValue>,
     extraction: Vec<VariableValue>,
     rescaled_extraction: Vec<VariableValue>,
     extraction_matrix_type: String,
+    suppress_extraction: bool,
+    heywood_warning_flag: bool,
 }
 
 #[derive(Serialize)]
@@ -219,6 +240,24 @@ fn format_kmo_bartletts(test: &KMOBartlettsTest) -> FormattedKMOBartlettsTest {
         bartletts_test_chi_square,
         df: test.df,
         significance,
+    }
+}
+
+fn format_spss_significance(value: f64) -> String {
+    if value < 0.001 {
+        "<.001".to_string()
+    } else if value >= 1.0 {
+        "1.000".to_string()
+    } else {
+        format!(".{:0>3}", ((value * 1000.0).round() as i32) % 1000)
+    }
+}
+
+fn format_goodness_of_fit_test(test: &GoodnessOfFitTest) -> FormattedGoodnessOfFitTest {
+    FormattedGoodnessOfFitTest {
+        chi_square: format!("{:.3}", test.chi_square),
+        df: test.df,
+        significance: format_spss_significance(test.significance),
     }
 }
 
@@ -507,6 +546,8 @@ impl FormatResult {
                 extraction,
                 rescaled_extraction,
                 extraction_matrix_type: comm.extraction_matrix_type.clone(),
+                suppress_extraction: comm.suppress_extraction,
+                heywood_warning_flag: comm.heywood_warning_flag,
             }
         });
 
@@ -846,7 +887,17 @@ impl FormatResult {
 });
 
 
-    // MAPPING FACTOR SCORES
+        let analysis_status = result.analysis_status.as_ref().map(|status| FormattedAnalysisStatus {
+            is_converged: status.is_converged,
+            extracted_factors: status.extracted_factors,
+            terminated_early: status.terminated_early,
+            termination_reason: status.termination_reason.clone(),
+            has_heywood_case: status.has_heywood_case,
+        });
+
+        let goodness_of_fit_test = result.goodness_of_fit_test.as_ref().map(format_goodness_of_fit_test);
+
+        // MAPPING FACTOR SCORES
         let factor_scores = result.factor_scores.as_ref().map(|scores| {
             // Sort keys agar urutan FAC1_1, FAC2_1 rapi
             let mut keys: Vec<&String> = scores.keys().collect();
@@ -868,6 +919,8 @@ impl FormatResult {
             covariance_matrix,
             inverse_covariance_matrix,
             kmo_bartletts_test: result.kmo_bartletts_test.as_ref().map(|test| format_kmo_bartletts(test)),
+            analysis_status,
+            goodness_of_fit_test,
             anti_image_matrices,
             communalities,
             // total_variance_explained: result.total_variance_explained.clone(),

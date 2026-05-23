@@ -2,6 +2,12 @@ import { transformFactorAnalysisResult } from "../factor-analysis-formatter";
 
 describe("transformFactorAnalysisResult - score matrix visibility", () => {
     const resultWithScoreMatrices = {
+        analysis_status: {
+            is_converged: true,
+            extracted_factors: 2,
+            terminated_early: false,
+            termination_reason: null,
+        },
         component_score_coefficient_matrix: {
             components: [
                 { variable: "X1", values: [0.42, 0.11] },
@@ -76,6 +82,12 @@ describe("transformFactorAnalysisResult - score matrix visibility", () => {
         };
 
         const tinyCovarianceResult = {
+            analysis_status: {
+                is_converged: true,
+                extracted_factors: 3,
+                terminated_early: false,
+                termination_reason: null,
+            },
             component_score_covariance_matrix: {
                 components: [
                     [1.0, -5.634e-15, 4.219e-15],

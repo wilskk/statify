@@ -296,14 +296,15 @@ export const generateTotalVarianceDescription = (
   cumulativeVariancePct: number,
   extractionMethod?: string
 ): string => {
+  const normalizedVariancePct = cumulativeVariancePct <= 1 ? cumulativeVariancePct * 100 : cumulativeVariancePct;
   const componentText = numComponents === 1 ? "1 component" : `${numComponents} components`;
   
   let qualityAssessment = "";
-  if (cumulativeVariancePct >= 0.8) {
+  if (normalizedVariancePct >= 80) {
     qualityAssessment = "This represents a high-quality factor solution.";
-  } else if (cumulativeVariancePct >= 0.6) {
+  } else if (normalizedVariancePct >= 60) {
     qualityAssessment = "This represents an acceptable factor solution.";
-  } else if (cumulativeVariancePct >= 0.5) {
+  } else if (normalizedVariancePct >= 50) {
     qualityAssessment = "While explaining more than 50% of variance is often regarded as reasonable, this solution may benefit from retaining additional components.";
   } else {
     qualityAssessment = "This solution explains only a modest amount of variance; consider retaining additional components.";
@@ -313,7 +314,7 @@ export const generateTotalVarianceDescription = (
     ? ` using ${extractionMethod}`
     : "";
 
-  return `The factor extraction process${methodNote} resulted in ${componentText}, cumulatively explaining ${cumulativeVariancePct.toFixed(1)}% of the total variance in the data. ${qualityAssessment}`;
+  return `The factor extraction process${methodNote} resulted in ${componentText}, cumulatively explaining ${normalizedVariancePct.toFixed(1)}% of the total variance in the data. ${qualityAssessment}`;
 };
 
 /**
@@ -329,6 +330,47 @@ export const generateComponentMatrixDescription = (
   const variableInfo = numVariables ? ` with ${numVariables} variables` : "";
   
   return `The component matrix displays the loadings of each variable on the extracted ${componentPlural}${variableInfo}. These are the unrotated factor loadings, representing the correlation between each variable and the extracted factors.`;
+};
+
+/**
+ * Menghasilkan deskripsi untuk kasus ekstraksi yang terhenti sebelum konvergen
+ */
+export const generateExtractionTerminationDescription = (
+  extractedFactors?: number,
+  terminationReason?: string
+): string => {
+  const factorText = extractedFactors && extractedFactors > 0
+    ? ` ${extractedFactors} factor${extractedFactors === 1 ? "" : "s"} were retained before termination,`
+    : " no factors were retained,";
+
+  const reasonText = terminationReason && terminationReason.trim()
+    ? ` ${terminationReason.trim()}`
+    : " extraction terminated before a stable factor solution was obtained.";
+
+  return `The extraction process did not converge.${factorText}${reasonText} Later-stage tables are suppressed.`;
+};
+
+/**
+ * Menghasilkan deskripsi untuk Goodness-of-fit Test
+ */
+export const generateGoodnessOfFitDescription = (
+  chiSquare: number | string,
+  df: number,
+  significance: number | string,
+  methodName?: string,
+  extractedFactors?: number
+): string => {
+  const chiSquareValue = typeof chiSquare === "string" ? parseFormattedValue(chiSquare) : chiSquare;
+  const significanceValue = typeof significance === "string" ? parseFormattedValue(significance) : significance;
+  const pValueText = significanceValue < 0.001
+    ? "< .001"
+    : `= ${significanceValue.toFixed(3)}`;
+  const methodText = methodName ? ` for the ${methodName} solution` : "";
+  const factorText = extractedFactors && extractedFactors > 0
+    ? ` using ${extractedFactors} extracted factor${extractedFactors === 1 ? "" : "s"}`
+    : "";
+
+  return `The goodness-of-fit test${methodText}${factorText} indicates whether the reproduced correlations adequately match the observed matrix. Chi-Square = ${chiSquareValue.toFixed(3)}, df = ${df}, Sig. ${pValueText}.`;
 };
 
 /**

@@ -84,6 +84,11 @@ export async function resultFactorAnalysis({
             return rawTable?.interpretation || defaultText;
         };
 
+        const analysisStatus = formattedResult.analysisStatus;
+        const hasSuccessfulExtraction = Boolean(
+            analysisStatus?.isConverged && analysisStatus.extractedFactors > 0
+        );
+
 
         const factorAnalysisResult = async () => {
             /*
@@ -91,6 +96,9 @@ export async function resultFactorAnalysis({
              *  Semua output akan dikelompokkan dalam satu blok "Factor Analysis"
              *  Generate SPSS-style syntax log berdasarkan konfigurasi yang dipilih user
              * */
+            const extractionMethod = configData.extraction.Method;
+            const showScreePlot = configData.extraction.Scree === true;
+
             const logMessage = generateFactorAnalysisLog(configData);
             const logId = await addLog({ log: logMessage });
             
@@ -228,6 +236,36 @@ export async function resultFactorAnalysis({
                 console.warn("Total Variance Explained table not found in formatted results!");
             }
 
+            /*
+             *  Goodness-of-fit Test Result
+             *  Only for GLS and ML methods
+             * */
+            const isGLSOrML = extractionMethod === "GeneralizedLeastSqr" || extractionMethod === "MaxLikelihood";
+            const goodnessOfFitTest = findTable("goodness_of_fit_test");
+            if (goodnessOfFitTest && hasSuccessfulExtraction && isGLSOrML) {
+                await addStatistic(analyticId, {
+                    title: `Goodness-of-fit Test`,
+                    description: getTableDescription("goodness_of_fit_test", "Goodness-of-fit Test"),
+                    output_data: goodnessOfFitTest,
+                    components: `Goodness-of-fit Test`,
+                });
+            }
+
+            /*
+             * 📉 Scree Plot Chart 📉
+             * Menampilkan Diagram Scree Plot
+             * */
+            const chartData = (formattedResult as any).screePlotChart;
+            
+            if (chartData && showScreePlot) {
+                await addStatistic(analyticId, {
+                    title: `Scree Plot`,
+                    description: `Eigenvalues vs Component Number`,
+                    output_data: JSON.stringify(chartData),
+                    components: "ScreePlot", 
+                });
+            }
+
 
             /*
              * 🧩 Component Matrix Result 🧩
@@ -248,7 +286,7 @@ export async function resultFactorAnalysis({
              * 🔄 Reproduced Correlations Result 🔄
              * */
             const reproducedCorrelations = findTable("reproduced_correlations");
-            if (reproducedCorrelations) {
+            if (reproducedCorrelations && hasSuccessfulExtraction) {
                 await addStatistic(analyticId, {
                     title: `Reproduced Correlations`,
                     description: getTableDescription("reproduced_correlations", "Reproduced Correlations"),
@@ -261,7 +299,7 @@ export async function resultFactorAnalysis({
              * 🔄 Reproduced Covariances Result 🔄
              * */
             const reproducedCovariances = findTable("reproduced_covariances");
-            if (reproducedCovariances) {
+            if (reproducedCovariances && hasSuccessfulExtraction && configData.extraction.Covariance === true) {
                 await addStatistic(analyticId, {
                     title: `Reproduced Covariances`,
                     description: `Reproduced Covariances`,
@@ -279,7 +317,7 @@ export async function resultFactorAnalysis({
             const rotatedComponentMatrixRaw = findRawTable(
                 "rotated_component_matrix"
             );
-            if (rotatedComponentMatrix && rotatedComponentMatrixRaw) {
+            if (rotatedComponentMatrix && rotatedComponentMatrixRaw && hasSuccessfulExtraction) {
                 const tableTitle = rotatedComponentMatrixRaw.title;
                 await addStatistic(analyticId, {
                     title: tableTitle,
@@ -298,7 +336,7 @@ export async function resultFactorAnalysis({
             const componentTransformationMatrixRaw = findRawTable(
                 "component_transformation_matrix"
             );
-            if (componentTransformationMatrix && componentTransformationMatrixRaw) {
+            if (componentTransformationMatrix && componentTransformationMatrixRaw && hasSuccessfulExtraction) {
                 const tableTitle = componentTransformationMatrixRaw.title;
                 await addStatistic(analyticId, {
                     title: tableTitle,
@@ -312,7 +350,7 @@ export async function resultFactorAnalysis({
              * 🔄 Pattern Matrix Result 🔄
              * */
             const patternMatrix = findTable("pattern_matrix");
-            if (patternMatrix) {
+            if (patternMatrix && hasSuccessfulExtraction) {
                 await addStatistic(analyticId, {
                     title: `Pattern Matrix`,
                     description: `Pattern Matrix`,
@@ -325,7 +363,7 @@ export async function resultFactorAnalysis({
              * 🔄 Structure Matrix Result 🔄
              * */
             const structureMatrix = findTable("structure_matrix");
-            if (structureMatrix) {
+            if (structureMatrix && hasSuccessfulExtraction) {
                 await addStatistic(analyticId, {
                     title: `Structure Matrix`,
                     description: `Structure Matrix`,
@@ -343,7 +381,7 @@ export async function resultFactorAnalysis({
             const componentCorrelationMatrixRaw = findRawTable(
                 "component_correlation_matrix"
             );
-            if (componentCorrelationMatrix && componentCorrelationMatrixRaw) {
+            if (componentCorrelationMatrix && componentCorrelationMatrixRaw && hasSuccessfulExtraction) {
                 const tableTitle = componentCorrelationMatrixRaw.title;
                 await addStatistic(analyticId, {
                     title: tableTitle,
@@ -363,7 +401,7 @@ export async function resultFactorAnalysis({
                 const componentScoreCoefficientMatrixRaw = findRawTable(
                     "component_score_coefficient_matrix"
                 );
-                if (componentScoreCoefficientMatrix && componentScoreCoefficientMatrixRaw) {
+                if (componentScoreCoefficientMatrix && componentScoreCoefficientMatrixRaw && hasSuccessfulExtraction) {
                     const tableTitle = componentScoreCoefficientMatrixRaw.title;
                     await addStatistic(analyticId, {
                         title: tableTitle,
@@ -382,7 +420,7 @@ export async function resultFactorAnalysis({
                 const componentScoreCovarianceMatrixRaw = findRawTable(
                     "component_score_covariance_matrix"
                 );
-                if (componentScoreCovarianceMatrix && componentScoreCovarianceMatrixRaw) {
+                if (componentScoreCovarianceMatrix && componentScoreCovarianceMatrixRaw && hasSuccessfulExtraction) {
                     const tableTitle = componentScoreCovarianceMatrixRaw.title;
                     await addStatistic(analyticId, {
                         title: tableTitle,
@@ -394,36 +432,36 @@ export async function resultFactorAnalysis({
             }
 
 
-            /*
-             * 📉 Scree Plot Chart 📉
-             * Menampilkan Diagram Scree Plot
-             * */
-            // Mengakses properti tambahan yang kita buat di formatter
-            const chartData = (formattedResult as any).screePlotChart;
+            // /*
+            //  * 📉 Scree Plot Chart 📉
+            //  * Menampilkan Diagram Scree Plot
+            //  * */
+            // // Mengakses properti tambahan yang kita buat di formatter
+            // const chartData = (formattedResult as any).screePlotChart;
             
-            if (chartData) {
-                await addStatistic(analyticId, {
-                    title: `Scree Plot`,
-                    description: `Eigenvalues vs Component Number`,
-                    output_data: JSON.stringify(chartData),
-                    components: "ScreePlot", 
-                });
-            }
+            // if (chartData) {
+            //     await addStatistic(analyticId, {
+            //         title: `Scree Plot`,
+            //         description: `Eigenvalues vs Component Number`,
+            //         output_data: JSON.stringify(chartData),
+            //         components: "ScreePlot", 
+            //     });
+            // }
 
 
-            /*
-             * 📋 Scree Plot Data Table📋
-             * Menampilkan data tabel di bawah chart
-             * */
-            const screePlotTable = findTable("scree_plot");
-            if (screePlotTable) {
-                await addStatistic(analyticId, {
-                    title: `Scree Plot Data`,
-                    description: `Table of Eigenvalues`,
-                    output_data: screePlotTable,
-                    components: `Scree Plot Data`, // Menggunakan renderer Tabel default
-                });
-            }
+            // /*
+            //  * 📋 Scree Plot Data Table📋
+            //  * Menampilkan data tabel di bawah chart
+            //  * */
+            // const screePlotTable = findTable("scree_plot");
+            // if (screePlotTable) {
+            //     await addStatistic(analyticId, {
+            //         title: `Scree Plot Data`,
+            //         description: `Table of Eigenvalues`,
+            //         output_data: screePlotTable,
+            //         components: `Scree Plot Data`, // Menggunakan renderer Tabel default
+            //     });
+            // }
 
               /*
              * 📐 Loading Plot Logic 📐
@@ -431,7 +469,7 @@ export async function resultFactorAnalysis({
             // Ambil data dari Rust (sesuai struct baru)
             const loadingPlotDataRaw = (formattedResult as any).loadingPlotChart;
 
-            if (loadingPlotDataRaw) {
+            if (loadingPlotDataRaw && hasSuccessfulExtraction) {
                 // Kita simpan data mentah saja (JSON), karena komponen React yang akan mengolahnya
                 const chartPayload = {
                     type: "PLOTLY_LOADING_PLOT", // Penanda untuk Frontend merender komponen yg benar
@@ -453,7 +491,7 @@ export async function resultFactorAnalysis({
         /*
          * 📊 Save Factor Scores as Variables (Save as Variables Logic) 📊
          * */
-        if (configData.scores.SaveVar && formattedResult.factorScores && formattedResult.factorScores.length > 0) {
+        if (hasSuccessfulExtraction && configData.scores.SaveVar && formattedResult.factorScores && formattedResult.factorScores.length > 0) {
             try {
                 // Get stores
                 const dataStore = useDataStore.getState();

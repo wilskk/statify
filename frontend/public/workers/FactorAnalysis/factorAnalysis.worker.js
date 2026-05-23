@@ -55,7 +55,16 @@ async function ensureWasmReady(action, requestId) {
 
   if (!wasmInitPromise) {
     wasmInitPromise = (async () => {
-      const wasmModule = await import("./pkg/wasm.js");
+      const workerVersion = new URL(import.meta.url).searchParams.get("v");
+      const wasmJsUrl = new URL("./pkg/wasm.js", import.meta.url);
+      const wasmBgUrl = new URL("./pkg/wasm_bg.wasm", import.meta.url);
+
+      if (workerVersion) {
+        wasmJsUrl.searchParams.set("v", workerVersion);
+        wasmBgUrl.searchParams.set("v", workerVersion);
+      }
+
+      const wasmModule = await import(wasmJsUrl.href);
       initWasm = wasmModule.default;
       FactorAnalysisClass = wasmModule.FactorAnalysis;
 
@@ -65,8 +74,7 @@ async function ensureWasmReady(action, requestId) {
         );
       }
 
-      const wasmUrl = new URL("./pkg/wasm_bg.wasm", import.meta.url);
-      await initWasm(wasmUrl);
+      await initWasm(wasmBgUrl);
       wasmReady = true;
     })().catch((error) => {
       wasmInitPromise = null;

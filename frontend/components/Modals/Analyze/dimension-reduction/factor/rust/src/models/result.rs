@@ -21,6 +21,10 @@ pub struct FactorAnalysisResult {
     pub inverse_covariance_matrix: Option<InverseCovarianceMatrix>,
     #[serde(rename = "kmo_bartletts_test")]
     pub kmo_bartletts_test: Option<KMOBartlettsTest>,
+    #[serde(rename = "analysis_status")]
+    pub analysis_status: Option<AnalysisStatus>,
+    #[serde(rename = "goodness_of_fit_test")]
+    pub goodness_of_fit_test: Option<GoodnessOfFitTest>,
     #[serde(rename = "anti_image_matrices")]
     pub anti_image_matrices: Option<AntiImageMatrices>,
     #[serde(rename = "communalities")]
@@ -115,6 +119,28 @@ pub struct KMOBartlettsTest {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AnalysisStatus {
+    #[serde(rename = "is_converged")]
+    pub is_converged: bool,
+    #[serde(rename = "extracted_factors")]
+    pub extracted_factors: usize,
+    #[serde(rename = "terminated_early")]
+    pub terminated_early: bool,
+    #[serde(rename = "termination_reason")]
+    pub termination_reason: Option<String>,
+    #[serde(rename = "has_heywood_case")]
+    pub has_heywood_case: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GoodnessOfFitTest {
+    #[serde(rename = "chi_square")]
+    pub chi_square: f64,
+    pub df: usize,
+    pub significance: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AntiImageMatrices {
     #[serde(rename = "anti_image_covariance")]
     pub anti_image_covariance: HashMap<String, HashMap<String, f64>>,
@@ -146,6 +172,12 @@ pub struct Communalities {
     // Track which matrix type was used for extraction
     #[serde(rename = "extraction_matrix_type")]
     pub extraction_matrix_type: String, // "correlation" or "covariance"
+
+    // SPSS-style control flags for frontend rendering
+    #[serde(rename = "suppress_extraction")]
+    pub suppress_extraction: bool,
+    #[serde(rename = "heywood_warning_flag")]
+    pub heywood_warning_flag: bool,
 }
 
 
@@ -230,6 +262,7 @@ pub struct ExtractionResult {
     pub cumulative_variance: Vec<f64>,
     pub n_factors: usize,
     pub var_names: Vec<String>,
+    pub has_heywood_case: bool,
 }
 
 pub struct RotationResult {

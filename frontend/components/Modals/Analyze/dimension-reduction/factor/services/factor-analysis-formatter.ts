@@ -12,6 +12,7 @@ import {
     generateTotalVarianceDescription,
     generateRotatedMatrixDescription,
     generateComponentMatrixDescription,
+    generateExtractionTerminationDescription,
     generateDescriptiveDescription,
     generateCorrelationMatrixDescription,
     generateCovarianceMatrixDescription,
@@ -19,6 +20,7 @@ import {
     generateAntiImageRefinedDescription,
     generateReproducedRefinedDescription,
     generateComponentTransformationDescription,
+    generateGoodnessOfFitDescription,
     fmtSig,
     formatScientificNotationSPSSStyle,
 } from "./formatter_utils";
@@ -38,8 +40,48 @@ function getExtractionMethodDisplayName(methodValue: string): string {
     return EXTRACTION_METHOD_MAP[methodValue] || methodValue;
 }
 
+// Helper format KHUSUS untuk Score Coefficient (hilangkan scientific notation, paksa 3 desimal)
+function formatScoreCoefficientValue(value: number | undefined | null): string {
+    if (value === undefined || value === null || isNaN(value)) return ".";
+    if (!isFinite(value)) return value > 0 ? "Infinity" : "-Infinity";
+
+    // SPSS membulatkan ke 3 desimal untuk matriks ini.
+    // Jika nilai absolutnya di bawah 0.0005, kita paksa menjadi 0 mutlak 
+    // untuk menghancurkan sisa presisi negatif (mencegah minus nol).
+    let normalized = value;
+    if (Math.abs(value) < 0.0005) {
+        normalized = 0;
+    }
+
+    // Kunci ketat ke 3 desimal (sehingga 1 menjadi 1.000)
+    const fixed = normalized.toFixed(4);
+
+    // Hapus angka nol di depan desimal (contoh: "0.453" -> ".453", "0.000" -> ".000")
+    if (Math.abs(normalized) < 1) {
+        let result = fixed.replace(/^(-?)0\./, "$1.");
+        
+        // Pengaman lapis kedua: pastikan benar-benar tidak ada minus nol yang lolos
+        if (result === "-.000") {
+            return ".000";
+        }
+        return result;
+    }
+
+    return fixed;
+}
+
+// SPSS-style communalities formatting: 3 decimals and no leading zero for |x| < 1
+function formatCommunalityValue(value: number | undefined | null): string {
+    if (value === undefined || value === null || isNaN(value)) return ".";
+    if (!isFinite(value)) return value > 0 ? "Infinity" : "-Infinity";
+
+    const normalized = Math.abs(value) < 1e-12 ? 0 : value;
+    const fixed = normalized.toFixed(3);
+    return fixed.replace(/^(-?)0\./, "$1.");
+}
+
 /**
- * SPSS-like formatting for Component/Factor Score Covariance Matrix.
+ * formatting for Component/Factor Score Covariance Matrix.
  * - Always 4 decimals
  * - Suppress scientific notation
  * - Avoid negative zero from floating-point precision noise
@@ -62,6 +104,34 @@ function formatScoreCovarianceMatrixValue(value: number | undefined | null): str
     }
 
     return fixed;
+}
+
+function buildCovarianceStdDevMap(covarianceData: any): Map<string, number> {
+    const stdDevMap = new Map<string, number>();
+
+    if (!covarianceData || !Array.isArray(covarianceData.covariances)) {
+        return stdDevMap;
+    }
+
+    covarianceData.covariances.forEach((row: any) => {
+        const varName = row?.variable;
+        if (!varName || !Array.isArray(row.values)) return;
+
+        const diagEntry = row.values.find((entry: any) => entry?.variable === varName);
+        const rawValue = typeof diagEntry?.value === "number"
+            ? diagEntry.value
+            : typeof diagEntry?.value === "string"
+            ? Number(diagEntry.value)
+            : typeof diagEntry === "number"
+            ? diagEntry
+            : null;
+
+        if (rawValue !== null && Number.isFinite(rawValue) && rawValue > 0) {
+            stdDevMap.set(varName, Math.sqrt(rawValue));
+        }
+    });
+
+    return stdDevMap;
 }
 
 /**
@@ -140,6 +210,23 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
         console.error("No data provided to transformFactorAnalysisResult");
         return resultJson;
     }
+
+    const analysisStatus = data.analysis_status
+        ? {
+              isConverged: Boolean(data.analysis_status.is_converged),
+              extractedFactors: Number(data.analysis_status.extracted_factors ?? 0),
+              terminatedEarly: Boolean(data.analysis_status.terminated_early),
+              terminationReason: data.analysis_status.termination_reason ?? undefined,
+              hasHeywoodCase: Boolean(data.analysis_status.has_heywood_case ?? false),
+          }
+        : undefined;
+
+    resultJson.analysisStatus = analysisStatus;
+
+    const hasSuccessfulExtraction = Boolean(
+        analysisStatus?.isConverged && analysisStatus.extractedFactors > 0
+    );
+    const shouldDisplayScoreMatrices = configData?.scores?.DisplayFactor ?? true;
 
     // 1. Descriptive Statistics
     if (data.descriptive_statistics) {
@@ -489,14 +576,20 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
     if (data.communalities) {
         const isCovariance = data.communalities.extraction_matrix_type === "covariance";
         
-        // Cek apakah Unrotated Factor Solution diaktifkan
-        const isUnrotatedEnabled = configData?.extraction?.Unrotated ?? true;
-        
         // Cek apakah ada data ekstraksi dari backend
         const hasExtractionData = data.communalities.extraction && data.communalities.extraction.length > 0;
         
-        // Tampilkan kolom extraction hanya jika Unrotated diaktifkan DAN ada data extraction
-        const showExtractionColumn = isUnrotatedEnabled && hasExtractionData;
+        // BACKEND FLAGS - Dari logika backend:
+        // heywood_warning_flag: true jika ada Heywood Case (communality >= 0.9999)
+        // suppress_extraction: true jika ada fatal error (NaN/Infinite atau n_factors == 0)
+        const heywoodWarningFlag = data.communalities.heywood_warning_flag ?? false;
+        const suppressExtraction = data.communalities.suppress_extraction ?? false;
+        
+        // SPSS RULE: Tampilkan kolom Extraction jika:
+        // 1. Ada data extraction
+        // 2. Tidak disuppress oleh backend karena fatal error
+        // Catatan: Heywood Case hanya warning, bukan suppress.
+        const showExtractionColumn = hasExtractionData && !suppressExtraction;
 
         const columnHeaders: any = [{ header: "", key: "var" }];
 
@@ -523,7 +616,7 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
                     ]
                 });
             } else {
-                // Unrotated OFF: Hanya Raw Initial dan Rescaled Initial
+                // Fatal/suppress case: hanya Initial values
                 columnHeaders.push({ header: "Raw Initial", key: "raw_initial" });
                 columnHeaders.push({ header: "Rescaled Initial", key: "rescaled_initial" });
             }
@@ -540,7 +633,7 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
 
         const table: Table = {
             key: "communalities",
-            title: "Communalities",
+            title: heywoodWarningFlag ? "Communalities<sup>a</sup>" : "Communalities",
             columnHeaders,
             rows: [],
         };
@@ -578,8 +671,8 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
 
             if (isCovariance) {
                 // COVARIANCE CASE
-                rowData.raw_initial = formatDisplayNumber(rawInitialMap.get(variable));
-                rowData.rescaled_initial = formatDisplayNumber(rescaledInitialMap.get(variable));
+                rowData.raw_initial = formatCommunalityValue(rawInitialMap.get(variable));
+                rowData.rescaled_initial = formatCommunalityValue(rescaledInitialMap.get(variable));
                 
                 if (showExtractionColumn) {
                     // Gunakan nilai dari backend untuk extraction
@@ -587,21 +680,21 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
                     const rescaledExtraction = rescaledExtractionMap.get(variable);
                     
                     if (rawExtraction !== undefined) {
-                        rowData.raw_extraction = formatDisplayNumber(rawExtraction);
+                        rowData.raw_extraction = formatCommunalityValue(rawExtraction);
                     }
                     if (rescaledExtraction !== undefined) {
-                        rowData.rescaled_extraction = formatDisplayNumber(rescaledExtraction);
+                        rowData.rescaled_extraction = formatCommunalityValue(rescaledExtraction);
                     }
                 }
             } else {
                 // CORRELATION CASE
                 // Untuk correlation, initial selalu 1.0 untuk PCA atau SMC untuk PAF
-                rowData.initial = formatDisplayNumber(rescaledInitialMap.get(variable));
+                rowData.initial = formatCommunalityValue(rescaledInitialMap.get(variable));
 
                 if (showExtractionColumn) {
                     const val = extractionMap.get(variable);
                     if (val !== undefined) {
-                        rowData.extraction = formatDisplayNumber(val);
+                        rowData.extraction = formatCommunalityValue(val);
                     }
                 }
             }
@@ -618,13 +711,17 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
             value: extractionMap.get(v) || rescaledExtractionMap.get(v) || 0
         })).filter(c => c.value > 0);
         
-        const lowestComm = communalitiesData.reduce((min, curr) => 
-            curr.value < min.value ? curr : min,
-            { name: '', value: 1 }
-        );
-        
         const commDescription = generateCommunalitiesDescription(communalitiesData, methodDisplayNameComm);
-        table.interpretation = commDescription;
+        
+        // HEYWOOD CASE WARNING: Jika ada Heywood Case (communality >= 1.0), tambahkan warning footnote
+        // Footnote ini ditampilkan di description/interpretation yang akan ditampilkan oleh UI
+        let finalDescription = commDescription;
+        if (heywoodWarningFlag) {
+            const heywoodWarning = "One or more communality estimates greater than 1 were encountered during iterations. The resulting solution should be interpreted with caution.";
+            finalDescription = commDescription + "\n\n" + heywoodWarning;
+        }
+        
+        table.interpretation = finalDescription;
         
         resultJson.tables.push(table);
     }
@@ -634,6 +731,7 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
     // ==================================================================================
     if (data.total_variance_explained) {
         try {
+            const renderExtractionDetails = hasSuccessfulExtraction;
             const varianceBlocks = Array.isArray(data.total_variance_explained)
                 ? data.total_variance_explained
                 : [["Total", data.total_variance_explained]];
@@ -644,21 +742,51 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
             });
 
             if (isCovariance) {
+                const rowLabel = extractionMethod === "PrincipalComp" ? "Component" : "Factor";
+                const blockEntries: Array<{ blockLabel: string; blockData: any }> = varianceBlocks.map((block: any) => {
+                    const [blockLabel, blockData] = Array.isArray(block)
+                        ? block
+                        : [block.matrix_type || "Total", block];
+
+                    return { blockLabel, blockData };
+                });
+
+                const hasExtractionColumns = renderExtractionDetails && blockEntries.some(
+                    ({ blockData }: { blockData: any }) => blockData?.extraction?.rows?.length > 0
+                );
+
                 const table: Table = {
                     key: "total_variance_explained",
                     title: "Total Variance Explained",
                     columnHeaders: [
                         { header: "", key: "group_label" }, 
-                        { header: "Component", key: "component", width: "auto" },
-                        { header: "Total", key: "total" },
-                        { header: "% of Variance", key: "percent_var" },
-                        { header: "Cumulative %", key: "cumulative_percent" }
+                        { header: rowLabel, key: "component", width: "auto" },
+                        {
+                            header: "Initial Eigenvaluesᵃ",
+                            key: "initial_eigenvalues",
+                            children: [
+                                { header: "Total", key: "initial_total" },
+                                { header: "% of Variance", key: "initial_percent_var" },
+                                { header: "Cumulative %", key: "initial_cumulative_percent" },
+                            ],
+                        },
                     ],
                     rows: [],
                 };
 
-                varianceBlocks.forEach((block: any) => {
-                    const [blockLabel, blockData] = Array.isArray(block) ? block : [block.matrix_type || "Total", block];
+                if (hasExtractionColumns) {
+                    table.columnHeaders.push({
+                        header: "Extraction Sums of Squared Loadings",
+                        key: "extraction_sums",
+                        children: [
+                            { header: "Total", key: "extraction_total" },
+                            { header: "% of Variance", key: "extraction_percent_var" },
+                            { header: "Cumulative %", key: "extraction_cumulative_percent" },
+                        ],
+                    });
+                }
+
+                blockEntries.forEach(({ blockLabel, blockData }: { blockLabel: string; blockData: any }) => {
                     if (!blockData?.initial?.rows) return;
 
                     blockData.initial.rows.forEach((rowValues: number[], i: number) => {
@@ -666,21 +794,34 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
                             group_label: i === 0 ? blockLabel : "", 
                             rowHeader: [], 
                             component: (i + 1).toString(),
-                            total: formatDisplayNumber(rowValues[0]),
-                            percent_var: formatDisplayNumber(rowValues[1]),
-                            cumulative_percent: formatDisplayNumber(rowValues[2])
+                            initial_total: formatDisplayNumber(rowValues[0]),
+                            initial_percent_var: formatDisplayNumber(rowValues[1]),
+                            initial_cumulative_percent: formatDisplayNumber(rowValues[2]),
                         };
+
+                        const extractionRow = blockData.extraction?.rows?.[i];
+                        if (hasExtractionColumns && extractionRow) {
+                            rowData.extraction_total = formatDisplayNumber(extractionRow[0]);
+                            rowData.extraction_percent_var = formatDisplayNumber(extractionRow[1]);
+                            rowData.extraction_cumulative_percent = formatDisplayNumber(extractionRow[2]);
+                        }
+
                         table.rows.push(rowData);
                     });
                 });
                 
                 // Generate description untuk Total Variance Explained
-                const lastRowValues = varianceBlocks[0][1]?.initial?.rows?.[varianceBlocks[0][1]?.initial?.rows?.length - 1];
+                const firstBlock = blockEntries[0]?.blockData;
+                const lastRowValues = firstBlock?.initial?.rows?.[firstBlock?.initial?.rows?.length - 1];
                 const cumulativeVarExplained = lastRowValues?.[2] || 0; // cumulative percentage
-                const numComponentsExtr = varianceBlocks[0][1]?.initial?.rows?.length || 0;
+                const numComponentsExtr = firstBlock?.initial?.rows?.length || 0;
                 const methodDisplayNameVar = getExtractionMethodDisplayName(extractionMethod);
-                const varianceDesc = generateTotalVarianceDescription(numComponentsExtr, cumulativeVarExplained / 100, methodDisplayNameVar);
-                table.interpretation = varianceDesc;
+                table.interpretation = hasSuccessfulExtraction
+                    ? generateTotalVarianceDescription(numComponentsExtr, cumulativeVarExplained / 100, methodDisplayNameVar)
+                    : generateExtractionTerminationDescription(
+                        analysisStatus?.extractedFactors,
+                        analysisStatus?.terminationReason
+                    );
                 
                 resultJson.tables.push(table);
 
@@ -707,7 +848,7 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
                 };
 
                 // --- CEK: APAKAH ADA DATA EKSTRAKSI? ---
-                if (blockData.extraction?.rows?.length > 0) {
+                if (renderExtractionDetails && blockData.extraction?.rows?.length > 0) {
                     table.columnHeaders.push({
                         header: "Extraction Sums of Squared Loadings",
                         key: "extraction_sums",
@@ -719,7 +860,7 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
                 }
 
                 // --- CEK: APAKAH ADA DATA ROTASI? ---
-                if (blockData.rotation?.rows?.length > 0) {
+                if (renderExtractionDetails && blockData.rotation?.rows?.length > 0) {
                     table.columnHeaders.push({
                         header: "Rotation Sums of Squared Loadings",
                         key: "rotation_sums",
@@ -740,14 +881,14 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
                     });
 
                     // Extraction Data (Hanya jika ada)
-                    if (blockData.extraction?.rows[i]) {
+                    if (renderExtractionDetails && blockData.extraction?.rows[i]) {
                         blockData.extraction.rows[i].forEach((val: number, idx: number) => {
                             rowData[`extraction_${idx}`] = formatDisplayNumber(val);
                         });
                     }
 
                     // Rotation Data (Hanya jika ada)
-                    if (blockData.rotation?.rows[i]) {
+                    if (renderExtractionDetails && blockData.rotation?.rows[i]) {
                         blockData.rotation.rows[i].forEach((val: number, idx: number) => {
                             rowData[`rotation_${idx}`] = formatDisplayNumber(val);
                         });
@@ -765,13 +906,51 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
                 const cumulativePctCorr = lastInitialRow?.[2] || 0;
                 const numComponentsCorr = blockData.initial.rows?.length || 0;
                 const varianceDescCorr = generateTotalVarianceDescription(numComponentsCorr, cumulativePctCorr / 100, methodDisplayName);
-                table.interpretation = varianceDescCorr;
+                table.interpretation = hasSuccessfulExtraction
+                    ? varianceDescCorr
+                    : generateExtractionTerminationDescription(
+                        analysisStatus?.extractedFactors,
+                        analysisStatus?.terminationReason
+                    );
                 
                 resultJson.tables.push(table);
             }
         } catch (error) {
             console.error("Error processing total_variance_explained:", error);
         }
+    }
+
+    // 7b. Goodness-of-fit Test (ML / GLS)
+    const isGLSOrML = extractionMethod === "GeneralizedLeastSqr" || extractionMethod === "MaxLikelihood";
+    if (hasSuccessfulExtraction && isGLSOrML && data.goodness_of_fit_test) {
+        const goodnessOfFitTable: Table = {
+            key: "goodness_of_fit_test",
+            title: "Goodness-of-fit Test",
+            columnHeaders: [
+                { header: "", key: "test" },
+                { header: "Chi-Square", key: "chi_square" },
+                { header: "df", key: "df" },
+                { header: "Sig.", key: "sig" },
+            ],
+            rows: [
+                {
+                    rowHeader: ["Goodness-of-fit Test"],
+                    chi_square: formatDisplayNumber(data.goodness_of_fit_test.chi_square),
+                    df: formatDisplayNumber(data.goodness_of_fit_test.df),
+                    sig: formatDisplayNumber(data.goodness_of_fit_test.significance),
+                },
+            ],
+        };
+
+        goodnessOfFitTable.interpretation = generateGoodnessOfFitDescription(
+            data.goodness_of_fit_test.chi_square,
+            data.goodness_of_fit_test.df,
+            data.goodness_of_fit_test.significance,
+            getExtractionMethodDisplayName(extractionMethod),
+            analysisStatus?.extractedFactors
+        );
+
+        resultJson.tables.push(goodnessOfFitTable);
     }
 
 
@@ -842,8 +1021,9 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
 
     // 8. Component Matrix / Factor Matrix
     if (data.component_matrix) {
-        const extractedComponents =
-            data.component_matrix.components[0]?.values.length || 0;
+        const extractedComponents = hasSuccessfulExtraction
+            ? (data.component_matrix.components[0]?.values.length || 0)
+            : 0;
 
         // --- LOGIKA DINAMIS (BARU) ---
         // Cek metode ekstraksi untuk menentukan Label Judul & Header
@@ -862,23 +1042,60 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
         // 2. Tentukan Header Kolom (Factor vs Component)
         const columnGroupHeader = isPCA ? "Component" : "Factor";
 
+        const isCovarianceExtraction = configData?.extraction?.Covariance === true;
+        const covarianceStdDevs = isCovarianceExtraction
+            ? buildCovarianceStdDevMap(data.covariance_matrix)
+            : new Map<string, number>();
+        const showRescaledColumns = isCovarianceExtraction;
+
+        const columnHeaders: any[] = [{ header: "", key: "var" }];
+        if (showRescaledColumns) {
+            columnHeaders.push({
+                header: "Raw",
+                key: "raw_group",
+                children: [
+                    {
+                        header: columnGroupHeader,
+                        key: "raw_factor_group",
+                        children: Array.from({ length: extractedComponents }, (_, i) => ({
+                            header: (i + 1).toString(),
+                            key: `raw_component_${i + 1}`,
+                        })),
+                    },
+                ],
+            });
+            columnHeaders.push({
+                header: "Rescaled",
+                key: "rescaled_group",
+                children: [
+                    {
+                        header: columnGroupHeader,
+                        key: "rescaled_factor_group",
+                        children: Array.from({ length: extractedComponents }, (_, i) => ({
+                            header: (i + 1).toString(),
+                            key: `rescaled_component_${i + 1}`,
+                        })),
+                    },
+                ],
+            });
+        } else {
+            columnHeaders.push({
+                header: columnGroupHeader,
+                key: "component",
+                children: Array.from(
+                    { length: extractedComponents },
+                    (_, i) => ({
+                        header: (i + 1).toString(),
+                        key: `component_${i + 1}`,
+                    })
+                ),
+            });
+        }
+
         const table: Table = {
             key: "component_matrix",
             title: tableTitle, // <--- Gunakan judul dinamis
-            columnHeaders: [
-                { header: "", key: "var" },
-                {
-                    header: columnGroupHeader, // <--- Gunakan header dinamis (Factor/Component)
-                    key: "component",
-                    children: Array.from(
-                        { length: extractedComponents },
-                        (_, i) => ({
-                            header: (i + 1).toString(),
-                            key: `component_${i + 1}`,
-                        })
-                    ),
-                },
-            ],
+            columnHeaders,
             rows: [],
         };
 
@@ -886,8 +1103,23 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
         data.component_matrix.components.forEach((component: any) => {
             const rowData: any = { rowHeader: [component.variable] };
             component.values.forEach((value: number | null, index: number) => {
-                if (value === null || value === undefined) {
-                    rowData[`component_${index + 1}`] = "";
+                if (!hasSuccessfulExtraction || value === null || value === undefined) {
+                    if (showRescaledColumns) {
+                        rowData[`raw_component_${index + 1}`] = "";
+                        rowData[`rescaled_component_${index + 1}`] = "";
+                    } else {
+                        rowData[`component_${index + 1}`] = "";
+                    }
+                    return;
+                }
+
+                if (showRescaledColumns) {
+                    rowData[`raw_component_${index + 1}`] = formatDisplayNumber(value);
+                    const stdDev = covarianceStdDevs.get(component.variable);
+                    rowData[`rescaled_component_${index + 1}`] =
+                        stdDev && stdDev > 0
+                            ? formatDisplayNumber(value / stdDev)
+                            : "";
                 } else {
                     rowData[`component_${index + 1}`] = formatDisplayNumber(value);
                 }
@@ -905,7 +1137,11 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
         // Footer 2: Keterangan 'a' (Iterasi)
         // Logic: Jika ada data iterasi (dari backend), tampilkan.
         // Jika tidak ada data iterasi tapi bukan PCA, tampilkan format standar tanpa angka iterasi.
-        if (data.component_matrix.iterations_required) {
+        if (!hasSuccessfulExtraction) {
+            table.rows.push({
+                rowHeader: ["a. Extraction terminated before convergence or no factor solution was retained."],
+            });
+        } else if (data.component_matrix.iterations_required) {
             table.rows.push({
                 rowHeader: [`a. ${extractedComponents} factors extracted. ${data.component_matrix.iterations_required} iterations required.`],
             });
@@ -922,14 +1158,16 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
         }
 
         // Generate description untuk Component Matrix
-        const componentMatrixDesc = generateComponentMatrixDescription(extractedComponents, data.component_matrix.components?.[0]?.values?.length || 0);
+        const componentMatrixDesc = hasSuccessfulExtraction
+            ? generateComponentMatrixDescription(extractedComponents, data.component_matrix.components?.[0]?.values?.length || 0)
+            : generateExtractionTerminationDescription(analysisStatus?.extractedFactors, analysisStatus?.terminationReason);
         table.interpretation = componentMatrixDesc;
 
         resultJson.tables.push(table);
     }
 
     // 9. Reproduced Correlations - SPSS Style with grouped row headers
-    if (data.reproduced_correlations) {
+    if (hasSuccessfulExtraction && data.reproduced_correlations) {
         const variables =
             data.reproduced_correlations.reproduced_correlation.map(
                 (entry: any) => entry.variable
@@ -1017,7 +1255,7 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
     }
 
     // 9b. Reproduced Covariances - SPSS Style with grouped row headers
-    if (data.reproduced_covariances) {
+    if (hasSuccessfulExtraction && data.reproduced_covariances) {
         const variables =
             data.reproduced_covariances.reproduced_covariance.map(
                 (entry: any) => entry.variable
@@ -1092,49 +1330,96 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
     }
 
     // 10. Rotated Component Matrix (Orthogonal rotations only)
-    if (data.rotated_component_matrix && !data.pattern_matrix) {
+    const rotationRequested = configData?.rotation
+        ? !configData.rotation.None && configData.rotation.RotatedSol !== false
+        : false;
+    const extractedFactors = analysisStatus?.extractedFactors ?? 0;
+
+    if (rotationRequested && extractedFactors <= 1) {
+        const isPCA = extractionMethod === "PrincipalComp";
+        const tableTitle = isPCA ? "Rotated Component Matrixᵃ" : "Rotated Factor Matrixᵃ";
+        const entityLabel = isPCA ? "component" : "factor";
+        const rotationNote = `a. Only one ${entityLabel} was extracted. The solution cannot be rotated.`;
+
+        const table: Table = {
+            key: "rotated_component_matrix",
+            title: tableTitle,
+            columnHeaders: [{ header: "", key: "var" }],
+            rows: [
+                {
+                    rowHeader: [rotationNote],
+                },
+            ],
+            interpretation: rotationNote,
+        };
+
+        resultJson.tables.push(table);
+    } else if (hasSuccessfulExtraction && data.rotated_component_matrix && !data.pattern_matrix) {
         const extractedComponents =
             data.rotated_component_matrix.components[0]?.values.length || 0;
 
-        // Logika dinamis untuk menentukan nama tabel dan header
         const methodValue = extractionMethod;
         const isPCA = methodValue === "PrincipalComp";
         const methodDisplayName = getExtractionMethodDisplayName(methodValue);
         const tableTitle = isPCA ? "Rotated Component Matrixᵃ" : "Rotated Factor Matrixᵃ";
         const columnGroupHeader = isPCA ? "Component" : "Factor";
 
+        const isCovarianceExtraction = configData?.extraction?.Covariance === true;
+        const covarianceStdDevs = isCovarianceExtraction
+            ? buildCovarianceStdDevMap(data.covariance_matrix)
+            : new Map<string, number>();
+        const showRescaledColumns = isCovarianceExtraction;
+
+        const columnHeaders: any[] = [{ header: "", key: "var" }];
+        if (showRescaledColumns) {
+            columnHeaders.push({
+                header: "Raw",
+                key: "raw_group",
+                children: [
+                    {
+                        header: columnGroupHeader,
+                        key: "raw_factor_group",
+                        children: Array.from({ length: extractedComponents }, (_, i) => ({
+                            header: (i + 1).toString(),
+                            key: `raw_component_${i + 1}`,
+                        })),
+                    },
+                ],
+            });
+            columnHeaders.push({
+                header: "Rescaled",
+                key: "rescaled_group",
+                children: [
+                    {
+                        header: columnGroupHeader,
+                        key: "rescaled_factor_group",
+                        children: Array.from({ length: extractedComponents }, (_, i) => ({
+                            header: (i + 1).toString(),
+                            key: `rescaled_component_${i + 1}`,
+                        })),
+                    },
+                ],
+            });
+        } else {
+            columnHeaders.push({
+                header: columnGroupHeader,
+                key: "component",
+                children: Array.from(
+                    { length: extractedComponents },
+                    (_, i) => ({
+                        header: (i + 1).toString(),
+                        key: `component_${i + 1}`,
+                    })
+                ),
+            });
+        }
+
         const table: Table = {
             key: "rotated_component_matrix",
             title: tableTitle,
-            columnHeaders: [
-                { header: "", key: "var" },
-                {
-                    header: columnGroupHeader,
-                    key: "component",
-                    children: Array.from(
-                        { length: extractedComponents },
-                        (_, i) => ({
-                            header: (i + 1).toString(),
-                            key: `component_${i + 1}`,
-                        })
-                    ),
-                },
-            ],
+            columnHeaders,
             rows: [],
         };
-
-        // data.rotated_component_matrix.components.forEach((component: any) => {
-        //     const rowData: any = {
-        //         rowHeader: [component.variable],
-        //     };
-
-        //     component.values.forEach((value: number, index: number) => {
-        //         rowData[`component_${index + 1}`] = formatDisplayNumber(value);
-        //     });
-
-        //     table.rows.push(rowData);
-        // });
-
 
         data.rotated_component_matrix.components.forEach((component: any) => {
             const rowData: any = {
@@ -1142,9 +1427,23 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
             };
 
             component.values.forEach((value: number | null, index: number) => {
-                // REVISI: Handle null for suppressed values
                 if (value === null || value === undefined) {
-                    rowData[`component_${index + 1}`] = "";
+                    if (showRescaledColumns) {
+                        rowData[`raw_component_${index + 1}`] = "";
+                        rowData[`rescaled_component_${index + 1}`] = "";
+                    } else {
+                        rowData[`component_${index + 1}`] = "";
+                    }
+                    return;
+                }
+
+                if (showRescaledColumns) {
+                    rowData[`raw_component_${index + 1}`] = formatDisplayNumber(value);
+                    const stdDev = covarianceStdDevs.get(component.variable);
+                    rowData[`rescaled_component_${index + 1}`] =
+                        stdDev && stdDev > 0
+                            ? formatDisplayNumber(value / stdDev)
+                            : "";
                 } else {
                     rowData[`component_${index + 1}`] = formatDisplayNumber(value);
                 }
@@ -1153,9 +1452,6 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
             table.rows.push(rowData);
         });
 
-
-
-        // Add footnotes
         table.rows.push({
             rowHeader: [`Extraction Method: ${methodDisplayName}.`],
         });
@@ -1166,8 +1462,7 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
             rowHeader: ["a. Rotation converged in X iterations."],
         });
 
-        // Generate description untuk Rotated Component Matrix
-        const rotationMethod = "Varimax"; // Default atau bisa dari config
+        const rotationMethod = "Varimax";
         const rotatedMatrixDesc = generateRotatedMatrixDescription(rotationMethod, extractedComponents);
         table.interpretation = rotatedMatrixDesc;
 
@@ -1175,11 +1470,10 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
     }
 
     // 11. Component Transformation Matrix (Orthogonal rotations only)
-    if (data.component_transformation_matrix && !data.pattern_matrix) {
+    if (hasSuccessfulExtraction && extractedFactors > 1 && data.component_transformation_matrix && !data.pattern_matrix) {
         const components =
             data.component_transformation_matrix.components.length;
 
-        // Logika dinamis untuk menentukan nama tabel dan header
         const methodValue = extractionMethod;
         const isPCA = methodValue === "PrincipalComp";
         const methodDisplayName = getExtractionMethodDisplayName(methodValue);
@@ -1199,7 +1493,6 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
             rows: [],
         };
 
-        // Fill rows
         for (let i = 0; i < components; i++) {
             const rowData: any = {
                 rowHeader: [(i + 1).toString()],
@@ -1214,7 +1507,6 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
             table.rows.push(rowData);
         }
 
-        // Add footnotes
         table.rows.push({
             rowHeader: [`Extraction Method: ${methodDisplayName}.`],
         });
@@ -1222,8 +1514,7 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
             rowHeader: ["Rotation Method: Varimax with Kaiser Normalization."],
         });
 
-        // Determine rotation method from configData
-        let rotationMethod = "Varimax"; // Default
+        let rotationMethod = "Varimax";
         if (configData?.rotation) {
             if (configData.rotation.Quartimax) rotationMethod = "Quartimax";
             if (configData.rotation.Varimax) rotationMethod = "Varimax";
@@ -1237,11 +1528,10 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
     }
 
     // 11a. Pattern Matrix (Oblique rotations only)
-    if (data.pattern_matrix) {
+    if (hasSuccessfulExtraction && extractedFactors > 1 && data.pattern_matrix) {
         const extractedComponents =
             data.pattern_matrix.components[0]?.values.length || 0;
 
-        // Logika dinamis untuk menentukan header
         const methodValue = extractionMethod;
         const isPCA = methodValue === "PrincipalComp";
         const methodDisplayName = getExtractionMethodDisplayName(methodValue);
@@ -1267,26 +1557,12 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
             rows: [],
         };
 
-        // data.pattern_matrix.components.forEach((component: any) => {
-        //     const rowData: any = {
-        //         rowHeader: [component.variable],
-        //     };
-
-        //     component.values.forEach((value: number, index: number) => {
-        //         rowData[`component_${index + 1}`] = formatDisplayNumber(value);
-        //     });
-
-        //     table.rows.push(rowData);
-        // });
-
-
         data.pattern_matrix.components.forEach((component: any) => {
             const rowData: any = {
                 rowHeader: [component.variable],
             };
 
             component.values.forEach((value: number | null, index: number) => {
-                // REVISI: Handle null
                 if (value === null || value === undefined) {
                     rowData[`component_${index + 1}`] = "";
                 } else {
@@ -1297,7 +1573,6 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
             table.rows.push(rowData);
         });
 
-        // Add footnotes
         table.rows.push({
             rowHeader: [`Extraction Method: ${methodDisplayName}.`],
         });
@@ -1312,11 +1587,10 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
     }
 
     // 11b. Structure Matrix (Oblique rotations only)
-    if (data.structure_matrix) {
+    if (hasSuccessfulExtraction && extractedFactors > 1 && data.structure_matrix) {
         const extractedComponents =
             data.structure_matrix.components[0]?.values.length || 0;
 
-        // Logika dinamis untuk menentukan header
         const methodValue = extractionMethod;
         const isPCA = methodValue === "PrincipalComp";
         const methodDisplayName = getExtractionMethodDisplayName(methodValue);
@@ -1347,12 +1621,7 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
                 rowHeader: [component.variable],
             };
 
-            // component.values.forEach((value: number, index: number) => {
-            //     rowData[`component_${index + 1}`] = formatDisplayNumber(value);
-            // });
-
             component.values.forEach((value: number | null, index: number) => {
-                // REVISI: Handle null
                 if (value === null || value === undefined) {
                     rowData[`component_${index + 1}`] = "";
                 } else {
@@ -1363,7 +1632,6 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
             table.rows.push(rowData);
         });
 
-        // Add footnotes
         table.rows.push({
             rowHeader: [`Extraction Method: ${methodDisplayName}.`],
         });
@@ -1375,11 +1643,10 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
     }
 
     // 11c. Component Correlation Matrix (Oblique rotations only)
-    if (data.component_correlation_matrix) {
+    if (hasSuccessfulExtraction && extractedFactors > 1 && data.component_correlation_matrix) {
         const components =
             data.component_correlation_matrix.correlations.length;
 
-        // Logika dinamis untuk menentukan nama tabel dan header
         const methodValue = extractionMethod;
         const isPCA = methodValue === "PrincipalComp";
         const tableTitle = isPCA ? "Component Correlation Matrix" : "Factor Correlation Matrix";
@@ -1398,7 +1665,6 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
             rows: [],
         };
 
-        // Fill rows
         for (let i = 0; i < components; i++) {
             const rowData: any = {
                 rowHeader: [(i + 1).toString()],
@@ -1416,21 +1682,81 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
         resultJson.tables.push(table);
     }
 
-    // 12-13. Score matrices are displayed only when user selects DisplayFactor
-    const shouldDisplayScoreMatrices = configData?.scores?.DisplayFactor ?? true;
+    // // 12-13. Score matrices are displayed only when user selects DisplayFactor
+    // // 12. Component Score Coefficient Matrix
+    // if (hasSuccessfulExtraction && shouldDisplayScoreMatrices && data.component_score_coefficient_matrix) {
+    //     const extractedComponents =
+    //         data.component_score_coefficient_matrix.components[0]?.values.length || 0;
+
+    //     const methodValue = extractionMethod;
+    //     const isPCA = methodValue === "PrincipalComp";
+    //     const methodDisplayName = getExtractionMethodDisplayName(methodValue);
+    //     const tableTitle = isPCA ? "Component Score Coefficient Matrix" : "Factor Score Coefficient Matrix";
+    //     const columnGroupHeader = isPCA ? "Component" : "Factor";
+
+    //     const table: Table = {
+    //         key: "component_score_coefficient_matrix",
+    //         title: tableTitle,
+    //         interpretation: "This matrix displays the coefficient weights used to calculate the standardized factor scores for each observation.",
+    //         columnHeaders: [
+    //             { header: "", key: "var" },
+    //             {
+    //                 header: columnGroupHeader,
+    //                 key: "component",
+    //                 children: Array.from(
+    //                     { length: extractedComponents },
+    //                     (_, i) => ({
+    //                         header: (i + 1).toString(),
+    //                         key: `component_${i + 1}`,
+    //                     })
+    //                 ),
+    //             },
+    //         ],
+    //         rows: [],
+    //     };
+
+    //     data.component_score_coefficient_matrix.components.forEach(
+    //         (component: any) => {
+    //             const rowData: any = {
+    //                 rowHeader: [component.variable],
+    //             };
+
+    //             component.values.forEach((value: number, index: number) => {
+    //                 rowData[`component_${index + 1}`] = formatDisplayNumber(value);
+    //             });
+
+    //             table.rows.push(rowData);
+    //         }
+    //     );
+
+    //     table.rows.push({
+    //         rowHeader: [`Extraction Method: ${methodDisplayName}.`],
+    //     });
+    //     table.rows.push({
+    //         rowHeader: ["Rotation Method: Varimax with Kaiser Normalization."],
+    //     });
+
+    //     resultJson.tables.push(table);
+    // }
+
 
     // 12. Component Score Coefficient Matrix
-    if (shouldDisplayScoreMatrices && data.component_score_coefficient_matrix) {
+    if (hasSuccessfulExtraction && shouldDisplayScoreMatrices && data.component_score_coefficient_matrix) {
         const extractedComponents =
-            data.component_score_coefficient_matrix.components[0]?.values
-                .length || 0;
+            data.component_score_coefficient_matrix.components[0]?.values.length || 0;
 
-        // Logika dinamis untuk menentukan nama tabel dan header
         const methodValue = extractionMethod;
         const isPCA = methodValue === "PrincipalComp";
         const methodDisplayName = getExtractionMethodDisplayName(methodValue);
-        const tableTitle = isPCA ? "Component Score Coefficient Matrix" : "Factor Score Coefficient Matrix";
         const columnGroupHeader = isPCA ? "Component" : "Factor";
+        
+        // SPSS Style Covariance flag
+        const isCovariance = configData?.extraction?.Covariance === true;
+        
+        let tableTitle = isPCA ? "Component Score Coefficient Matrix" : "Factor Score Coefficient Matrix";
+        if (isCovariance) {
+            tableTitle += "ᵃ"; // Tambahkan superscript jika Covariance
+        }
 
         const table: Table = {
             key: "component_score_coefficient_matrix",
@@ -1460,31 +1786,48 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
                 };
 
                 component.values.forEach((value: number, index: number) => {
-                    rowData[`component_${index + 1}`] =
-                        formatDisplayNumber(value);
+                    // MENGGUNAKAN FORMATTER BARU
+                    rowData[`component_${index + 1}`] = formatScoreCoefficientValue(value);
                 });
 
                 table.rows.push(rowData);
             }
         );
 
-        // Add footnotes
         table.rows.push({
             rowHeader: [`Extraction Method: ${methodDisplayName}.`],
         });
-        table.rows.push({
-            rowHeader: ["Rotation Method: Varimax with Kaiser Normalization."],
-        });
+        
+        // Cek label rotasi
+        let rotationMethodStr = "";
+        if (configData?.rotation?.Varimax) rotationMethodStr = "Varimax";
+        else if (configData?.rotation?.Quartimax) rotationMethodStr = "Quartimax";
+        else if (configData?.rotation?.Equimax) rotationMethodStr = "Equimax";
+        
+        if (rotationMethodStr) {
+            table.rows.push({
+                rowHeader: [`Rotation Method: ${rotationMethodStr} with Kaiser Normalization.`],
+            });
+        }
+
+        // Tambahkan footnote standar baku SPSS untuk mode Covariance
+        if (isCovariance) {
+            table.rows.push({
+                rowHeader: ["a. Coefficients are standardized."],
+            });
+        }
 
         resultJson.tables.push(table);
     }
 
+
+
+
     // 13. Component Score Covariance Matrix
-    if (shouldDisplayScoreMatrices && data.component_score_covariance_matrix) {
+    if (hasSuccessfulExtraction && shouldDisplayScoreMatrices && data.component_score_covariance_matrix) {
         const components =
             data.component_score_covariance_matrix.components.length;
 
-        // Logika dinamis untuk menentukan nama tabel dan header
         const methodValue = extractionMethod;
         const isPCA = methodValue === "PrincipalComp";
         const methodDisplayName = getExtractionMethodDisplayName(methodValue);
@@ -1505,7 +1848,6 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
             rows: [],
         };
 
-        // Fill rows
         for (let i = 0; i < components; i++) {
             const rowData: any = {
                 rowHeader: [(i + 1).toString()],
@@ -1520,7 +1862,6 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
             table.rows.push(rowData);
         }
 
-        // Add footnotes
         table.rows.push({
             rowHeader: [`Extraction Method: ${methodDisplayName}.`],
         });
@@ -1559,14 +1900,14 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
     }
 
     // 15. Loading Plot Data
-    if (data.loading_plot) {
+    if (hasSuccessfulExtraction && data.loading_plot) {
         // Kita teruskan objek loading_plot dari Rust ke UI
         resultJson.loadingPlotChart = data.loading_plot;
     }
 
     // 16. Factor Scores (untuk Save as Variables)
     // Ekstrak factor_scores dari respons WASM jika ada
-    if (data.factor_scores && Array.isArray(data.factor_scores)) {
+    if (hasSuccessfulExtraction && data.factor_scores && Array.isArray(data.factor_scores)) {
         resultJson.factorScores = data.factor_scores;
     }
 

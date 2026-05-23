@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use nalgebra::DMatrix;
 use super::matrix::calculate_raw_variances;
+use super::common::chi_square_cdf;
 use super::core::{ calculate_matrix, extract_data_matrix, extract_factors, rotate_factors };
 use crate::models::{
     config::{FactorAnalysisConfig,ExtractionMethod,},
@@ -14,6 +15,8 @@ use crate::models::{
         ComponentScoreCoefficientMatrix,
         ComponentScoreCovarianceMatrix,
         ComponentTransformationMatrix,
+        // ExtractionResult,
+        GoodnessOfFitTest,
         PatternMatrix,
         ReproducedCorrelations,
         ReproducedCovariances,
@@ -27,237 +30,6 @@ use crate::models::{
     },
 };
 
-// // =========================================================================
-// // 1. Communalities
-// // =========================================================================
-// pub fn calculate_communalities(
-//     data: &AnalysisData,
-//     config: &FactorAnalysisConfig
-// ) -> Result<Communalities, String> {
-
-//     let (data_matrix, var_names) = extract_data_matrix(data, config)?;
-//     let is_covariance_extraction = config.extraction.covariance;
-
-//     let matrix_type = if is_covariance_extraction {
-//         "covariance"
-//     } else if config.extraction.correlation {
-//         "correlation"
-//     } else {
-//         "correlation" 
-//     };
-
-//     let matrix_for_extraction = calculate_matrix(&data_matrix, matrix_type)?; 
-//     let extraction_result = extract_factors(&matrix_for_extraction, config, &var_names)?;
-
-//     // --- PERBAIKAN LOGIKA SUPPRESS (MENYEMBUNYIKAN KOLOM EXTRACTION) ---
-//     // SPSS menyembunyikan kolom extraction pada ML jika terjadi "Heywood Case" (Communalities >= 1.0)
-//     // atau jika solusi tidak valid.
-
-//     // Tambahkan ExtractionMethod::PrincipalAxisFactoring ke dalam logika suppress.
-//     // Kita suppress jika terjadi Heywood Case (nilai >= 0.9999) atau gagal konvergensi (nilai 0).
-//     // Pada gambar Anda, VAR5 bernilai 1.1712, jadi kondisi c >= 0.9999 akan bernilai TRUE.
-//     // Tambahkan pengecekan .is_nan() dan .is_infinite()
-//     let suppress_extraction = match config.extraction.method {
-//         ExtractionMethod::GeneralizedLeastSquares | ExtractionMethod::MaximumLikelihood | ExtractionMethod::PrincipalAxisFactoring => {
-//             extraction_result.communalities.iter().any(|&c| {
-//                 c.is_nan() ||           // Cek jika nilainya NaN (Not a Number)
-//                 c.is_infinite() ||      // Cek jika nilainya Infinity
-//                 c >= 0.9999 ||          // Cek Heywood Case
-//                 c.abs() < 1e-6          // Cek jika nilai 0 (gagal ekstraksi)
-//             })
-//         },
-//         _ => false 
-//     };
-
-//     // --- LOGIKA NILAI INITIAL ---
-//     let initial_values: Vec<f64> = match config.extraction.method {
-//         ExtractionMethod::PrincipalComponents => vec![1.0; var_names.len()],
-//         _ => {
-//             let corr_matrix = calculate_matrix(&data_matrix, "correlation")?;
-//             match corr_matrix.try_inverse() {
-//                 Some(inv) => {
-//                     (0..var_names.len())
-//                         .map(|i| {
-//                             let smc = 1.0 - 1.0 / inv[(i, i)];
-//                             if smc < 0.0 { 0.0 } else { smc }
-//                         })
-//                         .collect()
-//                 },
-//                 None => vec![1.0; var_names.len()] 
-//             }
-//         }
-//     };
-
-//     let mut raw_initial = HashMap::new();
-//     let mut rescaled_initial = HashMap::new();
-//     let mut extraction = HashMap::new();
-
-//     let raw_variances = calculate_raw_variances(&data_matrix)?; 
-    
-//     for (i, var_name) in var_names.iter().enumerate() {
-//         // Raw Initial
-//         raw_initial.insert(var_name.clone(), raw_variances[i]);
-
-//         // Rescaled Initial
-//         if i < initial_values.len() {
-//              rescaled_initial.insert(var_name.clone(), initial_values[i]);
-//         } else {
-//              rescaled_initial.insert(var_name.clone(), 1.0);
-//         }
-
-//         // Extraction Communality
-//         // Hanya masukkan ke HashMap jika TIDAK di-suppress.
-//         // Jika suppress == true, Map ini akan kosong.
-//         if !suppress_extraction {
-//             if i < extraction_result.communalities.len() {
-//                 extraction.insert(var_name.clone(), extraction_result.communalities[i]);
-//             }
-//         }
-//     }
-
-//     Ok(Communalities {
-//         raw_initial,
-//         rescaled_initial,
-//         extraction, // Map ini kosong jika ML bermasalah/Heywood case
-//         variable_order: var_names,
-//         extraction_matrix_type: matrix_type.to_string(),
-//     })
-// }
-
-
-// // =========================================================================
-// // 1. Communalities
-// // =========================================================================
-// pub fn calculate_communalities(
-//     data: &AnalysisData,
-//     config: &FactorAnalysisConfig
-// ) -> Result<Communalities, String> {
-
-//     let (data_matrix, var_names) = extract_data_matrix(data, config)?;
-//     let is_covariance_extraction = config.extraction.covariance;
-
-//     let matrix_type = if is_covariance_extraction {
-//         "covariance"
-//     } else if config.extraction.correlation {
-//         "correlation"
-//     } else {
-//         "correlation" 
-//     };
-
-//     // 1. Lakukan Ekstraksi Faktor
-//     let matrix_for_extraction = calculate_matrix(&data_matrix, matrix_type)?; 
-//     let extraction_result = extract_factors(&matrix_for_extraction, config, &var_names)?;
-
-//     // --- LOGIKA SUPPRESS (MENYEMBUNYIKAN KOLOM EXTRACTION) ---
-//     // Suppress jika terjadi Heywood Case (>= 0.9999), NaN, Infinite, atau gagal (0.0)
-//     // Berlaku untuk metode iteratif (PAF, ML, GLS)
-//     let suppress_extraction = match config.extraction.method {
-//         ExtractionMethod::GeneralizedLeastSquares | ExtractionMethod::MaximumLikelihood | ExtractionMethod::PrincipalAxisFactoring => {
-//             extraction_result.communalities.iter().any(|&c| {
-//                 c.is_nan() ||           // Cek NaN
-//                 c.is_infinite() ||      // Cek Infinity
-//                 c >= 0.9999 ||          // Cek Heywood Case
-//                 c.abs() < 1e-6          // Cek Gagal/Zero
-//             })
-//         },
-//         _ => false 
-//     };
-
-//     // --- PERSIAPAN DATA INITIAL ---
-    
-//     // A. Hitung Varians Murni (Raw Variances) dari data
-//     // Digunakan untuk kolom "Raw Initial" pada PCA atau sebagai pengali pada PAF Covariance
-//     let raw_variances = calculate_raw_variances(&data_matrix)?; 
-
-//     // B. Hitung Squared Multiple Correlations (SMC)
-//     // Ini selalu dihitung dari matriks KORELASI, tidak peduli metode ekstraksinya apa.
-//     // SMC = 1 - (1 / R_ii_inverse)
-//     let corr_matrix = calculate_matrix(&data_matrix, "correlation")?;
-//     let smc_values: Vec<f64> = match corr_matrix.try_inverse() {
-//         Some(inv) => {
-//             (0..var_names.len())
-//                 .map(|i| {
-//                     let r_ii = inv[(i, i)];
-//                     // Pastikan tidak negatif dan valid
-//                     if r_ii > 0.0 { (1.0 - 1.0 / r_ii).max(0.0) } else { 0.0 }
-//                 })
-//                 .collect()
-//         },
-//         None => vec![0.0; var_names.len()] // Jika singular, SMC dianggap 0 atau handling lain (SPSS biasanya kosong/error)
-//     };
-
-//     let mut raw_initial = HashMap::new();
-//     let mut rescaled_initial = HashMap::new();
-//     let mut extraction = HashMap::new();
-//     let mut rescaled_extraction = HashMap::new();
-
-//     for (i, var_name) in var_names.iter().enumerate() {
-        
-//         // --- LOGIKA PENGISIAN INITIAL VALUES (MATCH SPSS) ---
-//         match config.extraction.method {
-//             ExtractionMethod::PrincipalComponents => {
-//                 // KASUS PCA:
-//                 // Rescaled Initial: Selalu 1.0
-//                 // Raw Initial: Varians (jika Covariance) atau 1.0 (jika Correlation)
-//                 rescaled_initial.insert(var_name.clone(), 1.0);
-                
-//                 if is_covariance_extraction {
-//                     raw_initial.insert(var_name.clone(), raw_variances[i]);
-//                 } else {
-//                     raw_initial.insert(var_name.clone(), 1.0);
-//                 }
-//             },
-//             _ => {
-//                 // KASUS FACTOR ANALYSIS (PAF, ML, ULS, dll):
-//                 // Rescaled Initial: Nilai SMC
-//                 let smc = if i < smc_values.len() { smc_values[i] } else { 0.0 };
-//                 rescaled_initial.insert(var_name.clone(), smc);
-
-//                 // Raw Initial:
-//                 if is_covariance_extraction {
-//                     // PENTING: Untuk Covariance, Initial = SMC * Variance
-//                     // Ini yang memperbaiki selisih angka Anda dengan SPSS
-//                     let raw_val = smc * raw_variances[i];
-//                     raw_initial.insert(var_name.clone(), raw_val);
-//                 } else {
-//                     // Untuk Correlation, Initial = SMC
-//                     raw_initial.insert(var_name.clone(), smc);
-//                 }
-//             }
-//         }
-
-//         // --- PENGISIAN EXTRACTION VALUES ---
-//         // Masukkan hanya jika:
-//         // 1. Tidak di-suppress (Heywood case aman)
-//         // 2. Unrotated Factor Solution diaktifkan (config.extraction.unrotated == true)
-//         // Jika Unrotated tidak diaktifkan, kolom extraction tidak ditampilkan
-//         if !suppress_extraction && config.extraction.unrotated {
-//             if i < extraction_result.communalities.len() {
-//                 let raw_ext = extraction_result.communalities[i];
-//                 extraction.insert(var_name.clone(), raw_ext);
-                
-//                 // Hitung rescaled extraction untuk covariance mode
-//                 // Rescaled Extraction = Raw Extraction / Variance
-//                 if is_covariance_extraction && raw_variances[i] > 0.0 {
-//                     let rescaled_ext = raw_ext / raw_variances[i];
-//                     rescaled_extraction.insert(var_name.clone(), rescaled_ext);
-//                 } else {
-//                     // Untuk correlation mode, extraction sudah dalam bentuk rescaled
-//                     rescaled_extraction.insert(var_name.clone(), raw_ext);
-//                 }
-//             }
-//         }
-//     }
-
-//     Ok(Communalities {
-//         raw_initial,
-//         rescaled_initial,
-//         extraction, // Map ini kosong jika Heywood case atau Unrotated = false
-//         rescaled_extraction, // Map ini kosong jika Heywood case atau Unrotated = false
-//         variable_order: var_names,
-//         extraction_matrix_type: matrix_type.to_string(),
-//     })
-// }
 
 
 // =========================================================================
@@ -288,41 +60,85 @@ pub fn calculate_communalities(
     let raw_variances = calculate_raw_variances(&data_matrix)?; 
 
     // --- LOGIKA SUPPRESS (SPSS BEHAVIOR - REVISED) ---
+    // Heywood case hanya menyalakan warning, bukan suppress kolom Extraction.
+    let mut heywood_warning_flag = false;
+
     let suppress_extraction = match config.extraction.method {
-        // GRUP ITERATIF: Cek Heywood Case (>= 1.0 pada nilai Rescaled)
-        ExtractionMethod::GeneralizedLeastSquares | 
-        ExtractionMethod::MaximumLikelihood | 
-        ExtractionMethod::PrincipalAxisFactoring | 
-        ExtractionMethod::UnweightedLeastSquares => {
-            
+        // PAF: pada mode ini, jika Heywood/invalid muncul, kolom Extraction disuppress.
+        // Ini menyesuaikan perilaku output yang diharapkan user (Initial-only untuk kasus PAF tertentu).
+        ExtractionMethod::PrincipalAxisFactoring => {
             if extraction_result.n_factors == 0 {
                 true
             } else {
-                extraction_result.communalities.iter().enumerate().any(|(i, &val)| {
-                    // Cek Error Fatal dulu
-                    if val.is_nan() || val.is_infinite() { return true; }
+                let has_fatal_error = extraction_result
+                    .communalities
+                    .iter()
+                    .any(|&c| c.is_nan() || c.is_infinite());
 
-                    // Cek Heywood Case (Nilai >= 1.0)
-                    // PENTING: Kita harus mengecek nilai RESCALED (Standardized)
-                    let check_val = if is_covariance_extraction {
-                        // Jika Covariance, normalkan dulu dengan varians
-                        if raw_variances[i] > 0.0 { val / raw_variances[i] } else { 0.0 }
-                    } else {
-                        // Jika Correlation, nilai sudah scaled
-                        val
-                    };
+                let has_heywood_or_invalid = extraction_result
+                    .communalities
+                    .iter()
+                    .enumerate()
+                    .any(|(i, &val)| {
+                        let check_val = if is_covariance_extraction {
+                            if raw_variances[i] > 0.0 {
+                                val / raw_variances[i]
+                            } else {
+                                0.0
+                            }
+                        } else {
+                            val
+                        };
 
-                    // Gunakan toleransi sedikit di bawah 1.0 (misal 0.9999) 
-                    // karena SPSS sangat sensitif terhadap batas ini.
-                    check_val >= 0.9999 
-                })
+                        check_val >= 0.9999 || check_val.abs() < 1e-6
+                    });
+
+                // Saat PAF disuppress karena Heywood/invalid, jangan tampilkan footnote warning.
+                heywood_warning_flag = false;
+
+                has_fatal_error || has_heywood_or_invalid
             }
-        },
-        
-        // GRUP NON-ITERATIF (PCA): Selalu tampil kecuali NaN
-        _ => {
-            extraction_result.communalities.iter().any(|&c| c.is_nan() || c.is_infinite())
         }
+
+        // ML/GLS/ULS: Heywood hanya warning, bukan suppress.
+        ExtractionMethod::GeneralizedLeastSquares |
+        ExtractionMethod::MaximumLikelihood |
+        ExtractionMethod::UnweightedLeastSquares => {
+            if extraction_result.n_factors == 0 {
+                true
+            } else {
+                let has_fatal_error = extraction_result
+                    .communalities
+                    .iter()
+                    .any(|&c| c.is_nan() || c.is_infinite());
+
+                heywood_warning_flag = extraction_result
+                    .communalities
+                    .iter()
+                    .enumerate()
+                    .any(|(i, &val)| {
+                        let check_val = if is_covariance_extraction {
+                            if raw_variances[i] > 0.0 {
+                                val / raw_variances[i]
+                            } else {
+                                0.0
+                            }
+                        } else {
+                            val
+                        };
+
+                        check_val >= 0.9999
+                    });
+
+                has_fatal_error
+            }
+        }
+
+        // GRUP NON-ITERATIF (PCA): Selalu tampil kecuali NaN/Inf
+        _ => extraction_result
+            .communalities
+            .iter()
+            .any(|&c| c.is_nan() || c.is_infinite()),
     };
 
     // --- PERSIAPAN DATA INITIAL ---
@@ -372,7 +188,7 @@ pub fn calculate_communalities(
 
         // --- PENGISIAN EXTRACTION VALUES ---
         // Hanya isi jika suppress == false
-        if !suppress_extraction && config.extraction.unrotated {
+        if !suppress_extraction {
             if i < extraction_result.communalities.len() {
                 let raw_ext_val = extraction_result.communalities[i];
                 
@@ -400,6 +216,8 @@ pub fn calculate_communalities(
         rescaled_extraction,
         variable_order: var_names,
         extraction_matrix_type: matrix_type.to_string(),
+        suppress_extraction,
+        heywood_warning_flag,
     })
 }
 
@@ -426,13 +244,210 @@ fn create_components(eigenvalues: &[f64], total_variance: f64) -> Vec<TotalVaria
     components
 }
 
+// fn calculate_rotated_sums_of_squared_loadings(
+//     extraction_result: &ExtractionResult,
+//     config: &FactorAnalysisConfig,
+// ) -> Result<Vec<f64>, String> {
+//     let rotation_result = rotate_factors(extraction_result, config)?;
+//     let rotated_loadings = &rotation_result.rotated_loadings;
+
+//     let n_rows = rotated_loadings.nrows();
+//     let n_cols = rotated_loadings.ncols();
+//     let mut rotated_ssl = Vec::with_capacity(n_cols);
+
+//     for j in 0..n_cols {
+//         let mut ssl = 0.0;
+//         for i in 0..n_rows {
+//             ssl += rotated_loadings[(i, j)].powi(2);
+//         }
+//         rotated_ssl.push(ssl);
+//     }
+
+//     rotated_ssl.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+//     Ok(rotated_ssl)
+// }
+
+// pub fn calculate_total_variance_explained(
+//     initial_eigenvalues: &[f64],    
+//     extraction_eigenvalues: &[f64], 
+//     rotation_eigenvalues: Option<&[f64]>,
+//     total_variance: f64,
+//     _n_variables: usize,
+//     matrix_type: &str,
+//     suppress_extraction: bool,
+// ) -> TotalVarianceExplained {
+
+//     match matrix_type {
+//         "correlation" => {
+//             let initial = create_components(initial_eigenvalues, total_variance);
+            
+//             let (extraction, rotation) = if suppress_extraction {
+//                 (Vec::new(), None) // Kosongkan jika ML error
+//             } else {
+//                 let ext = create_components(extraction_eigenvalues, total_variance);
+//                 let rot = rotation_eigenvalues.map(|values| create_components(values, total_variance));
+//                 (ext, rot)
+//             };
+
+//             TotalVarianceExplained {
+//                 blocks: vec![
+//                     TotalVarianceBlock {
+//                         label: "Component".to_string(),
+//                         initial,
+//                         extraction,
+//                         rotation,
+//                     }
+//                 ],
+//                 extraction_matrix_type: "correlation".to_string(),
+//             }
+//         }
+
+//         "covariance" => {
+//             let raw_initial = create_components(initial_eigenvalues, total_variance);
+            
+//             let raw_extraction = if suppress_extraction {
+//                 Vec::new() // Kosongkan
+//             } else {
+//                 create_components(extraction_eigenvalues, total_variance)
+//             };
+
+//             let rescaled_initial = raw_initial.clone();
+//             let rescaled_extraction = raw_extraction.clone();
+
+//             TotalVarianceExplained {
+//                 blocks: vec![
+//                     TotalVarianceBlock {
+//                         label: "Raw".to_string(),
+//                         initial: raw_initial,
+//                         extraction: raw_extraction,
+//                         rotation: None,
+//                     },
+//                     TotalVarianceBlock {
+//                         label: "Rescaled".to_string(),
+//                         initial: rescaled_initial,
+//                         extraction: rescaled_extraction,
+//                         rotation: None,
+//                     },
+//                 ],
+//                 extraction_matrix_type: "covariance".to_string(),
+//             }
+//         }
+
+//         _ => panic!("Unknown matrix type"),
+//     }
+// }
+
+// pub fn calculate_total_variance_explained_from_data(
+//     data: &AnalysisData,
+//     config: &FactorAnalysisConfig,
+// ) -> Result<TotalVarianceExplained, String> {
+
+//     let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+//     let n_variables = var_names.len();
+
+//     let is_covariance = config.extraction.covariance;
+//     let matrix_type = if is_covariance { "covariance" } else { "correlation" };
+
+//     let matrix = calculate_matrix(&data_matrix, matrix_type)?;
+
+//     // STEP A: HITUNG INITIAL EIGENVALUES
+//     let eigen_decomp = matrix.clone().symmetric_eigen();
+//     let mut initial_eigenvalues: Vec<f64> = eigen_decomp.eigenvalues.data.as_vec().clone();
+//     initial_eigenvalues.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+
+//     // Hitung Total Variance
+//     let total_variance: f64 = if is_covariance {
+//         initial_eigenvalues.iter().sum()
+//     } else {
+//         n_variables as f64
+//     };
+
+//     // STEP B: HITUNG EXTRACTION EIGENVALUES
+//     let extraction_result = match extract_factors(&matrix, config, &var_names) {
+//         Ok(result) => Some(result),
+//         Err(e) => {
+//             // Konsep SPSS: jika ML gagal konvergen/heywood, tampilkan hanya Initial Eigenvalues.
+//             if matches!(config.extraction.method, ExtractionMethod::MaximumLikelihood) {
+//                 let empty: Vec<f64> = Vec::new();
+//                 return Ok(calculate_total_variance_explained(
+//                     &initial_eigenvalues,
+//                     &empty,
+//                     None,
+//                     total_variance,
+//                     n_variables,
+//                     matrix_type,
+//                     true,
+//                 ));
+//             }
+//             return Err(e);
+//         }
+//     };
+
+//     let extraction_result = extraction_result.expect("extraction_result must exist");
+
+//     let suppress_extraction = match config.extraction.method {
+//         ExtractionMethod::MaximumLikelihood => {
+//             extraction_result.n_factors == 0 ||
+//             extraction_result.communalities.iter().any(|&c| {
+//                 c.is_nan() ||
+//                 c.is_infinite()
+//             })
+//         },
+//         ExtractionMethod::GeneralizedLeastSquares | ExtractionMethod::PrincipalAxisFactoring => {
+//             extraction_result.communalities.iter().any(|&c| {
+//                 c.is_nan() ||           // Cek NaN
+//                 c.is_infinite() ||      // Cek Infinite
+//                 c >= 0.9999 ||          // Cek Heywood Case
+//                 c.abs() < 1e-6          // Cek 0
+//             })
+//         },
+//         _ => false
+//     };
+
+//     let k = extraction_result.n_factors;
+//     let limit = std::cmp::min(k, extraction_result.eigenvalues.len());
+//     let extraction_eigenvalues = extraction_result.eigenvalues[0..limit].to_vec();
+
+//     let rotation_eigenvalues = if !is_covariance
+//         && !suppress_extraction
+//         && !config.rotation.none
+//         && config.rotation.rotated_sol
+//     {
+//         calculate_rotated_sums_of_squared_loadings(&extraction_result, config).ok()
+//     } else {
+//         None
+//     };
+
+//     Ok(calculate_total_variance_explained(
+//         &initial_eigenvalues,
+//         &extraction_eigenvalues,
+//         rotation_eigenvalues.as_deref(),
+//         total_variance,
+//         n_variables,
+//         matrix_type,
+//         suppress_extraction, 
+//     ))
+// }
+
+
+
+
+
+// =========================================================================
+// 2. Total Variance Explained (Diperbarui untuk Rescaling Covariance & Rotasi)
+// =========================================================================
+
+
 pub fn calculate_total_variance_explained(
     initial_eigenvalues: &[f64],    
     extraction_eigenvalues: &[f64], 
+    rotation_eigenvalues: Option<&[f64]>,
     total_variance: f64,
-    _n_variables: usize,
+    n_variables: usize, // Underscore dihilangkan
     matrix_type: &str,
     suppress_extraction: bool,
+    rescaled_extraction_eigenvalues: Option<&[f64]>, // BARU: Menampung nilai rescaled
+    rescaled_rotation_eigenvalues: Option<&[f64]>,   // BARU: Menampung nilai rescaled rotasi
 ) -> TotalVarianceExplained {
 
     match matrix_type {
@@ -440,10 +455,11 @@ pub fn calculate_total_variance_explained(
             let initial = create_components(initial_eigenvalues, total_variance);
             
             let (extraction, rotation) = if suppress_extraction {
-                (Vec::new(), None) // Kosongkan jika ML error
+                (Vec::new(), None) 
             } else {
                 let ext = create_components(extraction_eigenvalues, total_variance);
-                (ext.clone(), Some(ext)) 
+                let rot = rotation_eigenvalues.map(|values| create_components(values, total_variance));
+                (ext, rot)
             };
 
             TotalVarianceExplained {
@@ -463,13 +479,34 @@ pub fn calculate_total_variance_explained(
             let raw_initial = create_components(initial_eigenvalues, total_variance);
             
             let raw_extraction = if suppress_extraction {
-                Vec::new() // Kosongkan
+                Vec::new() 
             } else {
                 create_components(extraction_eigenvalues, total_variance)
             };
 
-            let rescaled_initial = raw_initial.clone();
-            let rescaled_extraction = raw_extraction.clone();
+            let raw_rotation = if suppress_extraction || rotation_eigenvalues.is_none() {
+                None
+            } else {
+                Some(create_components(rotation_eigenvalues.unwrap(), total_variance))
+            };
+
+            // SPSS logic: Initial selalu sama antara raw dan rescaled di Covariance
+            let rescaled_initial = raw_initial.clone(); 
+
+            // LOGIKA RESCALED: Total varians adalah p (jumlah variabel), bukan total raw varians
+            let p_variance = n_variables as f64; 
+
+            let rescaled_extraction = if suppress_extraction || rescaled_extraction_eigenvalues.is_none() {
+                Vec::new()
+            } else {
+                create_components(rescaled_extraction_eigenvalues.unwrap(), p_variance)
+            };
+
+            let rescaled_rotation = if suppress_extraction || rescaled_rotation_eigenvalues.is_none() {
+                None
+            } else {
+                Some(create_components(rescaled_rotation_eigenvalues.unwrap(), p_variance))
+            };
 
             TotalVarianceExplained {
                 blocks: vec![
@@ -477,13 +514,13 @@ pub fn calculate_total_variance_explained(
                         label: "Raw".to_string(),
                         initial: raw_initial,
                         extraction: raw_extraction,
-                        rotation: None,
+                        rotation: raw_rotation,
                     },
                     TotalVarianceBlock {
                         label: "Rescaled".to_string(),
                         initial: rescaled_initial,
                         extraction: rescaled_extraction,
-                        rotation: None,
+                        rotation: rescaled_rotation,
                     },
                 ],
                 extraction_matrix_type: "covariance".to_string(),
@@ -512,16 +549,52 @@ pub fn calculate_total_variance_explained_from_data(
     let mut initial_eigenvalues: Vec<f64> = eigen_decomp.eigenvalues.data.as_vec().clone();
     initial_eigenvalues.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
 
-    // STEP B: HITUNG EXTRACTION EIGENVALUES
-    let extraction_result = extract_factors(&matrix, config, &var_names)?;
+    let total_variance: f64 = if is_covariance {
+        initial_eigenvalues.iter().sum()
+    } else {
+        n_variables as f64
+    };
 
+    // Ambil Raw Variances untuk kalkulasi rescale dan deteksi Heywood
+    let raw_variances = calculate_raw_variances(&data_matrix)?;
+
+    // STEP B: HITUNG EXTRACTION EIGENVALUES
+    let extraction_result = match extract_factors(&matrix, config, &var_names) {
+        Ok(result) => Some(result),
+        Err(e) => {
+            if matches!(config.extraction.method, ExtractionMethod::MaximumLikelihood) {
+                let empty: Vec<f64> = Vec::new();
+                return Ok(calculate_total_variance_explained(
+                    &initial_eigenvalues,
+                    &empty,
+                    None,
+                    total_variance,
+                    n_variables,
+                    matrix_type,
+                    true,
+                    None,
+                    None, // Format parameter baru
+                ));
+            }
+            return Err(e);
+        }
+    };
+
+    let extraction_result = extraction_result.expect("extraction_result must exist");
+
+    // LOGIKA PERBAIKAN: Hitung rasio untuk deteksi Heywood Case secara akurat
     let suppress_extraction = match config.extraction.method {
-        ExtractionMethod::GeneralizedLeastSquares | ExtractionMethod::MaximumLikelihood | ExtractionMethod::PrincipalAxisFactoring => {
-            extraction_result.communalities.iter().any(|&c| {
-                c.is_nan() ||           // Cek NaN
-                c.is_infinite() ||      // Cek Infinite
-                c >= 0.9999 ||          // Cek Heywood Case
-                c.abs() < 1e-6          // Cek 0
+        ExtractionMethod::MaximumLikelihood => {
+            extraction_result.n_factors == 0 ||
+            extraction_result.communalities.iter().any(|&c| c.is_nan() || c.is_infinite())
+        },
+        ExtractionMethod::GeneralizedLeastSquares | ExtractionMethod::PrincipalAxisFactoring => {
+            extraction_result.communalities.iter().enumerate().any(|(i, &c)| {
+                let check_val = if is_covariance {
+                    if raw_variances[i] > 0.0 { c / raw_variances[i] } else { 0.0 }
+                } else { c };
+                
+                c.is_nan() || c.is_infinite() || check_val >= 0.9999 || check_val.abs() < 1e-6
             })
         },
         _ => false
@@ -531,22 +604,83 @@ pub fn calculate_total_variance_explained_from_data(
     let limit = std::cmp::min(k, extraction_result.eigenvalues.len());
     let extraction_eigenvalues = extraction_result.eigenvalues[0..limit].to_vec();
 
-    // Hitung Total Variance
-    let total_variance: f64 = if is_covariance {
-        initial_eigenvalues.iter().sum()
-    } else {
-        n_variables as f64
-    };
+    // STEP C: HITUNG RESCALED EIGENVALUES JIKA COVARIANCE
+    let mut rescaled_ext_evals = None;
+    if is_covariance && !suppress_extraction {
+        let mut evals = Vec::with_capacity(k);
+        for j in 0..k {
+            let mut ssl = 0.0;
+            for i in 0..n_variables {
+                if raw_variances[i] > 0.0 {
+                    let std_load = extraction_result.loadings[(i, j)] / raw_variances[i].sqrt();
+                    ssl += std_load.powi(2);
+                }
+            }
+            evals.push(ssl);
+        }
+        rescaled_ext_evals = Some(evals);
+    }
+
+    // STEP D: ROTATION EIGENVALUES (Disesuaikan agar sekaligus hitung Raw & Rescaled)
+    let mut raw_rot_evals = None;
+    let mut rescaled_rot_evals = None;
+
+    if !suppress_extraction && !config.rotation.none && config.rotation.rotated_sol {
+        if let Ok(rot_res) = rotate_factors(&extraction_result, config) {
+            let rotated_loadings = &rot_res.rotated_loadings;
+            let n_cols = rotated_loadings.ncols();
+
+            let mut raw_ssl_list = Vec::with_capacity(n_cols);
+            let mut rescaled_ssl_list = Vec::with_capacity(n_cols);
+
+            for j in 0..n_cols {
+                let mut raw_ssl = 0.0;
+                let mut rescaled_ssl = 0.0;
+                for i in 0..n_variables {
+                    let l = rotated_loadings[(i, j)];
+                    raw_ssl += l.powi(2);
+                    
+                    if is_covariance && raw_variances[i] > 0.0 {
+                        rescaled_ssl += (l / raw_variances[i].sqrt()).powi(2);
+                    }
+                }
+                raw_ssl_list.push(raw_ssl);
+                if is_covariance {
+                    rescaled_ssl_list.push(rescaled_ssl);
+                }
+            }
+            
+            raw_ssl_list.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+            raw_rot_evals = Some(raw_ssl_list);
+
+            if is_covariance {
+                rescaled_ssl_list.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+                rescaled_rot_evals = Some(rescaled_ssl_list);
+            }
+        }
+    }
 
     Ok(calculate_total_variance_explained(
         &initial_eigenvalues,
         &extraction_eigenvalues,
+        raw_rot_evals.as_deref(),
         total_variance,
         n_variables,
         matrix_type,
         suppress_extraction, 
+        rescaled_ext_evals.as_deref(),
+        rescaled_rot_evals.as_deref(),
     ))
 }
+
+
+
+
+
+
+
+
+
 
 // =========================================================================
 // 3. FUNGSI LAINNYA (Original Code - Tidak Ada Perubahan)
@@ -649,60 +783,7 @@ pub fn calculate_reproduced_correlations(
     })
 }
 
-// pub fn calculate_reproduced_covariances(
-//     data: &AnalysisData,
-//     config: &FactorAnalysisConfig
-// ) -> Result<ReproducedCovariances, String> {
-//     let (data_matrix, var_names) = extract_data_matrix(data, config)?;
-//     let cov_matrix = calculate_matrix(&data_matrix, "covariance")?;
-//     let extraction_result = extract_factors(&cov_matrix, config, &var_names)?;
 
-//     let k = extraction_result.n_factors;
-//     let mut reproduced_covariance = HashMap::new();
-//     let mut residual = HashMap::new();
-
-//     let loadings = &extraction_result.loadings;
-//     let loadings_k = if k < loadings.ncols() {
-//         loadings.columns(0, k).into_owned()
-//     } else {
-//         loadings.clone()
-//     };
-
-//     let reproduced_matrix = &loadings_k * loadings_k.transpose();
-
-//     for (i, var_name) in var_names.iter().enumerate() {
-//         let mut var_reproduced = HashMap::new();
-//         let mut var_residual = HashMap::new();
-
-//         for (j, other_var) in var_names.iter().enumerate() {
-//             let repro_cov = if i < reproduced_matrix.nrows() && j < reproduced_matrix.ncols() {
-//                 reproduced_matrix[(i, j)]
-//             } else { 0.0 };
-//             var_reproduced.insert(other_var.clone(), repro_cov);
-
-//             let orig_cov = if i < cov_matrix.nrows() && j < cov_matrix.ncols() {
-//                 cov_matrix[(i, j)]
-//             } else { 0.0 };
-
-//             let residual_cov = orig_cov - repro_cov;
-//             var_residual.insert(other_var.clone(), residual_cov);
-//         }
-//         reproduced_covariance.insert(var_name.clone(), var_reproduced);
-//         residual.insert(var_name.clone(), var_residual);
-//     }
-
-//     Ok(ReproducedCovariances {
-//         reproduced_covariance,
-//         residual,
-//         variable_order: var_names,
-//     })
-// }
-
-
-
-
-
-// file: src/stats/report.rs
 
 pub fn calculate_reproduced_covariances(
     data: &AnalysisData,
@@ -785,6 +866,108 @@ pub fn calculate_reproduced_covariances(
     })
 }
 
+
+
+
+
+
+// =========================================================================
+// 2b. Goodness-of-fit Test (GLS) - Dikembalikan ke Algoritma Asli Anda (SPSS Standard)
+// =========================================================================
+pub fn calculate_goodness_of_fit_test(
+    data: &AnalysisData,
+    config: &FactorAnalysisConfig
+) -> Result<GoodnessOfFitTest, String> {
+    if !matches!(config.extraction.method, ExtractionMethod::GeneralizedLeastSquares) {
+        return Err("Goodness-of-fit test only implemented for GLS.".to_string());
+    }
+
+    let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+    let n_cases = data_matrix.nrows();
+    let p = var_names.len();
+    if n_cases < 2 || p == 0 {
+        return Err("Insufficient data for goodness-of-fit test.".to_string());
+    }
+
+    let matrix_type = if config.extraction.covariance { "covariance" } else { "correlation" };
+    let s_matrix = calculate_matrix(&data_matrix, matrix_type)?;
+    let extraction_result = extract_factors(&s_matrix, config, &var_names)?;
+    let k = extraction_result.n_factors;
+    if k == 0 {
+        return Err("No factors retained for goodness-of-fit test.".to_string());
+    }
+
+    let loadings = &extraction_result.loadings;
+    let mut sigma = loadings * loadings.transpose();
+
+    // LOGIKA ASLI: Diagonal matriks model Sigma adalah (L * L^T) + Uniqueness
+    for i in 0..p {
+        let variance = if config.extraction.covariance {
+            s_matrix[(i, i)]
+        } else {
+            1.0
+        };
+
+        let communality = extraction_result.communalities.get(i).copied().unwrap_or(0.0);
+        let uniqueness = (variance - communality).max(1e-9);
+        sigma[(i, i)] += uniqueness;
+    }
+
+    // Menggunakan .clone() agar tidak bermasalah dengan borrow checker saat di-build ke WASM
+    let s_inv = s_matrix
+        .clone()
+        .try_inverse()
+        .ok_or("Failed to invert observed matrix for goodness-of-fit test.")?;
+
+    // GLS discrepancy: F = 0.5 * tr( A * A ), A = (S - Sigma) * S^-1
+    let residual = &s_matrix - &sigma;
+    let a_matrix = residual * s_inv;
+    let a_squared = &a_matrix * &a_matrix;
+
+    let mut trace_val = 0.0;
+    for i in 0..p {
+        trace_val += a_squared[(i, i)];
+    }
+
+    let f_gls = 0.5 * trace_val;
+
+    let mut trace_val = 0.0;
+    for i in 0..p {
+        trace_val += a_squared[(i, i)];
+    }
+
+    let f_gls = 0.5 * trace_val;
+
+    // --- PERBAIKAN: SPSS menggunakan Koreksi Bartlett untuk uji Goodness-of-Fit pada GLS ---
+    // Rumus Multiplier = N - 1 - (2p + 5)/6 - 2k/3
+    let p_f64 = p as f64;
+    let k_f64 = k as f64;
+    let multiplier = (n_cases as f64) - 1.0 - ((2.0 * p_f64 + 5.0) / 6.0) - ((2.0 * k_f64) / 3.0);
+    
+    // Kalikan multiplier dengan nilai fungsi objektif GLS
+    let chi_square = multiplier.max(0.0) * f_gls;
+
+    let df = ((p as f64 - k as f64).powi(2) - (p + k) as f64) / 2.0;
+    let df_value = if df > 0.0 { df } else { 1.0 };
+    let df_usize = df_value.round().max(1.0) as usize;
+
+    let significance = 1.0 - chi_square_cdf(chi_square, df_value);
+
+    Ok(GoodnessOfFitTest {
+        chi_square,
+        df: df_usize,
+        significance,
+    })
+}
+
+
+
+
+
+
+
+
+
 pub fn calculate_scree_plot(
     data: &AnalysisData,
     config: &FactorAnalysisConfig
@@ -796,6 +979,19 @@ pub fn calculate_scree_plot(
 
     let n_variables = var_names.len();
     let mut eigenvalues = extraction_result.eigenvalues.clone();
+
+    // ML/iterative unstable case may suppress extraction (n_factors == 0),
+    // which can leave scree values empty. Fallback to initial matrix eigenvalues
+    // so scree plot remains visible and informative.
+    if extraction_result.n_factors == 0
+        || eigenvalues.is_empty()
+        || eigenvalues.iter().all(|v| v.abs() < 1e-12)
+    {
+        let eig = matrix.clone().symmetric_eigen();
+        eigenvalues = eig.eigenvalues.data.as_vec().clone();
+        eigenvalues.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+    }
+
     eigenvalues.resize(n_variables, 0.0);
     let mut component_numbers = Vec::with_capacity(n_variables);
     for i in 0..n_variables {
@@ -809,29 +1005,29 @@ pub fn calculate_scree_plot(
 }
 
 
-// =========================================================================
-// HELPER: Alignment Check (Memastikan arah skor sesuai loading)
-// =========================================================================
-fn align_coefficients_direction(
-    coefficients: &mut DMatrix<f64>, 
-    pattern_matrix: &DMatrix<f64>
-) {
-    let (n_rows, n_cols) = coefficients.shape();
-    for j in 0..n_cols {
-        let mut dot_prod = 0.0;
-        // Hitung korelasi arah antara Loading dan Coefficient
-        for i in 0..n_rows {
-            dot_prod += pattern_matrix[(i, j)] * coefficients[(i, j)];
-        }
+// // =========================================================================
+// // HELPER: Alignment Check (Memastikan arah skor sesuai loading)
+// // =========================================================================
+// fn align_coefficients_direction(
+//     coefficients: &mut DMatrix<f64>, 
+//     pattern_matrix: &DMatrix<f64>
+// ) {
+//     let (n_rows, n_cols) = coefficients.shape();
+//     for j in 0..n_cols {
+//         let mut dot_prod = 0.0;
+//         // Hitung korelasi arah antara Loading dan Coefficient
+//         for i in 0..n_rows {
+//             dot_prod += pattern_matrix[(i, j)] * coefficients[(i, j)];
+//         }
         
-        // Jika arah berlawanan, balik tanda coefficient
-        if dot_prod < 0.0 {
-            for i in 0..n_rows {
-                coefficients[(i, j)] *= -1.0;
-            }
-        }
-    }
-}
+//         // Jika arah berlawanan, balik tanda coefficient
+//         if dot_prod < 0.0 {
+//             for i in 0..n_rows {
+//                 coefficients[(i, j)] *= -1.0;
+//             }
+//         }
+//     }
+// }
 
 // =========================================================================
 // HELPER: Robust Sqrt (Mencegah Crash pada nilai negatif kecil)
@@ -859,6 +1055,181 @@ pub fn symmetric_matrix_sqrt(matrix: &DMatrix<f64>) -> Option<DMatrix<f64>> {
     symmetric_matrix_sqrt_robust(matrix)
 }
 
+// // =========================================================================
+// // FUNGSI UTAMA: Calculate Score Coefficients
+// // =========================================================================
+// pub fn calculate_component_score_coefficient_matrix(
+//     data: &AnalysisData,
+//     config: &FactorAnalysisConfig
+// ) -> Result<ComponentScoreCoefficientMatrix, String> {
+//     let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+    
+//     // 1. Matriks Korelasi (R)
+//     let r_matrix = calculate_matrix(&data_matrix, "correlation")?;
+
+//     // Faktor skor dihitung dari variabel terstandar, tetapi pola loading mengikuti
+//     // hasil ekstraksi (covariance/correlation) agar selaras dengan output SPSS.
+//     let matrix_type = if config.extraction.covariance { "covariance" } else { "correlation" };
+//     let base_matrix = calculate_matrix(&data_matrix, matrix_type)?;
+//     let extraction_result = extract_factors(&base_matrix, config, &var_names)?;
+//     let rotation_result = rotate_factors(&extraction_result, config)?;
+    
+//     // Pattern Matrix (Loadings)
+//     let mut pattern_matrix = rotation_result.rotated_loadings.clone();
+//     let (n_rows_load, n_cols_load) = pattern_matrix.shape();
+
+//     // Rescale loadings & communalities when covariance extraction is used
+//     let mut rescaled_communalities = extraction_result.communalities.clone();
+//     if config.extraction.covariance {
+//         for i in 0..n_rows_load {
+//             let variance = base_matrix[(i, i)];
+//             if variance > 0.0 {
+//                 let std_dev = variance.sqrt();
+//                 for j in 0..n_cols_load {
+//                     pattern_matrix[(i, j)] /= std_dev;
+//                 }
+//                 rescaled_communalities[i] = extraction_result.communalities[i] / variance;
+//             }
+//         }
+//     }
+    
+//     // 2. Initial Sign Flipping (Standar SPSS pada Loading)
+//     for col in 0..n_cols_load {
+//         let mut sum_cubes = 0.0;
+//         for row in 0..n_rows_load {
+//             sum_cubes += pattern_matrix[(row, col)].powi(3);
+//         }
+//         if sum_cubes < 0.0 {
+//             for row in 0..n_rows_load {
+//                 pattern_matrix[(row, col)] *= -1.0;
+//             }
+//         }
+//     }
+
+//     let n_rows = pattern_matrix.nrows();
+//     let n_cols = pattern_matrix.ncols();
+//     let mut coefficients = DMatrix::zeros(n_rows, n_cols);
+
+//     // Persiapan Matriks Uniqueness (U^-2) - Hanya dipakai Bartlett
+//     let mut u_inv_squared = DMatrix::zeros(n_rows, n_rows);
+//     for i in 0..n_rows {
+//         let h2 = if config.extraction.covariance {
+//             if i < rescaled_communalities.len() {
+//                 rescaled_communalities[i]
+//             } else {
+//                 0.0
+//             }
+//         } else if i < extraction_result.communalities.len() {
+//             extraction_result.communalities[i]
+//         } else {
+//             0.0
+//         };
+//         let u2 = (1.0 - h2).max(1e-9); 
+//         u_inv_squared[(i, i)] = 1.0 / u2;
+//     }
+
+//     // -----------------------------------------------------------
+//     // LOGIKA UTAMA SKOR FAKTOR
+//     // -----------------------------------------------------------
+
+//     // A. Hitung Regression Coefficients (Base untuk Regression & Anderson)
+//     // Rumus: B_reg = R^-1 * S
+//     let mut regression_coeffs = DMatrix::zeros(n_rows, n_cols);
+//     let inv_r = r_matrix.clone().try_inverse();
+
+//     if config.scores.regression || config.scores.anderson {
+//         let r_inverse = inv_r.clone().ok_or("Could not invert correlation matrix.")?;
+        
+//         // Structure Matrix (S)
+//         let structure_matrix = if let Some(phi) = &rotation_result.factor_correlations {
+//             &pattern_matrix * phi
+//         } else {
+//             pattern_matrix.clone()
+//         };
+
+//         let s_t_r_inv_s = structure_matrix.transpose() * &r_inverse * &structure_matrix;
+//         let s_t_r_inv_s_inv = s_t_r_inv_s
+//             .try_inverse()
+//             .ok_or("Could not invert S'R^-1S matrix for regression scores.")?;
+        
+//         regression_coeffs = r_inverse * structure_matrix * s_t_r_inv_s_inv;
+//     }
+
+//     if config.scores.regression {
+//         // --- METODE 1: REGRESSION ---
+//         coefficients = regression_coeffs;
+
+//     } else if config.scores.bartlett {
+//         // --- METODE 2: BARTLETT ---
+//         // W = U^-2 * P * (P' * U^-2 * P)^-1
+//         let p = &pattern_matrix;
+//         let p_t = p.transpose();
+        
+//         let term_inner = &p_t * &u_inv_squared * p;
+//         let term_inner_inv = term_inner.try_inverse()
+//             .ok_or("Could not invert matrix for Bartlett Scores.")?;
+            
+//         coefficients = &u_inv_squared * p * term_inner_inv;
+
+//     } else if config.scores.anderson {
+//         // --- METODE 3: ANDERSON-RUBIN (PERBAIKAN FINAL) ---
+//         // Gunakan "Orthonormalized Regression Scores".
+//         // Ini bekerja sempurna untuk PCA (dimana Bartlett gagal) DAN ULS.
+//         // Formula: W = B_reg * (B_reg' * R * B_reg)^(-1/2)
+        
+//         let b = &regression_coeffs; // Gunakan koefisien regresi yang sudah dihitung di atas
+        
+//         // Hitung Kovarians antar skor regresi: G = B' * R * B
+//         let g_matrix = b.transpose() * &r_matrix * b;
+
+//         // Hitung G^(-1/2) untuk menghilangkan korelasi
+//         let g_sqrt = symmetric_matrix_sqrt_robust(&g_matrix)
+//             .ok_or("Failed Anderson-Rubin sqrt. Matrix G unstable.")?;
+            
+//         let g_sqrt_inv = g_sqrt.try_inverse()
+//             .ok_or("Failed Anderson-Rubin inversion.")?;
+
+//         // Hasil Akhir
+//         coefficients = b * g_sqrt_inv;
+//     }
+
+//     // --- STEP AKHIR: ALIGNMENT CHECK ---
+//     // Memastikan tanda (+/-) sama dengan SPSS
+//     align_coefficients_direction(&mut coefficients, &pattern_matrix);
+
+//     // Standarisasi koefisien agar varians skor faktor = 1.0 (SPSS-style)
+//     let score_cov = coefficients.transpose() * &r_matrix * &coefficients;
+//     let n_cols_coeff = coefficients.ncols();
+//     for j in 0..n_cols_coeff {
+//         let var_val = score_cov[(j, j)];
+//         if var_val > 0.0 {
+//             let scale = 1.0 / var_val.sqrt();
+//             for i in 0..coefficients.nrows() {
+//                 coefficients[(i, j)] *= scale;
+//             }
+//         }
+//     }
+
+//     // --- Formatting Output ---
+//     let mut result = ComponentScoreCoefficientMatrix {
+//         components: HashMap::new(),
+//         variable_order: var_names.clone(),
+//     };
+//     for (i, var_name) in var_names.iter().enumerate() {
+//         if i < coefficients.nrows() {
+//             let mut row = Vec::with_capacity(n_cols);
+//             for j in 0..n_cols {
+//                 row.push(coefficients[(i, j)]);
+//             }
+//             result.components.insert(var_name.clone(), row);
+//         }
+//     }
+//     result.variable_order = var_names;
+//     Ok(result)
+// }
+
+
+
 // =========================================================================
 // FUNGSI UTAMA: Calculate Score Coefficients
 // =========================================================================
@@ -870,108 +1241,180 @@ pub fn calculate_component_score_coefficient_matrix(
     
     // 1. Matriks Korelasi (R)
     let r_matrix = calculate_matrix(&data_matrix, "correlation")?;
-    
-    let extraction_result = extract_factors(&r_matrix, config, &var_names)?;
+
+    let matrix_type = if config.extraction.covariance { "covariance" } else { "correlation" };
+    let base_matrix = calculate_matrix(&data_matrix, matrix_type)?;
+    let extraction_result = extract_factors(&base_matrix, config, &var_names)?;
     let rotation_result = rotate_factors(&extraction_result, config)?;
     
     // Pattern Matrix (Loadings)
     let mut pattern_matrix = rotation_result.rotated_loadings.clone();
     let (n_rows_load, n_cols_load) = pattern_matrix.shape();
-    
-    // 2. Initial Sign Flipping (Standar SPSS pada Loading)
-    for col in 0..n_cols_load {
-        let mut sum_cubes = 0.0;
-        for row in 0..n_rows_load {
-            sum_cubes += pattern_matrix[(row, col)].powi(3);
-        }
-        if sum_cubes < 0.0 {
-            for row in 0..n_rows_load {
-                pattern_matrix[(row, col)] *= -1.0;
+
+    // Rescale loadings & communalities when covariance extraction is used
+    let mut rescaled_communalities = extraction_result.communalities.clone();
+    if config.extraction.covariance {
+        for i in 0..n_rows_load {
+            let variance = base_matrix[(i, i)];
+            if variance > 0.0 {
+                let std_dev = variance.sqrt();
+                for j in 0..n_cols_load {
+                    pattern_matrix[(i, j)] /= std_dev;
+                }
+                rescaled_communalities[i] = extraction_result.communalities[i] / variance;
             }
         }
     }
+    
+    // ---> (Sign Flipping di sini sudah DIHAPUS karena P sudah standar SPSS) <---
 
     let n_rows = pattern_matrix.nrows();
     let n_cols = pattern_matrix.ncols();
     let mut coefficients = DMatrix::zeros(n_rows, n_cols);
 
-    // Persiapan Matriks Uniqueness (U^-2) - Hanya dipakai Bartlett
+//     // Persiapan Matriks Uniqueness (U^-2)
+//     let mut u_inv_squared = DMatrix::zeros(n_rows, n_rows);
+//     for i in 0..n_rows {
+//         let h2 = if config.extraction.covariance {
+//             if i < rescaled_communalities.len() { rescaled_communalities[i] } else { 0.0 }
+//         } else if i < extraction_result.communalities.len() {
+//             extraction_result.communalities[i]
+//         } else { 0.0 };
+//         let u2 = (1.0 - h2).max(1e-9); 
+//         u_inv_squared[(i, i)] = 1.0 / u2;
+//     }
+
+//     let mut regression_coeffs = DMatrix::zeros(n_rows, n_cols);
+//     let inv_r = r_matrix.clone().try_inverse();
+
+//     if config.scores.regression || config.scores.anderson {
+//         let r_inverse = inv_r.clone().ok_or("Could not invert correlation matrix.")?;
+        
+//         let structure_matrix = if let Some(phi) = &rotation_result.factor_correlations {
+//             &pattern_matrix * phi
+//         } else {
+//             pattern_matrix.clone()
+//         };
+
+//         let s_t_r_inv_s = structure_matrix.transpose() * &r_inverse * &structure_matrix;
+//         let s_t_r_inv_s_inv = s_t_r_inv_s
+//             .try_inverse()
+//             .ok_or("Could not invert S'R^-1S matrix for regression scores.")?;
+        
+//         regression_coeffs = r_inverse * structure_matrix * s_t_r_inv_s_inv;
+//     }
+
+//     if config.scores.regression {
+//         coefficients = regression_coeffs;
+//     } else if config.scores.bartlett {
+//         let p = &pattern_matrix;
+//         let p_t = p.transpose();
+//         let term_inner = &p_t * &u_inv_squared * p;
+//         let term_inner_inv = term_inner.try_inverse().ok_or("Could not invert matrix for Bartlett Scores.")?;
+//         coefficients = &u_inv_squared * p * term_inner_inv;
+//     } else if config.scores.anderson {
+//         let b = &regression_coeffs; 
+//         let g_matrix = b.transpose() * &r_matrix * b;
+//         let g_sqrt = symmetric_matrix_sqrt_robust(&g_matrix).ok_or("Failed Anderson-Rubin sqrt. Matrix G unstable.")?;
+//         let g_sqrt_inv = g_sqrt.try_inverse().ok_or("Failed Anderson-Rubin inversion.")?;
+//         coefficients = b * g_sqrt_inv;
+//     }
+
+//     // ---> (Alignment Check di sini sudah DIHAPUS agar tidak meng-overide) <---
+
+//     // Standarisasi koefisien agar varians skor faktor = 1.0 (SPSS-style)
+//     let score_cov = coefficients.transpose() * &r_matrix * &coefficients;
+//     let n_cols_coeff = coefficients.ncols();
+//     for j in 0..n_cols_coeff {
+//         let var_val = score_cov[(j, j)];
+//         if var_val > 0.0 {
+//             let scale = 1.0 / var_val.sqrt();
+//             for i in 0..coefficients.nrows() {
+//                 coefficients[(i, j)] *= scale;
+//             }
+//         }
+//     }
+
+//     let mut result = ComponentScoreCoefficientMatrix {
+//         components: std::collections::HashMap::new(),
+//         variable_order: var_names.clone(),
+//     };
+//     for (i, var_name) in var_names.iter().enumerate() {
+//         if i < coefficients.nrows() {
+//             let mut row = Vec::with_capacity(n_cols);
+//             for j in 0..n_cols {
+//                 row.push(coefficients[(i, j)]);
+//             }
+//             result.components.insert(var_name.clone(), row);
+//         }
+//     }
+//     result.variable_order = var_names;
+//     Ok(result)
+// }
+
+    // Persiapan Matriks Uniqueness (U^-2)
     let mut u_inv_squared = DMatrix::zeros(n_rows, n_rows);
     for i in 0..n_rows {
-        let h2 = if i < extraction_result.communalities.len() {
+        let h2 = if config.extraction.covariance {
+            if i < rescaled_communalities.len() { rescaled_communalities[i] } else { 0.0 }
+        } else if i < extraction_result.communalities.len() {
             extraction_result.communalities[i]
         } else { 0.0 };
         let u2 = (1.0 - h2).max(1e-9); 
         u_inv_squared[(i, i)] = 1.0 / u2;
     }
 
-    // -----------------------------------------------------------
-    // LOGIKA UTAMA SKOR FAKTOR
-    // -----------------------------------------------------------
-
-    // A. Hitung Regression Coefficients (Base untuk Regression & Anderson)
-    // Rumus: B_reg = R^-1 * S
     let mut regression_coeffs = DMatrix::zeros(n_rows, n_cols);
     let inv_r = r_matrix.clone().try_inverse();
 
     if config.scores.regression || config.scores.anderson {
         let r_inverse = inv_r.clone().ok_or("Could not invert correlation matrix.")?;
         
-        // Structure Matrix (S)
         let structure_matrix = if let Some(phi) = &rotation_result.factor_correlations {
             &pattern_matrix * phi
         } else {
             pattern_matrix.clone()
         };
-        
-        regression_coeffs = r_inverse * structure_matrix;
+
+        // --- PERBAIKAN: Rumus metode regresi yang benar (R^-1 * S) ---
+        regression_coeffs = &r_inverse * &structure_matrix;
     }
 
     if config.scores.regression {
-        // --- METODE 1: REGRESSION ---
-        coefficients = regression_coeffs;
-
+        coefficients = regression_coeffs.clone();
     } else if config.scores.bartlett {
-        // --- METODE 2: BARTLETT ---
-        // W = U^-2 * P * (P' * U^-2 * P)^-1
         let p = &pattern_matrix;
         let p_t = p.transpose();
-        
         let term_inner = &p_t * &u_inv_squared * p;
-        let term_inner_inv = term_inner.try_inverse()
-            .ok_or("Could not invert matrix for Bartlett Scores.")?;
-            
+        let term_inner_inv = term_inner.try_inverse().ok_or("Could not invert matrix for Bartlett Scores.")?;
         coefficients = &u_inv_squared * p * term_inner_inv;
-
     } else if config.scores.anderson {
-        // --- METODE 3: ANDERSON-RUBIN (PERBAIKAN FINAL) ---
-        // Gunakan "Orthonormalized Regression Scores".
-        // Ini bekerja sempurna untuk PCA (dimana Bartlett gagal) DAN ULS.
-        // Formula: W = B_reg * (B_reg' * R * B_reg)^(-1/2)
-        
-        let b = &regression_coeffs; // Gunakan koefisien regresi yang sudah dihitung di atas
-        
-        // Hitung Kovarians antar skor regresi: G = B' * R * B
+        let b = &regression_coeffs; 
         let g_matrix = b.transpose() * &r_matrix * b;
-
-        // Hitung G^(-1/2) untuk menghilangkan korelasi
-        let g_sqrt = symmetric_matrix_sqrt_robust(&g_matrix)
-            .ok_or("Failed Anderson-Rubin sqrt. Matrix G unstable.")?;
-            
-        let g_sqrt_inv = g_sqrt.try_inverse()
-            .ok_or("Failed Anderson-Rubin inversion.")?;
-
-        // Hasil Akhir
+        let g_sqrt = symmetric_matrix_sqrt_robust(&g_matrix).ok_or("Failed Anderson-Rubin sqrt. Matrix G unstable.")?;
+        let g_sqrt_inv = g_sqrt.try_inverse().ok_or("Failed Anderson-Rubin inversion.")?;
         coefficients = b * g_sqrt_inv;
     }
 
-    // --- STEP AKHIR: ALIGNMENT CHECK ---
-    // Memastikan tanda (+/-) sama dengan SPSS
-    align_coefficients_direction(&mut coefficients, &pattern_matrix);
+    // --- PERBAIKAN: Hanya paksa diagonal menjadi 1.0 jika metode adalah PCA ---
+    // SPSS TIDAK menstandardisasi koefisien matriks ULS/PAF/ML.
+    let is_pca = matches!(config.extraction.method, ExtractionMethod::PrincipalComponents);
+    if is_pca {
+        let score_cov = coefficients.transpose() * &r_matrix * &coefficients;
+        let n_cols_coeff = coefficients.ncols();
+        for j in 0..n_cols_coeff {
+            let var_val = score_cov[(j, j)];
+            if var_val > 0.0 {
+                let scale = 1.0 / var_val.sqrt();
+                for i in 0..coefficients.nrows() {
+                    coefficients[(i, j)] *= scale;
+                }
+            }
+        }
+    }
 
-    // --- Formatting Output ---
     let mut result = ComponentScoreCoefficientMatrix {
-        components: HashMap::new(),
+        components: std::collections::HashMap::new(),
         variable_order: var_names.clone(),
     };
     for (i, var_name) in var_names.iter().enumerate() {
@@ -1227,4 +1670,110 @@ pub fn create_component_correlation_matrix(
         }
     }
     ComponentCorrelationMatrix { correlations }
+}
+
+// #[cfg(test)]
+// mod tests {
+//     use super::calculate_total_variance_explained;
+
+//     #[test]
+//     fn total_variance_uses_rotation_values_when_provided() {
+//         let initial_eigenvalues = vec![3.6998, 2.2083, 1.1612];
+//         let extraction_eigenvalues = vec![3.6998, 2.2083, 1.1612];
+//         let rotation_eigenvalues = vec![2.6950, 2.6269, 1.7474];
+
+//         let result = calculate_total_variance_explained(
+//             &initial_eigenvalues,
+//             &extraction_eigenvalues,
+//             Some(&rotation_eigenvalues),
+//             8.0,
+//             8,
+//             "correlation",
+//             false,
+//         );
+
+//         let block = &result.blocks[0];
+//         let rotation = block.rotation.as_ref().expect("rotation block must exist");
+
+//         assert!((rotation[0].total - 2.6950).abs() < 1e-9);
+//         assert!((rotation[1].total - 2.6269).abs() < 1e-9);
+//         assert!((rotation[2].total - 1.7474).abs() < 1e-9);
+
+//         assert!((rotation[0].total - block.extraction[0].total).abs() > 1e-6);
+//         assert!((rotation[1].total - block.extraction[1].total).abs() > 1e-6);
+//     }
+
+//     #[test]
+//     fn total_variance_rotation_none_when_not_provided() {
+//         let initial_eigenvalues = vec![3.6998, 2.2083, 1.1612];
+//         let extraction_eigenvalues = vec![3.6998, 2.2083, 1.1612];
+
+//         let result = calculate_total_variance_explained(
+//             &initial_eigenvalues,
+//             &extraction_eigenvalues,
+//             None,
+//             8.0,
+//             8,
+//             "correlation",
+//             false,
+//         );
+
+//         assert!(result.blocks[0].rotation.is_none());
+//     }
+// }
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::calculate_total_variance_explained;
+
+    #[test]
+    fn total_variance_uses_rotation_values_when_provided() {
+        let initial_eigenvalues = vec![3.6998, 2.2083, 1.1612];
+        let extraction_eigenvalues = vec![3.6998, 2.2083, 1.1612];
+        let rotation_eigenvalues = vec![2.6950, 2.6269, 1.7474];
+
+        let result = calculate_total_variance_explained(
+            &initial_eigenvalues,
+            &extraction_eigenvalues,
+            Some(&rotation_eigenvalues),
+            8.0,
+            8,
+            "correlation",
+            false,
+            None, // UPDATE Parameter
+            None, // UPDATE Parameter
+        );
+
+        let block = &result.blocks[0];
+        let rotation = block.rotation.as_ref().expect("rotation block must exist");
+
+        assert!((rotation[0].total - 2.6950).abs() < 1e-9);
+        assert!((rotation[1].total - 2.6269).abs() < 1e-9);
+        assert!((rotation[2].total - 1.7474).abs() < 1e-9);
+
+        assert!((rotation[0].total - block.extraction[0].total).abs() > 1e-6);
+        assert!((rotation[1].total - block.extraction[1].total).abs() > 1e-6);
+    }
+
+    #[test]
+    fn total_variance_rotation_none_when_not_provided() {
+        let initial_eigenvalues = vec![3.6998, 2.2083, 1.1612];
+        let extraction_eigenvalues = vec![3.6998, 2.2083, 1.1612];
+
+        let result = calculate_total_variance_explained(
+            &initial_eigenvalues,
+            &extraction_eigenvalues,
+            None,
+            8.0,
+            8,
+            "correlation",
+            false,
+            None, // UPDATE Parameter
+            None, // UPDATE Parameter
+        );
+
+        assert!(result.blocks[0].rotation.is_none());
+    }
 }

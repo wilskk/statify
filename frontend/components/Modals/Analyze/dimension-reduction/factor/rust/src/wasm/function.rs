@@ -9,7 +9,7 @@ use wasm_bindgen::prelude::*;
 use crate::models::{
     config::FactorAnalysisConfig,
     data::AnalysisData,
-    result::FactorAnalysisResult,
+    result::{AnalysisStatus, FactorAnalysisResult},
 };
 use crate::stats::core;
 use crate::utils::converter::format_result;
@@ -171,6 +171,33 @@ pub fn run_analysis(
         }
     };
 
+    let extracted_factors = component_matrix
+        .as_ref()
+        .map(|matrix| {
+            matrix
+                .components
+                .values()
+                .next()
+                .map(|values| values.len())
+                .unwrap_or(0)
+        })
+        .unwrap_or(0);
+
+    let communalities_allow_extraction = communalities
+        .as_ref()
+        .map(|communalities| !communalities.suppress_extraction)
+        .unwrap_or(true);
+
+    let has_heywood_case = communalities
+        .as_ref()
+        .map(|communalities| communalities.heywood_warning_flag)
+        .unwrap_or(false);
+
+    let is_converged = extracted_factors > 0 && communalities_allow_extraction;
+    let render_late_outputs = is_converged;
+    let rotation_requested = !config.rotation.none && config.rotation.rotated_sol;
+    let can_rotate = render_late_outputs && rotation_requested && extracted_factors > 1;
+
     // Step 9: Calculate Scree Plot if requested
     let mut scree_plot = None;
     if config.extraction.scree {
@@ -217,7 +244,7 @@ pub fn run_analysis(
 
     // Step 11: Calculate Rotated Component Matrix if not using 'None' rotation method
     let mut rotated_component_matrix = None;
-    if !config.rotation.none && config.rotation.rotated_sol {
+    if can_rotate {
         executed_functions.push("calculate_rotated_component_matrix".to_string());
         match core::calculate_rotated_component_matrix(&filtered_data, config) {
             Ok(matrix) => {
@@ -232,7 +259,7 @@ pub fn run_analysis(
 
     // Step 12: Calculate Component Transformation Matrix if rotation is performed
     let mut component_transformation_matrix = None;
-    if !config.rotation.none && config.rotation.rotated_sol {
+    if can_rotate {
         executed_functions.push("calculate_component_transformation_matrix".to_string());
         match core::calculate_component_transformation_matrix(&filtered_data, config) {
             Ok(matrix) => {
@@ -247,7 +274,7 @@ pub fn run_analysis(
 
     // Step 12a: Calculate Pattern Matrix if oblique rotation is performed
     let mut pattern_matrix = None;
-    if !config.rotation.none && config.rotation.rotated_sol && (config.rotation.oblimin || config.rotation.promax) {
+    if can_rotate && (config.rotation.oblimin || config.rotation.promax) {
         executed_functions.push("calculate_pattern_matrix".to_string());
         match core::calculate_pattern_matrix(&filtered_data, config) {
             Ok(matrix) => {
@@ -262,7 +289,7 @@ pub fn run_analysis(
 
     // Step 12b: Calculate Structure Matrix if oblique rotation is performed
     let mut structure_matrix = None;
-    if !config.rotation.none && config.rotation.rotated_sol && (config.rotation.oblimin || config.rotation.promax) {
+    if can_rotate && (config.rotation.oblimin || config.rotation.promax) {
         executed_functions.push("calculate_structure_matrix".to_string());
         match core::calculate_structure_matrix(&filtered_data, config) {
             Ok(matrix) => {
@@ -277,7 +304,7 @@ pub fn run_analysis(
 
     // Step 12c: Calculate Component Correlation Matrix if oblique rotation is performed
     let mut component_correlation_matrix = None;
-    if !config.rotation.none && config.rotation.rotated_sol && (config.rotation.oblimin || config.rotation.promax) {
+    if can_rotate && (config.rotation.oblimin || config.rotation.promax) {
         executed_functions.push("calculate_component_correlation_matrix".to_string());
         match core::calculate_component_correlation_matrix(&filtered_data, config) {
             Ok(matrix) => {
@@ -290,6 +317,47 @@ pub fn run_analysis(
         }
     }
 
+    let analysis_status = Some(AnalysisStatus {
+        is_converged,
+        extracted_factors,
+        terminated_early: !is_converged,
+        termination_reason: if is_converged {
+            None
+        } else {
+            Some("Extraction terminated before convergence or retained no factors.".to_string())
+        },
+        has_heywood_case,
+    });
+
+    let goodness_of_fit_test = if is_converged {
+        if matches!(
+            config.extraction.method,
+            crate::models::config::ExtractionMethod::GeneralizedLeastSquares
+                | crate::models::config::ExtractionMethod::MaximumLikelihood
+        ) {
+            executed_functions.push("calculate_goodness_of_fit_test".to_string());
+
+            if matches!(
+                config.extraction.method,
+                crate::models::config::ExtractionMethod::GeneralizedLeastSquares
+            ) {
+                match core::calculate_goodness_of_fit_test(&filtered_data, config) {
+                    Ok(test) => Some(test),
+                    Err(e) => {
+                        error_collector.add_error("calculate_goodness_of_fit_test", &e);
+                        None
+                    }
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
     // Inisialisasi variabel untuk menampung skor akhir (nilai per responden)
     let mut factor_scores = None;
 
@@ -298,7 +366,7 @@ pub fn run_analysis(
     // 1) DisplayFactor: tampilkan tabel coefficient/covariance matrix
     // 2) SaveVar: hitung factor scores untuk disimpan sebagai variabel baru
     let mut component_score_coefficient_matrix = None;
-    if config.scores.display_factor || config.scores.save_var {
+    if render_late_outputs && (config.scores.display_factor || config.scores.save_var) {
         executed_functions.push("calculate_component_score_coefficient_matrix".to_string());
         match core::calculate_component_score_coefficient_matrix(&filtered_data, config) {
             Ok(matrix) => {
@@ -331,7 +399,7 @@ pub fn run_analysis(
 
     // Step 14: Calculate Component Score Covariance Matrix only when display is requested
     let mut component_score_covariance_matrix = None;
-    if config.scores.display_factor {
+    if render_late_outputs && config.scores.display_factor {
         executed_functions.push("calculate_component_score_covariance_matrix".to_string());
         match core::calculate_component_score_covariance_matrix(&filtered_data, config) {
             Ok(matrix) => {
@@ -364,13 +432,15 @@ pub fn run_analysis(
     pattern_matrix,
     structure_matrix,
     component_correlation_matrix,
+    analysis_status,
+    goodness_of_fit_test,
     component_score_coefficient_matrix,
     component_score_covariance_matrix,
     factor_scores,
     loading_plot: None,
 };
 
-if config.rotation.loading_plot {
+if config.rotation.loading_plot && render_late_outputs {
     executed_functions.push("generate_loading_plots".to_string());
     match core::generate_loading_plots(&result) {
         Ok(plot) => {

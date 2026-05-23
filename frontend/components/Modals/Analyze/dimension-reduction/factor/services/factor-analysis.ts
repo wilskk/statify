@@ -19,6 +19,7 @@ let factorWorker: Worker | null = null;
 let requestCounter = 0;
 let warmupPromise: Promise<void> | null = null;
 const pendingRequests = new Map<string, PendingWorkerRequest>();
+const workerCacheBuster = Date.now().toString();
 
 // Fungsi memastikan kolom seperti columnIndex, width, dan decimals benar-benar bertipe Number. 
 // Tanpa ini, jika JavaScript mengirimkan angka dalam bentuk string, Rust akan mengalami error karena Rust sangat ketat terhadap tipe data (strongly typed).
@@ -148,8 +149,14 @@ function handleWorkerError(error: ErrorEvent) {
 function getOrCreateWorker(): Worker {
     if (factorWorker) return factorWorker;
 
+    const workerUrl = new URL(
+        "/workers/FactorAnalysis/factorAnalysis.worker.js",
+        window.location.origin
+    );
+    workerUrl.searchParams.set("v", workerCacheBuster);
+
     factorWorker = new Worker(
-        new URL("/workers/FactorAnalysis/factorAnalysis.worker.js", window.location.origin),
+        workerUrl,
         { type: "module" }
     );
 
@@ -219,6 +226,11 @@ export async function analyzeFactor({
     dataVariables,
     variables,
 }: FactorAnalysisType) {
+    // Development guard: force fresh worker so updated WASM artifacts are picked immediately.
+    if (process.env.NODE_ENV !== "production") {
+        terminateFactorWorker();
+    }
+
     const targetVariables = configData.main.TargetVar || [];
     const valueTarget = configData.main.ValueTarget
         ? [configData.main.ValueTarget]
