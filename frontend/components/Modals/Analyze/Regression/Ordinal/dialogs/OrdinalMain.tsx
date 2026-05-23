@@ -21,7 +21,8 @@ import { OptionsTab } from "./OptionsTab";
 import { OutputTab } from "./OutputTab";
 
 // Services
-import { formatOrdinalResult } from "../services/formatter";
+import { buildOrdinalPlumPayload, formatOrdinalResult } from "../services/formatter";
+import { validateOrdinalPayload } from "../services/formatter_utils";
 
 // Types
 import {
@@ -116,14 +117,33 @@ const OrdinalMain: React.FC = () => {
     setErrorMsg(null);
 
     try {
+      const plumPayload = buildOrdinalPlumPayload({
+        options,
+        locationParams,
+        scaleParams,
+        optionParams: optParams,
+        outputParams,
+        data,
+      });
+
+      const validation = validateOrdinalPayload(plumPayload);
+      if (!validation.valid) {
+        setErrorMsg(validation.errors.join(" "));
+        setIsLoading(false);
+        return;
+      }
+
       const worker = new Worker(
-        new URL("../worker/ordinal-worker.js", import.meta.url),
+        new URL(
+          "/workers/Regression/ordinal.worker.js",
+          window.location.origin
+        ),
         { type: "module" }
       );
 
       worker.onmessage = async (event) => {
         const { type, payload } = event.data;
-
+        console.log(event.data)
         if (type === "SUCCESS") {
           try {
             // 🔥 1. FORMAT HASIL (WAJIB PERTAMA)
@@ -136,8 +156,8 @@ const OrdinalMain: React.FC = () => {
 
             // 🔥 BUAT ANALYTIC
             const analyticId = await addAnalytic(logId, {
-              title: "Ordinal Logistic Regression",
-              note: `Link: ${optParams.linkFunction}`,
+              title: "Ordinal Regression",
+              note: `Link: ${plumPayload.model.linkFunction}`,
             });
 
             // 🔥 LOOP FORMATTER (IKUT BINARY)
@@ -161,7 +181,7 @@ const OrdinalMain: React.FC = () => {
                   title: section.title,
                   description: section.description || "",
                   output_data: JSON.stringify(payloadForRenderer),
-                  components: "Parameter Estimates",
+                  components: section.title,
                 });
               }
             }
@@ -197,7 +217,11 @@ const OrdinalMain: React.FC = () => {
       }
 
       // gunakan columnIndex untuk semua feature (factors + covariates)
-      const featureColIdxs = features.map((f) => {
+      const locationFeatures = locationParams.locationModel.length > 0
+        ? locationParams.locationModel
+        : features;
+
+      const featureColIdxs = locationFeatures.map((f) => {
         const idx = (f as any).columnIndex;
         if (typeof idx !== "number") {
           throw new Error(`Feature "${f.name}" tidak memiliki columnIndex yang valid.`);
@@ -205,12 +229,10 @@ const OrdinalMain: React.FC = () => {
         return idx;
       });
 
-      const categories = Array.from(
-        new Set(data.map((row: any) => row?.[depColIndex]))
-      );
+      const categories = plumPayload.response.orderedCategories;
 
       const dataset = data.map((row: any) => ({
-        y: categories.indexOf(row?.[depColIndex]) + 1,
+        y: row?.[depColIndex],
         x: featureColIdxs.map((idx) => Number(row?.[idx]) || 0),
       }));
 
@@ -220,8 +242,9 @@ const OrdinalMain: React.FC = () => {
       };
 
       worker.postMessage({
+        payload: plumPayload,
         data: dataset,
-        featureNames: features.map((f) => f.name),
+        featureNames: locationFeatures.map((f) => f.name),
         iterations: optParams.maxIterations,
       });
     } catch (err: any) {
@@ -255,6 +278,8 @@ const OrdinalMain: React.FC = () => {
                 selectedDependent={options.dependent}
                 selectedFactors={options.factors}
                 selectedCovariates={options.covariates}
+                linkFunction={optParams.linkFunction}
+                onLinkFunctionChange={(value) => setOptParams((prev) => ({ ...prev, linkFunction: value }))}
                 onOptionsChange={setOptions}
               />
             </TabsContent>

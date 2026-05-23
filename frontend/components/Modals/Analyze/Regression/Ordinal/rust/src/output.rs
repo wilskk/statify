@@ -1,0 +1,192 @@
+use crate::optimizer::fit_location_only;
+use crate::parallel::fit_non_parallel_location_only;
+use crate::statistics::{
+    actual_probabilities, correlation_matrix, covariance_matrix, goodness_of_fit,
+    model_fit_statistics, parameter_statistics, predicted_cell_counts, predicted_categories,
+    predicted_probabilities,
+};
+use crate::types::{
+    EstimationOptions, FitResult, ModelType, PlumError, PlumFitInput, PlumFitOutput, PlumSpec,
+};
+use crate::validation::validate_input;
+
+pub fn build_plum_output(
+    input: &PlumFitInput,
+    data: &crate::types::AggregatedData,
+    spec: &PlumSpec,
+    fit: &FitResult,
+) -> Result<PlumFitOutput, PlumError> {
+    let output_options = input.payload.output.as_ref();
+    let default_all = output_options.is_none();
+
+    let want_goodness = output_options
+        .and_then(|opt| opt.goodness_of_fit)
+        .unwrap_or(default_all);
+    let want_summary = output_options
+        .and_then(|opt| opt.pseudo_r_square)
+        .unwrap_or(default_all);
+    let want_iteration = output_options
+        .and_then(|opt| opt.iteration_history)
+        .unwrap_or(default_all);
+    let want_cell_info = output_options
+        .and_then(|opt| opt.cell_information)
+        .unwrap_or(false);
+    let want_predicted_prob = output_options
+        .and_then(|opt| opt.predicted_probability)
+        .unwrap_or(false);
+    let want_actual_prob = output_options
+        .and_then(|opt| opt.actual_probability)
+        .unwrap_or(false);
+    let want_covariance = output_options
+        .and_then(|opt| opt.covariance_matrix)
+        .unwrap_or(default_all);
+    let want_correlation = output_options
+        .and_then(|opt| opt.correlation_matrix)
+        .unwrap_or(default_all);
+    let want_parallel = output_options
+        .and_then(|opt| opt.test_of_parallel_lines)
+        .unwrap_or(false);
+
+    let mut warnings = fit.warnings.clone();
+    let validation = validate_input(input);
+    warnings.extend(validation.warnings);
+
+    let mut covariance = None;
+    if let Some(info) = &fit.information {
+        if want_covariance || want_correlation || output_options.is_none() {
+            if let Ok(matrix) = covariance_matrix(info) {
+                covariance = Some(matrix);
+            } else {
+                warnings.push("Covariance matrix gagal dihitung".to_string());
+            }
+        }
+    }
+
+    let mut correlation = None;
+    if let Some(cov) = &covariance {
+        if want_correlation {
+            correlation = Some(correlation_matrix(cov));
+        }
+    }
+
+    let mut fit_with_cov = fit.clone();
+    fit_with_cov.covariance = covariance.clone();
+    fit_with_cov.correlation = correlation.clone();
+
+    let alpha = EstimationOptions::from_payload(input.payload.estimation.as_ref()).alpha;
+    let (parameter_estimates, mut param_warn) = parameter_statistics(&fit_with_cov, spec, alpha);
+    warnings.append(&mut param_warn);
+
+    let goodness = if want_goodness {
+        let (gof, mut gof_warn) = goodness_of_fit(&fit_with_cov, data, spec);
+        warnings.append(&mut gof_warn);
+        Some(gof)
+    } else {
+        None
+    };
+
+    let summary = if want_summary {
+        let intercept_spec = intercept_only_spec(spec);
+        let options = EstimationOptions::from_payload(input.payload.estimation.as_ref());
+        let intercept_fit = fit_location_only(data, &intercept_spec, &options)?;
+        Some(model_fit_statistics(
+            &fit_with_cov,
+            &intercept_fit,
+            spec,
+            &options.method_label(),
+            data.total_count,
+        ))
+    } else {
+        None
+    };
+
+    let iteration_history = if want_iteration {
+        Some(fit.iteration_history.clone())
+    } else {
+        None
+    };
+
+    let cell_information = if want_cell_info {
+        Some(predicted_cell_counts(&fit_with_cov, data, spec))
+    } else {
+        None
+    };
+
+    let predicted_probability = if want_predicted_prob {
+        Some(predicted_probabilities(&fit_with_cov, data, spec))
+    } else {
+        None
+    };
+
+    let actual_probability = if want_actual_prob {
+        Some(actual_probabilities(data, spec))
+    } else {
+        None
+    };
+
+    let predicted_category = if want_predicted_prob {
+        Some(predicted_categories(&fit_with_cov, data, spec))
+    } else {
+        None
+    };
+
+    let test_of_parallel_lines = if want_parallel && spec.model_type == ModelType::LocationOnly {
+        let options = EstimationOptions::from_payload(input.payload.estimation.as_ref());
+        match fit_non_parallel_location_only(data, spec, &options) {
+            Ok(non_parallel_fit) => {
+                let test = crate::parallel::test_parallel_lines(
+                    fit,
+                    &non_parallel_fit,
+                    spec.location_parameter_count(),
+                    spec.category_count,
+                );
+                Some(test)
+            }
+            Err(err) => {
+                warnings.push(format!("Parallel lines test gagal: {err}"));
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    Ok(PlumFitOutput {
+        parameter_estimates,
+        goodness_of_fit: goodness,
+        summary_statistics: summary,
+        test_of_parallel_lines,
+        iteration_history,
+        cell_information,
+        predicted_category,
+        predicted_probability,
+        actual_probability,
+        covariance_matrix: covariance.map(|m| matrix_to_vec(&m)),
+        correlation_matrix: correlation.map(|m| matrix_to_vec(&m)),
+        log_likelihood: fit.log_likelihood,
+        converged: fit.converged,
+        iterations: fit.iterations,
+        errors: Vec::new(),
+        warnings,
+    })
+}
+
+fn intercept_only_spec(spec: &PlumSpec) -> PlumSpec {
+    let mut intercept = spec.clone();
+    intercept.model_type = ModelType::LocationOnly;
+    intercept.feature_names = Vec::new();
+    intercept.location_variables = Vec::new();
+    intercept
+}
+
+fn matrix_to_vec(matrix: &nalgebra::DMatrix<f64>) -> Vec<Vec<f64>> {
+    let mut rows = Vec::with_capacity(matrix.nrows());
+    for i in 0..matrix.nrows() {
+        let mut row = Vec::with_capacity(matrix.ncols());
+        for j in 0..matrix.ncols() {
+            row.push(matrix[(i, j)]);
+        }
+        rows.push(row);
+    }
+    rows
+}

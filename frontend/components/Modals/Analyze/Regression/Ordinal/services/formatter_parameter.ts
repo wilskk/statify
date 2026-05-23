@@ -45,7 +45,7 @@ export const formatParameterEstimates = (
       "Parameter Estimates",
       data,
       {
-        description: "Estimasi parameter model ordinal logistic",
+        description: "Estimasi parameter model PLUM",
       }
     )
   );

@@ -3,13 +3,15 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronRight, Ruler, Shapes, BarChartHorizontal } from "lucide-react";
 import { Variable } from "@/types/Variable";
-import { OrdinalOptions } from "../types/ordinal";
+import { OrdinalOptions, OrdinalOptionsParams } from "../types/ordinal";
 
 interface Props {
   availableVariables: Variable[]; 
   selectedDependent: Variable | null;
   selectedFactors: Variable[];
   selectedCovariates: Variable[];
+  linkFunction: OrdinalOptionsParams["linkFunction"];
+  onLinkFunctionChange: (value: OrdinalOptionsParams["linkFunction"]) => void;
   onOptionsChange: (options: OrdinalOptions) => void;
 }
 
@@ -18,6 +20,8 @@ export const VariablesTab: React.FC<Props> = ({
   selectedDependent,
   selectedFactors,
   selectedCovariates,
+  linkFunction,
+  onLinkFunctionChange,
   onOptionsChange,
 }) => {
   const [highlightedVariable, setHighlightedVariable] = useState<Variable | null>(null);
@@ -246,13 +250,15 @@ export const VariablesTab: React.FC<Props> = ({
         <select
           id="link-function-select"
           className="h-8 w-48 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          defaultValue="Logit"
+          value={linkFunction}
+          onChange={(event) => onLinkFunctionChange(event.target.value as OrdinalOptionsParams["linkFunction"])}
           aria-label="Select Link Function"
           title="Link Function"
         >
           <option value="Logit">Logit</option>
           <option value="Probit">Probit</option>
           <option value="Complementary Log-Log">Complementary Log-Log</option>
+          <option value="Negative Log-Log">Negative Log-Log</option>
           <option value="Cauchit">Cauchit</option>
         </select>
       </div>

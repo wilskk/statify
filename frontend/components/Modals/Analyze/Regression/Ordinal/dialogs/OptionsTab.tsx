@@ -38,6 +38,7 @@ export const OptionsTab: React.FC<Props> = ({ params, onChange }) => {
                         <SelectItem value="Logit">Logit</SelectItem>
                         <SelectItem value="Probit">Probit</SelectItem>
                         <SelectItem value="Complementary Log-Log">Complementary Log-Log</SelectItem>
+                        <SelectItem value="Negative Log-Log">Negative Log-Log</SelectItem>
                         <SelectItem value="Cauchit">Cauchit</SelectItem>
                     </SelectContent>
                 </Select>

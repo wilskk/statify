@@ -58,3 +58,77 @@ export interface AnalysisSection {
   type: "table" | "text";
   note?: string;
 }
+
+export type PlumLinkFunction =
+  | "logit"
+  | "probit"
+  | "complementary_log_log"
+  | "negative_log_log"
+  | "cauchit";
+
+export type PlumModelType = "location_only" | "general";
+
+export type PlumScaleType = "unity" | "non_constant";
+
+export type PlumEstimationMethod = "fisher_scoring" | "newton_raphson";
+
+export interface PlumLocationSpec {
+  variables: string[];
+  parameterName: "beta";
+  thresholdName: "theta";
+}
+
+export interface PlumScaleSpec {
+  scaleType: PlumScaleType;
+  variables: string[];
+  parameterName: "tau";
+}
+
+export interface PlumEstimationOptions {
+  method: PlumEstimationMethod;
+  maxIterations: number;
+  maxStepHalving?: number;
+  logLikelihoodConvergence?: number;
+  parameterConvergence?: number;
+  confidenceInterval?: number;
+  delta?: number;
+  singularityTolerance?: number;
+}
+
+export interface PlumOutputOptions {
+  modelChiSquare?: boolean;
+  pseudoRSquares?: boolean;
+  parameterEstimates?: boolean;
+  covarianceMatrix?: boolean;
+  residuals?: boolean;
+  goodnessOfFit?: boolean;
+  summaryStatistics?: boolean;
+  testOfParallelLines?: boolean;
+  iterationHistory?: boolean;
+  iterationHistoryStep?: number;
+  cellInformation?: boolean;
+  predictedCategory?: boolean;
+  predictedProbability?: boolean;
+  actualProbability?: boolean;
+  printLogLikelihood?: "Including" | "Excluding";
+}
+
+export interface OrdinalPlumPayload {
+  procedure: "PLUM";
+  version: "plum-v1";
+  response: {
+    variable: string;
+    orderedCategories: Array<string | number>;
+    categoryCount: number;
+  };
+  model: {
+    modelType: PlumModelType;
+    linkFunction: PlumLinkFunction;
+    parameterVector: Array<"theta" | "beta" | "tau">;
+  };
+  location: PlumLocationSpec;
+  scale: PlumScaleSpec;
+  estimation: PlumEstimationOptions;
+  output: PlumOutputOptions;
+  frequencyWeightVariable?: string | null;
+}
