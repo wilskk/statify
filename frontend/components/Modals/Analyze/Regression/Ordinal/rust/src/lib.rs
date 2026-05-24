@@ -1,28 +1,26 @@
 mod data;
-mod derivatives;
-mod likelihood;
-mod links;
+mod io;
 mod model;
 mod optimizer;
-mod output;
-mod parallel;
-mod statistics;
+mod stats;
 mod types;
 mod utils;
-mod validation;
 
 pub use data::*;
-pub use derivatives::*;
-pub use likelihood::*;
-pub use links::*;
+pub use io::output;
+pub use io::output::*;
+pub use io::validation;
+pub use io::validation::*;
 pub use model::*;
+pub use model::derivatives::*;
+pub use model::likelihood::*;
+pub use model::links::*;
 pub use optimizer::*;
-pub use output::*;
-pub use parallel::*;
-pub use statistics::*;
+pub use optimizer::parallel::*;
+pub use stats::statistics;
+pub use stats::statistics::*;
 pub use types::*;
-pub use validation::*;
-
+pub use utils::*;
 use wasm_bindgen::prelude::*;
 
 // ORDINAL DEBUG CHECKLIST

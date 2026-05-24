@@ -1,3 +1,7 @@
+pub mod derivatives;
+pub mod likelihood;
+pub mod links;
+
 use crate::links::inverse_link;
 use crate::types::{PlumParameters, PlumSpec, ScaleType, Subpopulation};
 use crate::utils::{clamp_prob, dot, safe_exp, EPS};

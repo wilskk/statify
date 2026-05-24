@@ -8,8 +8,17 @@ export interface OrdinalOptions {
 }
 
 // Interface untuk tab Location
+export interface LocationInteraction {
+  kind: "interaction";
+  id: string;
+  name: string;
+  variables: Variable[];
+}
+
+export type LocationModelTerm = Variable | LocationInteraction;
+
 export interface OrdinalLocationParams {
-  locationModel: Variable[];
+  locationModel: LocationModelTerm[];
 }
 
 // Interface untuk tab Scale

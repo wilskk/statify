@@ -1,3 +1,5 @@
+pub mod parallel;
+
 use nalgebra::{DMatrix, DVector};
 
 use crate::derivatives::{expected_information, gradient, hessian};

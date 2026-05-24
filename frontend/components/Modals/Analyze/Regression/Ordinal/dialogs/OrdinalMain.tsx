@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, HelpCircle } from "lucide-react";
+import { Variable } from "@/types/Variable";
 
 // Stores & Hooks
 import { useVariableStore } from "@/stores/useVariableStore";
@@ -30,6 +31,8 @@ import {
   OrdinalScaleParams,
   OrdinalOptionsParams,
   OrdinalOutputParams,
+  LocationInteraction,
+  LocationModelTerm,
 } from "../types/ordinal";
 
 const OrdinalMain: React.FC = () => {
@@ -120,21 +123,50 @@ const OrdinalMain: React.FC = () => {
     return unique.map((v) => String(v)).sort((a, b) => a.localeCompare(b));
   };
 
-  const buildLocationPredictors = (responseVariable: any, predictors: any[]) => {
-    const deduped: any[] = [];
-    const seen = new Set<string>();
-    for (const predictor of predictors) {
-      const key = `${predictor?.id ?? ""}-${predictor?.columnIndex ?? ""}`;
-      if (responseVariable?.id === predictor?.id || responseVariable?.columnIndex === predictor?.columnIndex) {
-        throw new Error("Predictor cannot be the same as response variable.");
+  const getVariableKey = (variable: Variable) => `${variable.id ?? "no-id"}-${variable.columnIndex}`;
+
+  const isInteraction = (term: LocationModelTerm): term is LocationInteraction =>
+    typeof term === "object" && "kind" in term && term.kind === "interaction";
+
+  const buildInteractionKey = (variables: Variable[]) =>
+    variables.map(getVariableKey).sort().join("::");
+
+  const buildLocationPredictors = (responseVariable: Variable, predictors: LocationModelTerm[]) => {
+    const variableTerms: Variable[] = [];
+    const interactionTerms: LocationInteraction[] = [];
+    const seenVariables = new Set<string>();
+    const seenInteractions = new Set<string>();
+
+    for (const term of predictors) {
+      if (isInteraction(term)) {
+        if (!Array.isArray(term.variables) || term.variables.length < 2) {
+          throw new Error("Interaction term harus memiliki minimal 2 variabel.");
+        }
+        for (const variable of term.variables) {
+          if (responseVariable?.id === variable?.id || responseVariable?.columnIndex === variable?.columnIndex) {
+            throw new Error("Predictor cannot be the same as response variable.");
+          }
+        }
+        const interactionKey = buildInteractionKey(term.variables);
+        if (seenInteractions.has(interactionKey)) {
+          throw new Error("Interaction tidak boleh duplicate.");
+        }
+        seenInteractions.add(interactionKey);
+        interactionTerms.push(term);
+      } else {
+        const key = getVariableKey(term);
+        if (responseVariable?.id === term?.id || responseVariable?.columnIndex === term?.columnIndex) {
+          throw new Error("Predictor cannot be the same as response variable.");
+        }
+        if (seenVariables.has(key)) {
+          throw new Error("Predictor tidak boleh duplicate.");
+        }
+        seenVariables.add(key);
+        variableTerms.push(term);
       }
-      if (seen.has(key)) {
-        throw new Error("Predictor tidak boleh duplicate.");
-      }
-      seen.add(key);
-      deduped.push(predictor);
     }
-    return deduped;
+
+    return { variableTerms, interactionTerms };
   };
 
   const validateWorkerResult = (payload: any) => {
@@ -224,7 +256,7 @@ const OrdinalMain: React.FC = () => {
 
       const factors = options.factors;
       const covariates = options.covariates;
-      const locationPredictorsRaw = locationParams.locationModel.length > 0
+      const locationPredictorsRaw: LocationModelTerm[] = locationParams.locationModel.length > 0
         ? locationParams.locationModel
         : [...factors, ...covariates];
 
@@ -232,13 +264,17 @@ const OrdinalMain: React.FC = () => {
         throw new Error("Minimal 1 variabel independen.");
       }
 
-      const locationPredictors = buildLocationPredictors(responseVariable, locationPredictorsRaw);
+      const { variableTerms: locationPredictors, interactionTerms } = buildLocationPredictors(
+        responseVariable,
+        locationPredictorsRaw
+      );
 
       console.log("[ORDINAL][MAIN][USER_INPUT]", {
         responseVariable,
         factors,
         covariates,
         locationPredictors,
+        interactionTerms,
       });
 
       // ==================================================
@@ -270,6 +306,23 @@ const OrdinalMain: React.FC = () => {
           if (isMissingValue(predictorValue)) {
             rowValid = false;
             break;
+          }
+        }
+
+        if (rowValid) {
+          for (const interaction of interactionTerms) {
+            for (const variable of interaction.variables) {
+              const predictorIndex = variable?.columnIndex;
+              if (typeof predictorIndex !== "number") {
+                throw new Error(`Interaction variable "${variable?.name ?? ""}" does not have a valid columnIndex.`);
+              }
+              const predictorValue = getRowValue(row, predictorIndex);
+              if (isMissingValue(predictorValue)) {
+                rowValid = false;
+                break;
+              }
+            }
+            if (!rowValid) break;
           }
         }
 
@@ -361,6 +414,15 @@ const OrdinalMain: React.FC = () => {
             rowValues.push(toNumberOrThrow(predictorValue, predictor.name));
           }
         }
+
+        for (const interaction of interactionTerms) {
+          const product = interaction.variables.reduce((acc, variable) => {
+            const value = getRowValue(row, variable.columnIndex);
+            return acc * toNumberOrThrow(value, variable.name);
+          }, 1);
+          rowValues.push(product);
+        }
+
         return rowValues;
       });
 
@@ -379,6 +441,10 @@ const OrdinalMain: React.FC = () => {
         } else {
           locationTermNames.push(predictor.name);
         }
+      }
+
+      for (const interaction of interactionTerms) {
+        locationTermNames.push(interaction.name);
       }
 
       if (locationDesignMatrix.length === 0 || locationDesignMatrix[0]?.length === 0) {
@@ -438,16 +504,27 @@ const OrdinalMain: React.FC = () => {
           categoryCount: responseCategories.length,
         },
         locationModel: {
-          predictors: locationPredictors.map((predictor: any) => {
-            const isFactor = factorIds.has(predictor.id);
-            return {
-              name: predictor.name,
-              columnIndex: predictor.columnIndex,
-              role: isFactor ? "factor" : "covariate",
-              levels: isFactor ? factorCategoryMap.get(String(predictor.id)) : undefined,
-              referenceCategory: isFactor ? referenceCategories[predictor.name] : undefined,
-            };
-          }),
+          predictors: [
+            ...locationPredictors.map((predictor: any) => {
+              const isFactor = factorIds.has(predictor.id);
+              return {
+                name: predictor.name,
+                columnIndex: predictor.columnIndex,
+                role: isFactor ? "factor" : "covariate",
+                levels: isFactor ? factorCategoryMap.get(String(predictor.id)) : undefined,
+                referenceCategory: isFactor ? referenceCategories[predictor.name] : undefined,
+              };
+            }),
+            ...interactionTerms.map((interaction) => ({
+              name: interaction.name,
+              columnIndex: null,
+              role: "interaction",
+              variables: interaction.variables.map((variable) => ({
+                name: variable.name,
+                columnIndex: variable.columnIndex,
+              })),
+            })),
+          ],
           locationDesignMatrix,
           locationTermNames,
           parameterCount: locationTermNames.length,
