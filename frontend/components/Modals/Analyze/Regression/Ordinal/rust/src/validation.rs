@@ -1,37 +1,39 @@
-use crate::data::encode_category;
 use crate::types::{
-    EstimationOptionsPayload, LinkFunction, PlumFitInput, PlumValidationResult, ScaleType,
+    LinkFunction, PlumWorkerPayload, PlumValidationResult, ScaleType,
 };
-use crate::utils::{correlation, is_finite_non_negative, variance};
+use crate::utils::{correlation, variance};
 
-pub fn validate_input(input: &PlumFitInput) -> PlumValidationResult {
+pub fn validate_input(input: &PlumWorkerPayload) -> PlumValidationResult {
     let mut errors = Vec::new();
     let mut warnings = Vec::new();
 
-    if input.payload.procedure != "PLUM" {
-        errors.push("payload.procedure harus PLUM".to_string());
+    if input.analysis_type != "ORDINAL_REGRESSION_PLUM" {
+        errors.push("analysisType harus ORDINAL_REGRESSION_PLUM".to_string());
     }
-    if input.payload.version != "plum-v1" {
-        errors.push("payload.version harus plum-v1".to_string());
+    if input.procedure != "PLUM" {
+        errors.push("procedure harus PLUM".to_string());
+    }
+    if input.version != "plum-v1" {
+        errors.push("version harus plum-v1".to_string());
     }
 
-    let ordered_categories = &input.payload.response.ordered_categories;
+    if input.response.response_vector.is_empty() {
+        errors.push("responseVector tidak boleh kosong".to_string());
+    }
+
+    let ordered_categories = &input.response.response_categories;
     if ordered_categories.len() < 2 {
-        errors.push("orderedCategories harus minimal 2".to_string());
+        errors.push("responseCategories harus minimal 2".to_string());
     }
-    if input.payload.response.category_count != ordered_categories.len() {
-        errors.push("categoryCount tidak sesuai orderedCategories".to_string());
-    }
-
-    if input.data.is_empty() {
-        errors.push("Data kosong".to_string());
+    if input.response.category_count != ordered_categories.len() {
+        errors.push("categoryCount tidak sesuai responseCategories".to_string());
     }
 
-    if LinkFunction::try_from(input.payload.model.link_function.as_str()).is_err() {
+    if LinkFunction::try_from(input.estimation_options.link_function.as_str()).is_err() {
         errors.push("linkFunction tidak valid".to_string());
     }
 
-    let scale_type = match ScaleType::try_from(input.payload.scale.scale_type.as_str()) {
+    let scale_type = match ScaleType::try_from(if input.scale_model.enabled { "non_constant" } else { "unity" }) {
         Ok(value) => value,
         Err(_) => {
             errors.push("scaleType tidak valid".to_string());
@@ -39,68 +41,100 @@ pub fn validate_input(input: &PlumFitInput) -> PlumValidationResult {
         }
     };
 
-    let location_len = input.payload.location.variables.len();
-    let scale_len = input.payload.scale.variables.len();
+    let location_len = input.location_model.location_term_names.len();
+    let scale_len = input.scale_model.scale_term_names.len();
 
     let mut category_counts = vec![0.0; ordered_categories.len()];
     let mut total_weight = 0.0;
 
+    let response_vector = &input.response.response_vector;
+    let location_matrix = &input.location_model.location_design_matrix;
+    let scale_matrix = &input.scale_model.scale_design_matrix;
+
+    if location_matrix.is_empty() {
+        errors.push("locationDesignMatrix kosong".to_string());
+    }
+    if location_matrix.len() != response_vector.len() {
+        errors.push("jumlah baris X tidak sama dengan panjang responseVector".to_string());
+    }
+
+    let expected_cols = location_matrix.get(0).map(|row| row.len()).unwrap_or(0);
+    if expected_cols != location_len {
+        errors.push("jumlah kolom X tidak sama dengan locationTermNames".to_string());
+    }
+
     let mut x_columns: Vec<Vec<f64>> = vec![Vec::new(); location_len];
-
-    for row in &input.data {
-        if let Err(err) = encode_category(row.y, ordered_categories) {
-            errors.push(err.to_string());
+    for (row_index, row) in location_matrix.iter().enumerate() {
+        if row.len() != expected_cols {
+            errors.push(format!("Panjang row X tidak konsisten pada baris {row_index}"));
             break;
         }
-
-        if row.x.len() != location_len {
-            errors.push("Panjang x tidak sesuai jumlah variabel location".to_string());
-            break;
+        for (col_index, value) in row.iter().enumerate() {
+            if !value.is_finite() {
+                errors.push(format!("X tidak finite pada baris {row_index}, kolom {col_index}"));
+                break;
+            }
+            x_columns[col_index].push(*value);
         }
+    }
 
-        if scale_type == ScaleType::NonConstant {
-            match &row.z {
-                Some(values) if values.len() == scale_len => {}
-                _ => {
-                    errors.push("Panjang z tidak sesuai jumlah variabel scale".to_string());
+    if scale_type == ScaleType::NonConstant {
+        if scale_matrix.len() != response_vector.len() {
+            errors.push("jumlah baris Z tidak sama dengan panjang responseVector".to_string());
+        }
+        let expected_scale_cols = scale_matrix.get(0).map(|row| row.len()).unwrap_or(0);
+        if expected_scale_cols != scale_len {
+            errors.push("jumlah kolom Z tidak sama dengan scaleTermNames".to_string());
+        }
+        for (row_index, row) in scale_matrix.iter().enumerate() {
+            if row.len() != expected_scale_cols {
+                errors.push(format!("Panjang row Z tidak konsisten pada baris {row_index}"));
+                break;
+            }
+            for (col_index, value) in row.iter().enumerate() {
+                if !value.is_finite() {
+                    errors.push(format!("Z tidak finite pada baris {row_index}, kolom {col_index}"));
                     break;
                 }
             }
         }
+    }
 
-        if let Some(weight) = row.w {
-            if !is_finite_non_negative(weight) {
-                errors.push("Weight harus numerik dan tidak negatif".to_string());
-                break;
-            }
+    for (idx, value) in response_vector.iter().enumerate() {
+        if !value.is_finite() {
+            errors.push(format!("responseVector tidak finite pada index {idx}"));
+            break;
         }
-
-        let weight = row.w.unwrap_or(1.0);
-        if weight.is_finite() {
-            total_weight += weight;
-            if let Ok(idx) = encode_category(row.y, ordered_categories) {
-                if idx < category_counts.len() {
-                    category_counts[idx] += weight;
-                }
-            }
+        if *value < 1.0 || *value > ordered_categories.len() as f64 {
+            errors.push("responseVector di luar rentang 1..J".to_string());
+            break;
         }
-
-        for (idx, value) in row.x.iter().enumerate() {
-            x_columns[idx].push(*value);
+        let weight = 1.0;
+        total_weight += weight;
+        let encoded = (*value).round() as usize;
+        if encoded > 0 && encoded <= category_counts.len() {
+            category_counts[encoded - 1] += weight;
         }
     }
 
-    let default_opts = EstimationOptionsPayload::default();
-    let options = input.payload.estimation.as_ref().unwrap_or(&default_opts);
-    if let Some(max_iter) = options.max_iterations {
-        if max_iter == 0 {
-            errors.push("maxIterations harus > 0".to_string());
-        }
+    let options = &input.estimation_options;
+    if options.max_iterations == 0 {
+        errors.push("maxIterations harus > 0".to_string());
     }
-    if let Some(alpha) = options.alpha {
-        if !(0.0..=1.0).contains(&alpha) {
-            errors.push("alpha harus antara 0 dan 1".to_string());
-        }
+    if options.parameter_tolerance <= 0.0 {
+        errors.push("parameterTolerance harus > 0".to_string());
+    }
+    if options.log_likelihood_tolerance < 0.0 {
+        errors.push("logLikelihoodTolerance harus >= 0".to_string());
+    }
+    if options.singularity_tolerance <= 0.0 {
+        errors.push("singularityTolerance harus > 0".to_string());
+    }
+    if !(50.0..=99.99).contains(&options.confidence_level) {
+        errors.push("confidenceLevel harus 50..99.99".to_string());
+    }
+    if options.link_function != "Logit" {
+        errors.push("Link function selain Logit belum didukung oleh WASM.".to_string());
     }
 
     if total_weight < 10.0 {

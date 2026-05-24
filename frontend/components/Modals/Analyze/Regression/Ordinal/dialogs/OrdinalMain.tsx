@@ -21,8 +21,7 @@ import { OptionsTab } from "./OptionsTab";
 import { OutputTab } from "./OutputTab";
 
 // Services
-import { buildOrdinalPlumPayload, formatOrdinalResult } from "../services/formatter";
-import { validateOrdinalPayload } from "../services/formatter_utils";
+import { formatOrdinalResult } from "../services/formatter";
 
 // Types
 import {
@@ -94,96 +93,476 @@ const OrdinalMain: React.FC = () => {
   const { data } = useDataStore();
   const { addLog, addAnalytic, addStatistic } = useResultStore();
 
+  // ==================================================
+  // HELPERS
+  // ==================================================
+  const isMissingValue = (value: unknown) => value === null || value === undefined || value === "";
+
+  const isValidRow = (row: unknown) =>
+    row !== null && row !== undefined && (Array.isArray(row) || typeof row === "object");
+
+  const getRowValue = (row: any, columnIndex: number) => row?.[columnIndex];
+
+  const toNumberOrThrow = (value: unknown, label: string) => {
+    const numeric = Number(value);
+    if (Number.isNaN(numeric) || !Number.isFinite(numeric)) {
+      throw new Error(`Covariate '${label}' contains non-numeric values.`);
+    }
+    return numeric;
+  };
+
+  const getSortedCategories = (values: unknown[]) => {
+    const unique = Array.from(new Set(values.map((v) => v)));
+    const allNumeric = unique.every((v) => typeof v === "number" && Number.isFinite(v));
+    if (allNumeric) {
+      return (unique as number[]).sort((a, b) => a - b).map((v) => v);
+    }
+    return unique.map((v) => String(v)).sort((a, b) => a.localeCompare(b));
+  };
+
+  const buildLocationPredictors = (responseVariable: any, predictors: any[]) => {
+    const deduped: any[] = [];
+    const seen = new Set<string>();
+    for (const predictor of predictors) {
+      const key = `${predictor?.id ?? ""}-${predictor?.columnIndex ?? ""}`;
+      if (responseVariable?.id === predictor?.id || responseVariable?.columnIndex === predictor?.columnIndex) {
+        throw new Error("Predictor cannot be the same as response variable.");
+      }
+      if (seen.has(key)) {
+        throw new Error("Predictor tidak boleh duplicate.");
+      }
+      seen.add(key);
+      deduped.push(predictor);
+    }
+    return deduped;
+  };
+
+  const validateWorkerResult = (payload: any) => {
+    if (!payload || typeof payload !== "object") {
+      throw new Error("Worker result is empty or invalid.");
+    }
+    if (typeof payload.converged !== "boolean") {
+      throw new Error("Worker result missing converged status.");
+    }
+    if (payload.iterations !== null && typeof payload.iterations !== "number") {
+      throw new Error("Worker result missing iterations.");
+    }
+    if (payload.logLikelihood !== null && typeof payload.logLikelihood !== "number") {
+      throw new Error("Worker result missing logLikelihood.");
+    }
+    if (payload.minus2LogLikelihood !== null && typeof payload.minus2LogLikelihood !== "number") {
+      throw new Error("Worker result missing minus2LogLikelihood.");
+    }
+    if (!Array.isArray(payload.parameterEstimates)) {
+      throw new Error("Worker result missing parameter estimates.");
+    }
+    const invalidEstimate = payload.parameterEstimates.find((v: any) => {
+      if (typeof v === "number") {
+        return Number.isNaN(v) || !Number.isFinite(v);
+      }
+      if (v && typeof v === "object") {
+        if ("estimate" in v) {
+          return typeof v.estimate !== "number" || Number.isNaN(v.estimate) || !Number.isFinite(v.estimate);
+        }
+        if ("value" in v) {
+          return typeof v.value !== "number" || Number.isNaN(v.value) || !Number.isFinite(v.value);
+        }
+      }
+      return true;
+    });
+    if (invalidEstimate !== undefined) {
+      throw new Error("Worker result contains invalid parameter estimates.");
+    }
+  };
+
+  const getErrorMessage = (error: unknown) => {
+    if (typeof error === "string") return error;
+    if (error && typeof error === "object") {
+      const errorObj = error as { message?: string; stage?: string };
+      if (errorObj.message && errorObj.stage) {
+        return `${errorObj.message} (stage: ${errorObj.stage})`;
+      }
+      if (errorObj.message) {
+        return errorObj.message;
+      }
+      try {
+        return JSON.stringify(errorObj);
+      } catch {
+        return "Terjadi error tidak dikenal.";
+      }
+    }
+    return "Terjadi error tidak dikenal.";
+  };
+
+  // ==================================================
+  // ORDINAL DEBUG CHECKLIST
+  // 1. MAIN: cek [ORDINAL][MAIN][PAYLOAD_TO_WORKER]
+  // 2. WORKER: cek [ORDINAL][WORKER][RECEIVED] & [ORDINAL][WORKER][PAYLOAD_VALID]
+  // 3. RUST: cek hasil plum_validate (missing field => struct Rust belum sama)
+  // 4. WORKER RESULT: cek [ORDINAL][WORKER][NORMALIZED_RESULT]
+  // 5. MAIN FORMATTER: cek [ORDINAL][MAIN][FORMATTED_SECTIONS]
+  // ==================================================
   // --- HANDLERS ---
   const handleAnalyze = async () => {
-    if (!options.dependent) {
-      setErrorMsg("Mohon pilih variabel dependen.");
-      return;
-    }
-
-    if (!data || data.length === 0) {
-      setErrorMsg("Dataset kosong atau tidak tersedia.");
-      return;
-    }
-
-    const features = [...options.factors, ...options.covariates];
-
-    if (features.length === 0) {
-      setErrorMsg("Minimal 1 variabel independen.");
-      return;
-    }
-
     setIsLoading(true);
     setErrorMsg(null);
 
     try {
-      const plumPayload = buildOrdinalPlumPayload({
-        options,
-        locationParams,
-        scaleParams,
-        optionParams: optParams,
-        outputParams,
-        data,
-      });
-
-      const validation = validateOrdinalPayload(plumPayload);
-      if (!validation.valid) {
-        setErrorMsg(validation.errors.join(" "));
-        setIsLoading(false);
-        return;
+      // ==================================================
+      // VALIDATE USER INPUT
+      // ==================================================
+      const responseVariable = options.dependent;
+      if (!responseVariable) {
+        throw new Error("Mohon pilih variabel dependen.");
+      }
+      if (typeof responseVariable.columnIndex !== "number") {
+        throw new Error("Response variable tidak memiliki columnIndex yang valid.");
+      }
+      if (!data || data.length === 0) {
+        throw new Error("Dataset kosong atau tidak tersedia.");
       }
 
+      const factors = options.factors;
+      const covariates = options.covariates;
+      const locationPredictorsRaw = locationParams.locationModel.length > 0
+        ? locationParams.locationModel
+        : [...factors, ...covariates];
+
+      if (locationPredictorsRaw.length === 0) {
+        throw new Error("Minimal 1 variabel independen.");
+      }
+
+      const locationPredictors = buildLocationPredictors(responseVariable, locationPredictorsRaw);
+
+      console.log("[ORDINAL][MAIN][USER_INPUT]", {
+        responseVariable,
+        factors,
+        covariates,
+        locationPredictors,
+      });
+
+      // ==================================================
+      // PREPARE RESPONSE VARIABLE
+      // ==================================================
+      const totalRows = data.length;
+      const validRows: any[] = [];
+      const droppedRows: any[] = [];
+
+      for (const row of data) {
+        if (!isValidRow(row)) {
+          droppedRows.push(row);
+          continue;
+        }
+
+        const responseValue = getRowValue(row, responseVariable.columnIndex);
+        if (isMissingValue(responseValue)) {
+          droppedRows.push(row);
+          continue;
+        }
+
+        let rowValid = true;
+        for (const predictor of locationPredictors) {
+          const predictorIndex = predictor?.columnIndex;
+          if (typeof predictorIndex !== "number") {
+            throw new Error(`Predictor "${predictor?.name ?? ""}" does not have a valid columnIndex.`);
+          }
+          const predictorValue = getRowValue(row, predictorIndex);
+          if (isMissingValue(predictorValue)) {
+            rowValid = false;
+            break;
+          }
+        }
+
+        if (rowValid) {
+          validRows.push(row);
+        } else {
+          droppedRows.push(row);
+        }
+      }
+
+      console.log("[ORDINAL][MAIN][CASE_PROCESSING]", {
+        totalRows,
+        validRows: validRows.length,
+        droppedRows: droppedRows.length,
+      });
+
+      if (validRows.length === 0) {
+        throw new Error("All rows were dropped after listwise deletion.");
+      }
+
+      const responseValues = validRows.map((row) => getRowValue(row, responseVariable.columnIndex));
+      const responseCategories = getSortedCategories(responseValues);
+
+      if (responseCategories.length < 2) {
+        throw new Error("Response variable contains only 1 valid category.");
+      }
+      if (responseCategories.length === 2) {
+        console.warn("[ORDINAL][MAIN][WARNING] Response variable has only 2 categories. Consider binary logistic.");
+      }
+
+      const responseCategoriesNumeric = responseCategories.every((value) => typeof value === "number");
+      const responseCategoryMap = new Map<string | number, number>();
+      responseCategories.forEach((category, index) => {
+        const key = responseCategoriesNumeric ? (category as number) : String(category);
+        responseCategoryMap.set(key, index + 1);
+      });
+
+      const responseVector = responseValues.map((value) => {
+        const key = responseCategoriesNumeric ? (value as number) : String(value);
+        return responseCategoryMap.get(key);
+      });
+      if (responseVector.some((value) => value === undefined)) {
+        throw new Error("Response vector encoding failed due to invalid categories.");
+      }
+      responseVector.forEach((value, index) => {
+        if (typeof value !== "number" || Number.isNaN(value) || !Number.isFinite(value)) {
+          throw new Error(`Response vector contains invalid value at index ${index}.`);
+        }
+      });
+
+      console.log("[ORDINAL][MAIN][RESPONSE]", {
+        responseCategories,
+        responseVector,
+      });
+
+      // ==================================================
+      // BUILD LOCATION DESIGN MATRIX
+      // ==================================================
+      const factorIds = new Set(factors.map((f) => f.id));
+      const covariateIds = new Set(covariates.map((c) => c.id));
+      const locationTermNames: string[] = [];
+
+      const factorCategoryMap = new Map<string, string[]>();
+      const referenceCategories: Record<string, string> = {};
+      for (const predictor of locationPredictors) {
+        if (factorIds.has(predictor.id)) {
+          const values = validRows.map((row) => getRowValue(row, predictor.columnIndex));
+          const categories = getSortedCategories(values).map((value) => String(value));
+          if (categories.length < 2) {
+            throw new Error(`Factor '${predictor.name}' contains less than 2 categories.`);
+          }
+          referenceCategories[predictor.name] = categories[0];
+          factorCategoryMap.set(String(predictor.id), categories);
+        }
+      }
+
+      const locationDesignMatrix: number[][] = validRows.map((row) => {
+        const rowValues: number[] = [];
+        for (const predictor of locationPredictors) {
+          const predictorValue = getRowValue(row, predictor.columnIndex);
+          if (covariateIds.has(predictor.id)) {
+            rowValues.push(toNumberOrThrow(predictorValue, predictor.name));
+          } else if (factorIds.has(predictor.id)) {
+            const categories = factorCategoryMap.get(String(predictor.id)) || [];
+            for (let i = 1; i < categories.length; i += 1) {
+              rowValues.push(String(predictorValue) === categories[i] ? 1 : 0);
+            }
+          } else {
+            rowValues.push(toNumberOrThrow(predictorValue, predictor.name));
+          }
+        }
+        return rowValues;
+      });
+
+      for (const predictor of locationPredictors) {
+        if (covariateIds.has(predictor.id)) {
+          locationTermNames.push(predictor.name);
+        } else if (factorIds.has(predictor.id)) {
+          const categories = factorCategoryMap.get(String(predictor.id)) || [];
+          const reference = categories[0];
+          for (let i = 1; i < categories.length; i += 1) {
+            if (categories[i] === reference) {
+              continue;
+            }
+            locationTermNames.push(`${predictor.name}=${categories[i]}`);
+          }
+        } else {
+          locationTermNames.push(predictor.name);
+        }
+      }
+
+      if (locationDesignMatrix.length === 0 || locationDesignMatrix[0]?.length === 0) {
+        throw new Error("Location design matrix is empty.");
+      }
+
+      const expectedColumns = locationDesignMatrix[0].length;
+      locationDesignMatrix.forEach((row, index) => {
+        if (row.length !== expectedColumns) {
+          throw new Error(`Location design matrix row length mismatch at row ${index}.`);
+        }
+        row.forEach((value) => {
+          if (value === undefined || value === null) {
+            throw new Error(`Location design matrix contains undefined at row ${index}.`);
+          }
+          if (Number.isNaN(value) || !Number.isFinite(value)) {
+            throw new Error(`Location design matrix contains NaN at row ${index}.`);
+          }
+        });
+      });
+
+      if (locationDesignMatrix.length !== responseVector.length) {
+        throw new Error("Location design matrix row count does not match response vector length.");
+      }
+
+      console.log("[ORDINAL][MAIN][LOCATION_MATRIX]", {
+        rows: locationDesignMatrix.length,
+        cols: locationDesignMatrix[0]?.length ?? 0,
+        locationTermNames,
+        firstRow: locationDesignMatrix[0],
+      });
+
+      const scalePredictors = scaleParams.scaleModel ?? [];
+      const scaleDesignMatrix: number[][] = validRows.map((row) => {
+        const rowValues: number[] = [];
+        for (const predictor of scalePredictors) {
+          const predictorValue = getRowValue(row, predictor.columnIndex);
+          rowValues.push(toNumberOrThrow(predictorValue, predictor.name));
+        }
+        return rowValues;
+      });
+      const scaleTermNames = scalePredictors.map((predictor) => predictor.name);
+
+      // ==================================================
+      // BUILD WORKER PAYLOAD
+      // ==================================================
+      const modelType = scaleTermNames.length > 0 ? "general" : "location-only";
+      const workerPayload = {
+        analysisType: "ORDINAL_REGRESSION_PLUM",
+        procedure: "PLUM",
+        version: "plum-v1",
+        response: {
+          variableName: responseVariable.name,
+          columnIndex: responseVariable.columnIndex,
+          responseCategories,
+          responseVector,
+          categoryCount: responseCategories.length,
+        },
+        locationModel: {
+          predictors: locationPredictors.map((predictor: any) => {
+            const isFactor = factorIds.has(predictor.id);
+            return {
+              name: predictor.name,
+              columnIndex: predictor.columnIndex,
+              role: isFactor ? "factor" : "covariate",
+              levels: isFactor ? factorCategoryMap.get(String(predictor.id)) : undefined,
+              referenceCategory: isFactor ? referenceCategories[predictor.name] : undefined,
+            };
+          }),
+          locationDesignMatrix,
+          locationTermNames,
+          parameterCount: locationTermNames.length,
+        },
+        scaleModel: {
+          enabled: scaleTermNames.length > 0,
+          predictors: scalePredictors.map((predictor: any) => ({
+            name: predictor.name,
+            columnIndex: predictor.columnIndex,
+            role: "scale",
+          })),
+          scaleDesignMatrix,
+          scaleTermNames,
+          parameterCount: scaleTermNames.length,
+        },
+        estimationOptions: {
+          linkFunction: optParams.linkFunction,
+          maxIterations: optParams.maxIterations,
+          maxStepHalving: optParams.maxStepHalving,
+          logLikelihoodTolerance: optParams.logLikelihoodConvergence,
+          parameterTolerance: optParams.parameterConvergence,
+          singularityTolerance: optParams.singularityTolerance,
+          confidenceLevel: optParams.confidenceInterval,
+          zeroCellAdjustment: optParams.delta,
+        },
+        outputOptions: {
+          goodnessOfFit: outputParams.display.goodnessOfFit,
+          summaryStatistics: outputParams.display.summaryStatistics,
+          parameterEstimates: outputParams.display.parameterEstimates,
+          asymptoticCorrelation: outputParams.display.asymptoticCorrelation,
+          cellInformation: outputParams.display.cellInformation,
+          testOfParallelLines: outputParams.display.testOfParallelLines,
+          iterationHistory: outputParams.display.iterationHistory,
+          iterationHistoryStep: outputParams.display.iterationHistoryStep,
+          predictedCategory: outputParams.savedVariables.predictedCategory,
+          predictedProbability: outputParams.savedVariables.predictedProbability,
+          actualProbability: outputParams.savedVariables.actualProbability,
+          printLogLikelihood: outputParams.printLogLikelihood,
+        },
+        metadata: {
+          modelType,
+          totalRows,
+          validRows: validRows.length,
+          droppedRows: droppedRows.length,
+          responseCategoryCount: responseCategories.length,
+          locationParameterCount: locationTermNames.length,
+          scaleParameterCount: scaleTermNames.length,
+          referenceCategories,
+        },
+      };
+
+      if (workerPayload.response.responseVector.length !== workerPayload.locationModel.locationDesignMatrix.length) {
+        throw new Error("Response vector length does not match location design matrix rows.");
+      }
+      if (workerPayload.locationModel.locationTermNames.length !== workerPayload.locationModel.locationDesignMatrix[0].length) {
+        throw new Error("Location term names length does not match design matrix columns.");
+      }
+      if (workerPayload.scaleModel.enabled) {
+        if (workerPayload.scaleModel.scaleDesignMatrix.length !== workerPayload.response.responseVector.length) {
+          throw new Error("Scale design matrix row count does not match response vector length.");
+        }
+        if (workerPayload.scaleModel.scaleTermNames.length !== workerPayload.scaleModel.scaleDesignMatrix[0]?.length) {
+          throw new Error("Scale term names length does not match scale design matrix columns.");
+        }
+      }
+
+      console.log("[ORDINAL][MAIN][PAYLOAD_TO_WORKER]", workerPayload);
+
       const worker = new Worker(
-        new URL(
-          "/workers/Regression/ordinal.worker.js",
-          window.location.origin
-        ),
+        new URL("/workers/Regression/ordinal.worker.js", window.location.origin),
         { type: "module" }
       );
 
       worker.onmessage = async (event) => {
         const { type, payload } = event.data;
-        console.log(event.data)
+        console.log("[ORDINAL][MAIN][WORKER_RAW_RESULT]", event.data);
         if (type === "SUCCESS") {
           try {
-            // 🔥 1. FORMAT HASIL (WAJIB PERTAMA)
-            const formattedResult = formatOrdinalResult(payload);
+            validateWorkerResult(payload);
+            console.log("[ORDINAL][MAIN][WORKER_NORMALIZED_RESULT]", payload);
 
-            // 🔥 BUAT LOG
+            const formattedResult = formatOrdinalResult(payload);
+            if (!formattedResult || !Array.isArray(formattedResult.sections)) {
+              throw new Error("Formatter result is invalid or missing sections.");
+            }
+
+            console.log("[ORDINAL][MAIN][FORMATTED_SECTIONS]", formattedResult.sections);
+
             const logId = await addLog({
-              log: `ORDINAL REGRESSION VARIABLES ${options.dependent!.id}`,
+              log: `ORDINAL REGRESSION VARIABLES ${responseVariable.id}`,
             });
 
-            // 🔥 BUAT ANALYTIC
             const analyticId = await addAnalytic(logId, {
               title: "Ordinal Regression",
-              note: `Link: ${plumPayload.model.linkFunction}`,
+              note: `Link: ${optParams.linkFunction}`,
             });
 
-            // 🔥 LOOP FORMATTER (IKUT BINARY)
-            if (formattedResult.sections && Array.isArray(formattedResult.sections)) {
-              for (const section of formattedResult.sections) {
+            for (const section of formattedResult.sections) {
+              const tableObjectForRenderer = {
+                title: section.title,
+                columnHeaders: section.data?.columnHeaders ?? [],
+                rows: section.data?.rows ?? [],
+                footer: section.note,
+              };
 
-                // Adapt payload to DataTableRenderer contract:
-                // { tables: [{ title, columnHeaders, rows, footer? }] }
-                const tableObjectForRenderer = {
-                  title: section.title,
-                  columnHeaders: section.data?.columnHeaders ?? [],
-                  rows: section.data?.rows ?? [],
-                  footer: section.note,
-                };
+              const payloadForRenderer = {
+                tables: [tableObjectForRenderer],
+              };
 
-                const payloadForRenderer = {
-                  tables: [tableObjectForRenderer],
-                };
-
-                await addStatistic(analyticId, {
-                  title: section.title,
-                  description: section.description || "",
-                  output_data: JSON.stringify(payloadForRenderer),
-                  components: section.title,
-                });
-              }
+              await addStatistic(analyticId, {
+                title: section.title,
+                description: section.description || "",
+                output_data: JSON.stringify(payloadForRenderer),
+                components: section.title,
+              });
             }
 
             worker.terminate();
@@ -196,7 +575,8 @@ const OrdinalMain: React.FC = () => {
             worker.terminate();
           }
         } else {
-          setErrorMsg(payload);
+          console.error("[ORDINAL][MAIN][WORKER_ERROR]", payload);
+          setErrorMsg(getErrorMessage(payload));
           setIsLoading(false);
           worker.terminate();
         }
@@ -209,46 +589,9 @@ const OrdinalMain: React.FC = () => {
         worker.terminate();
       };
 
-      // 🔥 PREPARE DATA
-      const depColIndex = options.dependent.columnIndex;
-
-      if (typeof depColIndex !== "number") {
-        throw new Error("Dependent tidak memiliki columnIndex yang valid.");
-      }
-
-      // gunakan columnIndex untuk semua feature (factors + covariates)
-      const locationFeatures = locationParams.locationModel.length > 0
-        ? locationParams.locationModel
-        : features;
-
-      const featureColIdxs = locationFeatures.map((f) => {
-        const idx = (f as any).columnIndex;
-        if (typeof idx !== "number") {
-          throw new Error(`Feature "${f.name}" tidak memiliki columnIndex yang valid.`);
-        }
-        return idx;
-      });
-
-      const categories = plumPayload.response.orderedCategories;
-
-      const dataset = data.map((row: any) => ({
-        y: row?.[depColIndex],
-        x: featureColIdxs.map((idx) => Number(row?.[idx]) || 0),
-      }));
-
-      const depValues = data.map((row: any) => row?.[depColIndex]);
-      if (depValues.some((v) => v === undefined || v === null || v === "")) {
-        throw new Error("Variabel dependen mengandung nilai kosong (missing). Bersihkan data dulu.");
-      };
-
-      worker.postMessage({
-        payload: plumPayload,
-        data: dataset,
-        featureNames: locationFeatures.map((f) => f.name),
-        iterations: optParams.maxIterations,
-      });
+      worker.postMessage(workerPayload);
     } catch (err: any) {
-      setErrorMsg(err.message);
+      setErrorMsg(getErrorMessage(err));
       setIsLoading(false);
     }
   };

@@ -1,44 +1,49 @@
 use std::collections::HashMap;
 
-use crate::types::{AggregatedData, Category, PlumError, PlumFitInput, ScaleType, Subpopulation};
+use crate::types::{
+    response_categories_to_vec, AggregatedData, Category, PlumError, PlumWorkerPayload, ScaleType,
+    Subpopulation,
+};
 use crate::utils::{is_finite_non_negative, EPS};
 
-pub fn aggregate_data(input: &PlumFitInput) -> Result<AggregatedData, PlumError> {
-    let ordered_categories = &input.payload.response.ordered_categories;
-    let category_count = input.payload.response.category_count;
+pub fn aggregate_data(input: &PlumWorkerPayload) -> Result<AggregatedData, PlumError> {
+    let ordered_categories = response_categories_to_vec(&input.response.response_categories)?;
+    let category_count = input.response.category_count;
     if ordered_categories.len() != category_count {
         return Err(PlumError::DataError(
-            "categoryCount tidak sesuai orderedCategories".to_string(),
+            "categoryCount tidak sesuai responseCategories".to_string(),
         ));
     }
 
-    let scale_type = ScaleType::try_from(input.payload.scale.scale_type.as_str())?;
+    let scale_type = ScaleType::try_from(if input.scale_model.enabled { "non_constant" } else { "unity" })?;
     let mut map: HashMap<String, Subpopulation> = HashMap::new();
 
-    let zero_cell_correction = input
-        .payload
-        .estimation
-        .as_ref()
-        .and_then(|opt| opt.zero_cell_correction)
-        .unwrap_or(0.0)
+    let zero_cell_correction = input.estimation_options.zero_cell_adjustment
         .max(0.0);
 
-    for row in &input.data {
-        let weight = row.w.unwrap_or(1.0);
+    let response_vector = &input.response.response_vector;
+    let location_matrix = &input.location_model.location_design_matrix;
+    let scale_matrix = &input.scale_model.scale_design_matrix;
+
+    for (idx, y) in response_vector.iter().enumerate() {
+        let weight = 1.0;
         if !is_finite_non_negative(weight) {
             continue;
         }
 
-        let x = row.x.clone();
+        let x = location_matrix
+            .get(idx)
+            .ok_or_else(|| PlumError::DataError("X baris tidak tersedia".to_string()))?
+            .clone();
         let z = match scale_type {
             ScaleType::Unity => Vec::new(),
-            ScaleType::NonConstant => row
-                .z
-                .clone()
-                .ok_or_else(|| PlumError::DataError("z tidak tersedia".to_string()))?,
+            ScaleType::NonConstant => scale_matrix
+                .get(idx)
+                .ok_or_else(|| PlumError::DataError("Z baris tidak tersedia".to_string()))?
+                .clone(),
         };
 
-        let category_index = encode_category(row.y, ordered_categories)?;
+        let category_index = encode_category(*y, &ordered_categories)?;
         if category_index >= category_count {
             return Err(PlumError::DataError("Kategori y di luar rentang".to_string()));
         }
@@ -81,7 +86,7 @@ pub fn aggregate_data(input: &PlumFitInput) -> Result<AggregatedData, PlumError>
         subpopulations,
         total_count,
         category_count,
-        ordered_categories: ordered_categories.clone(),
+        ordered_categories,
     })
 }
 

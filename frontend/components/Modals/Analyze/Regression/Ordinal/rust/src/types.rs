@@ -3,94 +3,144 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct PlumFitInput {
-    pub payload: OrdinalPlumPayload,
-    pub data: Vec<PlumDataRow>,
-    pub feature_names: Vec<String>,
-    pub scale_feature_names: Option<Vec<String>>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct PlumDataRow {
-    pub y: f64,
-    pub x: Vec<f64>,
-    pub z: Option<Vec<f64>>,
-    pub w: Option<f64>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct OrdinalPlumPayload {
+pub struct PlumWorkerPayload {
+    #[serde(rename = "analysisType")]
+    pub analysis_type: String,
     pub procedure: String,
     pub version: String,
-    pub response: ResponseSpec,
-    pub model: ModelSpec,
-    pub location: LocationSpec,
-    pub scale: ScaleSpec,
-    pub estimation: Option<EstimationOptionsPayload>,
-    pub output: Option<OutputOptions>,
+    pub response: PlumResponse,
+    #[serde(rename = "locationModel")]
+    pub location_model: PlumLocationModel,
+    #[serde(rename = "scaleModel")]
+    pub scale_model: PlumScaleModel,
+    #[serde(rename = "estimationOptions")]
+    pub estimation_options: PlumEstimationOptions,
+    #[serde(rename = "outputOptions")]
+    pub output_options: serde_json::Value,
+    pub metadata: PlumMetadata,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ResponseSpec {
-    pub variable: String,
-    pub ordered_categories: Vec<Category>,
+pub struct PlumResponse {
+    #[serde(rename = "variableName")]
+    pub variable_name: String,
+    #[serde(rename = "columnIndex")]
+    pub column_index: usize,
+    #[serde(rename = "responseCategories")]
+    pub response_categories: Vec<serde_json::Value>,
+    #[serde(rename = "responseVector")]
+    pub response_vector: Vec<f64>,
+    #[serde(rename = "categoryCount")]
     pub category_count: usize,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ModelSpec {
-    pub model_type: String,
+pub struct PlumLocationModel {
+    pub predictors: Vec<PlumPredictor>,
+    #[serde(rename = "locationDesignMatrix")]
+    pub location_design_matrix: Vec<Vec<f64>>,
+    #[serde(rename = "locationTermNames")]
+    pub location_term_names: Vec<String>,
+    #[serde(rename = "parameterCount")]
+    pub parameter_count: usize,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PlumScaleModel {
+    pub enabled: bool,
+    pub predictors: Vec<PlumPredictor>,
+    #[serde(rename = "scaleDesignMatrix")]
+    pub scale_design_matrix: Vec<Vec<f64>>,
+    #[serde(rename = "scaleTermNames")]
+    pub scale_term_names: Vec<String>,
+    #[serde(rename = "parameterCount")]
+    pub parameter_count: usize,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PlumPredictor {
+    pub name: String,
+    #[serde(rename = "columnIndex")]
+    pub column_index: usize,
+    pub role: String,
+    pub levels: Option<Vec<serde_json::Value>>,
+    #[serde(rename = "referenceCategory")]
+    pub reference_category: Option<serde_json::Value>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PlumEstimationOptions {
+    #[serde(rename = "linkFunction")]
     pub link_function: String,
-    pub parameter_vector: Vec<String>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct LocationSpec {
-    pub variables: Vec<String>,
-    pub parameter_name: String,
-    pub threshold_name: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ScaleSpec {
-    pub scale_type: String,
-    pub variables: Vec<String>,
-    pub parameter_name: String,
+    #[serde(rename = "maxIterations")]
+    pub max_iterations: usize,
+    #[serde(rename = "maxStepHalving")]
+    pub max_step_halving: usize,
+    #[serde(rename = "logLikelihoodTolerance")]
+    pub log_likelihood_tolerance: f64,
+    #[serde(rename = "parameterTolerance")]
+    pub parameter_tolerance: f64,
+    #[serde(rename = "singularityTolerance")]
+    pub singularity_tolerance: f64,
+    #[serde(rename = "confidenceLevel")]
+    pub confidence_level: f64,
+    #[serde(rename = "zeroCellAdjustment")]
+    pub zero_cell_adjustment: f64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct EstimationOptionsPayload {
-    pub method: Option<String>,
-    pub max_iterations: Option<usize>,
-    pub max_step_halving: Option<usize>,
-    pub convergence_tolerance: Option<f64>,
-    pub parameter_tolerance: Option<f64>,
-    pub gradient_tolerance: Option<f64>,
-    pub alpha: Option<f64>,
-    pub zero_cell_correction: Option<f64>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct OutputOptions {
-    pub parameter_estimates: Option<bool>,
+pub struct PlumOutputOptions {
     pub goodness_of_fit: Option<bool>,
-    pub pseudo_r_square: Option<bool>,
+    pub summary_statistics: Option<bool>,
+    pub parameter_estimates: Option<bool>,
+    pub asymptotic_correlation: Option<bool>,
+    pub cell_information: Option<bool>,
     pub test_of_parallel_lines: Option<bool>,
     pub iteration_history: Option<bool>,
-    pub cell_information: Option<bool>,
-    pub covariance_matrix: Option<bool>,
-    pub correlation_matrix: Option<bool>,
+    pub iteration_history_step: Option<usize>,
+    pub predicted_category: Option<bool>,
     pub predicted_probability: Option<bool>,
     pub actual_probability: Option<bool>,
+    pub print_log_likelihood: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PlumMetadata {
+    #[serde(rename = "modelType")]
+    pub model_type: String,
+    #[serde(rename = "totalRows")]
+    pub total_rows: usize,
+    #[serde(rename = "validRows")]
+    pub valid_rows: usize,
+    #[serde(rename = "droppedRows")]
+    pub dropped_rows: usize,
+    #[serde(rename = "responseCategoryCount")]
+    pub response_category_count: usize,
+    #[serde(rename = "locationParameterCount")]
+    pub location_parameter_count: usize,
+    #[serde(rename = "scaleParameterCount")]
+    pub scale_parameter_count: usize,
+    #[serde(rename = "referenceCategories")]
+    pub reference_categories: std::collections::HashMap<String, serde_json::Value>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PlumOutputMetadata {
+    #[serde(rename = "modelType")]
+    pub model_type: String,
+    #[serde(rename = "totalRows")]
+    pub total_rows: usize,
+    #[serde(rename = "validRows")]
+    pub valid_rows: usize,
+    #[serde(rename = "droppedRows")]
+    pub dropped_rows: usize,
+    #[serde(rename = "responseCategoryCount")]
+    pub response_category_count: usize,
+    #[serde(rename = "locationParameterCount")]
+    pub location_parameter_count: usize,
+    #[serde(rename = "scaleParameterCount")]
+    pub scale_parameter_count: usize,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -114,6 +164,34 @@ impl Category {
             Category::Text(v) => v.clone(),
         }
     }
+}
+
+pub fn response_categories_to_vec(
+    values: &[serde_json::Value],
+) -> Result<Vec<Category>, PlumError> {
+    let mut categories = Vec::with_capacity(values.len());
+    for value in values {
+        match value {
+            serde_json::Value::Number(num) => {
+                categories.push(Category::Number(num.as_f64().unwrap_or(0.0)));
+            }
+            serde_json::Value::String(text) => {
+                categories.push(Category::Text(text.clone()));
+            }
+            serde_json::Value::Bool(flag) => {
+                categories.push(Category::Text(flag.to_string()));
+            }
+            serde_json::Value::Null => {
+                return Err(PlumError::InvalidInput(
+                    "responseCategories mengandung null".to_string(),
+                ));
+            }
+            other => {
+                categories.push(Category::Text(other.to_string()));
+            }
+        }
+    }
+    Ok(categories)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -158,38 +236,28 @@ pub struct PlumSpec {
 }
 
 impl PlumSpec {
-    pub fn from_input(input: &PlumFitInput) -> Result<Self, PlumError> {
-        let link_function = LinkFunction::try_from(input.payload.model.link_function.as_str())?;
-        let model_type = ModelType::try_from(input.payload.model.model_type.as_str())?;
-        let scale_type = ScaleType::try_from(input.payload.scale.scale_type.as_str())?;
-
-        let feature_names = if input.feature_names.is_empty() {
-            input.payload.location.variables.clone()
+    pub fn from_input(input: &PlumWorkerPayload) -> Result<Self, PlumError> {
+        let link_function = LinkFunction::try_from(input.estimation_options.link_function.as_str())?;
+        let model_type = ModelType::try_from(input.metadata.model_type.as_str())?;
+        let scale_type = if input.scale_model.enabled {
+            ScaleType::NonConstant
         } else {
-            input.feature_names.clone()
+            ScaleType::Unity
         };
 
-        let scale_feature_names = if let Some(names) = &input.scale_feature_names {
-            if names.is_empty() {
-                input.payload.scale.variables.clone()
-            } else {
-                names.clone()
-            }
-        } else {
-            input.payload.scale.variables.clone()
-        };
+        let ordered_categories = response_categories_to_vec(&input.response.response_categories)?;
 
         Ok(Self {
-            response_variable: input.payload.response.variable.clone(),
-            ordered_categories: input.payload.response.ordered_categories.clone(),
-            category_count: input.payload.response.category_count,
+            response_variable: input.response.variable_name.clone(),
+            ordered_categories,
+            category_count: input.response.category_count,
             link_function,
             model_type,
             scale_type,
-            feature_names,
-            scale_feature_names,
-            location_variables: input.payload.location.variables.clone(),
-            scale_variables: input.payload.scale.variables.clone(),
+            feature_names: input.location_model.location_term_names.clone(),
+            scale_feature_names: input.scale_model.scale_term_names.clone(),
+            location_variables: input.location_model.location_term_names.clone(),
+            scale_variables: input.scale_model.scale_term_names.clone(),
         })
     }
 
@@ -449,22 +517,27 @@ pub struct PredictedCategoryRow {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlumFitOutput {
+    pub converged: bool,
+    pub iterations: usize,
+    pub log_likelihood: f64,
+    pub minus2_log_likelihood: f64,
     pub parameter_estimates: Vec<ParameterEstimateRow>,
+    pub threshold_estimates: Vec<ParameterEstimateRow>,
+    pub location_parameter_estimates: Vec<ParameterEstimateRow>,
+    pub scale_parameter_estimates: Vec<ParameterEstimateRow>,
+    pub iteration_history: Vec<IterationHistoryRow>,
+    pub warnings: Vec<String>,
+    pub metadata: PlumOutputMetadata,
     pub goodness_of_fit: Option<GoodnessOfFit>,
     pub summary_statistics: Option<SummaryStatistics>,
     pub test_of_parallel_lines: Option<ParallelLinesTest>,
-    pub iteration_history: Option<Vec<IterationHistoryRow>>, 
     pub cell_information: Option<Vec<CellInfo>>,
     pub predicted_category: Option<Vec<PredictedCategoryRow>>,
     pub predicted_probability: Option<Vec<ProbabilityRow>>,
     pub actual_probability: Option<Vec<ProbabilityRow>>,
     pub covariance_matrix: Option<Vec<Vec<f64>>>,
     pub correlation_matrix: Option<Vec<Vec<f64>>>,
-    pub log_likelihood: f64,
-    pub converged: bool,
-    pub iterations: usize,
     pub errors: Vec<String>,
-    pub warnings: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -480,33 +553,17 @@ pub struct EstimationOptions {
 }
 
 impl EstimationOptions {
-    pub fn from_payload(payload: Option<&EstimationOptionsPayload>) -> Self {
+    pub fn from_payload(payload: Option<&PlumEstimationOptions>) -> Self {
         let mut options = EstimationOptions::default();
         if let Some(payload) = payload {
-            if let Some(method) = &payload.method {
-                options.method = EstimationMethod::try_from(method.as_str()).unwrap_or(options.method);
-            }
-            if let Some(value) = payload.max_iterations {
-                options.max_iterations = value.max(1);
-            }
-            if let Some(value) = payload.max_step_halving {
-                options.max_step_halving = value.max(1);
-            }
-            if let Some(value) = payload.convergence_tolerance {
-                options.convergence_tolerance = value.max(0.0);
-            }
-            if let Some(value) = payload.parameter_tolerance {
-                options.parameter_tolerance = value.max(0.0);
-            }
-            if let Some(value) = payload.gradient_tolerance {
-                options.gradient_tolerance = value.max(0.0);
-            }
-            if let Some(value) = payload.alpha {
-                options.alpha = value.clamp(0.0, 1.0);
-            }
-            if let Some(value) = payload.zero_cell_correction {
-                options.zero_cell_correction = value.max(0.0);
-            }
+            options.max_iterations = payload.max_iterations.max(1);
+            options.max_step_halving = payload.max_step_halving;
+            options.convergence_tolerance = payload.log_likelihood_tolerance.max(0.0);
+            options.parameter_tolerance = payload.parameter_tolerance.max(0.0);
+            options.gradient_tolerance = payload.parameter_tolerance.max(0.0);
+            let alpha = 1.0 - (payload.confidence_level / 100.0);
+            options.alpha = alpha.clamp(0.0, 1.0);
+            options.zero_cell_correction = payload.zero_cell_adjustment.max(0.0);
         }
         options
     }
@@ -545,11 +602,13 @@ impl TryFrom<&str> for LinkFunction {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
-            "logit" => Ok(LinkFunction::Logit),
-            "probit" => Ok(LinkFunction::Probit),
-            "cloglog" => Ok(LinkFunction::ComplementaryLogLog),
-            "nloglog" => Ok(LinkFunction::NegativeLogLog),
-            "cauchit" => Ok(LinkFunction::Cauchit),
+            "logit" | "Logit" => Ok(LinkFunction::Logit),
+            "probit" | "Probit" => Ok(LinkFunction::Probit),
+            "cloglog" | "complementary_log_log" | "Complementary Log-Log" => {
+                Ok(LinkFunction::ComplementaryLogLog)
+            }
+            "nloglog" | "negative_log_log" | "Negative Log-Log" => Ok(LinkFunction::NegativeLogLog),
+            "cauchit" | "Cauchit" => Ok(LinkFunction::Cauchit),
             _ => Err(PlumError::InvalidInput(format!(
                 "Link function tidak dikenal: {value}"
             ))),
@@ -562,7 +621,7 @@ impl TryFrom<&str> for ModelType {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
-            "location_only" => Ok(ModelType::LocationOnly),
+            "location_only" | "location-only" => Ok(ModelType::LocationOnly),
             "general" => Ok(ModelType::General),
             _ => Err(PlumError::InvalidInput(format!(
                 "Model type tidak dikenal: {value}"
@@ -577,7 +636,7 @@ impl TryFrom<&str> for ScaleType {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
             "unity" => Ok(ScaleType::Unity),
-            "nonconstant" => Ok(ScaleType::NonConstant),
+            "nonconstant" | "non_constant" => Ok(ScaleType::NonConstant),
             _ => Err(PlumError::InvalidInput(format!(
                 "Scale type tidak dikenal: {value}"
             ))),

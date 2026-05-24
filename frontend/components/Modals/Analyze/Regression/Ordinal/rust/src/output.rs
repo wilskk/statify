@@ -6,44 +6,52 @@ use crate::statistics::{
     predicted_probabilities,
 };
 use crate::types::{
-    EstimationOptions, FitResult, ModelType, PlumError, PlumFitInput, PlumFitOutput, PlumSpec,
+    EstimationOptions, FitResult, ModelType, PlumError, PlumFitOutput, PlumOutputMetadata,
+    PlumOutputOptions, PlumSpec, PlumWorkerPayload,
 };
 use crate::validation::validate_input;
 
 pub fn build_plum_output(
-    input: &PlumFitInput,
+    input: &PlumWorkerPayload,
     data: &crate::types::AggregatedData,
     spec: &PlumSpec,
     fit: &FitResult,
 ) -> Result<PlumFitOutput, PlumError> {
-    let output_options = input.payload.output.as_ref();
+    let output_options: Option<PlumOutputOptions> =
+        serde_json::from_value(input.output_options.clone()).ok();
     let default_all = output_options.is_none();
 
     let want_goodness = output_options
+        .as_ref()
         .and_then(|opt| opt.goodness_of_fit)
         .unwrap_or(default_all);
     let want_summary = output_options
-        .and_then(|opt| opt.pseudo_r_square)
+        .as_ref()
+        .and_then(|opt| opt.summary_statistics)
         .unwrap_or(default_all);
     let want_iteration = output_options
+        .as_ref()
         .and_then(|opt| opt.iteration_history)
         .unwrap_or(default_all);
     let want_cell_info = output_options
+        .as_ref()
         .and_then(|opt| opt.cell_information)
         .unwrap_or(false);
     let want_predicted_prob = output_options
+        .as_ref()
         .and_then(|opt| opt.predicted_probability)
         .unwrap_or(false);
     let want_actual_prob = output_options
+        .as_ref()
         .and_then(|opt| opt.actual_probability)
         .unwrap_or(false);
     let want_covariance = output_options
-        .and_then(|opt| opt.covariance_matrix)
+        .as_ref()
+        .and_then(|opt| opt.asymptotic_correlation)
         .unwrap_or(default_all);
-    let want_correlation = output_options
-        .and_then(|opt| opt.correlation_matrix)
-        .unwrap_or(default_all);
+    let want_correlation = want_covariance;
     let want_parallel = output_options
+        .as_ref()
         .and_then(|opt| opt.test_of_parallel_lines)
         .unwrap_or(false);
 
@@ -73,9 +81,25 @@ pub fn build_plum_output(
     fit_with_cov.covariance = covariance.clone();
     fit_with_cov.correlation = correlation.clone();
 
-    let alpha = EstimationOptions::from_payload(input.payload.estimation.as_ref()).alpha;
+    let alpha = EstimationOptions::from_payload(Some(&input.estimation_options)).alpha;
     let (parameter_estimates, mut param_warn) = parameter_statistics(&fit_with_cov, spec, alpha);
     warnings.append(&mut param_warn);
+
+    let threshold_estimates: Vec<_> = parameter_estimates
+        .iter()
+        .filter(|row| row.group == "Threshold")
+        .cloned()
+        .collect();
+    let location_parameter_estimates: Vec<_> = parameter_estimates
+        .iter()
+        .filter(|row| row.group == "Location")
+        .cloned()
+        .collect();
+    let scale_parameter_estimates: Vec<_> = parameter_estimates
+        .iter()
+        .filter(|row| row.group == "Scale")
+        .cloned()
+        .collect();
 
     let goodness = if want_goodness {
         let (gof, mut gof_warn) = goodness_of_fit(&fit_with_cov, data, spec);
@@ -87,7 +111,7 @@ pub fn build_plum_output(
 
     let summary = if want_summary {
         let intercept_spec = intercept_only_spec(spec);
-        let options = EstimationOptions::from_payload(input.payload.estimation.as_ref());
+        let options = EstimationOptions::from_payload(Some(&input.estimation_options));
         let intercept_fit = fit_location_only(data, &intercept_spec, &options)?;
         Some(model_fit_statistics(
             &fit_with_cov,
@@ -131,7 +155,7 @@ pub fn build_plum_output(
     };
 
     let test_of_parallel_lines = if want_parallel && spec.model_type == ModelType::LocationOnly {
-        let options = EstimationOptions::from_payload(input.payload.estimation.as_ref());
+        let options = EstimationOptions::from_payload(Some(&input.estimation_options));
         match fit_non_parallel_location_only(data, spec, &options) {
             Ok(non_parallel_fit) => {
                 let test = crate::parallel::test_parallel_lines(
@@ -151,23 +175,38 @@ pub fn build_plum_output(
         None
     };
 
+    let metadata = PlumOutputMetadata {
+        model_type: input.metadata.model_type.clone(),
+        total_rows: input.metadata.total_rows,
+        valid_rows: input.metadata.valid_rows,
+        dropped_rows: input.metadata.dropped_rows,
+        response_category_count: input.metadata.response_category_count,
+        location_parameter_count: input.metadata.location_parameter_count,
+        scale_parameter_count: input.metadata.scale_parameter_count,
+    };
+
     Ok(PlumFitOutput {
+        converged: fit.converged,
+        iterations: fit.iterations,
+        log_likelihood: fit.log_likelihood,
+        minus2_log_likelihood: fit.minus2_log_likelihood,
         parameter_estimates,
+        threshold_estimates,
+        location_parameter_estimates,
+        scale_parameter_estimates,
+        iteration_history: iteration_history.unwrap_or_else(|| Vec::new()),
+        warnings,
+        metadata,
         goodness_of_fit: goodness,
         summary_statistics: summary,
         test_of_parallel_lines,
-        iteration_history,
         cell_information,
         predicted_category,
         predicted_probability,
         actual_probability,
         covariance_matrix: covariance.map(|m| matrix_to_vec(&m)),
         correlation_matrix: correlation.map(|m| matrix_to_vec(&m)),
-        log_likelihood: fit.log_likelihood,
-        converged: fit.converged,
-        iterations: fit.iterations,
         errors: Vec::new(),
-        warnings,
     })
 }
 
