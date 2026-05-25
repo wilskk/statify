@@ -1,49 +1,74 @@
-use statify_ordinal::{validate_input, Category, PlumFitInput};
+use std::collections::HashMap;
 
-fn base_input() -> PlumFitInput {
-    PlumFitInput {
-        payload: statify_ordinal::OrdinalPlumPayload {
-            procedure: "PLUM".to_string(),
-            version: "plum-v1".to_string(),
-            response: statify_ordinal::ResponseSpec {
-                variable: "y".to_string(),
-                ordered_categories: vec![Category::Number(1.0), Category::Number(2.0)],
-                category_count: 2,
-            },
-            model: statify_ordinal::ModelSpec {
-                model_type: "location_only".to_string(),
-                link_function: "logit".to_string(),
-                parameter_vector: Vec::new(),
-            },
-            location: statify_ordinal::LocationSpec {
-                variables: vec!["x1".to_string()],
-                parameter_name: "beta".to_string(),
-                threshold_name: "theta".to_string(),
-            },
-            scale: statify_ordinal::ScaleSpec {
-                scale_type: "unity".to_string(),
-                variables: Vec::new(),
-                parameter_name: "tau".to_string(),
-            },
-            estimation: None,
-            output: None,
+use statify_ordinal::{
+    validate_input, PlumEstimationOptions, PlumLocationModel, PlumMetadata, PlumPredictor,
+    PlumResponse, PlumScaleModel, PlumWorkerPayload,
+};
+use serde_json::json;
+
+fn base_input() -> PlumWorkerPayload {
+    let response_vector = vec![1.0];
+    let location_design_matrix = vec![vec![0.0]];
+
+    PlumWorkerPayload {
+        analysis_type: "ORDINAL_REGRESSION_PLUM".to_string(),
+        procedure: "PLUM".to_string(),
+        version: "plum-v1".to_string(),
+        response: PlumResponse {
+            variable_name: "y".to_string(),
+            column_index: 0,
+            response_categories: vec![json!(1.0), json!(2.0)],
+            response_vector: response_vector.clone(),
+            category_count: 2,
         },
-        data: vec![statify_ordinal::PlumDataRow {
-            y: 1.0,
-            x: vec![0.0],
-            z: None,
-            w: None,
-        }],
-        feature_names: vec!["x1".to_string()],
-        scale_feature_names: None,
+        location_model: PlumLocationModel {
+            predictors: vec![PlumPredictor {
+                name: "x1".to_string(),
+                column_index: 0,
+                role: "continuous".to_string(),
+                levels: None,
+                reference_category: None,
+            }],
+            location_design_matrix: location_design_matrix.clone(),
+            location_term_names: vec!["x1".to_string()],
+            parameter_count: 1,
+        },
+        scale_model: PlumScaleModel {
+            enabled: false,
+            predictors: Vec::new(),
+            scale_design_matrix: Vec::new(),
+            scale_term_names: Vec::new(),
+            parameter_count: 0,
+        },
+        estimation_options: PlumEstimationOptions {
+            link_function: "Logit".to_string(),
+            max_iterations: 50,
+            max_step_halving: 10,
+            log_likelihood_tolerance: 1e-6,
+            parameter_tolerance: 1e-6,
+            singularity_tolerance: 1e-6,
+            confidence_level: 95.0,
+            zero_cell_adjustment: 0.0,
+        },
+        output_options: serde_json::Value::Null,
+        metadata: PlumMetadata {
+            model_type: "location_only".to_string(),
+            total_rows: response_vector.len(),
+            valid_rows: response_vector.len(),
+            dropped_rows: 0,
+            response_category_count: 2,
+            location_parameter_count: 1,
+            scale_parameter_count: 0,
+            reference_categories: HashMap::new(),
+        },
     }
 }
 
 #[test]
 fn validation_fails_on_category_count() {
     let mut input = base_input();
-    input.payload.response.ordered_categories = vec![Category::Number(1.0)];
-    input.payload.response.category_count = 1;
+    input.response.response_categories = vec![json!(1.0)];
+    input.response.category_count = 1;
     let result = validate_input(&input);
     assert!(!result.valid);
 }
@@ -51,7 +76,7 @@ fn validation_fails_on_category_count() {
 #[test]
 fn validation_fails_on_x_length() {
     let mut input = base_input();
-    input.data[0].x = vec![0.0, 1.0];
+    input.location_model.location_design_matrix = vec![vec![0.0, 1.0]];
     let result = validate_input(&input);
     assert!(!result.valid);
 }
@@ -59,8 +84,9 @@ fn validation_fails_on_x_length() {
 #[test]
 fn validation_fails_on_missing_z_for_nonconstant() {
     let mut input = base_input();
-    input.payload.scale.scale_type = "nonconstant".to_string();
-    input.payload.scale.variables = vec!["z1".to_string()];
+    input.scale_model.enabled = true;
+    input.scale_model.scale_design_matrix = Vec::new();
+    input.scale_model.scale_term_names = vec!["z1".to_string()];
     let result = validate_input(&input);
     assert!(!result.valid);
 }

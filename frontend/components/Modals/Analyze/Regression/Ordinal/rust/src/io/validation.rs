@@ -63,7 +63,7 @@ pub fn validate_input(input: &PlumWorkerPayload) -> PlumValidationResult {
         errors.push("jumlah kolom X tidak sama dengan locationTermNames".to_string());
     }
 
-    let mut x_columns: Vec<Vec<f64>> = vec![Vec::new(); location_len];
+    let mut x_columns: Vec<Vec<f64>> = vec![Vec::new(); expected_cols.max(1)];
     for (row_index, row) in location_matrix.iter().enumerate() {
         if row.len() != expected_cols {
             errors.push(format!("Panjang row X tidak konsisten pada baris {row_index}"));
