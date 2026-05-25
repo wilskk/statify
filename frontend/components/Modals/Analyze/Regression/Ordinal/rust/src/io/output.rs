@@ -45,10 +45,15 @@ pub fn build_plum_output(
         .as_ref()
         .and_then(|opt| opt.actual_probability)
         .unwrap_or(false);
+    let want_parameters = output_options
+        .as_ref()
+        .and_then(|opt| opt.parameter_estimates)
+        .unwrap_or(default_all);
     let want_covariance = output_options
         .as_ref()
         .and_then(|opt| opt.asymptotic_correlation)
-        .unwrap_or(default_all);
+        .unwrap_or(default_all)
+        || want_parameters;
     let want_correlation = want_covariance;
     let want_parallel = output_options
         .as_ref()
