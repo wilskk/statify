@@ -78,6 +78,7 @@ function validateMainPlumPayload(payload) {
 
   const responseVector = payload?.response?.responseVector;
   const responseCategories = payload?.response?.responseCategories;
+  const weights = Array.isArray(payload?.weights) ? payload.weights : null;
   if (!Array.isArray(responseVector) || responseVector.length === 0) {
     throw new Error("Payload PLUM tidak valid: missing response.responseVector.");
   }
@@ -99,6 +100,9 @@ function validateMainPlumPayload(payload) {
 
   if (locationDesignMatrix.length !== responseVector.length) {
     throw new Error("Payload PLUM tidak valid: jumlah baris X != panjang responseVector.");
+  }
+  if (weights && weights.length !== responseVector.length) {
+    throw new Error("Payload PLUM tidak valid: panjang weights tidak sama dengan responseVector.");
   }
 
   const expectedColumns = locationDesignMatrix[0].length;
@@ -122,6 +126,14 @@ function validateMainPlumPayload(payload) {
       throw new Error("responseVector contains values outside 1..J.");
     }
   });
+  if (weights) {
+    weights.forEach((value, index) => {
+      const numeric = toFiniteNumber(value, `weights[${index}]`);
+      if (numeric <= 0) {
+        throw new Error("weights must be positive for valid cases.");
+      }
+    });
+  }
 
   const scaleEnabled = Boolean(payload?.scaleModel?.enabled);
   const scaleDesignMatrix = payload?.scaleModel?.scaleDesignMatrix || [];
@@ -265,6 +277,7 @@ function normalizeWasmResult(result, mainPayload) {
     responseCategoryCount: mainPayload?.metadata?.responseCategoryCount,
     locationParameterCount: mainPayload?.metadata?.locationParameterCount,
     scaleParameterCount: mainPayload?.metadata?.scaleParameterCount,
+    caseProcessingSummary: mainPayload?.metadata?.caseProcessingSummary,
   };
 
   return {

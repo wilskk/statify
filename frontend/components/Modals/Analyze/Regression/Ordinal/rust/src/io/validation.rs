@@ -48,6 +48,7 @@ pub fn validate_input(input: &PlumWorkerPayload) -> PlumValidationResult {
     let mut total_weight = 0.0;
 
     let response_vector = &input.response.response_vector;
+    let weights = input.weights.as_ref();
     let location_matrix = &input.location_model.location_design_matrix;
     let scale_matrix = &input.scale_model.scale_design_matrix;
 
@@ -109,7 +110,19 @@ pub fn validate_input(input: &PlumWorkerPayload) -> PlumValidationResult {
             errors.push("responseVector di luar rentang 1..J".to_string());
             break;
         }
-        let weight = 1.0;
+        let weight = if let Some(w) = weights {
+            if w.len() != response_vector.len() {
+                errors.push("panjang weights tidak sama dengan responseVector".to_string());
+                break;
+            }
+            w[idx]
+        } else {
+            1.0
+        };
+        if !weight.is_finite() || weight <= 0.0 {
+            errors.push(format!("weights tidak valid pada index {idx}"));
+            break;
+        }
         total_weight += weight;
         let encoded = (*value).round() as usize;
         if encoded > 0 && encoded <= category_counts.len() {

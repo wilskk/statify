@@ -93,6 +93,58 @@ export const formatOrdinalResult = (result: any) => {
 
   if (!result) return { sections: allSections };
 
+  // 0. Case Processing Summary
+  if (result.summaryStatistics && result.metadata?.caseProcessingSummary) {
+    const summary = result.metadata.caseProcessingSummary;
+    const total = Number(summary.totalN ?? 0);
+    const valid = Number(summary.validN ?? 0);
+    const missing = Number(summary.missingN ?? Math.max(0, total - valid));
+    const totalSafe = total > 0 ? total : valid + missing;
+    const variableLabel = summary.variableLabel || "Ordinal Regression";
+
+    const columnHeaders = [
+      { header: "N", key: "n" },
+      { header: "Percent", key: "percent" },
+    ];
+
+    const rows = Array.isArray(summary.categories)
+      ? summary.categories.map((category: any) => ({
+        rowHeader: [variableLabel, String(category.label ?? "")],
+        n: Number(category.n ?? 0),
+        percent: valid > 0 ? `${(((category.n ?? 0) / valid) * 100).toFixed(1)}%` : "0.0%",
+      }))
+      : [];
+
+    rows.push({
+      rowHeader: ["Overall", "Valid"],
+      n: valid,
+      percent: totalSafe > 0 ? `${((valid / totalSafe) * 100).toFixed(1)}%` : "0.0%",
+    });
+
+    rows.push({
+      rowHeader: ["Overall", "Missing"],
+      n: missing,
+      percent: totalSafe > 0 ? `${((missing / totalSafe) * 100).toFixed(1)}%` : "0.0%",
+    });
+
+    rows.push({
+      rowHeader: ["Overall", "Total"],
+      n: totalSafe,
+      percent: "100.0%",
+    });
+
+    allSections.push(
+      createSection(
+        "ordinal_case_processing_summary",
+        "Case Processing Summary",
+        { columnHeaders, rows },
+        {
+          description: "Ringkasan jumlah kasus valid dan missing dalam analisis.",
+        }
+      )
+    );
+  }
+
   // 1. Model Fitting Information
   if (result.summaryStatistics) {
     const sumStats = result.summaryStatistics;

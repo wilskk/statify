@@ -8,6 +8,8 @@ pub struct PlumWorkerPayload {
     pub analysis_type: String,
     pub procedure: String,
     pub version: String,
+    #[serde(default)]
+    pub weights: Option<Vec<f64>>,
     pub response: PlumResponse,
     #[serde(rename = "locationModel")]
     pub location_model: PlumLocationModel,

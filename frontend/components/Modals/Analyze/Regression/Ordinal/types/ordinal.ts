@@ -125,6 +125,7 @@ export interface PlumOutputOptions {
 export interface OrdinalPlumPayload {
   procedure: "PLUM";
   version: "plum-v1";
+  weights?: number[];
   response: {
     variable: string;
     orderedCategories: Array<string | number>;

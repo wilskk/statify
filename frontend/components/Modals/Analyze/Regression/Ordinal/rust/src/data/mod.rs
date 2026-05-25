@@ -22,12 +22,19 @@ pub fn aggregate_data(input: &PlumWorkerPayload) -> Result<AggregatedData, PlumE
         .max(0.0);
 
     let response_vector = &input.response.response_vector;
+    let weights = input.weights.as_ref();
     let location_matrix = &input.location_model.location_design_matrix;
     let scale_matrix = &input.scale_model.scale_design_matrix;
 
     for (idx, y) in response_vector.iter().enumerate() {
-        let weight = 1.0;
+        let weight = match weights {
+            Some(w) => *w.get(idx).unwrap_or(&0.0),
+            None => 1.0,
+        };
         if !is_finite_non_negative(weight) {
+            continue;
+        }
+        if weight <= 0.0 {
             continue;
         }
 

@@ -11,7 +11,7 @@ import { Variable } from "@/types/Variable";
 // Stores & Hooks
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useModalStore } from "@/stores/useModalStore";
-import { useDataStore } from "@/stores/useDataStore";
+import { useAnalysisData } from "@/hooks/useAnalysisData";
 import { useResultStore } from "@/stores/useResultStore";
 
 // Components
@@ -93,7 +93,7 @@ const OrdinalMain: React.FC = () => {
     return variablesFromStore.filter((v) => !selectedIds.has(v.id));
   }, [variablesFromStore, options]);
 
-  const { data } = useDataStore();
+  const { data, weights } = useAnalysisData();
   const { addLog, addAnalytic, addStatistic } = useResultStore();
 
   // ==================================================
@@ -282,13 +282,22 @@ const OrdinalMain: React.FC = () => {
       // ==================================================
       const totalRows = data.length;
       const validRows: any[] = [];
+      const validWeights: number[] = [];
       const droppedRows: any[] = [];
+      let totalWeightAll = 0;
 
-      for (const row of data) {
+      for (let rowIndex = 0; rowIndex < data.length; rowIndex += 1) {
+        const row = data[rowIndex];
+        const weight = weights[rowIndex] ?? 1;
         if (!isValidRow(row)) {
           droppedRows.push(row);
           continue;
         }
+        if (typeof weight !== "number" || !Number.isFinite(weight) || weight <= 0) {
+          droppedRows.push(row);
+          continue;
+        }
+        totalWeightAll += weight;
 
         const responseValue = getRowValue(row, responseVariable.columnIndex);
         if (isMissingValue(responseValue)) {
@@ -328,6 +337,7 @@ const OrdinalMain: React.FC = () => {
 
         if (rowValid) {
           validRows.push(row);
+          validWeights.push(weight);
         } else {
           droppedRows.push(row);
         }
@@ -376,6 +386,16 @@ const OrdinalMain: React.FC = () => {
       console.log("[ORDINAL][MAIN][RESPONSE]", {
         responseCategories,
         responseVector,
+      });
+
+      const validWeightTotal = validWeights.reduce((acc, w) => acc + w, 0);
+      const missingWeightTotal = Math.max(0, totalWeightAll - validWeightTotal);
+      const categoryCounts = Array(responseCategories.length).fill(0) as number[];
+      responseVector.forEach((value, index) => {
+        const categoryIndex = Math.round(Number(value)) - 1;
+        if (categoryIndex >= 0 && categoryIndex < categoryCounts.length) {
+          categoryCounts[categoryIndex] += validWeights[index] ?? 0;
+        }
       });
 
       // ==================================================
@@ -496,6 +516,7 @@ const OrdinalMain: React.FC = () => {
         analysisType: "ORDINAL_REGRESSION_PLUM",
         procedure: "PLUM",
         version: "plum-v1",
+        weights: validWeights,
         response: {
           variableName: responseVariable.name,
           columnIndex: responseVariable.columnIndex,
@@ -573,11 +594,25 @@ const OrdinalMain: React.FC = () => {
           locationParameterCount: locationTermNames.length,
           scaleParameterCount: scaleTermNames.length,
           referenceCategories,
+          caseProcessingSummary: {
+            variableLabel: responseVariable.label || responseVariable.name,
+            categories: responseCategories.map((category, index) => ({
+              label: String(category),
+              n: categoryCounts[index] ?? 0,
+              percent: validWeightTotal > 0 ? (categoryCounts[index] ?? 0) / validWeightTotal : 0,
+            })),
+            validN: validWeightTotal,
+            missingN: missingWeightTotal,
+            totalN: totalWeightAll || validWeightTotal,
+          },
         },
       };
 
       if (workerPayload.response.responseVector.length !== workerPayload.locationModel.locationDesignMatrix.length) {
         throw new Error("Response vector length does not match location design matrix rows.");
+      }
+      if (workerPayload.weights.length !== workerPayload.response.responseVector.length) {
+        throw new Error("Weights length does not match response vector length.");
       }
       if (workerPayload.locationModel.locationTermNames.length !== workerPayload.locationModel.locationDesignMatrix[0].length) {
         throw new Error("Location term names length does not match design matrix columns.");
