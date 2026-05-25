@@ -62,12 +62,21 @@ pub struct PlumScaleModel {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PlumPredictor {
     pub name: String,
-    #[serde(rename = "columnIndex")]
-    pub column_index: usize,
+    #[serde(rename = "columnIndex", default)]
+    pub column_index: Option<usize>,
     pub role: String,
     pub levels: Option<Vec<serde_json::Value>>,
     #[serde(rename = "referenceCategory")]
     pub reference_category: Option<serde_json::Value>,
+    #[serde(default)]
+    pub variables: Option<Vec<PlumPredictorVariable>>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PlumPredictorVariable {
+    pub name: String,
+    #[serde(rename = "columnIndex", default)]
+    pub column_index: Option<usize>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

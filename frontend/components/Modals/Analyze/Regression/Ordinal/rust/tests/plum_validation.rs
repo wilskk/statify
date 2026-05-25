@@ -25,10 +25,11 @@ fn base_input() -> PlumWorkerPayload {
         location_model: PlumLocationModel {
             predictors: vec![PlumPredictor {
                 name: "x1".to_string(),
-                column_index: 0,
+                column_index: Some(0),
                 role: "continuous".to_string(),
                 levels: None,
                 reference_category: None,
+                variables: None,
             }],
             location_design_matrix: location_design_matrix.clone(),
             location_term_names: vec!["x1".to_string()],
