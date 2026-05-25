@@ -27,6 +27,7 @@ fn build_input() -> PlumWorkerPayload {
         analysis_type: "ORDINAL_REGRESSION_PLUM".to_string(),
         procedure: "PLUM".to_string(),
         version: "plum-v1".to_string(),
+        weights: None,
         response: PlumResponse {
             variable_name: "y".to_string(),
             column_index: 0,
