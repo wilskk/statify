@@ -296,6 +296,10 @@ function normalizeWasmResult(result, mainPayload) {
     caseProcessingSummary: mainPayload?.metadata?.caseProcessingSummary,
   };
 
+  const iterationHistoryMeta = base.iterationHistoryMeta
+    || base.iteration_history_meta
+    || null;
+
   return {
     ...base,
     converged: Boolean(base.converged ?? base.convergence ?? false),
@@ -312,6 +316,7 @@ function normalizeWasmResult(result, mainPayload) {
     locationParameterEstimates,
     scaleParameterEstimates,
     iterationHistory: Array.isArray(base.iterationHistory) ? base.iterationHistory : (base.iteration_history || []),
+    iterationHistoryMeta,
     warnings: Array.isArray(base.warnings) ? base.warnings : [],
     metadata,
   };
@@ -339,6 +344,18 @@ self.onmessage = async (event) => {
   try {
     const mainPayload = event.data;
     const wasmPath = event.data?.wasmPath || mainPayload?.wasmPath;
+    const outputOptions = mainPayload?.outputOptions || {};
+    const printIterationHistory = Boolean(
+      outputOptions?.printIterationHistory ?? outputOptions?.iterationHistory
+    );
+    const iterationHistoryEvery = Number(
+      outputOptions?.iterationHistoryEvery ?? outputOptions?.iterationHistoryStep ?? 1
+    );
+
+    console.log("[ORDINAL][WORKER][ITERATION_HISTORY_OPTIONS]", {
+      printIterationHistory,
+      iterationHistoryEvery,
+    });
 
     validateMainPlumPayload(mainPayload);
     console.log("[ORDINAL][WORKER][PAYLOAD_VALID]", {
@@ -371,6 +388,10 @@ self.onmessage = async (event) => {
 
     const normalizedResult = normalizeWasmResult(parsedResult, mainPayload);
     console.log("[ORDINAL][WORKER][NORMALIZED_RESULT]", normalizedResult);
+    console.log("[ORDINAL][WORKER][ITERATION_HISTORY_RESULT]", {
+      rows: Array.isArray(normalizedResult.iterationHistory) ? normalizedResult.iterationHistory.length : 0,
+      meta: normalizedResult.iterationHistoryMeta || null,
+    });
 
     validateNormalizedResult(normalizedResult);
 

@@ -5,20 +5,21 @@ use nalgebra::{DMatrix, DVector};
 use crate::derivatives::{expected_information, gradient, hessian};
 use crate::likelihood::log_likelihood;
 use crate::types::{
-    EstimationMethod, EstimationOptions, FitResult, IterationHistoryRow, IterationState,
-    PlumError, PlumParameters, PlumSpec, ScaleType, StepResult,
+    EstimationMethod, EstimationOptions, FitResult, IterationHistoryOptions, IterationHistoryRow,
+    IterationState, PlumError, PlumParameters, PlumSpec, ScaleType, StepResult,
 };
-use crate::utils::{clamp_prob, max_abs, max_abs_vector};
+use crate::utils::{clamp_prob, max_abs_vector};
 
 pub fn fit_plum(
     data: &crate::types::AggregatedData,
     spec: &PlumSpec,
     options: &EstimationOptions,
+    history_options: &IterationHistoryOptions,
 ) -> Result<FitResult, PlumError> {
     if spec.is_location_only() {
-        fit_location_only(data, spec, options)
+        fit_location_only(data, spec, options, history_options)
     } else {
-        fit_general(data, spec, options)
+        fit_general(data, spec, options, history_options)
     }
 }
 
@@ -26,95 +27,25 @@ pub fn fit_location_only(
     data: &crate::types::AggregatedData,
     spec: &PlumSpec,
     options: &EstimationOptions,
+    history_options: &IterationHistoryOptions,
 ) -> Result<FitResult, PlumError> {
     let mut params = starting_values_location_only(data, spec);
     let mut history = Vec::new();
     let warnings = Vec::new();
     let mut converged = false;
     let mut info_matrix: Option<DMatrix<f64>> = None;
+    let mut iterations_run = 0;
+    let mut last_abs_change_minus2_log_likelihood = None;
+    let mut last_max_abs_change_parameters = None;
+    let mut last_step_halvings = 0;
+    let history_every = history_options.every.max(1);
 
     let mut prev_state = None;
 
-    for iter in 0..options.max_iterations {
-        let ll = log_likelihood(&params, data, spec);
-        let grad = gradient(&params, data, spec);
-
-        let information = match options.method {
-            EstimationMethod::FisherScoring => expected_information(&params, data, spec),
-            EstimationMethod::NewtonRaphson => -hessian(&params, data, spec),
-        };
-
-        info_matrix = Some(information.clone());
-
-        let delta = solve_linear_system(&information, &grad)
-            .ok_or_else(|| PlumError::OptimizationError("Matrix singular".to_string()))?;
-
-        let step_result = step_halving(
-            &params,
-            &delta,
-            ll,
-            data,
-            spec,
-            options,
-        );
-
-        params = step_result.params.clone();
-
-        history.push(IterationHistoryRow {
-            iteration: iter + 1,
-            log_likelihood: step_result.log_likelihood,
-            minus2_log_likelihood: -2.0 * step_result.log_likelihood,
-            step: step_result.step,
-            max_abs_gradient: max_abs_vector(&grad),
-            max_abs_delta: max_abs(step_result.delta.as_slice()),
-            threshold_adjustments: step_result.threshold_adjustments,
-        });
-
-        let next_state = IterationState {
-            log_likelihood: step_result.log_likelihood,
-            params: params.clone(),
-            gradient: grad.clone(),
-        };
-
-        if let Some(prev) = &prev_state {
-            if has_converged(prev, &next_state, options) {
-                converged = true;
-                break;
-            }
-        }
-        prev_state = Some(next_state);
+    let initial_ll = log_likelihood(&params, data, spec);
+    if history_options.enabled {
+        push_iteration_history(&mut history, 0, 0, initial_ll, &params);
     }
-
-    let final_ll = log_likelihood(&params, data, spec);
-
-    Ok(FitResult {
-        params,
-        information: info_matrix,
-        covariance: None,
-        correlation: None,
-        log_likelihood: final_ll,
-        minus2_log_likelihood: -2.0 * final_ll,
-        converged,
-        iterations: history.len(),
-        iteration_history: history,
-        warnings,
-    })
-}
-
-pub fn fit_general(
-    data: &crate::types::AggregatedData,
-    spec: &PlumSpec,
-    options: &EstimationOptions,
-) -> Result<FitResult, PlumError> {
-    let location_spec = spec.as_location_only();
-    let location_fit = fit_location_only(data, &location_spec, options)?;
-    let mut params = starting_values_general(&location_fit, spec);
-
-    let mut history = Vec::new();
-    let warnings = Vec::new();
-    let mut converged = false;
-    let mut info_matrix: Option<DMatrix<f64>> = None;
-    let mut prev_state = None;
 
     for iter in 0..options.max_iterations {
         let ll = log_likelihood(&params, data, spec);
@@ -133,16 +64,8 @@ pub fn fit_general(
         let step_result = step_halving(&params, &delta, ll, data, spec, options);
 
         params = step_result.params.clone();
-
-        history.push(IterationHistoryRow {
-            iteration: iter + 1,
-            log_likelihood: step_result.log_likelihood,
-            minus2_log_likelihood: -2.0 * step_result.log_likelihood,
-            step: step_result.step,
-            max_abs_gradient: max_abs_vector(&grad),
-            max_abs_delta: max_abs(step_result.delta.as_slice()),
-            threshold_adjustments: step_result.threshold_adjustments,
-        });
+        iterations_run = iter + 1;
+        last_step_halvings = step_result.step_halving_count;
 
         let next_state = IterationState {
             log_likelihood: step_result.log_likelihood,
@@ -151,15 +74,43 @@ pub fn fit_general(
         };
 
         if let Some(prev) = &prev_state {
+            let ll_diff = (next_state.log_likelihood - prev.log_likelihood).abs();
+            let delta_max = max_parameter_delta(&prev.params, &next_state.params);
+            last_abs_change_minus2_log_likelihood = Some(ll_diff * 2.0);
+            last_max_abs_change_parameters = Some(delta_max);
             if has_converged(prev, &next_state, options) {
                 converged = true;
                 break;
             }
         }
         prev_state = Some(next_state);
+
+        if history_options.enabled && (iterations_run % history_every == 0) {
+            push_iteration_history(
+                &mut history,
+                iterations_run,
+                step_result.step_halving_count,
+                step_result.log_likelihood,
+                &params,
+            );
+        }
     }
 
     let final_ll = log_likelihood(&params, data, spec);
+
+    if history_options.enabled {
+        let final_iteration = iterations_run;
+        let last_logged = history.last().map(|row| row.iteration);
+        if last_logged != Some(final_iteration) {
+            push_iteration_history(
+                &mut history,
+                final_iteration,
+                last_step_halvings,
+                final_ll,
+                &params,
+            );
+        }
+    }
 
     Ok(FitResult {
         params,
@@ -169,8 +120,118 @@ pub fn fit_general(
         log_likelihood: final_ll,
         minus2_log_likelihood: -2.0 * final_ll,
         converged,
-        iterations: history.len(),
+        iterations: iterations_run,
         iteration_history: history,
+        last_abs_change_minus2_log_likelihood,
+        last_max_abs_change_parameters,
+        warnings,
+    })
+}
+
+pub fn fit_general(
+    data: &crate::types::AggregatedData,
+    spec: &PlumSpec,
+    options: &EstimationOptions,
+    history_options: &IterationHistoryOptions,
+) -> Result<FitResult, PlumError> {
+    let location_spec = spec.as_location_only();
+    let history_off = IterationHistoryOptions::disabled();
+    let location_fit = fit_location_only(data, &location_spec, options, &history_off)?;
+    let mut params = starting_values_general(&location_fit, spec);
+
+    let mut history = Vec::new();
+    let warnings = Vec::new();
+    let mut converged = false;
+    let mut info_matrix: Option<DMatrix<f64>> = None;
+    let mut prev_state = None;
+    let mut iterations_run = 0;
+    let mut last_abs_change_minus2_log_likelihood = None;
+    let mut last_max_abs_change_parameters = None;
+    let mut last_step_halvings = 0;
+    let history_every = history_options.every.max(1);
+
+    let initial_ll = log_likelihood(&params, data, spec);
+    if history_options.enabled {
+        push_iteration_history(&mut history, 0, 0, initial_ll, &params);
+    }
+
+    for iter in 0..options.max_iterations {
+        let ll = log_likelihood(&params, data, spec);
+        let grad = gradient(&params, data, spec);
+
+        let information = match options.method {
+            EstimationMethod::FisherScoring => expected_information(&params, data, spec),
+            EstimationMethod::NewtonRaphson => -hessian(&params, data, spec),
+        };
+
+        info_matrix = Some(information.clone());
+
+        let delta = solve_linear_system(&information, &grad)
+            .ok_or_else(|| PlumError::OptimizationError("Matrix singular".to_string()))?;
+
+        let step_result = step_halving(&params, &delta, ll, data, spec, options);
+
+        params = step_result.params.clone();
+        iterations_run = iter + 1;
+        last_step_halvings = step_result.step_halving_count;
+
+        let next_state = IterationState {
+            log_likelihood: step_result.log_likelihood,
+            params: params.clone(),
+            gradient: grad.clone(),
+        };
+
+        if let Some(prev) = &prev_state {
+            let ll_diff = (next_state.log_likelihood - prev.log_likelihood).abs();
+            let delta_max = max_parameter_delta(&prev.params, &next_state.params);
+            last_abs_change_minus2_log_likelihood = Some(ll_diff * 2.0);
+            last_max_abs_change_parameters = Some(delta_max);
+            if has_converged(prev, &next_state, options) {
+                converged = true;
+                break;
+            }
+        }
+        prev_state = Some(next_state);
+
+        if history_options.enabled && (iterations_run % history_every == 0) {
+            push_iteration_history(
+                &mut history,
+                iterations_run,
+                step_result.step_halving_count,
+                step_result.log_likelihood,
+                &params,
+            );
+        }
+    }
+
+    let final_ll = log_likelihood(&params, data, spec);
+
+    if history_options.enabled {
+        let final_iteration = iterations_run;
+        let last_logged = history.last().map(|row| row.iteration);
+        if last_logged != Some(final_iteration) {
+            push_iteration_history(
+                &mut history,
+                final_iteration,
+                last_step_halvings,
+                final_ll,
+                &params,
+            );
+        }
+    }
+
+    Ok(FitResult {
+        params,
+        information: info_matrix,
+        covariance: None,
+        correlation: None,
+        log_likelihood: final_ll,
+        minus2_log_likelihood: -2.0 * final_ll,
+        converged,
+        iterations: iterations_run,
+        iteration_history: history,
+        last_abs_change_minus2_log_likelihood,
+        last_max_abs_change_parameters,
         warnings,
     })
 }
@@ -235,6 +296,7 @@ pub fn step_halving(
     let mut best_ll = current_ll;
     let mut best_delta = delta.clone();
     let mut best_adjustments = 0;
+    let mut step_halving_count = 0;
 
     for _ in 0..options.max_step_halving {
         let candidate = current_params.to_vector(spec) + delta * step;
@@ -249,15 +311,34 @@ pub fn step_halving(
             break;
         }
         step *= 0.5;
+        step_halving_count += 1;
     }
 
     StepResult {
         params: best_params,
         log_likelihood: best_ll,
         step,
+        step_halving_count,
         threshold_adjustments: best_adjustments,
         delta: best_delta,
     }
+}
+
+fn push_iteration_history(
+    history: &mut Vec<IterationHistoryRow>,
+    iteration: usize,
+    step_halvings: usize,
+    log_likelihood: f64,
+    params: &PlumParameters,
+) {
+    history.push(IterationHistoryRow {
+        iteration,
+        step_halvings,
+        minus2_log_likelihood: -2.0 * log_likelihood,
+        threshold: params.theta.clone(),
+        location: params.beta.clone(),
+        scale: params.tau.clone(),
+    });
 }
 
 pub fn has_converged(

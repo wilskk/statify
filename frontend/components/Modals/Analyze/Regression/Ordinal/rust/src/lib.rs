@@ -69,8 +69,25 @@ pub fn plum_fit(input: JsValue) -> Result<JsValue, JsValue> {
     let spec = PlumSpec::from_input(&parsed)
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
+    let output_options: Option<PlumOutputOptions> =
+        serde_json::from_value(parsed.output_options.clone()).ok();
+    let default_all = output_options.is_none();
+    let print_iteration_history = output_options
+        .as_ref()
+        .and_then(|opt| opt.print_iteration_history.or(opt.iteration_history))
+        .unwrap_or(default_all);
+    let iteration_history_every = output_options
+        .as_ref()
+        .and_then(|opt| opt.iteration_history_every.or(opt.iteration_history_step))
+        .unwrap_or(1)
+        .max(1);
+    let history_options = IterationHistoryOptions {
+        enabled: print_iteration_history,
+        every: iteration_history_every,
+    };
+
     let options = EstimationOptions::from_payload(Some(&parsed.estimation_options));
-    let fit = optimizer::fit_plum(&data, &spec, &options)
+    let fit = optimizer::fit_plum(&data, &spec, &options, &history_options)
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
     let output = output::build_plum_output(&parsed, &data, &spec, &fit)

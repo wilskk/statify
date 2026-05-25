@@ -111,13 +111,22 @@ export const buildDefaultEstimationOptions = (
 export const buildDefaultOutputOptions = (
   params: OrdinalOutputParams
 ): PlumOutputOptions => {
+  const printIterationHistory = Boolean(
+    params.display.printIterationHistory ?? params.display.iterationHistory
+  );
+  const iterationHistoryEvery = Number(
+    params.display.iterationHistoryEvery ?? params.display.iterationHistoryStep ?? 1
+  );
+
   return {
     goodnessOfFit: params.display.goodnessOfFit,
     summaryStatistics: params.display.summaryStatistics,
     parameterEstimates: params.display.parameterEstimates,
     testOfParallelLines: params.display.testOfParallelLines,
-    iterationHistory: params.display.iterationHistory,
-    iterationHistoryStep: params.display.iterationHistoryStep,
+    iterationHistory: printIterationHistory,
+    iterationHistoryStep: iterationHistoryEvery,
+    printIterationHistory,
+    iterationHistoryEvery,
     cellInformation: params.display.cellInformation,
     predictedCategory: params.savedVariables.predictedCategory,
     predictedProbability: params.savedVariables.predictedProbability,

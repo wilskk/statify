@@ -7,8 +7,8 @@ use crate::statistics::{
     LOG_LIKELIHOOD_MODE_KERNEL, LOG_LIKELIHOOD_MODE_SPSS,
 };
 use crate::types::{
-    EstimationOptions, FitResult, ModelType, PlumError, PlumFitOutput, PlumOutputMetadata,
-    PlumOutputOptions, PlumSpec, PlumWorkerPayload,
+    EstimationOptions, FitResult, IterationHistoryMeta, IterationHistoryOptions, ModelType,
+    PlumError, PlumFitOutput, PlumOutputMetadata, PlumOutputOptions, PlumSpec, PlumWorkerPayload,
 };
 use crate::validation::validate_input;
 
@@ -32,7 +32,7 @@ pub fn build_plum_output(
         .unwrap_or(default_all);
     let want_iteration = output_options
         .as_ref()
-        .and_then(|opt| opt.iteration_history)
+        .and_then(|opt| opt.print_iteration_history.or(opt.iteration_history))
         .unwrap_or(default_all);
     let want_cell_info = output_options
         .as_ref()
@@ -60,6 +60,11 @@ pub fn build_plum_output(
         .as_ref()
         .and_then(|opt| opt.test_of_parallel_lines)
         .unwrap_or(false);
+    let iteration_history_every = output_options
+        .as_ref()
+        .and_then(|opt| opt.iteration_history_every.or(opt.iteration_history_step))
+        .unwrap_or(1)
+        .max(1);
 
     let mut warnings = fit.warnings.clone();
     let validation = validate_input(input);
@@ -135,7 +140,8 @@ pub fn build_plum_output(
     let summary = if want_summary {
         let intercept_spec = intercept_only_spec(spec);
         let options = EstimationOptions::from_payload(Some(&input.estimation_options));
-        let intercept_fit = fit_location_only(data, &intercept_spec, &options)?;
+        let history_off = IterationHistoryOptions::disabled();
+        let intercept_fit = fit_location_only(data, &intercept_spec, &options, &history_off)?;
         Some(model_fit_statistics(
             &fit_with_cov,
             &intercept_fit,
@@ -151,6 +157,25 @@ pub fn build_plum_output(
 
     let iteration_history = if want_iteration {
         Some(fit.iteration_history.clone())
+    } else {
+        None
+    };
+    let iteration_history_meta = if want_iteration {
+        let threshold_names = (0..spec.threshold_count())
+            .map(|index| format!("{}", index + 1))
+            .collect::<Vec<_>>();
+        let location_names = spec.feature_names.clone();
+        let scale_names = spec.scale_feature_names.clone();
+        Some(IterationHistoryMeta {
+            link_function: input.estimation_options.link_function.clone(),
+            iteration_history_every,
+            threshold_names,
+            location_names,
+            scale_names,
+            last_abs_change_minus2_log_likelihood: fit.last_abs_change_minus2_log_likelihood,
+            last_max_abs_change_parameters: fit.last_max_abs_change_parameters,
+            converged: fit.converged,
+        })
     } else {
         None
     };
@@ -225,6 +250,7 @@ pub fn build_plum_output(
         location_parameter_estimates,
         scale_parameter_estimates,
         iteration_history: iteration_history.unwrap_or_else(|| Vec::new()),
+        iteration_history_meta,
         warnings,
         metadata,
         goodness_of_fit: goodness,

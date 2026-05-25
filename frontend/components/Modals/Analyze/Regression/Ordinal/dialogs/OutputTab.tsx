@@ -2,6 +2,7 @@ import React from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Input } from "@/components/ui/input";
 import { OrdinalOutputParams } from "../types/ordinal";
 
 interface Props { params: OrdinalOutputParams, onChange: (params: Partial<OrdinalOutputParams>) => void; }
@@ -11,6 +12,34 @@ export const OutputTab: React.FC<Props> = ({ params, onChange }) => {
     };
     const handleSavedChange = (key: keyof typeof params.savedVariables, checked: boolean) => {
         onChange({ savedVariables: { ...params.savedVariables, [key]: checked } });
+    };
+    const iterationHistoryEnabled = Boolean(
+        params.display.printIterationHistory ?? params.display.iterationHistory
+    );
+    const iterationHistoryEvery = Number(
+        params.display.iterationHistoryEvery ?? params.display.iterationHistoryStep ?? 1
+    );
+
+    const handleIterationHistoryToggle = (checked: boolean) => {
+        onChange({
+            display: {
+                ...params.display,
+                printIterationHistory: checked,
+                iterationHistory: checked,
+            },
+        });
+    };
+
+    const handleIterationHistoryEveryChange = (value: string) => {
+        const parsed = Number(value);
+        const safeValue = Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 1;
+        onChange({
+            display: {
+                ...params.display,
+                iterationHistoryEvery: safeValue,
+                iterationHistoryStep: safeValue,
+            },
+        });
     };
     return (
         <div className="grid grid-cols-2 gap-8 py-4 h-full overflow-y-auto">
@@ -38,6 +67,23 @@ export const OutputTab: React.FC<Props> = ({ params, onChange }) => {
                     <div className="flex items-center space-x-2">
                         <Checkbox id="parallel" checked={params.display.testOfParallelLines} onCheckedChange={(c) => handleDisplayChange('testOfParallelLines', !!c)} />
                             <Label htmlFor="parallel">Multicolinearity</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Checkbox
+                            id="iteration-history"
+                            checked={iterationHistoryEnabled}
+                            onCheckedChange={(c) => handleIterationHistoryToggle(!!c)}
+                        />
+                        <Label htmlFor="iteration-history">Print iteration history for every</Label>
+                        <Input
+                            type="number"
+                            min={1}
+                            value={Number.isFinite(iterationHistoryEvery) ? iterationHistoryEvery : 1}
+                            onChange={(event) => handleIterationHistoryEveryChange(event.target.value)}
+                            disabled={!iterationHistoryEnabled}
+                            className="w-20"
+                        />
+                        <span className="text-sm text-muted-foreground">step</span>
                     </div>
             </div>
             <div className="space-y-6">

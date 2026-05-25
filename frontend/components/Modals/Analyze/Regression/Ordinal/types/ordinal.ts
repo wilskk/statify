@@ -49,6 +49,8 @@ export interface OrdinalOutputParams {
     testOfParallelLines: boolean;
     iterationHistory: boolean;
     iterationHistoryStep: number;
+    printIterationHistory: boolean;
+    iterationHistoryEvery: number;
   };
   savedVariables: {
     predictedCategory: boolean;
@@ -115,11 +117,33 @@ export interface PlumOutputOptions {
   testOfParallelLines?: boolean;
   iterationHistory?: boolean;
   iterationHistoryStep?: number;
+  printIterationHistory?: boolean;
+  iterationHistoryEvery?: number;
   cellInformation?: boolean;
   predictedCategory?: boolean;
   predictedProbability?: boolean;
   actualProbability?: boolean;
   printLogLikelihood?: "Including" | "Excluding";
+}
+
+export interface IterationHistoryRow {
+  iteration: number;
+  stepHalvings: number;
+  minus2LogLikelihood: number;
+  threshold: number[];
+  location: number[];
+  scale: number[];
+}
+
+export interface IterationHistoryMeta {
+  linkFunction: string;
+  iterationHistoryEvery: number;
+  thresholdNames: string[];
+  locationNames: string[];
+  scaleNames: string[];
+  lastAbsChangeMinus2LogLikelihood?: number | null;
+  lastMaxAbsChangeParameters?: number | null;
+  converged: boolean;
 }
 
 export interface OrdinalPlumPayload {

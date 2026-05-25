@@ -74,6 +74,8 @@ const OrdinalMain: React.FC = () => {
       testOfParallelLines: true,
       iterationHistory: false,
       iterationHistoryStep: 1,
+      printIterationHistory: false,
+      iterationHistoryEvery: 1,
     },
     savedVariables: {
       predictedCategory: false,
@@ -512,6 +514,18 @@ const OrdinalMain: React.FC = () => {
       // BUILD WORKER PAYLOAD
       // ==================================================
       const modelType = scaleTermNames.length > 0 ? "general" : "location-only";
+      const printIterationHistory = Boolean(
+        outputParams.display.printIterationHistory ?? outputParams.display.iterationHistory
+      );
+      const iterationHistoryEvery = Number(
+        outputParams.display.iterationHistoryEvery ?? outputParams.display.iterationHistoryStep ?? 1
+      );
+
+      console.log("[ORDINAL][MAIN][ITERATION_HISTORY_OPTIONS]", {
+        printIterationHistory,
+        iterationHistoryEvery,
+      });
+
       const workerPayload = {
         analysisType: "ORDINAL_REGRESSION_PLUM",
         procedure: "PLUM",
@@ -578,8 +592,10 @@ const OrdinalMain: React.FC = () => {
           asymptoticCorrelation: outputParams.display.asymptoticCorrelation,
           cellInformation: outputParams.display.cellInformation,
           testOfParallelLines: outputParams.display.testOfParallelLines,
-          iterationHistory: outputParams.display.iterationHistory,
-          iterationHistoryStep: outputParams.display.iterationHistoryStep,
+          iterationHistory: printIterationHistory,
+          iterationHistoryStep: iterationHistoryEvery,
+          printIterationHistory,
+          iterationHistoryEvery,
           predictedCategory: outputParams.savedVariables.predictedCategory,
           predictedProbability: outputParams.savedVariables.predictedProbability,
           actualProbability: outputParams.savedVariables.actualProbability,

@@ -101,6 +101,8 @@ pub struct PlumOutputOptions {
     pub test_of_parallel_lines: Option<bool>,
     pub iteration_history: Option<bool>,
     pub iteration_history_step: Option<usize>,
+    pub print_iteration_history: Option<bool>,
+    pub iteration_history_every: Option<usize>,
     pub predicted_category: Option<bool>,
     pub predicted_probability: Option<bool>,
     pub actual_probability: Option<bool>,
@@ -364,12 +366,39 @@ impl PlumParameters {
 #[serde(rename_all = "camelCase")]
 pub struct IterationHistoryRow {
     pub iteration: usize,
-    pub log_likelihood: f64,
+    pub step_halvings: usize,
     pub minus2_log_likelihood: f64,
-    pub step: f64,
-    pub max_abs_gradient: f64,
-    pub max_abs_delta: f64,
-    pub threshold_adjustments: usize,
+    pub threshold: Vec<f64>,
+    pub location: Vec<f64>,
+    pub scale: Vec<f64>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IterationHistoryMeta {
+    pub link_function: String,
+    pub iteration_history_every: usize,
+    pub threshold_names: Vec<String>,
+    pub location_names: Vec<String>,
+    pub scale_names: Vec<String>,
+    pub last_abs_change_minus2_log_likelihood: Option<f64>,
+    pub last_max_abs_change_parameters: Option<f64>,
+    pub converged: bool,
+}
+
+#[derive(Clone, Debug)]
+pub struct IterationHistoryOptions {
+    pub enabled: bool,
+    pub every: usize,
+}
+
+impl IterationHistoryOptions {
+    pub fn disabled() -> Self {
+        Self {
+            enabled: false,
+            every: 1,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -384,6 +413,7 @@ pub struct StepResult {
     pub params: PlumParameters,
     pub log_likelihood: f64,
     pub step: f64,
+    pub step_halving_count: usize,
     pub threshold_adjustments: usize,
     pub delta: DVector<f64>,
 }
@@ -399,6 +429,8 @@ pub struct FitResult {
     pub converged: bool,
     pub iterations: usize,
     pub iteration_history: Vec<IterationHistoryRow>,
+    pub last_abs_change_minus2_log_likelihood: Option<f64>,
+    pub last_max_abs_change_parameters: Option<f64>,
     pub warnings: Vec<String>,
 }
 
@@ -533,6 +565,7 @@ pub struct PlumFitOutput {
     pub location_parameter_estimates: Vec<ParameterEstimateRow>,
     pub scale_parameter_estimates: Vec<ParameterEstimateRow>,
     pub iteration_history: Vec<IterationHistoryRow>,
+    pub iteration_history_meta: Option<IterationHistoryMeta>,
     pub warnings: Vec<String>,
     pub metadata: PlumOutputMetadata,
     pub goodness_of_fit: Option<GoodnessOfFit>,
