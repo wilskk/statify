@@ -1,9 +1,10 @@
 use crate::optimizer::fit_location_only;
 use crate::parallel::fit_non_parallel_location_only;
 use crate::statistics::{
-    actual_probabilities, correlation_matrix, covariance_matrix, goodness_of_fit,
-    model_fit_statistics, parameter_statistics, predicted_cell_counts, predicted_categories,
-    predicted_probabilities,
+    actual_probabilities, correlation_matrix, covariance_matrix, displayed_log_likelihood,
+    goodness_of_fit, model_fit_statistics, multinomial_log_likelihood_constant,
+    parameter_statistics, predicted_cell_counts, predicted_categories, predicted_probabilities,
+    LOG_LIKELIHOOD_MODE_KERNEL, LOG_LIKELIHOOD_MODE_SPSS,
 };
 use crate::types::{
     EstimationOptions, FitResult, ModelType, PlumError, PlumFitOutput, PlumOutputMetadata,
@@ -114,6 +115,23 @@ pub fn build_plum_output(
         None
     };
 
+    let display_mode = output_options
+        .as_ref()
+        .and_then(|opt| opt.print_log_likelihood.as_deref())
+        .map(|value| match value {
+            "Including" | "SPSS_COMPATIBLE" => LOG_LIKELIHOOD_MODE_SPSS,
+            "Excluding" | "KERNEL" => LOG_LIKELIHOOD_MODE_KERNEL,
+            _ => LOG_LIKELIHOOD_MODE_KERNEL,
+        })
+        .unwrap_or(LOG_LIKELIHOOD_MODE_KERNEL);
+
+    let log_likelihood_constant = multinomial_log_likelihood_constant(data);
+    let log_likelihood_kernel = fit.log_likelihood;
+    let log_likelihood_complete = log_likelihood_kernel + log_likelihood_constant;
+    let log_likelihood_displayed =
+        displayed_log_likelihood(log_likelihood_kernel, log_likelihood_constant, display_mode);
+    let minus2_log_likelihood_displayed = -2.0 * log_likelihood_displayed;
+
     let summary = if want_summary {
         let intercept_spec = intercept_only_spec(spec);
         let options = EstimationOptions::from_payload(Some(&input.estimation_options));
@@ -124,6 +142,8 @@ pub fn build_plum_output(
             spec,
             &options.method_label(),
             data.total_count,
+            log_likelihood_constant,
+            display_mode,
         ))
     } else {
         None
@@ -193,8 +213,13 @@ pub fn build_plum_output(
     Ok(PlumFitOutput {
         converged: fit.converged,
         iterations: fit.iterations,
-        log_likelihood: fit.log_likelihood,
-        minus2_log_likelihood: fit.minus2_log_likelihood,
+        log_likelihood: log_likelihood_displayed,
+        minus2_log_likelihood: minus2_log_likelihood_displayed,
+        log_likelihood_kernel,
+        log_likelihood_complete,
+        log_likelihood_displayed,
+        minus2_log_likelihood_displayed,
+        log_likelihood_display_mode: display_mode.to_string(),
         parameter_estimates,
         threshold_estimates,
         location_parameter_estimates,

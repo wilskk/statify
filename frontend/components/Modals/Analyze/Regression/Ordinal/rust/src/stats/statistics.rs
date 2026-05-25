@@ -1,5 +1,6 @@
 use nalgebra::DMatrix;
 use statrs::distribution::{ChiSquared, ContinuousCDF, Normal};
+use statrs::function::gamma::ln_gamma;
 
 use crate::model::{cell_probabilities, cumulative_probabilities};
 use crate::types::{
@@ -7,6 +8,35 @@ use crate::types::{
     ParameterEstimateRow, PlumError, PlumSpec, ProbabilityRow, PseudoRSquare, SummaryStatistics,
 };
 use crate::utils::EPS;
+
+pub const LOG_LIKELIHOOD_MODE_KERNEL: &str = "KERNEL";
+pub const LOG_LIKELIHOOD_MODE_SPSS: &str = "SPSS_COMPATIBLE";
+
+pub fn multinomial_log_likelihood_constant(data: &AggregatedData) -> f64 {
+    let mut constant = 0.0;
+    for subpop in &data.subpopulations {
+        let n = subpop.marginal_count;
+        if n > 0.0 {
+            constant += ln_gamma(n + 1.0);
+            for count in &subpop.counts {
+                if *count > 0.0 {
+                    constant -= ln_gamma(*count + 1.0);
+                } else {
+                    constant -= ln_gamma(1.0);
+                }
+            }
+        }
+    }
+    constant
+}
+
+pub fn displayed_log_likelihood(kernel: f64, constant: f64, mode: &str) -> f64 {
+    if mode == LOG_LIKELIHOOD_MODE_SPSS {
+        kernel + constant
+    } else {
+        kernel
+    }
+}
 
 pub fn covariance_matrix(information: &DMatrix<f64>) -> Result<DMatrix<f64>, PlumError> {
     information
@@ -148,18 +178,25 @@ pub fn model_fit_statistics(
     spec: &PlumSpec,
     method_label: &str,
     n: f64,
+    log_likelihood_constant: f64,
+    display_mode: &str,
 ) -> SummaryStatistics {
+    let model_ll_displayed =
+        displayed_log_likelihood(final_fit.log_likelihood, log_likelihood_constant, display_mode);
+    let intercept_ll_displayed =
+        displayed_log_likelihood(intercept_fit.log_likelihood, log_likelihood_constant, display_mode);
+
     let model = ModelSummaryRow {
-        minus2_log_likelihood: final_fit.minus2_log_likelihood,
-        log_likelihood: final_fit.log_likelihood,
+        minus2_log_likelihood: -2.0 * model_ll_displayed,
+        log_likelihood: model_ll_displayed,
         converged: final_fit.converged,
         iterations: final_fit.iterations,
         method: method_label.to_string(),
     };
 
     let intercept_only = crate::types::InterceptOnlyRow {
-        minus2_log_likelihood: intercept_fit.minus2_log_likelihood,
-        log_likelihood: intercept_fit.log_likelihood,
+        minus2_log_likelihood: -2.0 * intercept_ll_displayed,
+        log_likelihood: intercept_ll_displayed,
     };
 
     let chi_square = 2.0 * (final_fit.log_likelihood - intercept_fit.log_likelihood);

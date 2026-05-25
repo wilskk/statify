@@ -269,6 +269,22 @@ function normalizeWasmResult(result, mainPayload) {
       ? base.minus2_log_likelihood
       : (typeof logLikelihood === "number" ? -2 * logLikelihood : null));
 
+  const logLikelihoodKernel = typeof base.logLikelihoodKernel === "number"
+    ? base.logLikelihoodKernel
+    : (typeof base.log_likelihood_kernel === "number" ? base.log_likelihood_kernel : null);
+  const logLikelihoodComplete = typeof base.logLikelihoodComplete === "number"
+    ? base.logLikelihoodComplete
+    : (typeof base.log_likelihood_complete === "number" ? base.log_likelihood_complete : null);
+  const logLikelihoodDisplayed = typeof base.logLikelihoodDisplayed === "number"
+    ? base.logLikelihoodDisplayed
+    : (typeof base.log_likelihood_displayed === "number" ? base.log_likelihood_displayed : null);
+  const minus2LogLikelihoodDisplayed = typeof base.minus2LogLikelihoodDisplayed === "number"
+    ? base.minus2LogLikelihoodDisplayed
+    : (typeof base.minus2_log_likelihood_displayed === "number" ? base.minus2_log_likelihood_displayed : null);
+  const logLikelihoodDisplayMode = typeof base.logLikelihoodDisplayMode === "string"
+    ? base.logLikelihoodDisplayMode
+    : (typeof base.log_likelihood_display_mode === "string" ? base.log_likelihood_display_mode : null);
+
   const metadata = {
     modelType: mainPayload?.metadata?.modelType,
     totalRows: mainPayload?.metadata?.totalRows,
@@ -286,6 +302,11 @@ function normalizeWasmResult(result, mainPayload) {
     iterations,
     logLikelihood,
     minus2LogLikelihood,
+    logLikelihoodKernel,
+    logLikelihoodComplete,
+    logLikelihoodDisplayed,
+    minus2LogLikelihoodDisplayed,
+    logLikelihoodDisplayMode,
     parameterEstimates,
     thresholdEstimates,
     locationParameterEstimates,
