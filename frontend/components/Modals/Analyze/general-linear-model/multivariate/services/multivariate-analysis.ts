@@ -128,7 +128,14 @@ export async function analyzeMultivariate({
         errors = [errorsString.trim()];
     }
 
-    const formattedResults = transformMultivariateResult(results, errors);
+    const formattedResults = transformMultivariateResult(results, errors, {
+        testValues: configData.main.TestValues,
+        varianceMode: configData.main.VarianceMode,
+        factor:
+            (configData.main.FixFactor?.length ?? 0) === 1
+                ? configData.main.FixFactor?.[0] ?? null
+                : null,
+    });
 
     // SPSS only shows the "Contrast Coefficients" table when the user
     // explicitly picks a contrast method (Deviation/Simple/etc.). Drop it

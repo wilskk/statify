@@ -5,12 +5,15 @@ import {
     ResizablePanel,
     ResizablePanelGroup,
 } from "@/components/ui/resizable";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import type { TargetListConfig } from "@/components/Common/VariableListManager";
 import VariableListManager from "@/components/Common/VariableListManager";
 import type { Variable } from "@/types/Variable";
 import type {
     MultivariateDialogProps,
     MultivariateMainType,
+    VarianceMode,
 } from "@/components/Modals/Analyze/general-linear-model/multivariate/types/multivariate";
 import { useModal } from "@/hooks/useModal";
 import { toast } from "sonner";
@@ -37,6 +40,7 @@ export const MultivariateDialog = ({
     setIsSaveOpen,
     setIsOptionsOpen,
     setIsBootstrapOpen,
+    setIsTestValuesOpen,
     updateFormData,
     data,
     globalVariables,
@@ -145,6 +149,12 @@ export const MultivariateDialog = ({
             FixFactor: fixFactor.map((v) => v.name),
             Covar: covar.map((v) => v.name),
             WlsWeight: wlsWeight[0]?.name || null,
+            // The Welch radio is only visible with exactly one Fixed Factor.
+            // Reset to default (null → Pooled in Rust) when the user moves
+            // away from that shape, so stale Welch state can't leak into a
+            // multi-factor or no-factor analysis.
+            VarianceMode:
+                fixFactor.length === 1 ? prevState.VarianceMode : null,
         }));
     }, [depVar, fixFactor, covar, wlsWeight]);
 
@@ -366,10 +376,89 @@ export const MultivariateDialog = ({
                                 >
                                     Bootstrap
                                 </Button>
+                                <Button
+                                    className="w-full"
+                                    variant="outline"
+                                    onClick={openDialog(setIsTestValuesOpen)}
+                                >
+                                    Test Values
+                                </Button>
                             </div>
                         </div>
                     </ResizablePanel>
                 </ResizablePanelGroup>
+
+                {fixFactor.length === 1 && (
+                    <div className="mt-3 rounded-md border p-3 bg-background">
+                        <div className="flex items-center justify-between mb-2">
+                            <Label className="text-sm font-semibold">
+                                Covariance Matrices
+                            </Label>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6 rounded-full"
+                                        >
+                                            <HelpCircle className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent
+                                        side="left"
+                                        className="max-w-sm"
+                                    >
+                                        <p className="text-xs">
+                                            Pilih <b>Unequal</b>{" "}
+                                            (Welch-Satterthwaite) jika
+                                            asumsi Σ₁ = Σ₂ tidak terpenuhi
+                                            — misal saat Box's M test
+                                            signifikan. Hanya berlaku
+                                            untuk Fixed Factor dengan
+                                            tepat 2 level.
+                                        </p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
+                        <RadioGroup
+                            value={mainState.VarianceMode ?? "Pooled"}
+                            onValueChange={(v) =>
+                                setMainState((prev) => ({
+                                    ...prev,
+                                    VarianceMode: v as VarianceMode,
+                                }))
+                            }
+                            className="flex flex-col gap-1"
+                        >
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                    value="Pooled"
+                                    id="variance-pooled"
+                                />
+                                <Label
+                                    htmlFor="variance-pooled"
+                                    className="text-sm cursor-pointer"
+                                >
+                                    Equal (Pooled estimate of Σ)
+                                </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                    value="Welch"
+                                    id="variance-welch"
+                                />
+                                <Label
+                                    htmlFor="variance-welch"
+                                    className="text-sm cursor-pointer"
+                                >
+                                    Unequal (Welch-Satterthwaite)
+                                </Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+                )}
             </div>
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 <div>

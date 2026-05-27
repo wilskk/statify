@@ -1,10 +1,14 @@
 import type React from "react";
 
+export type VarianceMode = "Pooled" | "Welch";
+
 export type MultivariateMainType = {
     DepVar: string[] | null;
     FixFactor: string[] | null;
     Covar: string[] | null;
     WlsWeight: string | null;
+    TestValues: number[] | null;
+    VarianceMode: VarianceMode | null;
 };
 
 export type MultivariateDialogProps = {
@@ -18,9 +22,10 @@ export type MultivariateDialogProps = {
     setIsSaveOpen: React.Dispatch<React.SetStateAction<boolean>>;
     setIsOptionsOpen: React.Dispatch<React.SetStateAction<boolean>>;
     setIsBootstrapOpen: React.Dispatch<React.SetStateAction<boolean>>;
+    setIsTestValuesOpen: React.Dispatch<React.SetStateAction<boolean>>;
     updateFormData: (
         field: keyof MultivariateMainType,
-        value: string[] | string | null
+        value: string[] | string | number[] | null
     ) => void;
     data: MultivariateMainType;
     globalVariables: string[];
@@ -229,6 +234,14 @@ export type MultivariateBootstrapProps = {
         value: string[] | string | number | boolean | null
     ) => void;
     data: MultivariateBootstrapType;
+};
+
+export type MultivariateTestValuesProps = {
+    isTestValuesOpen: boolean;
+    setIsTestValuesOpen: React.Dispatch<React.SetStateAction<boolean>>;
+    depVar: string[];
+    testValues: number[] | null;
+    onSave: (testValues: number[] | null) => void;
 };
 
 export type MultivariateType = {

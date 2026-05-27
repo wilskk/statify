@@ -913,3 +913,136 @@ pub fn build_design_matrix_and_response(
 
     Ok((x_matrix, y_vector))
 }
+
+/// Per-group summary used by Box's M and Welch-Satterthwaite Hotelling T²:
+/// sample covariance (unbiased, n-1 divisor), mean vector, and sample size,
+/// all keyed by the factor-level combination that defines the group.
+#[derive(Debug, Clone)]
+pub struct GroupCovariance {
+    pub label: HashMap<String, String>,
+    pub covariance: DMatrix<f64>,
+    pub mean: DVector<f64>,
+    pub n: usize,
+}
+
+/// Compute (S_i, x̄_i, n_i) for each level combination of the requested
+/// factors. When `factors` is the full Fixed Factor list this matches
+/// Box's M's grouping; when callers pass a single factor it yields the
+/// per-level groups needed for two-sample Hotelling T².
+///
+/// Groups whose sample size does not exceed `p` (number of DVs) are
+/// dropped — a covariance matrix needs n > p to be defined.
+pub fn compute_per_group_covariances(
+    data: &AnalysisData,
+    config: &MultivariateConfig,
+    factors: &[String],
+) -> Result<Vec<GroupCovariance>, String> {
+    if config.main.dep_var.is_none() || config.main.dep_var.as_ref().unwrap().is_empty() {
+        return Err("No dependent variables specified".to_string());
+    }
+    let dependent_vars = config.main.dep_var.as_ref().unwrap();
+    let p = dependent_vars.len();
+
+    // Build the requested-factor combinations. Reuse the existing
+    // generator by constructing a scoped config view: we can't mutate
+    // `config` so we just generate combinations from the factor list.
+    let mut factor_levels: Vec<(String, Vec<String>)> = Vec::with_capacity(factors.len());
+    for factor in factors {
+        let levels = get_factor_levels(data, factor)?;
+        factor_levels.push((factor.clone(), levels));
+    }
+
+    let mut combinations: Vec<HashMap<String, String>> = Vec::new();
+    if factor_levels.is_empty() {
+        combinations.push(HashMap::new());
+    } else {
+        let mut current: HashMap<String, String> = HashMap::new();
+        fn recurse(
+            levels: &[(String, Vec<String>)],
+            current: &mut HashMap<String, String>,
+            idx: usize,
+            out: &mut Vec<HashMap<String, String>>,
+        ) {
+            if idx == levels.len() {
+                out.push(current.clone());
+                return;
+            }
+            let (name, vals) = &levels[idx];
+            for v in vals {
+                current.insert(name.clone(), v.clone());
+                recurse(levels, current, idx + 1, out);
+            }
+        }
+        recurse(&factor_levels, &mut current, 0, &mut combinations);
+    }
+
+    let merged = merge_records(data);
+    let mut groups: Vec<GroupCovariance> = Vec::new();
+
+    for combo in &combinations {
+        let mut group_rows: Vec<Vec<f64>> = Vec::new();
+        for record in &merged {
+            // Match: every factor in combo must equal the record's value.
+            let matches = combo.iter().all(|(f, expected)| {
+                record
+                    .values
+                    .get(f)
+                    .map(data_value_to_string)
+                    .map_or(false, |v| &v == expected)
+            });
+            if !matches {
+                continue;
+            }
+            let mut row = Vec::with_capacity(p);
+            let mut all_present = true;
+            for dep_var in dependent_vars {
+                match extract_dependent_value(record, dep_var) {
+                    Some(v) => row.push(v),
+                    None => {
+                        all_present = false;
+                        break;
+                    }
+                }
+            }
+            if all_present && row.len() == p {
+                group_rows.push(row);
+            }
+        }
+
+        if group_rows.len() <= p {
+            continue;
+        }
+
+        let n = group_rows.len();
+        let mut means = vec![0.0f64; p];
+        for row in &group_rows {
+            for (j, v) in row.iter().enumerate() {
+                means[j] += v;
+            }
+        }
+        for m in &mut means {
+            *m /= n as f64;
+        }
+
+        let mut cov = DMatrix::<f64>::zeros(p, p);
+        for row in &group_rows {
+            for i in 0..p {
+                for j in 0..p {
+                    cov[(i, j)] += (row[i] - means[i]) * (row[j] - means[j]);
+                }
+            }
+        }
+        cov /= (n - 1) as f64;
+
+        let mean_vec = DVector::from_vec(means);
+        groups.push(GroupCovariance {
+            label: combo.clone(),
+            covariance: cov,
+            mean: mean_vec,
+            n,
+        });
+    }
+
+    Ok(groups)
+}
+

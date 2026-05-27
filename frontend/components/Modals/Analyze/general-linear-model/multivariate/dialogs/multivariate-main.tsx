@@ -16,6 +16,7 @@ import { MultivariateEMMeans } from "@/components/Modals/Analyze/general-linear-
 import { MultivariateSave } from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/save";
 import { MultivariateOptions } from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/options";
 import { MultivariateBootstrap } from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/bootstrap";
+import { MultivariateTestValues } from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/test-values";
 import { useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
@@ -47,6 +48,7 @@ export const MultivariateContainer = ({
     const [isSaveOpen, setIsSaveOpen] = useState(false);
     const [isOptionsOpen, setIsOptionsOpen] = useState(false);
     const [isBootstrapOpen, setIsBootstrapOpen] = useState(false);
+    const [isTestValuesOpen, setIsTestValuesOpen] = useState(false);
 
     const { closeModal } = useModal();
 
@@ -55,7 +57,19 @@ export const MultivariateContainer = ({
             const savedData = await getFormData("Multivariate");
             if (savedData) {
                 const { id, ...formDataWithoutId } = savedData;
-                setFormData(formDataWithoutId);
+                // Older IndexedDB entries predate TestValues and VarianceMode,
+                // so hydrate them explicitly to keep MultivariateMainType total.
+                const normalized: MultivariateType = {
+                    ...formDataWithoutId,
+                    main: {
+                        ...formDataWithoutId.main,
+                        TestValues:
+                            formDataWithoutId.main?.TestValues ?? null,
+                        VarianceMode:
+                            formDataWithoutId.main?.VarianceMode ?? null,
+                    },
+                };
+                setFormData(normalized);
             } else {
                 setFormData({ ...MultivariateDefault });
             }
@@ -160,9 +174,28 @@ export const MultivariateContainer = ({
         onClose();
 
         const promise = async () => {
+            // Auto-resize μ₀ vector to match DepVar length. If the user
+            // edited DVs after entering test values, pad with 0 or truncate
+            // positionally so Rust validation never trips on length mismatch.
+            const depLen = mainData.DepVar?.length ?? 0;
+            const normalizedTestValues =
+                mainData.TestValues === null
+                    ? null
+                    : Array.from(
+                          { length: depLen },
+                          (_, i) =>
+                              mainData.TestValues?.[i] !== undefined &&
+                              Number.isFinite(mainData.TestValues[i])
+                                  ? mainData.TestValues[i]
+                                  : 0
+                      );
+
             const newFormData = {
                 ...formData,
-                main: mainData,
+                main: {
+                    ...mainData,
+                    TestValues: normalizedTestValues,
+                },
             };
 
             await saveFormData("Multivariate", newFormData);
@@ -211,6 +244,7 @@ export const MultivariateContainer = ({
             | "save"
             | "options"
             | "bootstrap"
+            | "testValues"
     ) => {
         setIsMainOpen(false);
         setIsModelOpen(false);
@@ -221,6 +255,7 @@ export const MultivariateContainer = ({
         setIsSaveOpen(false);
         setIsOptionsOpen(false);
         setIsBootstrapOpen(false);
+        setIsTestValuesOpen(false);
 
         switch (section) {
             case "main":
@@ -249,6 +284,9 @@ export const MultivariateContainer = ({
                 break;
             case "bootstrap":
                 setIsBootstrapOpen(true);
+                break;
+            case "testValues":
+                setIsTestValuesOpen(true);
                 break;
         }
     };
@@ -294,6 +332,11 @@ export const MultivariateContainer = ({
                         value
                             ? openSection("bootstrap")
                             : setIsBootstrapOpen(false)
+                    }
+                    setIsTestValuesOpen={(value) =>
+                        value
+                            ? openSection("testValues")
+                            : setIsTestValuesOpen(false)
                     }
                     updateFormData={(field, value) =>
                         updateFormData("main", field, value)
@@ -406,6 +449,22 @@ export const MultivariateContainer = ({
                         updateFormData("bootstrap", field, value)
                     }
                     data={formData.bootstrap}
+                />
+            )}
+
+            {isTestValuesOpen && (
+                <MultivariateTestValues
+                    isTestValuesOpen={isTestValuesOpen}
+                    setIsTestValuesOpen={(value) =>
+                        value
+                            ? openSection("testValues")
+                            : handleContinue()
+                    }
+                    depVar={formData.main.DepVar ?? []}
+                    testValues={formData.main.TestValues}
+                    onSave={(testValues) =>
+                        updateFormData("main", "TestValues", testValues)
+                    }
                 />
             )}
         </div>

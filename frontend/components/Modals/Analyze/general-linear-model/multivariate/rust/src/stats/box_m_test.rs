@@ -7,12 +7,10 @@ use crate::models::{
     result::BoxTest,
 };
 
+use super::common::compute_per_group_covariances;
 use super::core::{
-    extract_dependent_value,
-    get_factor_combinations,
     matrix_determinant,
     chi_square_cdf,
-    matches_combination,
     calculate_f_significance,
     from_dmatrix,
 };
@@ -36,52 +34,19 @@ pub fn calculate_box_test(
 
     let dependent_vars = config.main.dep_var.as_ref().unwrap();
 
-    // Step 2: Get all factor combinations to identify groups
-    let combinations = get_factor_combinations(data, config)?;
-    if combinations.is_empty() {
-        return Err("No factor combinations found for Box's M test".to_string());
-    }
+    // Step 2 + 3: Build per-group (S_i, n_i) tuples via the shared helper so
+    // Welch-Satterthwaite Hotelling T² can reuse the exact same grouping
+    // logic. Fall back to an explicit error when no group survives the
+    // n > p screening that compute_per_group_covariances already enforces.
+    let all_factors = config.main.fix_factor.as_ref().cloned().unwrap_or_default();
+    let group_summaries = compute_per_group_covariances(data, config, &all_factors)?;
 
-    // Step 3: Calculate covariance matrices for each group
-    let mut group_covariance_matrices: Vec<
+    let group_covariance_matrices: Vec<
         (HashMap<String, String>, DMatrix<f64>, usize)
-    > = Vec::new();
-
-    for combo in &combinations {
-        let mut group_data: Vec<Vec<f64>> = Vec::new();
-
-        // Collect all data points for this group
-        for records in &data.dependent_data {
-            for record in records {
-                if matches_combination(record, combo, data, config) {
-                    let mut values = Vec::new();
-                    let mut has_missing = false;
-
-                    for dep_var in dependent_vars {
-                        if let Some(value) = extract_dependent_value(record, dep_var) {
-                            values.push(value);
-                        } else {
-                            has_missing = true;
-                            break;
-                        }
-                    }
-
-                    if !has_missing && values.len() == dependent_vars.len() {
-                        group_data.push(values);
-                    }
-                }
-            }
-        }
-
-        // Need at least n > p (number of variables) for a valid covariance matrix
-        if group_data.len() > dependent_vars.len() {
-            let n = group_data.len();
-
-            // Calculate covariance matrix for this group
-            let cov_matrix = calculate_covariance_matrix(&group_data);
-            group_covariance_matrices.push((combo.clone(), cov_matrix, n));
-        }
-    }
+    > = group_summaries
+        .into_iter()
+        .map(|g| (g.label, g.covariance, g.n))
+        .collect();
 
     if group_covariance_matrices.is_empty() {
         return Err("Insufficient data in groups for Box's M test".to_string());
@@ -180,40 +145,4 @@ pub fn calculate_box_test(
             )
         ),
     })
-}
-
-/// Calculate covariance matrix from raw data
-fn calculate_covariance_matrix(data: &[Vec<f64>]) -> DMatrix<f64> {
-    let n = data.len();
-    let p = if data.is_empty() { 0 } else { data[0].len() };
-
-    if n <= 1 || p == 0 {
-        return DMatrix::zeros(p, p);
-    }
-
-    // Calculate means
-    let mut means = vec![0.0; p];
-    for row in data {
-        for (j, val) in row.iter().enumerate() {
-            means[j] += val;
-        }
-    }
-    for mean in &mut means {
-        *mean /= n as f64;
-    }
-
-    // Calculate covariance matrix
-    let mut cov_matrix = DMatrix::zeros(p, p);
-    for row in data {
-        for i in 0..p {
-            for j in 0..p {
-                cov_matrix[(i, j)] += (row[i] - means[i]) * (row[j] - means[j]);
-            }
-        }
-    }
-
-    // Divide by n-1 for unbiased estimate
-    cov_matrix /= (n - 1) as f64;
-
-    cov_matrix
 }

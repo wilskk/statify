@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     models::{
-        config::MultivariateConfig,
+        config::{ MultivariateConfig, VarianceMode },
         data::AnalysisData,
         result::{ MultivariateTestEntry, MultivariateTests },
     },
@@ -12,6 +12,7 @@ use crate::{
 use super::{
     common::{
         calculate_f_significance,
+        compute_per_group_covariances,
         generate_interaction_terms,
         matrix_inverse,
         matrix_multiply,
@@ -188,12 +189,157 @@ pub fn calculate_multivariate_tests(
         }
     }
 
+    // Welch-Satterthwaite override for two-sample Hotelling T². Activates
+    // only when the design has exactly one Fixed Factor with two levels and
+    // the user opted in via VarianceMode::Welch. We replace the pooled-SSCP
+    // entry for that factor while leaving Intercept and other effects
+    // untouched.
+    if config.main.variance_mode == VarianceMode::Welch {
+        if factors.len() != 1 {
+            return Err(format!(
+                "VarianceMode = Welch requires exactly one Fixed Factor; got {}.",
+                factors.len()
+            ));
+        }
+        let factor = &factors[0];
+        let levels = get_factor_levels(data, factor)?;
+        if levels.len() != 2 {
+            return Err(format!(
+                "VarianceMode = Welch requires the Fixed Factor to have exactly two levels; '{}' has {}.",
+                factor,
+                levels.len()
+            ));
+        }
+        let welch_tests = calculate_welch_two_sample_t2(data, config, factor)?;
+        effects.insert(factor.clone(), welch_tests);
+    }
+
     // Create the final result
+    let design_note = if config.main.variance_mode == VarianceMode::Welch {
+        Some(format!(
+            "Type {:?} sum of squares (Welch-Satterthwaite for {})",
+            &config.model.sum_of_square_method,
+            config
+                .main
+                .fix_factor
+                .as_ref()
+                .and_then(|v| v.first())
+                .cloned()
+                .unwrap_or_default()
+        ))
+    } else {
+        Some(format!("Type {:?} sum of squares", &config.model.sum_of_square_method))
+    };
+
     Ok(MultivariateTests {
         effects,
-        design: Some(format!("Type {:?} sum of squares", &config.model.sum_of_square_method)),
+        design: design_note,
         alpha: Some(alpha),
     })
+}
+
+/// Hotelling T² two-sample test with unequal covariance matrices, using the
+/// Krishnamoorthy-Yu (2004) multivariate Welch-Satterthwaite approximation.
+///
+///   V       = S₁/n₁ + S₂/n₂
+///   d       = x̄₁ − x̄₂
+///   T²      = dᵀ V⁻¹ d
+///   1/ν     = Σ_{i=1,2} [1/(n_i − 1)] · {tr((Vᵢ V⁻¹)²) + (tr(Vᵢ V⁻¹))²} / (p² + p)
+///   F       = ((ν − p + 1)/(p ν)) · T²   ~   F(p, ν − p + 1)
+///
+/// Returns the single Hotelling's Trace entry — Pillai/Wilks/Roy are not
+/// defined in the unequal-covariance setting and are omitted upstream.
+fn calculate_welch_two_sample_t2(
+    data: &AnalysisData,
+    config: &MultivariateConfig,
+    factor: &str,
+) -> Result<HashMap<String, MultivariateTestEntry>, String> {
+    let groups = compute_per_group_covariances(data, config, &[factor.to_string()])?;
+    if groups.len() != 2 {
+        return Err(format!(
+            "Welch two-sample Hotelling T² needs exactly two groups with n > p; got {}.",
+            groups.len()
+        ));
+    }
+    let g1 = &groups[0];
+    let g2 = &groups[1];
+    let p = g1.mean.len();
+    if p == 0 {
+        return Err("No dependent variables available for Welch Hotelling T²".to_string());
+    }
+    if g2.mean.len() != p {
+        return Err("Group mean vectors have inconsistent dimensions".to_string());
+    }
+
+    let v1 = &g1.covariance / (g1.n as f64);
+    let v2 = &g2.covariance / (g2.n as f64);
+    let v = &v1 + &v2;
+    let v_inv = v
+        .clone()
+        .try_inverse()
+        .ok_or_else(|| "V = S₁/n₁ + S₂/n₂ is singular".to_string())?;
+
+    let d = &g1.mean - &g2.mean;
+    let t_squared = (d.transpose() * &v_inv * &d)[(0, 0)];
+
+    // Krishnamoorthy-Yu degrees of freedom.
+    let denom = (p as f64) * (p as f64) + (p as f64);
+    let m1 = &v1 * &v_inv;
+    let m2 = &v2 * &v_inv;
+    let trace_m1 = m1.trace();
+    let trace_m2 = m2.trace();
+    let trace_m1_sq = (&m1 * &m1).trace();
+    let trace_m2_sq = (&m2 * &m2).trace();
+
+    let inv_nu = (1.0 / (g1.n as f64 - 1.0))
+        * (trace_m1_sq + trace_m1.powi(2))
+        / denom
+        + (1.0 / (g2.n as f64 - 1.0))
+            * (trace_m2_sq + trace_m2.powi(2))
+            / denom;
+    if !inv_nu.is_finite() || inv_nu <= 0.0 {
+        return Err("Welch degrees-of-freedom computation produced a non-positive value".to_string());
+    }
+    let nu = 1.0 / inv_nu;
+
+    let df1 = p as f64;
+    let df2 = nu - df1 + 1.0;
+    if !(df2 > 0.0 && df2.is_finite()) {
+        return Err(format!(
+            "Welch df2 = ν − p + 1 = {} is not positive; check sample sizes vs p.",
+            df2
+        ));
+    }
+
+    let f_stat = ((nu - df1 + 1.0) / (df1 * nu)) * t_squared;
+    let significance = calculate_f_significance(
+        df1.round().max(1.0) as usize,
+        df2.round().max(1.0) as usize,
+        f_stat,
+    );
+    let noncent = f_stat * df1;
+
+    let entry = MultivariateTestEntry {
+        value: t_squared,
+        f: f_stat,
+        hypothesis_df: df1,
+        error_df: df2,
+        significance,
+        partial_eta_squared: t_squared / (t_squared + nu),
+        noncent_parameter: noncent,
+        observed_power: if f_stat > 1.0 {
+            (1.0 - 0.1 / f_stat).min(1.0)
+        } else {
+            0.5
+        },
+        is_exact_statistic: false,
+    };
+
+    // Welch only yields Hotelling's Trace; upstream label/formatter knows to
+    // skip the other three statistics in this mode.
+    let mut out = HashMap::new();
+    out.insert("Hotelling's Trace".to_string(), entry);
+    Ok(out)
 }
 
 /// Calculate hypothesis and error matrices for a given effect
@@ -224,10 +370,33 @@ fn calculate_hypothesis_error_matrices(
     let mut e_matrix = vec![vec![0.0; p]; p];
 
     if effect == "Intercept" {
-        // Intercept H = n * (grand mean vector) * (grand mean vector)'.
+        // Hotelling T² one-population test parameterizes the Intercept H matrix
+        // by μ₀: H = n · (x̄ − μ₀)(x̄ − μ₀)ᵀ. When TestValues is absent we
+        // fall back to μ₀ = 0, which reproduces the original behavior.
+        let mu0: Vec<f64> = match &config.main.test_values {
+            Some(tv) => {
+                if tv.len() != p {
+                    return Err(format!(
+                        "TestValues length ({}) must equal number of Dependent Variables ({})",
+                        tv.len(),
+                        p
+                    ));
+                }
+                tv.clone()
+            }
+            None => vec![0.0; p],
+        };
+
+        let centered: Vec<f64> = grand_means
+            .iter()
+            .zip(mu0.iter())
+            .map(|(g, m)| g - m)
+            .collect();
+
+        // H = n · (x̄ − μ₀)(x̄ − μ₀)ᵀ
         for i in 0..p {
             for j in 0..p {
-                h_matrix[i][j] = (n_obs as f64) * grand_means[i] * grand_means[j];
+                h_matrix[i][j] = (n_obs as f64) * centered[i] * centered[j];
             }
         }
 

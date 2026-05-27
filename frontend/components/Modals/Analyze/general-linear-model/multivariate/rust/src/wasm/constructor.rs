@@ -167,6 +167,26 @@ impl MultivariateAnalysis {
             }
         }
 
+        // Validate TestValues (μ₀) for Hotelling T² one-population test.
+        if let Some(ref tv) = config.main.test_values {
+            let dep_var_len = config.main.dep_var.as_ref().map(|v| v.len()).unwrap_or(0);
+            if tv.len() != dep_var_len {
+                let msg = format!(
+                    "TestValues must have the same length as Dependent Variables. \
+                     Got {} values for {} dependent variables.",
+                    tv.len(),
+                    dep_var_len
+                );
+                error_collector.add_error("config.validation.test_values.length", &msg);
+                return Err(string_to_js_error(msg));
+            }
+            if tv.iter().any(|v| v.is_nan()) {
+                let msg = "TestValues contains NaN. Please ensure all numeric inputs are filled in correctly.".to_string();
+                error_collector.add_error("config.validation.test_values.nan", &msg);
+                return Err(string_to_js_error(msg));
+            }
+        }
+
         // Store data
         let data = AnalysisData {
             dependent_data,

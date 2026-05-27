@@ -1,9 +1,16 @@
 import type { ResultJson, Row, Table } from "@/types/Table";
 import { formatDisplayNumber, formatSig } from "@/hooks/useFormatter";
 
+export type MultivariateFormatterOptions = {
+    testValues?: number[] | null;
+    varianceMode?: "Pooled" | "Welch" | null;
+    factor?: string | null;
+};
+
 export function transformMultivariateResult(
     data: any,
-    errors: string[] = []
+    errors: string[] = [],
+    options: MultivariateFormatterOptions = {}
 ): ResultJson {
     const resultJson: ResultJson = { tables: [] };
 
@@ -14,7 +21,12 @@ export function transformMultivariateResult(
     formatBoxTest(data, resultJson);
     formatBartlettTest(data, resultJson);
     formatLeveneTest(data, resultJson);
-    formatMultivariateTests(data, resultJson);
+    formatMultivariateTests(
+        data,
+        resultJson,
+        options.testValues ?? null,
+        options.varianceMode === "Welch" ? options.factor ?? null : null
+    );
     formatTestsBetweenSubjectsEffects(data, resultJson);
     formatParameterEstimates(data, resultJson);
     formatBetweenSubjectsSSCP(data, resultJson);
@@ -205,31 +217,66 @@ function formatLeveneTest(data: any, resultJson: ResultJson) {
 }
 
 // ── 6. Multivariate Tests (Pillai / Wilks / Hotelling / Roy) ─────────────────
-function formatMultivariateTests(data: any, resultJson: ResultJson) {
+function formatMultivariateTests(
+    data: any,
+    resultJson: ResultJson,
+    testValues: number[] | null,
+    welchFactor: string | null
+) {
     if (!data.multivariate_tests) return;
 
     const mt = data.multivariate_tests;
     const effects: Record<string, Record<string, any>> = mt.effects || {};
 
+    // Hotelling T² one-population mode: when the user supplied a μ₀ vector
+    // (even an explicit zero vector), relabel the Intercept effect and
+    // surface an extra T² column derived from Hotelling-Lawley trace.
+    const hotellingT2Mode = testValues !== null;
+    const interceptLabel = hotellingT2Mode
+        ? "Hotelling T² (vs μ₀)"
+        : "Intercept";
+
+    // Welch-Satterthwaite two-sample mode: Rust already replaces the factor
+    // entry with a single Hotelling's Trace whose `value` holds T² directly.
+    const welchMode = welchFactor !== null;
+
+    const showTSquaredColumn = hotellingT2Mode || welchMode;
+    const columnHeaders = [
+        { header: "Effect", key: "effect" },
+        { header: "", key: "test_name" },
+        { header: "Value", key: "value" },
+        { header: "F", key: "f" },
+        { header: "Hypothesis df", key: "hypothesis_df" },
+        { header: "Error df", key: "error_df" },
+        { header: "Sig.", key: "significance" },
+        { header: "Partial Eta Squared", key: "partial_eta_squared" },
+        { header: "Noncent. Parameter", key: "noncent_parameter" },
+        { header: "Observed Power", key: "observed_power" },
+    ];
+    if (showTSquaredColumn) {
+        columnHeaders.splice(2, 0, { header: "T²", key: "t_squared" });
+    }
+
+    let interpretation: string;
+    if (welchMode) {
+        interpretation = `Hotelling T² Dua Populasi dengan asumsi Σ₁ ≠ Σ₂ (Welch-Satterthwaite). T² = dᵀV⁻¹d dengan V = S₁/n₁ + S₂/n₂; F = ((ν − p + 1)/(pν))·T² ~ F(p, ν − p + 1) dengan ν = derajat kebebasan Krishnamoorthy-Yu. Tolak H₀: μ₁ = μ₂ jika Sig. < α.`;
+    } else if (hotellingT2Mode) {
+        interpretation =
+            "Hotelling T² Satu Populasi menguji H₀: μ = μ₀. Untuk kasus tanpa faktor between-subjects, T² = (n − 1) × Hotelling's Trace, dan F = ((n − p) / (p(n − 1))) · T² ~ F(p, n − p). Tolak H₀ jika Sig. < α.";
+    } else {
+        interpretation =
+            "Tests the joint effect of each predictor on the combined dependent variables using four multivariate statistics (Pillai's Trace, Wilks' Lambda, Hotelling's Trace, Roy's Largest Root). A significant Sig. (< .05) indicates that the effect significantly influences the joint distribution of the dependent variables.";
+    }
+
     const table: Table = {
         key: "multivariate_tests",
         title: "Multivariate Tests",
-        columnHeaders: [
-            { header: "Effect", key: "effect" },
-            { header: "", key: "test_name" },
-            { header: "Value", key: "value" },
-            { header: "F", key: "f" },
-            { header: "Hypothesis df", key: "hypothesis_df" },
-            { header: "Error df", key: "error_df" },
-            { header: "Sig.", key: "significance" },
-            { header: "Partial Eta Squared", key: "partial_eta_squared" },
-            { header: "Noncent. Parameter", key: "noncent_parameter" },
-            { header: "Observed Power", key: "observed_power" },
-        ],
+        columnHeaders,
         rows: [],
-        note: mt.design,
-        interpretation:
-            "Tests the joint effect of each predictor on the combined dependent variables using four multivariate statistics (Pillai's Trace, Wilks' Lambda, Hotelling's Trace, Roy's Largest Root). A significant Sig. (< .05) indicates that the effect significantly influences the joint distribution of the dependent variables.",
+        note: welchMode
+            ? `${mt.design ?? ""} — Computed using Welch-Satterthwaite approximation for unequal covariance matrices.`
+            : mt.design,
+        interpretation,
     };
 
     const testOrder = [
@@ -240,14 +287,51 @@ function formatMultivariateTests(data: any, resultJson: ResultJson) {
     ];
 
     Object.entries(effects).forEach(([effectName, testMap]: [string, any]) => {
+        const isWelchEffect = welchMode && effectName === welchFactor;
+
+        let displayedEffectName: string;
+        if (effectName === "Intercept") {
+            displayedEffectName = interceptLabel;
+        } else if (isWelchEffect) {
+            displayedEffectName = `${effectName} — Welch-Satterthwaite`;
+        } else {
+            displayedEffectName = effectName;
+        }
+
+        // Two T² derivations:
+        //   • One-population (hotellingT2Mode, Intercept): T² = (n − 1) · hotelling_trace
+        //   • Welch two-sample (factor entry): T² is stored directly in `value`.
+        let tSquared: number | null = null;
+        if (hotellingT2Mode && effectName === "Intercept") {
+            const hotelling = testMap["Hotelling's Trace"];
+            if (hotelling) {
+                const n =
+                    Number(hotelling.error_df) +
+                    Number(hotelling.hypothesis_df);
+                if (Number.isFinite(n) && n > 1) {
+                    tSquared = Number(hotelling.value) * (n - 1);
+                }
+            }
+        } else if (isWelchEffect) {
+            const hotelling = testMap["Hotelling's Trace"];
+            if (hotelling && Number.isFinite(Number(hotelling.value))) {
+                tSquared = Number(hotelling.value);
+            }
+        }
+
+        // In Welch mode, the factor row only emits Hotelling's Trace —
+        // Pillai/Wilks/Roy are undefined under unequal covariance and Rust
+        // omits them. We must not synthesise blank rows.
+        const order = isWelchEffect ? ["Hotelling's Trace"] : testOrder;
+
         let isFirstRow = true;
-        testOrder.forEach((testName) => {
+        order.forEach((testName) => {
             const entry = testMap[testName];
             if (!entry) return;
 
             const row: Row = {
                 rowHeader: [],
-                effect: isFirstRow ? effectName : "",
+                effect: isFirstRow ? displayedEffectName : "",
                 test_name: testName,
                 value: formatDisplayNumber(entry.value),
                 f: formatDisplayNumber(entry.f),
@@ -258,6 +342,12 @@ function formatMultivariateTests(data: any, resultJson: ResultJson) {
                 noncent_parameter: formatDisplayNumber(entry.noncent_parameter),
                 observed_power: formatDisplayNumber(entry.observed_power),
             };
+            if (showTSquaredColumn) {
+                row.t_squared =
+                    testName === "Hotelling's Trace" && tSquared !== null
+                        ? formatDisplayNumber(tSquared)
+                        : "";
+            }
             table.rows.push(row);
             isFirstRow = false;
         });
