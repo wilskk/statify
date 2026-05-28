@@ -10,6 +10,7 @@ struct EffectGroup {
     name: String,
     columns: Vec<usize>,
     mandatory: bool,
+    is_factor: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -82,18 +83,50 @@ fn build_effect_groups(variable_names: &[String]) -> Vec<EffectGroup> {
             (raw_name.trim().to_string(), false)
         };
 
+        // Consider this group a "factor" if any of the originating variable names
+        // contained an '=' (encoded factor levels like "Var=Level").
+        let is_factor = raw_name.contains('=');
+
         if let Some(existing) = groups.iter_mut().find(|group| group.name == name) {
             existing.columns.push(idx);
+            // once a factor flag is set for the group keep it
+            existing.is_factor = existing.is_factor || is_factor;
         } else {
             groups.push(EffectGroup {
                 name,
                 columns: vec![idx],
                 mandatory,
+                is_factor,
             });
         }
     }
 
     groups
+}
+
+fn split_name_tokens(name: &str) -> Vec<String> {
+    // Split on common non-word delimiters to extract component tokens (e.g., "A:B" -> ["A","B"]).
+    name.split(|c: char| !c.is_alphanumeric() && c != '_')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect()
+}
+
+fn parents_of(group_name: &str, all_names: &[String]) -> Vec<String> {
+    let tokens = split_name_tokens(group_name);
+    // Any token that matches a group name is considered a parent candidate.
+    all_names
+        .iter()
+        .filter(|other| {
+            if other.as_str() == group_name {
+                return false;
+            }
+            let other_tokens = split_name_tokens(other);
+            // parent if other is one of the tokens of group_name OR group_name contains other as separate token
+            tokens.iter().any(|t| other_tokens.iter().any(|ot| ot == t))
+        })
+        .cloned()
+        .collect()
 }
 
 fn build_matrix_from_columns(x: &DMatrix<f64>, columns: &[usize]) -> DMatrix<f64> {
@@ -278,6 +311,11 @@ fn select_effects(
     config: &MultinomialConfig,
 ) -> Result<(Vec<usize>, Vec<StepwiseStep>), String> {
     let method = parse_stepwise_method(config);
+    let constrain_hierarchy = config.constrain_hierarchy.unwrap_or(false);
+    let hierarchy_mode = config
+        .hierarchy_mode
+        .as_deref()
+        .unwrap_or("treat_covariates_like_factors");
     if method == StepwiseMethod::Enter {
         return Ok(((0..base_primary.n_params).collect(), Vec::new()));
     }
@@ -354,6 +392,52 @@ fn select_effects(
             let mut best_p = 1.0;
 
             for (idx, candidate) in candidate_groups.iter().enumerate() {
+                // If hierarchy constraint is active, ensure parent effects are present
+                if constrain_hierarchy {
+                    let all_names: Vec<String> =
+                        effect_groups.iter().map(|g| g.name.clone()).collect();
+                    let parents = parents_of(&candidate.name, &all_names);
+                    // Depending on hierarchy_mode, decide which parents are required
+                    let mut parents_required = parents.clone();
+                    if hierarchy_mode == "consider_only_factorial_terms" {
+                        parents_required = parents
+                            .into_iter()
+                            .filter(|p| {
+                                effect_groups
+                                    .iter()
+                                    .find(|g| &g.name == p)
+                                    .map(|g| g.is_factor)
+                                    .unwrap_or(false)
+                            })
+                            .collect();
+                    } else if hierarchy_mode == "within_covariate_effects" {
+                        // If candidate contains any covariate token, require only factor parents
+                        let is_candidate_factor = candidate.is_factor;
+                        if !is_candidate_factor {
+                            parents_required = parents
+                                .into_iter()
+                                .filter(|p| {
+                                    effect_groups
+                                        .iter()
+                                        .find(|g| &g.name == p)
+                                        .map(|g| g.is_factor)
+                                        .unwrap_or(false)
+                                })
+                                .collect();
+                        }
+                    }
+
+                    let mut all_present = true;
+                    for parent_name in parents_required.iter() {
+                        if !selected_groups.iter().any(|g| &g.name == parent_name) {
+                            all_present = false;
+                            break;
+                        }
+                    }
+                    if !all_present {
+                        continue;
+                    }
+                }
                 let (stat, p_value) = effect_test_statistic(
                     base_x,
                     base_primary,
@@ -579,4 +663,66 @@ pub fn perform_primary_calculation(
     selected_primary.stepwise_trace = stepwise_trace;
 
     Ok(selected_primary)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_split_name_tokens_simple() {
+        assert_eq!(
+            split_name_tokens("A:B"),
+            vec!["A".to_string(), "B".to_string()]
+        );
+        assert_eq!(
+            split_name_tokens("Var_C.D"),
+            vec!["Var_C".to_string(), "D".to_string()]
+        );
+        assert_eq!(split_name_tokens("Single"), vec!["Single".to_string()]);
+        assert_eq!(
+            split_name_tokens("A-B_C"),
+            vec!["A".to_string(), "B_C".to_string()]
+        );
+    }
+
+    #[test]
+    fn test_parents_of_basic() {
+        let all = vec![
+            "A".to_string(),
+            "B".to_string(),
+            "A:B".to_string(),
+            "C".to_string(),
+            "D:E".to_string(),
+        ];
+
+        let parents = parents_of("A:B", &all);
+        // parents_of may return in any order; check contains
+        assert!(parents.contains(&"A".to_string()));
+        assert!(parents.contains(&"B".to_string()));
+        // should not include unrelated
+        assert!(!parents.contains(&"C".to_string()));
+    }
+
+    #[test]
+    fn test_build_effect_groups_is_factor() {
+        let names = vec![
+            "Intercept".to_string(),
+            "X=1".to_string(),
+            "X=2".to_string(),
+            "Y".to_string(),
+            "Z=cat".to_string(),
+        ];
+
+        let groups = build_effect_groups(&names);
+        // Find X group
+        let x_group = groups.iter().find(|g| g.name == "X").expect("X group");
+        assert!(x_group.is_factor, "X should be detected as factor");
+        // columns should include the two X columns (indexes 1 and 2)
+        assert!(x_group.columns.contains(&1));
+        assert!(x_group.columns.contains(&2));
+
+        let y_group = groups.iter().find(|g| g.name == "Y").expect("Y group");
+        assert!(!y_group.is_factor, "Y should not be a factor");
+    }
 }

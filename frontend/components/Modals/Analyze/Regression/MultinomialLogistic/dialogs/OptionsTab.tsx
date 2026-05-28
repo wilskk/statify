@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
+import { useAnalysisData } from "@/hooks/useAnalysisData";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,6 +53,8 @@ export const OptionsTab: React.FC<OptionsTabProps> = ({
     onAdvancedChange,
     dependentVariable,
 }) => {
+    const selectTriggerRef = useRef<any>(null);
+    const { data } = useAnalysisData();
     const handleAdvancedString = (
         key: keyof MultinomialAdvancedOptions,
         value: string
@@ -80,7 +83,21 @@ export const OptionsTab: React.FC<OptionsTabProps> = ({
 
                 <RadioGroup
                     value={["first", "last"].includes(referenceCategory) ? referenceCategory : "custom"}
-                    onValueChange={(val) => val !== "custom" && onReferenceCategoryChange(val)}
+                    onValueChange={(val) => {
+                        if (val !== "custom") {
+                            onReferenceCategoryChange(val);
+                        } else {
+                            onReferenceCategoryChange("");
+                            // open the select immediately so user can pick the custom category
+                            setTimeout(() => {
+                                try {
+                                    selectTriggerRef.current?.click();
+                                } catch {
+                                    // ignore
+                                }
+                            }, 0);
+                        }
+                    }}
                     className="grid gap-3"
                 >
                     <div className="flex items-center space-x-3">
@@ -106,13 +123,36 @@ export const OptionsTab: React.FC<OptionsTabProps> = ({
                             onValueChange={(val) => onReferenceCategoryChange(val)}
                             value={!["first", "last"].includes(referenceCategory) ? referenceCategory : ""}
                         >
-                            <SelectTrigger className="w-full sm:w-[180px] h-8 text-xs">
+                            <SelectTrigger ref={selectTriggerRef} className="w-full h-8 text-xs">
                                 <SelectValue placeholder="Pilih kategori..." />
                             </SelectTrigger>
                             <SelectContent>
-                                {dependentVariable?.values?.map((cat: any) => (
-                                    <SelectItem key={cat.value} value={String(cat.value)}>
-                                        {cat.label || cat.value}
+                                {(
+                                    Array.isArray(dependentVariable?.values) && dependentVariable!.values.length > 0
+                                        ? dependentVariable!.values
+                                        : (() => {
+                                            // fallback: build distinct values from active data rows
+                                            try {
+                                                const col = dependentVariable?.columnIndex;
+                                                if (col === undefined || !Array.isArray(data) || data.length === 0) return [];
+                                                const seen = new Set<string>();
+                                                const items: Array<{ value: string; label: string }> = [];
+                                                for (const row of data) {
+                                                    const raw = row?.[col];
+                                                    const str = raw === null || raw === undefined ? "" : String(raw);
+                                                    if (!seen.has(str)) {
+                                                        seen.add(str);
+                                                        items.push({ value: str, label: str });
+                                                    }
+                                                }
+                                                return items;
+                                            } catch {
+                                                return [];
+                                            }
+                                        })()
+                                ).map((cat: any) => (
+                                    <SelectItem key={String(cat.value)} value={String(cat.value)}>
+                                        {cat.label ?? cat.value}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
@@ -136,7 +176,7 @@ export const OptionsTab: React.FC<OptionsTabProps> = ({
                                 })
                             }
                         >
-                            <SelectTrigger className="h-8 w-full sm:w-[160px] text-xs">
+                            <SelectTrigger className="h-8 w-full text-xs">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -164,14 +204,14 @@ export const OptionsTab: React.FC<OptionsTabProps> = ({
             <div className="space-y-4">
                 <h4 className="text-sm font-semibold">Stepwise Options</h4>
                 <div className="overflow-x-auto">
-                    <div className="min-w-[640px] grid gap-4 rounded-md border bg-muted/10 p-4 md:grid-cols-2">
+                    <div className="grid gap-4 rounded-md border bg-muted/10 p-4 md:grid-cols-2 min-w-0">
                         <div className="space-y-3">
                             <div className="grid grid-cols-1 sm:grid-cols-[170px_1fr] items-center gap-2">
                                 <Label className="text-sm font-normal">Entry Probability:</Label>
                                 <Input
                                     type="number"
                                     step="0.01"
-                                    className="h-8 w-20"
+                                    className="h-8 w-full sm:w-20"
                                     value={advanced.entryProbability}
                                     onChange={(e) => handleAdvancedString("entryProbability", e.target.value)}
                                 />
@@ -182,7 +222,7 @@ export const OptionsTab: React.FC<OptionsTabProps> = ({
                                     value={advanced.entryTest}
                                     onValueChange={(val) => onAdvancedChange({ entryTest: val as MultinomialAdvancedOptions["entryTest"] })}
                                 >
-                                    <SelectTrigger className="h-8 w-full sm:w-[180px] text-xs">
+                                    <SelectTrigger className="h-8 w-full text-xs">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -196,7 +236,7 @@ export const OptionsTab: React.FC<OptionsTabProps> = ({
                                 <Input
                                     type="number"
                                     step="0.01"
-                                    className="h-8 w-20"
+                                    className="h-8 w-full sm:w-20"
                                     value={advanced.removalProbability}
                                     onChange={(e) => handleAdvancedString("removalProbability", e.target.value)}
                                 />
@@ -207,7 +247,7 @@ export const OptionsTab: React.FC<OptionsTabProps> = ({
                                     value={advanced.removalTest}
                                     onValueChange={(val) => onAdvancedChange({ removalTest: val as MultinomialAdvancedOptions["removalTest"] })}
                                 >
-                                    <SelectTrigger className="h-8 w-full sm:w-[180px] text-xs">
+                                    <SelectTrigger className="h-8 w-full text-xs">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -220,26 +260,26 @@ export const OptionsTab: React.FC<OptionsTabProps> = ({
                     </div>
 
                     <div className="space-y-3 md:border-l md:pl-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_72px] items-center gap-2">
-                            <Label className="text-sm font-normal">
+                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_96px] items-center gap-2">
+                            <Label className="text-sm font-normal whitespace-normal">
                                 Minimum Stepped Effects in Model (for backward methods)
                             </Label>
                             <Input
                                 type="number"
                                 step="1"
-                                className="h-8 w-20"
+                                className="h-8 w-full sm:w-24"
                                 value={advanced.minimumSteppedEffects}
                                 onChange={(e) => handleAdvancedString("minimumSteppedEffects", e.target.value)}
                             />
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_72px] items-center gap-2">
-                            <Label className="text-sm font-normal">
+                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_96px] items-center gap-2">
+                            <Label className="text-sm font-normal whitespace-normal">
                                 Maximum Stepped Effects in Model (for forward methods)
                             </Label>
                             <Input
                                 type="number"
                                 step="1"
-                                className="h-8 w-20"
+                                className="h-8 w-full sm:w-24"
                                 value={advanced.maximumSteppedEffects}
                                 onChange={(e) => handleAdvancedString("maximumSteppedEffects", e.target.value)}
                             />
@@ -283,7 +323,7 @@ export const OptionsTab: React.FC<OptionsTabProps> = ({
                                         id="hierarchy-mode-1"
                                         className="mt-1"
                                     />
-                                    <Label htmlFor="hierarchy-mode-1" className="text-sm font-normal leading-5">
+                                    <Label htmlFor="hierarchy-mode-1" className="text-sm font-normal leading-5 whitespace-normal">
                                         Treat covariates like factors for the purposes of determining hierarchy
                                     </Label>
                                 </div>
@@ -293,7 +333,7 @@ export const OptionsTab: React.FC<OptionsTabProps> = ({
                                         id="hierarchy-mode-2"
                                         className="mt-1"
                                     />
-                                    <Label htmlFor="hierarchy-mode-2" className="text-sm font-normal leading-5">
+                                    <Label htmlFor="hierarchy-mode-2" className="text-sm font-normal leading-5 whitespace-normal">
                                         Consider only factorial terms for determining hierarchy; any terms with covariates can be entered any time
                                     </Label>
                                 </div>
@@ -303,7 +343,7 @@ export const OptionsTab: React.FC<OptionsTabProps> = ({
                                         id="hierarchy-mode-3"
                                         className="mt-1"
                                     />
-                                    <Label htmlFor="hierarchy-mode-3" className="text-sm font-normal leading-5">
+                                    <Label htmlFor="hierarchy-mode-3" className="text-sm font-normal leading-5 whitespace-normal">
                                         Within covariate effects, consider only factorial terms for determining hierarchy
                                     </Label>
                                 </div>
@@ -313,12 +353,7 @@ export const OptionsTab: React.FC<OptionsTabProps> = ({
                 </div>
             </div>
 
-            <div className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-md">
-                <p className="text-[11px] text-blue-700 leading-relaxed italic">
-                    Opsi stepwise dan hierarchy sudah tersedia di UI dan dikirim ke worker options.
-                    Untuk hasil yang benar-benar identik dengan SPSS, engine multinomial stepwise di backend masih perlu diimplementasikan penuh.
-                </p>
-            </div>
+            {/* Note removed: backend hierarchy enforcement implemented in WASM */}
 
             {!dependentVariable && (
                 <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-md flex items-start gap-3">

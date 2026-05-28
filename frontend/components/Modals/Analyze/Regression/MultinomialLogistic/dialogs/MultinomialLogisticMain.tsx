@@ -1737,7 +1737,7 @@ export const MultinomialLogisticMain = () => {
                             <VariablesTab
                                 variables={variables}
                                 options={options}
-                                setOptions={setOptions}
+                                setOptions={setOptions as React.Dispatch<React.SetStateAction<any>>}
                             />
                         </TabsContent>
 

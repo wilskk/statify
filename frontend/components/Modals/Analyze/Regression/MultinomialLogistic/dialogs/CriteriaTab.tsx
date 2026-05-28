@@ -129,13 +129,7 @@ export const CriteriaTab: React.FC<CriteriaTabProps> = ({ options, onChange }) =
                 </div>
             </div>
 
-            <div className="mt-4 p-3 bg-muted/20 border rounded-md">
-                <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    <span className="font-bold uppercase mr-1">Catatan:</span>
-                    Nilai default mengikuti standar industri (SPSS). Nilai konvergensi yang lebih kecil
-                    meningkatkan presisi namun membutuhkan waktu komputasi Rust WASM yang lebih lama.
-                </p>
-            </div>
+            {/* Note removed as requested */}
         </div>
     );
 };
