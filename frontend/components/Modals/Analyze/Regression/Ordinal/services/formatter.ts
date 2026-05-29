@@ -62,6 +62,34 @@ export const buildOrdinalPlumPayload = (
   return {
     procedure: "PLUM",
     version: "plum-v1",
+    dependent: options.dependent
+      ? {
+        name: options.dependent.name,
+        columnIndex: options.dependent.columnIndex,
+        type: options.dependent.type,
+        label: options.dependent.label,
+        valueLabels: options.dependent.values?.map((value) => ({
+          value: value.value,
+          label: value.label,
+        })),
+      }
+      : null,
+    factors: options.factors.map((factor) => ({
+      name: factor.name,
+      columnIndex: factor.columnIndex,
+      type: factor.type,
+      label: factor.label,
+      valueLabels: factor.values?.map((value) => ({
+        value: value.value,
+        label: value.label,
+      })),
+    })),
+    covariates: options.covariates.map((covariate) => ({
+      name: covariate.name,
+      columnIndex: covariate.columnIndex,
+      type: covariate.type,
+      label: covariate.label,
+    })),
     response: {
       variable: responseVariable,
       orderedCategories,
@@ -276,6 +304,11 @@ export const formatOrdinalResult = (result: any) => {
     if (param.sections) {
       allSections.push(...param.sections);
     }
+
+    console.log("[ORDINAL][FORMATTER]", {
+      parameterRows: estimates.length,
+      hasRedundant: estimates.some((row: any) => Boolean(row.isRedundant ?? row.is_redundant)),
+    });
   }
 
   // 5. Test of Parallel Lines
@@ -360,10 +393,18 @@ export const formatOrdinalResult = (result: any) => {
       const iterationValue = Number(row.iteration ?? 0);
       const stepHalvings = Number(row.stepHalvings ?? row.step_halvings ?? 0);
 
+      const rowMinus2 = typeof row.minus2LogLikelihoodDisplayed === "number"
+        ? row.minus2LogLikelihoodDisplayed
+        : (typeof row.minus2_log_likelihood_displayed === "number"
+          ? row.minus2_log_likelihood_displayed
+          : (typeof row.minus2LogLikelihood === "number"
+            ? row.minus2LogLikelihood
+            : (typeof row.minus2_log_likelihood === "number" ? row.minus2_log_likelihood : null)));
+
       const formatted: Record<string, any> = {
         rowHeader: [Number.isFinite(iterationValue) ? iterationValue.toString() : "0"],
         stepHalvings: Number.isFinite(stepHalvings) ? stepHalvings.toString() : "0",
-        neg2ll: safeFixed(row.minus2LogLikelihood ?? row.minus2_log_likelihood, 3),
+        neg2ll: safeFixed(rowMinus2, 3),
       };
 
       thresholdNames.forEach((_: string, index: number) => {

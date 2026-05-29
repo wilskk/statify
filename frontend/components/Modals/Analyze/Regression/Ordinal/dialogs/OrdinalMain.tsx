@@ -13,6 +13,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useModalStore } from "@/stores/useModalStore";
 import { useAnalysisData } from "@/hooks/useAnalysisData";
 import { useResultStore } from "@/stores/useResultStore";
+import { useDataStore, CellUpdate } from "@/stores/useDataStore";
 
 // Components
 import { VariablesTab } from "./VariablesTab";
@@ -23,6 +24,10 @@ import { OutputTab } from "./OutputTab";
 
 // Services
 import { formatOrdinalResult } from "../services/formatter";
+import {
+  buildOrdinalPlumDesignMatrix,
+  extractOrdinalDependentCategories,
+} from "../services/plum_design_matrix";
 
 // Types
 import {
@@ -78,9 +83,10 @@ const OrdinalMain: React.FC = () => {
       iterationHistoryEvery: 1,
     },
     savedVariables: {
-      predictedCategory: false,
-      predictedProbability: false,
-      actualProbability: false,
+      predictedResponseCategory: false,
+      estimatedResponseProbabilities: false,
+      predictedCategoryProbability: false,
+      actualCategoryProbability: false,
     },
     printLogLikelihood: "Including",
   });
@@ -97,6 +103,59 @@ const OrdinalMain: React.FC = () => {
 
   const { data, weights } = useAnalysisData();
   const { addLog, addAnalytic, addStatistic } = useResultStore();
+
+  const addSavedVariableColumns = async (savedVariables: any) => {
+    const columns = Array.isArray(savedVariables?.columns) ? savedVariables.columns : [];
+    if (columns.length === 0) return;
+
+    const currentVariables = useVariableStore.getState().variables;
+    const startColumnIndex = currentVariables.length > 0
+      ? Math.max(...currentVariables.map((variable) => variable.columnIndex)) + 1
+      : 0;
+    const variablesToAdd: Partial<Variable>[] = [];
+    const updates: CellUpdate[] = [];
+
+    columns.forEach((column: any, index: number) => {
+      const columnIndex = startColumnIndex + index;
+      const isString = column.type === "string";
+      variablesToAdd.push({
+        columnIndex,
+        name: column.name,
+        label: column.label,
+        type: isString ? "STRING" : "NUMERIC",
+        width: isString ? 32 : 12,
+        decimals: isString ? 0 : (typeof column.decimals === "number" ? column.decimals : 6),
+        values: [],
+        missing: null,
+        columns: isString ? 32 : 12,
+        align: isString ? "left" : "right",
+        measure: column.name?.startsWith("PRE_") ? "ordinal" : "scale",
+        role: "input",
+      });
+
+      if (Array.isArray(column.values)) {
+        column.values.forEach((value: string | number | null, rowIndex: number) => {
+          if (value === null || value === undefined) return;
+          updates.push({
+            row: rowIndex,
+            col: columnIndex,
+            value,
+          });
+        });
+      }
+    });
+
+    console.log("[ORDINAL][SAVED_VARIABLES][ADD_TO_DATASET]", {
+      columns: variablesToAdd.map((variable) => variable.name),
+      updates: updates.length,
+    });
+
+    await useVariableStore.getState().addVariables(variablesToAdd, []);
+    if (updates.length > 0) {
+      await useDataStore.getState().updateCells(updates);
+      await useDataStore.getState().saveData();
+    }
+  };
 
   // ==================================================
   // HELPERS
@@ -116,16 +175,14 @@ const OrdinalMain: React.FC = () => {
     return numeric;
   };
 
-  const getSortedCategories = (values: unknown[]) => {
-    const unique = Array.from(new Set(values.map((v) => v)));
-    const allNumeric = unique.every((v) => typeof v === "number" && Number.isFinite(v));
-    if (allNumeric) {
-      return (unique as number[]).sort((a, b) => a - b).map((v) => v);
-    }
-    return unique.map((v) => String(v)).sort((a, b) => a.localeCompare(b));
-  };
+  const getVariableKey = (variable: Variable) => `${variable.columnIndex}-${variable.name}`;
 
-  const getVariableKey = (variable: Variable) => `${variable.id ?? "no-id"}-${variable.columnIndex}`;
+  const getVariableIdentity = (variable: Variable) => {
+    if (typeof variable.columnIndex === "number") {
+      return `col:${variable.columnIndex}`;
+    }
+    return `name:${variable.name}`;
+  };
 
   const isInteraction = (term: LocationModelTerm): term is LocationInteraction =>
     typeof term === "object" && "kind" in term && term.kind === "interaction";
@@ -258,6 +315,14 @@ const OrdinalMain: React.FC = () => {
 
       const factors = options.factors;
       const covariates = options.covariates;
+
+      const factorIdentities = new Set(factors.map(getVariableIdentity));
+      const covariateIdentities = new Set(covariates.map(get VariableIdentity));
+      for (const identity of factorIdentities) {
+        if (covariateIdentities.has(identity)) {
+          throw new Error("Variabel yang sama tidak boleh muncul di factors dan covariates.");
+        }
+      }
       const locationPredictorsRaw: LocationModelTerm[] = locationParams.locationModel.length > 0
         ? locationParams.locationModel
         : [...factors, ...covariates];
@@ -270,6 +335,13 @@ const OrdinalMain: React.FC = () => {
         responseVariable,
         locationPredictorsRaw
       );
+
+      for (const predictor of locationPredictors) {
+        const identity = getVariableIdentity(predictor);
+        if (!factorIdentities.has(identity) && !covariateIdentities.has(identity)) {
+          throw new Error(`Predictor '${predictor.name}' harus berada di Factors atau Covariates.`);
+        }
+      }
 
       console.log("[ORDINAL][MAIN][USER_INPUT]", {
         responseVariable,
@@ -285,6 +357,7 @@ const OrdinalMain: React.FC = () => {
       const totalRows = data.length;
       const validRows: any[] = [];
       const validWeights: number[] = [];
+      const originalRowIndices: number[] = [];
       const droppedRows: any[] = [];
       let totalWeightAll = 0;
 
@@ -340,6 +413,7 @@ const OrdinalMain: React.FC = () => {
         if (rowValid) {
           validRows.push(row);
           validWeights.push(weight);
+          originalRowIndices.push(rowIndex);
         } else {
           droppedRows.push(row);
         }
@@ -356,13 +430,15 @@ const OrdinalMain: React.FC = () => {
       }
 
       const responseValues = validRows.map((row) => getRowValue(row, responseVariable.columnIndex));
-      const responseCategories = getSortedCategories(responseValues);
+      const responseCategories = extractOrdinalDependentCategories(responseValues, responseVariable);
 
-      if (responseCategories.length < 2) {
-        throw new Error("Response variable contains only 1 valid category.");
-      }
-      if (responseCategories.length === 2) {
-        console.warn("[ORDINAL][MAIN][WARNING] Response variable has only 2 categories. Consider binary logistic.");
+      console.log("[ORDINAL][CATEGORY_ORDER]", {
+        responseVariable: responseVariable.name,
+        categories: responseCategories,
+      });
+
+      if (responseCategories.length < 3) {
+        throw new Error("Response variable harus memiliki minimal 3 kategori untuk ordinal regression.");
       }
 
       const responseCategoriesNumeric = responseCategories.every((value) => typeof value === "number");
@@ -403,70 +479,37 @@ const OrdinalMain: React.FC = () => {
       // ==================================================
       // BUILD LOCATION DESIGN MATRIX
       // ==================================================
-      const factorIds = new Set(factors.map((f) => f.id));
-      const covariateIds = new Set(covariates.map((c) => c.id));
-      const locationTermNames: string[] = [];
+      const factorPredictors = locationPredictors.filter((predictor) =>
+        factorIdentities.has(getVariableIdentity(predictor))
+      );
+      const covariatePredictors = locationPredictors.filter((predictor) =>
+        covariateIdentities.has(getVariableIdentity(predictor))
+      );
 
-      const factorCategoryMap = new Map<string, string[]>();
-      const referenceCategories: Record<string, string> = {};
-      for (const predictor of locationPredictors) {
-        if (factorIds.has(predictor.id)) {
-          const values = validRows.map((row) => getRowValue(row, predictor.columnIndex));
-          const categories = getSortedCategories(values).map((value) => String(value));
-          if (categories.length < 2) {
-            throw new Error(`Factor '${predictor.name}' contains less than 2 categories.`);
-          }
-          referenceCategories[predictor.name] = categories[0];
-          factorCategoryMap.set(String(predictor.id), categories);
-        }
-      }
-
-      const locationDesignMatrix: number[][] = validRows.map((row) => {
-        const rowValues: number[] = [];
-        for (const predictor of locationPredictors) {
-          const predictorValue = getRowValue(row, predictor.columnIndex);
-          if (covariateIds.has(predictor.id)) {
-            rowValues.push(toNumberOrThrow(predictorValue, predictor.name));
-          } else if (factorIds.has(predictor.id)) {
-            const categories = factorCategoryMap.get(String(predictor.id)) || [];
-            for (let i = 1; i < categories.length; i += 1) {
-              rowValues.push(String(predictorValue) === categories[i] ? 1 : 0);
-            }
-          } else {
-            rowValues.push(toNumberOrThrow(predictorValue, predictor.name));
-          }
-        }
-
-        for (const interaction of interactionTerms) {
-          const product = interaction.variables.reduce((acc, variable) => {
-            const value = getRowValue(row, variable.columnIndex);
-            return acc * toNumberOrThrow(value, variable.name);
-          }, 1);
-          rowValues.push(product);
-        }
-
-        return rowValues;
+      const designMatrixResult = buildOrdinalPlumDesignMatrix({
+        rows: validRows,
+        factors: factorPredictors,
+        covariates: covariatePredictors,
+        interactions: interactionTerms,
+        getRowValue,
+        toNumberOrThrow,
       });
 
-      for (const predictor of locationPredictors) {
-        if (covariateIds.has(predictor.id)) {
-          locationTermNames.push(predictor.name);
-        } else if (factorIds.has(predictor.id)) {
-          const categories = factorCategoryMap.get(String(predictor.id)) || [];
-          const reference = categories[0];
-          for (let i = 1; i < categories.length; i += 1) {
-            if (categories[i] === reference) {
-              continue;
-            }
-            locationTermNames.push(`${predictor.name}=${categories[i]}`);
-          }
-        } else {
-          locationTermNames.push(predictor.name);
-        }
-      }
+      designMatrixResult.warnings.forEach((warning) => {
+        console.warn("[ORDINAL][VALIDATION][WARNING]", warning);
+      });
 
-      for (const interaction of interactionTerms) {
-        locationTermNames.push(interaction.name);
+      const {
+        locationDesignMatrix,
+        locationTermNames,
+        factorLevelMetadata,
+        factorLevelSummaries,
+        referenceCategories,
+        activeParameterCount,
+      } = designMatrixResult;
+
+      if (activeParameterCount > validRows.length) {
+        throw new Error("Jumlah parameter aktif melebihi jumlah observasi efektif.");
       }
 
       if (locationDesignMatrix.length === 0 || locationDesignMatrix[0]?.length === 0) {
@@ -496,7 +539,15 @@ const OrdinalMain: React.FC = () => {
         rows: locationDesignMatrix.length,
         cols: locationDesignMatrix[0]?.length ?? 0,
         locationTermNames,
-        firstRow: locationDesignMatrix[0],
+        parameterCount: activeParameterCount,
+      });
+
+      console.log("[ORDINAL][FACTOR_LEVELS]", {
+        factors: factorLevelSummaries.map((summary) => ({
+          name: summary.variableName,
+          levels: summary.levels.length,
+          reference: summary.referenceLevel,
+        })),
       });
 
       const scalePredictors = scaleParams.scaleModel ?? [];
@@ -530,6 +581,33 @@ const OrdinalMain: React.FC = () => {
         analysisType: "ORDINAL_REGRESSION_PLUM",
         procedure: "PLUM",
         version: "plum-v1",
+        dependent: {
+          name: responseVariable.name,
+          columnIndex: responseVariable.columnIndex,
+          type: responseVariable.type,
+          label: responseVariable.label,
+          valueLabels: responseVariable.values?.map((value) => ({
+            value: value.value,
+            label: value.label,
+          })),
+        },
+        factors: factorPredictors.map((factor) => ({
+          name: factor.name,
+          columnIndex: factor.columnIndex,
+          type: factor.type,
+          label: factor.label,
+          valueLabels: factor.values?.map((value) => ({
+            value: value.value,
+            label: value.label,
+          })),
+        })),
+        covariates: covariatePredictors.map((covariate) => ({
+          name: covariate.name,
+          columnIndex: covariate.columnIndex,
+          type: covariate.type,
+          label: covariate.label,
+        })),
+        factorLevelMetadata,
         weights: validWeights,
         response: {
           variableName: responseVariable.name,
@@ -540,14 +618,19 @@ const OrdinalMain: React.FC = () => {
         },
         locationModel: {
           predictors: [
-            ...locationPredictors.map((predictor: any) => {
-              const isFactor = factorIds.has(predictor.id);
+            ...covariatePredictors.map((predictor: any) => ({
+              name: predictor.name,
+              columnIndex: predictor.columnIndex,
+              role: "covariate",
+            })),
+            ...factorPredictors.map((predictor: any) => {
+              const summary = factorLevelSummaries.find((item) => item.variableName === predictor.name);
               return {
                 name: predictor.name,
                 columnIndex: predictor.columnIndex,
-                role: isFactor ? "factor" : "covariate",
-                levels: isFactor ? factorCategoryMap.get(String(predictor.id)) : undefined,
-                referenceCategory: isFactor ? referenceCategories[predictor.name] : undefined,
+                role: "factor",
+                levels: summary?.levels ?? [],
+                referenceCategory: summary?.referenceLevel,
               };
             }),
             ...interactionTerms.map((interaction) => ({
@@ -563,6 +646,7 @@ const OrdinalMain: React.FC = () => {
           locationDesignMatrix,
           locationTermNames,
           parameterCount: locationTermNames.length,
+          factorLevelMetadata,
         },
         scaleModel: {
           enabled: scaleTermNames.length > 0,
@@ -596,11 +680,20 @@ const OrdinalMain: React.FC = () => {
           iterationHistoryStep: iterationHistoryEvery,
           printIterationHistory,
           iterationHistoryEvery,
-          predictedCategory: outputParams.savedVariables.predictedCategory,
-          predictedProbability: outputParams.savedVariables.predictedProbability,
-          actualProbability: outputParams.savedVariables.actualProbability,
+          predictedResponseCategory: outputParams.savedVariables.predictedResponseCategory,
+          estimatedResponseProbabilities: outputParams.savedVariables.estimatedResponseProbabilities,
+          predictedCategoryProbability: outputParams.savedVariables.predictedCategoryProbability,
+          actualCategoryProbability: outputParams.savedVariables.actualCategoryProbability,
           printLogLikelihood: outputParams.printLogLikelihood,
         },
+        savedVariables: {
+          predictedResponseCategory: outputParams.savedVariables.predictedResponseCategory,
+          estimatedResponseProbabilities: outputParams.savedVariables.estimatedResponseProbabilities,
+          predictedCategoryProbability: outputParams.savedVariables.predictedCategoryProbability,
+          actualCategoryProbability: outputParams.savedVariables.actualCategoryProbability,
+        },
+        rowIndexMap: originalRowIndices,
+        existingColumnNames: variablesFromStore.map((variable) => variable.name),
         metadata: {
           modelType,
           totalRows,
@@ -610,6 +703,7 @@ const OrdinalMain: React.FC = () => {
           locationParameterCount: locationTermNames.length,
           scaleParameterCount: scaleTermNames.length,
           referenceCategories,
+          factorLevelMetadata,
           caseProcessingSummary: {
             variableLabel: responseVariable.label || responseVariable.name,
             categories: responseCategories.map((category, index) => ({
@@ -643,6 +737,12 @@ const OrdinalMain: React.FC = () => {
       }
 
       console.log("[ORDINAL][MAIN][PAYLOAD_TO_WORKER]", workerPayload);
+      console.log("[ORDINAL][PAYLOAD]", {
+        responseCategories: workerPayload.response.responseCategories.length,
+        locationParameters: workerPayload.locationModel.parameterCount,
+        scaleParameters: workerPayload.scaleModel.parameterCount,
+        validRows: workerPayload.metadata.validRows,
+      });
 
       const worker = new Worker(
         new URL("/workers/Regression/ordinal.worker.js", window.location.origin),
@@ -692,6 +792,8 @@ const OrdinalMain: React.FC = () => {
                 components: section.title,
               });
             }
+
+            await addSavedVariableColumns(payload.savedVariables);
 
             worker.terminate();
             setIsLoading(false);

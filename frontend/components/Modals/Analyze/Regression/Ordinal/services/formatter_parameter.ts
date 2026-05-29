@@ -18,6 +18,7 @@ export const formatParameterEstimates = (
       { header: "Estimate", key: "estimate" },
       { header: "Std. Error", key: "stdError" },
       { header: "Wald", key: "wald" },
+      { header: "df", key: "df" },
       { header: "Sig.", key: "sig" },
       {
         header: "95% Confidence Interval",
@@ -28,16 +29,29 @@ export const formatParameterEstimates = (
       },
     ],
 
-    rows: payload.map((r: any) => ({
-      rowHeader: [r.group, r.variable],
-      estimate: safeFixed(r.estimate),
-      stdError: safeFixed(r.stdError),
-      wald: safeFixed(r.wald),
-      sig: fmtSig(r.sig),
-      lower: safeFixed(r.lower),
-      upper: safeFixed(r.upper),
-    })),
+    rows: payload.map((r: any) => {
+      const isRedundant = Boolean(
+        r.isRedundant ??
+        r.is_redundant ??
+        (r.degreesOfFreedom === 0 || r.df === 0)
+      );
+      const dfValue = r.degreesOfFreedom ?? r.df;
+      return {
+        rowHeader: [r.group, r.variable],
+        estimate: isRedundant ? "0.000" : safeFixed(r.estimate),
+        stdError: isRedundant ? "." : safeFixed(r.stdError),
+        wald: isRedundant ? "." : safeFixed(r.wald),
+        df: isRedundant ? "0" : safeFixed(dfValue, 0),
+        sig: isRedundant ? "." : fmtSig(r.sig),
+        lower: isRedundant ? "." : safeFixed(r.lower),
+        upper: isRedundant ? "." : safeFixed(r.upper),
+      };
+    }),
   };
+
+  const hasRedundant = payload.some((r: any) =>
+    Boolean(r.isRedundant ?? r.is_redundant ?? (r.degreesOfFreedom === 0 || r.df === 0))
+  );
 
   sections.push(
     createSection(
@@ -46,6 +60,7 @@ export const formatParameterEstimates = (
       data,
       {
         description: "Estimasi parameter model PLUM",
+        note: hasRedundant ? "0a. This parameter is set to zero because it is redundant." : undefined,
       }
     )
   );

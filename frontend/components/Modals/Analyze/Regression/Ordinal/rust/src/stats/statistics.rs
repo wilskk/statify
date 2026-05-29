@@ -81,7 +81,7 @@ pub fn parameter_statistics(
         let estimate = fit.params.theta[j];
         let stats = parameter_row(
             "Threshold",
-            &format!("{} <= {}", spec.response_variable, spec.category_label(j)),
+            &format!("[{} = {}]", spec.response_variable, spec.category_label(j)),
             estimate,
             idx,
             covariance.as_ref(),
@@ -142,6 +142,7 @@ fn parameter_row(
     let mut sig = None;
     let mut lower = None;
     let mut upper = None;
+    let df = Some(1.0);
     if let Some(covariance) = covariance {
         let diag = covariance[(index, index)];
         if diag.is_finite() && diag > 0.0 {
@@ -166,9 +167,11 @@ fn parameter_row(
         estimate,
         std_error,
         wald,
+        degrees_of_freedom: df,
         sig,
         lower,
         upper,
+        is_redundant: Some(false),
     }
 }
 

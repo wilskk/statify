@@ -93,7 +93,7 @@ pub fn build_plum_output(
     fit_with_cov.correlation = correlation.clone();
 
     let alpha = EstimationOptions::from_payload(Some(&input.estimation_options)).alpha;
-    let (parameter_estimates, mut param_warn) = parameter_statistics(&fit_with_cov, spec, alpha);
+    let (mut parameter_estimates, mut param_warn) = parameter_statistics(&fit_with_cov, spec, alpha);
     warnings.append(&mut param_warn);
 
     let threshold_estimates: Vec<_> = parameter_estimates
@@ -101,7 +101,7 @@ pub fn build_plum_output(
         .filter(|row| row.group == "Threshold")
         .cloned()
         .collect();
-    let location_parameter_estimates: Vec<_> = parameter_estimates
+    let mut location_parameter_estimates: Vec<_> = parameter_estimates
         .iter()
         .filter(|row| row.group == "Location")
         .cloned()
@@ -111,6 +111,53 @@ pub fn build_plum_output(
         .filter(|row| row.group == "Scale")
         .cloned()
         .collect();
+
+    if !spec.factor_level_metadata.is_empty() {
+        let covariate_count = input
+            .location_model
+            .predictors
+            .iter()
+            .filter(|pred| pred.role == "covariate")
+            .count();
+        let mut ordered_location: Vec<_> = location_parameter_estimates
+            .iter()
+            .take(covariate_count)
+            .cloned()
+            .collect();
+
+        for meta in &spec.factor_level_metadata {
+            if let Some(active_idx) = meta.active_column_index {
+                if let Some(row) = location_parameter_estimates.get(active_idx) {
+                    let mut cloned = row.clone();
+                    cloned.variable = meta.parameter_name.clone();
+                    cloned.is_redundant = Some(meta.is_redundant);
+                    ordered_location.push(cloned);
+                } else {
+                    warnings.push(format!(
+                        "Parameter aktif untuk '{}' tidak ditemukan",
+                        meta.parameter_name
+                    ));
+                }
+            } else {
+                ordered_location.push(crate::types::ParameterEstimateRow {
+                    group: "Location".to_string(),
+                    variable: meta.parameter_name.clone(),
+                    estimate: 0.0,
+                    std_error: None,
+                    wald: None,
+                    degrees_of_freedom: Some(0.0),
+                    sig: None,
+                    lower: None,
+                    upper: None,
+                    is_redundant: Some(true),
+                });
+            }
+        }
+        location_parameter_estimates = ordered_location;
+        parameter_estimates = threshold_estimates.clone();
+        parameter_estimates.extend(location_parameter_estimates.clone());
+        parameter_estimates.extend(scale_parameter_estimates.clone());
+    }
 
     let goodness = if want_goodness {
         let (gof, mut gof_warn) = goodness_of_fit(&fit_with_cov, data, spec);
@@ -156,7 +203,18 @@ pub fn build_plum_output(
     };
 
     let iteration_history = if want_iteration {
-        Some(fit.iteration_history.clone())
+        let adjustment = if display_mode == LOG_LIKELIHOOD_MODE_SPSS {
+            -2.0 * log_likelihood_constant
+        } else {
+            0.0
+        };
+        let mut rows = Vec::with_capacity(fit.iteration_history.len());
+        for row in &fit.iteration_history {
+            let mut cloned = row.clone();
+            cloned.minus2_log_likelihood_displayed = row.minus2_log_likelihood + adjustment;
+            rows.push(cloned);
+        }
+        Some(rows)
     } else {
         None
     };

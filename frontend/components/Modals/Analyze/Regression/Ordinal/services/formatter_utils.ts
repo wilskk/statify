@@ -32,7 +32,7 @@ export const createSection = (
 // helper format angka
 export const safeFixed = (val: number | undefined | null, digits = 3): string => {
   if (val === undefined || val === null || isNaN(val)) return ".";
-  if (Math.abs(val) < 1e-9) return ".000";
+  if (Math.abs(val) < 1e-9) return (0).toFixed(digits);
   return val.toFixed(digits);
 };
 
@@ -128,9 +128,10 @@ export const buildDefaultOutputOptions = (
     printIterationHistory,
     iterationHistoryEvery,
     cellInformation: params.display.cellInformation,
-    predictedCategory: params.savedVariables.predictedCategory,
-    predictedProbability: params.savedVariables.predictedProbability,
-    actualProbability: params.savedVariables.actualProbability,
+    predictedResponseCategory: params.savedVariables.predictedResponseCategory,
+    estimatedResponseProbabilities: params.savedVariables.estimatedResponseProbabilities,
+    predictedCategoryProbability: params.savedVariables.predictedCategoryProbability,
+    actualCategoryProbability: params.savedVariables.actualCategoryProbability,
     printLogLikelihood: params.printLogLikelihood,
   };
 };
@@ -144,8 +145,8 @@ export const validateOrdinalPayload = (
     errors.push("Response variable belum dipilih.");
   }
 
-  if (payload.response.categoryCount < 2) {
-    errors.push("Jumlah kategori response harus minimal 2.");
+  if (payload.response.categoryCount < 3) {
+    errors.push("Jumlah kategori response harus minimal 3.");
   }
 
   if (payload.response.orderedCategories.length !== payload.response.categoryCount) {
@@ -154,6 +155,23 @@ export const validateOrdinalPayload = (
 
   if (payload.location.variables.length === 0) {
     errors.push("Minimal 1 variabel location diperlukan.");
+  }
+
+  if (payload.dependent && payload.factors && payload.covariates) {
+    const dependentName = payload.dependent.name;
+    if (payload.factors.some((v) => v.name === dependentName)) {
+      errors.push("Dependent tidak boleh muncul di factors.");
+    }
+    if (payload.covariates.some((v) => v.name === dependentName)) {
+      errors.push("Dependent tidak boleh muncul di covariates.");
+    }
+    const factorNames = new Set(payload.factors.map((v) => v.name));
+    for (const cov of payload.covariates) {
+      if (factorNames.has(cov.name)) {
+        errors.push("Variabel yang sama tidak boleh muncul di factors dan covariates.");
+        break;
+      }
+    }
   }
 
   if (!payload.model.linkFunction) {

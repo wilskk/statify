@@ -91,12 +91,20 @@ export const OutputTab: React.FC<Props> = ({ params, onChange }) => {
                       Saved Variables
                     </h4>
                     <div className="flex items-center space-x-2">
-                    <Checkbox id="predCat" checked={params.savedVariables.predictedCategory} onCheckedChange={(c) => handleSavedChange('predictedCategory', !!c)} />
-                        <Label htmlFor="predCat">Predicted Category</Label>
+                    <Checkbox id="predRespCat" checked={params.savedVariables.predictedResponseCategory} onCheckedChange={(c) => handleSavedChange('predictedResponseCategory', !!c)} />
+                        <Label htmlFor="predRespCat">Predicted response category</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                    <Checkbox id="predProb" checked={params.savedVariables.predictedProbability} onCheckedChange={(c) => handleSavedChange('predictedProbability', !!c)} />
-                        <Label htmlFor="predProb">Predicted Probability</Label>
+                    <Checkbox id="estRespProb" checked={params.savedVariables.estimatedResponseProbabilities} onCheckedChange={(c) => handleSavedChange('estimatedResponseProbabilities', !!c)} />
+                        <Label htmlFor="estRespProb">Estimated response probabilities</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                    <Checkbox id="predProb" checked={params.savedVariables.predictedCategoryProbability} onCheckedChange={(c) => handleSavedChange('predictedCategoryProbability', !!c)} />
+                        <Label htmlFor="predProb">Predicted category probability</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                    <Checkbox id="actProb" checked={params.savedVariables.actualCategoryProbability} onCheckedChange={(c) => handleSavedChange('actualCategoryProbability', !!c)} />
+                        <Label htmlFor="actProb">Actual category probability</Label>
                     </div>
                 <h4 className="font-semibold text-sm border-b pb-1 mb-2">
                       Print Log-Likelihood

@@ -10,6 +10,14 @@ pub struct PlumWorkerPayload {
     pub version: String,
     #[serde(default)]
     pub weights: Option<Vec<f64>>,
+    #[serde(default)]
+    pub dependent: Option<PlumVariableSpec>,
+    #[serde(default)]
+    pub factors: Vec<PlumVariableSpec>,
+    #[serde(default)]
+    pub covariates: Vec<PlumVariableSpec>,
+    #[serde(rename = "factorLevelMetadata", default)]
+    pub factor_level_metadata: Vec<PlumFactorLevelMetadata>,
     pub response: PlumResponse,
     #[serde(rename = "locationModel")]
     pub location_model: PlumLocationModel,
@@ -45,6 +53,8 @@ pub struct PlumLocationModel {
     pub location_term_names: Vec<String>,
     #[serde(rename = "parameterCount")]
     pub parameter_count: usize,
+    #[serde(rename = "factorLevelMetadata", default)]
+    pub factor_level_metadata: Vec<PlumFactorLevelMetadata>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -77,6 +87,43 @@ pub struct PlumPredictorVariable {
     pub name: String,
     #[serde(rename = "columnIndex", default)]
     pub column_index: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PlumVariableSpec {
+    pub name: String,
+    #[serde(rename = "columnIndex")]
+    pub column_index: usize,
+    #[serde(default)]
+    pub r#type: Option<String>,
+    #[serde(default)]
+    pub label: Option<String>,
+    #[serde(rename = "valueLabels", default)]
+    pub value_labels: Vec<PlumValueLabel>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PlumValueLabel {
+    pub value: serde_json::Value,
+    pub label: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PlumFactorLevelMetadata {
+    #[serde(rename = "variableName")]
+    pub variable_name: String,
+    #[serde(rename = "levelValue")]
+    pub level_value: String,
+    #[serde(rename = "levelLabel", default)]
+    pub level_label: Option<String>,
+    #[serde(rename = "isReference")]
+    pub is_reference: bool,
+    #[serde(rename = "isRedundant")]
+    pub is_redundant: bool,
+    #[serde(rename = "parameterName")]
+    pub parameter_name: String,
+    #[serde(rename = "activeColumnIndex")]
+    pub active_column_index: Option<usize>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -136,6 +183,8 @@ pub struct PlumMetadata {
     pub scale_parameter_count: usize,
     #[serde(rename = "referenceCategories")]
     pub reference_categories: std::collections::HashMap<String, serde_json::Value>,
+    #[serde(rename = "factorLevelMetadata", default)]
+    pub factor_level_metadata: Vec<PlumFactorLevelMetadata>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -246,6 +295,7 @@ pub struct PlumSpec {
     pub scale_feature_names: Vec<String>,
     pub location_variables: Vec<String>,
     pub scale_variables: Vec<String>,
+    pub factor_level_metadata: Vec<PlumFactorLevelMetadata>,
 }
 
 impl PlumSpec {
@@ -260,6 +310,14 @@ impl PlumSpec {
 
         let ordered_categories = response_categories_to_vec(&input.response.response_categories)?;
 
+        let mut factor_level_metadata = input.location_model.factor_level_metadata.clone();
+        if factor_level_metadata.is_empty() {
+            factor_level_metadata = input.factor_level_metadata.clone();
+        }
+        if factor_level_metadata.is_empty() {
+            factor_level_metadata = input.metadata.factor_level_metadata.clone();
+        }
+
         Ok(Self {
             response_variable: input.response.variable_name.clone(),
             ordered_categories,
@@ -271,6 +329,7 @@ impl PlumSpec {
             scale_feature_names: input.scale_model.scale_term_names.clone(),
             location_variables: input.location_model.location_term_names.clone(),
             scale_variables: input.scale_model.scale_term_names.clone(),
+            factor_level_metadata,
         })
     }
 
@@ -377,6 +436,7 @@ pub struct IterationHistoryRow {
     pub iteration: usize,
     pub step_halvings: usize,
     pub minus2_log_likelihood: f64,
+    pub minus2_log_likelihood_displayed: f64,
     pub threshold: Vec<f64>,
     pub location: Vec<f64>,
     pub scale: Vec<f64>,
@@ -451,9 +511,11 @@ pub struct ParameterEstimateRow {
     pub estimate: f64,
     pub std_error: Option<f64>,
     pub wald: Option<f64>,
+    pub degrees_of_freedom: Option<f64>,
     pub sig: Option<f64>,
     pub lower: Option<f64>,
     pub upper: Option<f64>,
+    pub is_redundant: Option<bool>,
 }
 
 #[derive(Clone, Debug, Serialize)]

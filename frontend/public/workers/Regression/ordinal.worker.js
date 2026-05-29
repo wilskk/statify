@@ -62,6 +62,339 @@ function toFiniteNumber(value, context) {
   return num;
 }
 
+function clampProb(value, min = 1e-12, max = 1 - 1e-12) {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(Math.max(value, min), max);
+}
+
+function safeExp(value) {
+  if (value > 700) return Math.exp(700);
+  if (value < -700) return Math.exp(-700);
+  return Math.exp(value);
+}
+
+function erf(value) {
+  const sign = value >= 0 ? 1 : -1;
+  const x = Math.abs(value);
+  const a1 = 0.254829592;
+  const a2 = -0.284496736;
+  const a3 = 1.421413741;
+  const a4 = -1.453152027;
+  const a5 = 1.061405429;
+  const p = 0.3275911;
+  const t = 1 / (1 + p * x);
+  const y = 1 - (((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.exp(-x * x));
+  return sign * y;
+}
+
+function normalCdf(value) {
+  return 0.5 * (1 + erf(value / Math.SQRT2));
+}
+
+function inverseLink(eta, linkFunction) {
+  const normalizedLink = String(linkFunction || "Logit").toLowerCase().replace(/[_\s]+/g, "-");
+  switch (normalizedLink) {
+    case "probit":
+    case "Probit":
+      return normalCdf(eta);
+    case "complementary-log-log":
+    case "Complementary Log-Log":
+      return 1 - safeExp(-safeExp(eta));
+    case "negative-log-log":
+    case "Negative Log-Log":
+      return safeExp(-safeExp(-eta));
+    case "cauchit":
+    case "Cauchit":
+      return 0.5 + Math.atan(eta) / Math.PI;
+    case "logit":
+    case "Logit":
+    default: {
+      if (eta >= 0) {
+        return 1 / (1 + safeExp(-eta));
+      }
+      const e = safeExp(eta);
+      return e / (1 + e);
+    }
+  }
+}
+
+function normalizeSavedOptions(savedOptions) {
+  return {
+    predictedResponseCategory: Boolean(
+      savedOptions?.predictedResponseCategory ?? savedOptions?.predictedCategory
+    ),
+    estimatedResponseProbabilities: Boolean(
+      savedOptions?.estimatedResponseProbabilities ?? savedOptions?.estimateResponseProbability
+    ),
+    predictedCategoryProbability: Boolean(savedOptions?.predictedCategoryProbability),
+    actualCategoryProbability: Boolean(savedOptions?.actualCategoryProbability),
+  };
+}
+
+function findSavedVariableBatchSuffix(existingColumnNames) {
+  const existing = new Set(
+    (Array.isArray(existingColumnNames) ? existingColumnNames : [])
+      .filter((name) => typeof name === "string")
+      .map((name) => name.toUpperCase())
+  );
+
+  let suffix = 1;
+  const suffixExists = (candidate) => {
+    if (existing.has(`PRE_${candidate}`) || existing.has(`PCP_${candidate}`) || existing.has(`ACP_${candidate}`)) {
+      return true;
+    }
+    const estPattern = new RegExp(`^EST\\d+_${candidate}$`, "i");
+    return Array.from(existing).some((name) => estPattern.test(name));
+  };
+
+  while (suffixExists(suffix)) {
+    suffix += 1;
+  }
+  return suffix;
+}
+
+function normalizeCategoryProbabilities(categoryProbabilities) {
+  const cleaned = categoryProbabilities.map((value) => {
+    if (!Number.isFinite(value)) return null;
+    return Math.min(Math.max(value, 0), 1);
+  });
+
+  if (cleaned.some((value) => value === null)) return null;
+  const sumProb = cleaned.reduce((sum, value) => sum + value, 0);
+  if (!(sumProb > 0)) return null;
+  return cleaned.map((value) => value / sumProb);
+}
+
+function computeOrdinalSavedVariables({
+  thresholds,
+  betas,
+  designMatrix,
+  dependentCategories,
+  actualY,
+  originalRowIndices,
+  totalRows,
+  linkFunction,
+  savedOptions,
+  existingColumnNames,
+  dependentVariable,
+}) {
+  const options = normalizeSavedOptions(savedOptions);
+  const shouldCompute = Object.values(options).some(Boolean);
+  if (!shouldCompute) return null;
+
+  console.log("[ORDINAL][SAVED_VARIABLES][OPTIONS]", options);
+  console.log("[ORDINAL][SAVED_VARIABLES][DEPENDENT_CATEGORIES]", dependentCategories);
+
+  const categoryCount = dependentCategories.length;
+  const batchSuffix = findSavedVariableBatchSuffix(existingColumnNames);
+  const predictedType = dependentVariable?.type === "STRING"
+    || dependentCategories.some((category) => typeof category === "string")
+    ? "string"
+    : "numeric";
+
+  const makeValues = () => Array(totalRows).fill(null);
+  const predictedValues = makeValues();
+  const estimatedValues = Array.from({ length: categoryCount }, makeValues);
+  const predictedProbabilityValues = makeValues();
+  const actualProbabilityValues = makeValues();
+  const sampleRows = [];
+
+  console.log("[ORDINAL][SAVED_VARIABLES][BATCH_SUFFIX]", batchSuffix);
+  console.log("[ORDINAL][SAVED_VARIABLES][ROW_MAPPING]", {
+    totalRows,
+    validRows: originalRowIndices.length,
+    sample: originalRowIndices.slice(0, 5),
+  });
+
+  for (let i = 0; i < designMatrix.length; i += 1) {
+    const x = designMatrix[i];
+    const originalRowIndex = originalRowIndices[i];
+    if (!Number.isInteger(originalRowIndex) || originalRowIndex < 0 || originalRowIndex >= totalRows) {
+      continue;
+    }
+
+    let eta = 0;
+    for (let j = 0; j < betas.length; j += 1) {
+      eta += Number(x[j]) * betas[j];
+    }
+
+    const cumulativeProbabilities = thresholds.map((theta) => clampProb(inverseLink(theta - eta, linkFunction), 0, 1));
+    for (let j = 1; j < cumulativeProbabilities.length; j += 1) {
+      cumulativeProbabilities[j] = Math.max(cumulativeProbabilities[j], cumulativeProbabilities[j - 1]);
+    }
+
+    const rawCellProbabilities = [];
+    rawCellProbabilities.push(cumulativeProbabilities[0]);
+    for (let j = 1; j < cumulativeProbabilities.length; j += 1) {
+      rawCellProbabilities.push(cumulativeProbabilities[j] - cumulativeProbabilities[j - 1]);
+    }
+    rawCellProbabilities.push(1 - cumulativeProbabilities[cumulativeProbabilities.length - 1]);
+
+    const cellProbabilities = normalizeCategoryProbabilities(rawCellProbabilities);
+    if (!cellProbabilities) {
+      console.warn("[ORDINAL][SAVED_VARIABLES] Invalid probability row; values set to null.", {
+        row: originalRowIndex,
+        rawCellProbabilities,
+      });
+      continue;
+    }
+
+    let predictedIndex = 0;
+    let predictedCategoryProbability = cellProbabilities[0];
+    for (let j = 1; j < cellProbabilities.length; j += 1) {
+      if (cellProbabilities[j] > predictedCategoryProbability) {
+        predictedCategoryProbability = cellProbabilities[j];
+        predictedIndex = j;
+      }
+    }
+
+    const actualIndex = Math.round(Number(actualY[i])) - 1;
+    const actualCategoryProbability = actualIndex >= 0 && actualIndex < cellProbabilities.length
+      ? cellProbabilities[actualIndex]
+      : null;
+
+    predictedValues[originalRowIndex] = dependentCategories[predictedIndex] ?? null;
+    for (let j = 0; j < categoryCount; j += 1) {
+      estimatedValues[j][originalRowIndex] = cellProbabilities[j];
+    }
+    predictedProbabilityValues[originalRowIndex] = predictedCategoryProbability;
+    actualProbabilityValues[originalRowIndex] = actualCategoryProbability;
+
+    if (sampleRows.length < 5) {
+      sampleRows.push({
+        row: originalRowIndex,
+        eta,
+        cumulativeProbabilities,
+        cellProbabilities,
+        predictedCategory: dependentCategories[predictedIndex] ?? null,
+        predictedCategoryProbability,
+        actualCategory: actualIndex >= 0 ? dependentCategories[actualIndex] ?? null : null,
+        actualCategoryProbability,
+      });
+    }
+  }
+
+  const columns = [];
+  if (options.predictedResponseCategory) {
+    columns.push({
+      name: `PRE_${batchSuffix}`,
+      label: "Predicted Response Category",
+      type: predictedType,
+      values: predictedValues,
+    });
+  }
+  if (options.estimatedResponseProbabilities) {
+    for (let j = 0; j < categoryCount; j += 1) {
+      columns.push({
+        name: `EST${j + 1}_${batchSuffix}`,
+        label: `Estimated Cell Probability for Response Category: ${String(dependentCategories[j])}`,
+        type: "numeric",
+        decimals: 6,
+        values: estimatedValues[j],
+      });
+    }
+  }
+  if (options.predictedCategoryProbability) {
+    columns.push({
+      name: `PCP_${batchSuffix}`,
+      label: "Estimated Classification Probability for the Predicted Category",
+      type: "numeric",
+      decimals: 6,
+      values: predictedProbabilityValues,
+    });
+  }
+  if (options.actualCategoryProbability) {
+    columns.push({
+      name: `ACP_${batchSuffix}`,
+      label: "Estimated Classification Probability for the Actual Category",
+      type: "numeric",
+      decimals: 6,
+      values: actualProbabilityValues,
+    });
+  }
+
+  console.log("[ORDINAL][SAVED_VARIABLES][COLUMN_NAMES]", columns.map((column) => column.name));
+  console.log("[ORDINAL][SAVED_VARIABLES][PROBABILITY_SAMPLE]", sampleRows);
+
+  return {
+    batchSuffix,
+    columns,
+  };
+}
+
+function computePlumSavedVariables(mainPayload, normalizedResult) {
+  const savedOptions = mainPayload?.savedVariables || {};
+  const options = normalizeSavedOptions(savedOptions);
+  const shouldCompute = Object.values(options).some(Boolean);
+
+  if (!shouldCompute) {
+    return null;
+  }
+
+  if (!normalizedResult?.converged) {
+    console.warn("[ORDINAL][SAVED_VARIABLES] Model not converged; skipping saved variables.");
+    return null;
+  }
+
+  const thresholds = Array.isArray(normalizedResult.thresholdEstimates)
+    ? normalizedResult.thresholdEstimates.map((row) => Number(row.estimate))
+    : [];
+  const betas = Array.isArray(normalizedResult.locationParameterEstimates)
+    ? normalizedResult.locationParameterEstimates
+      .filter((row) => !row?.isRedundant)
+      .map((row) => Number(row.estimate))
+    : [];
+
+  const dependentCategories = mainPayload?.response?.responseCategories || [];
+  const actualY = mainPayload?.response?.responseVector || [];
+  const designMatrix = mainPayload?.locationModel?.locationDesignMatrix || [];
+  const originalRowIndices = Array.isArray(mainPayload?.rowIndexMap) ? mainPayload.rowIndexMap : [];
+  const totalRows = Number(mainPayload?.metadata?.totalRows);
+  const linkFunction = mainPayload?.estimationOptions?.linkFunction || "Logit";
+
+  if (dependentCategories.length < 3) {
+    console.warn("[ORDINAL][SAVED_VARIABLES] Response categories < 3; skipping saved variables.");
+    return null;
+  }
+  if (thresholds.length !== dependentCategories.length - 1) {
+    console.warn("[ORDINAL][SAVED_VARIABLES] Threshold count mismatch; skipping saved variables.");
+    return null;
+  }
+  if (!Array.isArray(designMatrix) || designMatrix.length === 0) {
+    console.warn("[ORDINAL][SAVED_VARIABLES] Missing design matrix; skipping saved variables.");
+    return null;
+  }
+  if (betas.length !== (designMatrix[0] || []).length) {
+    console.warn("[ORDINAL][SAVED_VARIABLES] Beta length mismatch; skipping saved variables.", {
+      betas: betas.length,
+      designColumns: (designMatrix[0] || []).length,
+    });
+    return null;
+  }
+  if (originalRowIndices.length !== actualY.length || designMatrix.length !== actualY.length) {
+    console.warn("[ORDINAL][SAVED_VARIABLES] Row mapping mismatch; skipping saved variables.");
+    return null;
+  }
+  if (!Number.isInteger(totalRows) || totalRows < actualY.length) {
+    console.warn("[ORDINAL][SAVED_VARIABLES] Invalid total row count; skipping saved variables.");
+    return null;
+  }
+
+  return computeOrdinalSavedVariables({
+    thresholds,
+    betas,
+    designMatrix,
+    dependentCategories,
+    actualY,
+    originalRowIndices,
+    totalRows,
+    linkFunction,
+    savedOptions: options,
+    existingColumnNames: mainPayload?.existingColumnNames || [],
+    dependentVariable: mainPayload?.dependent || null,
+  });
+}
+
 function validateMainPlumPayload(payload) {
   if (!payload || typeof payload !== "object") {
     throw new Error("Payload PLUM tidak valid: payload bukan object.");
@@ -74,6 +407,31 @@ function validateMainPlumPayload(payload) {
   }
   if (payload.version !== "plum-v1") {
     throw new Error("Payload PLUM tidak valid: version harus plum-v1.");
+  }
+
+  if (!payload.dependent || typeof payload.dependent !== "object") {
+    throw new Error("Payload PLUM tidak valid: dependent tidak tersedia.");
+  }
+  if (!Array.isArray(payload.factors)) {
+    throw new Error("Payload PLUM tidak valid: factors harus array.");
+  }
+  if (!Array.isArray(payload.covariates)) {
+    throw new Error("Payload PLUM tidak valid: covariates harus array.");
+  }
+
+  const dependentName = payload.dependent?.name;
+  if (payload.factors.some((v) => v.name === dependentName)) {
+    throw new Error("Payload PLUM tidak valid: dependent tidak boleh masuk factors.");
+  }
+  if (payload.covariates.some((v) => v.name === dependentName)) {
+    throw new Error("Payload PLUM tidak valid: dependent tidak boleh masuk covariates.");
+  }
+
+  const factorNames = new Set(payload.factors.map((v) => v.name));
+  for (const covariate of payload.covariates) {
+    if (factorNames.has(covariate.name)) {
+      throw new Error("Payload PLUM tidak valid: variabel tidak boleh muncul di factors dan covariates.");
+    }
   }
 
   const responseVector = payload?.response?.responseVector;
@@ -181,14 +539,15 @@ function validateMainPlumPayload(payload) {
   if (!(estimation.confidenceLevel >= 50 && estimation.confidenceLevel <= 99.99)) {
     throw new Error("Payload PLUM tidak valid: confidenceLevel harus 50..99.99.");
   }
-  if (estimation.linkFunction !== "Logit") {
-    throw new Error("Link function selain Logit belum didukung oleh WASM.");
-  }
 
   const metadata = payload?.metadata || {};
   if (typeof metadata.totalRows !== "number" || typeof metadata.validRows !== "number") {
     throw new Error("Payload PLUM tidak valid: metadata rows missing.");
   }
+
+  payload.factors.forEach((factor) => {
+    if (Array.isArray(factor?.valueLabels) && factor.valueLabels.length > 0) return;
+  });
 }
 
 function normalizeParameterEstimate(row, index) {
@@ -218,16 +577,18 @@ function normalizeParameterEstimate(row, index) {
     ? row.upper
     : (typeof row.confidenceIntervalUpper === "number" ? row.confidenceIntervalUpper : null);
   const parameter = row.parameter || row.variable || `param_${index + 1}`;
+  const degreesOfFreedom = row.degreesOfFreedom ?? row.df ?? (row.isRedundant ? 0 : 1);
 
   return {
     parameter,
     estimate,
     standardError: stdError ?? null,
     waldStatistic: waldStatistic ?? null,
-    degreesOfFreedom: row.degreesOfFreedom ?? 1,
+    degreesOfFreedom,
     significance: significance ?? null,
     confidenceIntervalLower: confidenceIntervalLower ?? null,
     confidenceIntervalUpper: confidenceIntervalUpper ?? null,
+    isRedundant: Boolean(row.isRedundant ?? row.is_redundant ?? false),
     group: row.group,
     variable: row.variable ?? parameter,
     stdError: stdError ?? null,
@@ -235,6 +596,7 @@ function normalizeParameterEstimate(row, index) {
     sig: significance ?? null,
     lower: confidenceIntervalLower ?? null,
     upper: confidenceIntervalUpper ?? null,
+    df: degreesOfFreedom,
   };
 }
 
@@ -388,12 +750,24 @@ self.onmessage = async (event) => {
 
     const normalizedResult = normalizeWasmResult(parsedResult, mainPayload);
     console.log("[ORDINAL][WORKER][NORMALIZED_RESULT]", normalizedResult);
+    console.log("[ORDINAL][PLUM_ESTIMATION]", {
+      converged: normalizedResult.converged,
+      iterations: normalizedResult.iterations,
+      minus2LogLikelihood: normalizedResult.minus2LogLikelihoodDisplayed ?? normalizedResult.minus2LogLikelihood,
+      thresholdParameters: normalizedResult.thresholdEstimates?.length ?? 0,
+      locationParameters: normalizedResult.locationParameterEstimates?.length ?? 0,
+    });
     console.log("[ORDINAL][WORKER][ITERATION_HISTORY_RESULT]", {
       rows: Array.isArray(normalizedResult.iterationHistory) ? normalizedResult.iterationHistory.length : 0,
       meta: normalizedResult.iterationHistoryMeta || null,
     });
 
     validateNormalizedResult(normalizedResult);
+
+    const savedVariables = computePlumSavedVariables(mainPayload, normalizedResult);
+    if (savedVariables) {
+      normalizedResult.savedVariables = savedVariables;
+    }
 
     postSuccess(normalizedResult);
   } catch (error) {

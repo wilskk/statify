@@ -53,9 +53,10 @@ export interface OrdinalOutputParams {
     iterationHistoryEvery: number;
   };
   savedVariables: {
-    predictedCategory: boolean;
-    predictedProbability: boolean; // Akan meminta input untuk kategori
-    actualProbability: boolean; // Akan meminta input untuk kategori
+    predictedResponseCategory: boolean;
+    estimatedResponseProbabilities: boolean;
+    predictedCategoryProbability: boolean;
+    actualCategoryProbability: boolean;
   };
   printLogLikelihood: "Including" | "Excluding";
 
@@ -89,6 +90,24 @@ export interface PlumLocationSpec {
   thresholdName: "theta";
 }
 
+export interface PlumVariableSpec {
+  name: string;
+  columnIndex: number;
+  type?: string;
+  label?: string;
+  valueLabels?: Array<{ value: string | number; label: string }>;
+}
+
+export interface PlumFactorLevelMetadata {
+  variableName: string;
+  levelValue: string;
+  levelLabel?: string;
+  isReference: boolean;
+  isRedundant: boolean;
+  parameterName: string;
+  activeColumnIndex: number | null;
+}
+
 export interface PlumScaleSpec {
   scaleType: PlumScaleType;
   variables: string[];
@@ -120,9 +139,10 @@ export interface PlumOutputOptions {
   printIterationHistory?: boolean;
   iterationHistoryEvery?: number;
   cellInformation?: boolean;
-  predictedCategory?: boolean;
-  predictedProbability?: boolean;
-  actualProbability?: boolean;
+  predictedResponseCategory?: boolean;
+  estimatedResponseProbabilities?: boolean;
+  predictedCategoryProbability?: boolean;
+  actualCategoryProbability?: boolean;
   printLogLikelihood?: "Including" | "Excluding";
 }
 
@@ -150,6 +170,10 @@ export interface OrdinalPlumPayload {
   procedure: "PLUM";
   version: "plum-v1";
   weights?: number[];
+  dependent?: PlumVariableSpec | null;
+  factors?: PlumVariableSpec[];
+  covariates?: PlumVariableSpec[];
+  factorLevelMetadata?: PlumFactorLevelMetadata[];
   response: {
     variable: string;
     orderedCategories: Array<string | number>;

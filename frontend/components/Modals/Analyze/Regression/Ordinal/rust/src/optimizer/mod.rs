@@ -40,7 +40,7 @@ pub fn fit_location_only(
     let mut last_step_halvings = 0;
     let history_every = history_options.every.max(1);
 
-    let mut prev_state = None;
+    let mut prev_state: Option<IterationState> = None;
 
     let initial_ll = log_likelihood(&params, data, spec);
     if history_options.enabled {
@@ -143,7 +143,7 @@ pub fn fit_general(
     let warnings = Vec::new();
     let mut converged = false;
     let mut info_matrix: Option<DMatrix<f64>> = None;
-    let mut prev_state = None;
+    let mut prev_state: Option<IterationState> = None;
     let mut iterations_run = 0;
     let mut last_abs_change_minus2_log_likelihood = None;
     let mut last_max_abs_change_parameters = None;
@@ -335,6 +335,7 @@ fn push_iteration_history(
         iteration,
         step_halvings,
         minus2_log_likelihood: -2.0 * log_likelihood,
+        minus2_log_likelihood_displayed: -2.0 * log_likelihood,
         threshold: params.theta.clone(),
         location: params.beta.clone(),
         scale: params.tau.clone(),

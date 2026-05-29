@@ -21,6 +21,21 @@ pub fn validate_input(input: &PlumWorkerPayload) -> PlumValidationResult {
         errors.push("responseVector tidak boleh kosong".to_string());
     }
 
+    if input.dependent.is_none() {
+        errors.push("dependent wajib ada".to_string());
+    }
+
+    if !input.factors.is_empty() && !input.covariates.is_empty() {
+        let factor_names: std::collections::HashSet<_> =
+            input.factors.iter().map(|v| v.name.as_str()).collect();
+        for cov in &input.covariates {
+            if factor_names.contains(cov.name.as_str()) {
+                errors.push("Variabel tidak boleh muncul di factors dan covariates".to_string());
+                break;
+            }
+        }
+    }
+
     let ordered_categories = &input.response.response_categories;
     if ordered_categories.len() < 2 {
         errors.push("responseCategories harus minimal 2".to_string());
@@ -146,12 +161,27 @@ pub fn validate_input(input: &PlumWorkerPayload) -> PlumValidationResult {
     if !(50.0..=99.99).contains(&options.confidence_level) {
         errors.push("confidenceLevel harus 50..99.99".to_string());
     }
-    if options.link_function != "Logit" {
-        errors.push("Link function selain Logit belum didukung oleh WASM.".to_string());
-    }
 
     if total_weight < 10.0 {
         warnings.push("Jumlah observasi efektif sangat kecil".to_string());
+    }
+
+    let max_allowed_params = response_vector.len();
+    if location_len > max_allowed_params {
+        errors.push("Jumlah parameter aktif melebihi observasi efektif".to_string());
+    }
+
+    for predictor in &input.location_model.predictors {
+        if predictor.role == "factor" {
+            let levels = predictor.levels.as_ref().map(|l| l.len()).unwrap_or(0);
+            if levels < 2 {
+                errors.push(format!("Factor '{}' memiliki < 2 level", predictor.name));
+            }
+            let threshold = (response_vector.len() as f64).sqrt().max(20.0);
+            if (levels as f64) > threshold {
+                warnings.push(format!("Factor '{}' memiliki banyak level ({levels})", predictor.name));
+            }
+        }
     }
 
     for (idx, count) in category_counts.iter().enumerate() {
