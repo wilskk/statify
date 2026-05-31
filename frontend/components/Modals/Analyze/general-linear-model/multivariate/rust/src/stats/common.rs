@@ -23,10 +23,11 @@ pub fn calculate_variance(values: &[f64], mean: Option<f64>) -> f64 {
     }
 
     let mean_val = mean.unwrap_or_else(|| calculate_mean(values));
+    // Bessel's correction (N-1): sample variance, matching SPSS descriptive output.
     values
         .iter()
         .map(|x| (x - mean_val).powi(2))
-        .sum::<f64>() / (values.len() as f64)
+        .sum::<f64>() / ((values.len() - 1) as f64)
 }
 
 /// Calculate standard deviation of values

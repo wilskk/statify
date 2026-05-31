@@ -1,4 +1,4 @@
-import type { ResultJson, Row, Table } from "@/types/Table";
+﻿import type { ResultJson, Row, Table } from "@/types/Table";
 import { formatDisplayNumber, formatSig } from "@/hooks/useFormatter";
 
 export type MultivariateFormatterOptions = {
@@ -45,7 +45,9 @@ export function transformMultivariateResult(
     formatBetweenSubjectsFactors(data, resultJson);
     formatDescriptiveStatistics(data, resultJson, relabelDiff);
     formatBoxTest(data, resultJson);
-    formatBartlettTest(data, resultJson);
+    // Bartlett's Test of Sphericity belongs to Factor Analysis, not GLM Multivariate.
+    // Kept computed in Rust for potential reuse by a future Factor Analysis module.
+    // formatBartlettTest(data, resultJson);
     formatLeveneTest(data, resultJson);
     formatMultivariateTests(
         data,
@@ -117,45 +119,53 @@ function formatDescriptiveStatistics(
 ) {
     if (!data.descriptive_statistics) return;
 
-    Object.entries(data.descriptive_statistics).forEach(
-        ([dvName, stat]: [string, any]) => {
-            const displayDvName = relabelDiff(dvName);
-            const table: Table = {
-                key: `descriptive_statistics_${dvName}`,
-                title: `Descriptive Statistics — Dependent Variable: ${displayDvName}`,
-                columnHeaders: [
-                    { header: "", key: "group_label" },
-                    { header: "Mean", key: "mean" },
-                    { header: "Std. Deviation", key: "std_deviation" },
-                    { header: "N", key: "n" },
-                ],
-                rows: [],
-                interpretation:
-                    "This table displays the mean, standard deviation, and count (N) for the dependent variable, broken down by each level of the specified factors and their combinations.",
-            };
+    // Sort by key name so DV order is deterministic (y1 before y2, etc.).
+    // Rust HashMap does not preserve insertion order.
+    const entries = (Object.entries(data.descriptive_statistics) as [string, any][])
+        .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+    if (entries.length === 0) return;
 
-            function flattenGroups(gs: any[], depth: number) {
-                gs.forEach((g: any) => {
-                    const indent = "\u00a0".repeat(depth * 4);
-                    if (g.stats) {
-                        table.rows.push({
-                            rowHeader: [],
-                            group_label: `${indent}${g.factor_value || "Total"}`,
-                            mean: formatDisplayNumber(g.stats.mean),
-                            std_deviation: formatDisplayNumber(g.stats.std_deviation),
-                            n: String(g.stats.n),
-                        });
-                    }
-                    if (g.subgroups && g.subgroups.length > 0) {
-                        flattenGroups(g.subgroups, depth + 1);
-                    }
+    const hasData = entries.some(([, stat]) =>
+        Array.isArray(stat.groups) && stat.groups.length > 0
+    );
+    if (!hasData) return;
+
+    // Single combined table matching SPSS layout: DV | factor level | Mean | SD | N
+    const table: Table = {
+        key: "descriptive_statistics",
+        title: "Descriptive Statistics",
+        columnHeaders: [
+            { header: "", key: "dv_name" },
+            { header: "", key: "group_label" },
+            { header: "Mean", key: "mean" },
+            { header: "Std. Deviation", key: "std_deviation" },
+            { header: "N", key: "n" },
+        ],
+        rows: [],
+        interpretation:
+            "This table displays the mean, standard deviation, and count (N) for each dependent variable, broken down by each level of the specified factors.",
+    };
+
+    entries.forEach(([dvName, stat]) => {
+        const displayDvName = relabelDiff(dvName);
+        const groups: any[] = stat.groups || [];
+        groups.forEach((g: any, idx: number) => {
+            if (g.stats) {
+                table.rows.push({
+                    rowHeader: [],
+                    dv_name: idx === 0 ? displayDvName : "",
+                    group_label: g.factor_value || "Total",
+                    mean: formatDisplayNumber(g.stats.mean),
+                    std_deviation: formatDisplayNumber(g.stats.std_deviation),
+                    n: String(g.stats.n),
                 });
             }
-            flattenGroups(stat.groups || [], 0);
+        });
+    });
 
-            resultJson.tables.push(table);
-        }
-    );
+    if (table.rows.length > 0) {
+        resultJson.tables.push(table);
+    }
 }
 
 // ── 3. Box's M Test ───────────────────────────────────────────────────────────
@@ -219,38 +229,52 @@ function formatLeveneTest(data: any, resultJson: ResultJson) {
         ? data.levene_test
         : [data.levene_test];
 
-    tests.forEach((lt: any) => {
-        const table: Table = {
-            key: `levene_test_${lt.dependent_variable}`,
-            title: `Levene's Test of Equality of Error Variances — Dependent Variable: ${lt.dependent_variable}`,
-            columnHeaders: [
-                { header: "Based on", key: "function" },
-                { header: "Levene Statistic", key: "levene_statistic" },
-                { header: "df1", key: "df1" },
-                { header: "df2", key: "df2" },
-                { header: "Sig.", key: "significance" },
-            ],
-            rows: [],
-            interpretation:
-                "Tests the null hypothesis that the error variance of the dependent variable is equal across groups. A non-significant result (Sig. > .05) supports the homogeneity-of-variance assumption required for between-subjects analyses.",
-        };
+    const hasData = tests.some((lt: any) =>
+        Array.isArray(lt.levene) && lt.levene.length > 0
+    );
+    if (!hasData) return;
 
+    // Single combined table matching SPSS layout: DV | basis | Levene Statistic | df1 | df2 | Sig.
+    const table: Table = {
+        key: "levene_test",
+        title: "Levene's Test of Equality of Error Variances",
+        columnHeaders: [
+            { header: "", key: "dv_name" },
+            { header: "", key: "function" },
+            { header: "Levene Statistic", key: "levene_statistic" },
+            { header: "df1", key: "df1" },
+            { header: "df2", key: "df2" },
+            { header: "Sig.", key: "significance" },
+        ],
+        rows: [],
+        note: "Tests the null hypothesis that the error variance of the dependent variable is equal across groups.",
+        interpretation:
+            "Tests the assumption of homogeneity of variance. A non-significant result (Sig. > .05) supports the assumption that error variances are equal across groups.",
+    };
+
+    tests.forEach((lt: any) => {
         const leveneList: any[] = lt.levene || [];
-        leveneList.forEach((entry: any) => {
+        leveneList.forEach((entry: any, idx: number) => {
+            const df2Raw = Number(entry.df2);
+            const df2Str = Number.isInteger(df2Raw)
+                ? String(df2Raw)
+                : formatDisplayNumber(df2Raw);
             table.rows.push({
                 rowHeader: [],
-                function: entry.function || entry.test_basis || "Mean",
+                dv_name: idx === 0 ? lt.dependent_variable : "",
+                function: entry.test_basis || entry.function || "Mean",
                 levene_statistic: formatDisplayNumber(entry.levene_statistic),
                 df1: String(entry.df1),
-                df2: String(entry.df2),
+                df2: df2Str,
                 significance: formatSig(entry.significance),
             });
         });
-
-        resultJson.tables.push(table);
     });
-}
 
+    if (table.rows.length > 0) {
+        resultJson.tables.push(table);
+    }
+}
 // ── 6. Multivariate Tests (Pillai / Wilks / Hotelling / Roy) ─────────────────
 function formatMultivariateTests(
     data: any,

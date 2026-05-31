@@ -68,7 +68,7 @@ pub struct LeveneTest {
 pub struct LeveneResult {
     pub levene_statistic: f64,
     pub df1: usize,
-    pub df2: usize,
+    pub df2: f64,
     pub significance: f64,
     pub function: Option<String>,
     pub design: Option<String>,

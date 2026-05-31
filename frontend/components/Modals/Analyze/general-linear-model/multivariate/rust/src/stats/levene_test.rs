@@ -12,6 +12,7 @@ use super::core::{
     extract_dependent_value,
     get_factor_combinations,
     matches_combination,
+    merge_records,
 };
 
 /// Calculate median of a list of values
@@ -138,13 +139,12 @@ pub fn calculate_levene_test(
                         .collect::<Vec<String>>()
                         .join(", ");
 
+                    let merged = merge_records(data);
                     let mut values = Vec::new();
-                    for records in &data.dependent_data {
-                        for record in records {
-                            if matches_combination(record, combo, data, config) {
-                                if let Some(value) = extract_dependent_value(record, &dep_var) {
-                                    values.push(value);
-                                }
+                    for record in &merged {
+                        if matches_combination(record, combo, data, config) {
+                            if let Some(value) = extract_dependent_value(record, &dep_var) {
+                                values.push(value);
                             }
                         }
                     }
@@ -252,30 +252,50 @@ pub fn calculate_levene_test(
 
             // Calculate degrees of freedom
             let df1 = k - 1;
-            let df2 = if test_idx == 2 {
-                // For "Based on Median and with adjusted df", use modified df2
-                // This calculation is based on adjusting df to account for the median estimation
-                let mut adjusted_df2 = 0;
-                for count in group_counts.iter() {
-                    if *count > 1 {
-                        adjusted_df2 += count - 1;
-                    }
-                }
-                adjusted_df2
-            } else {
-                n_total - k
-            };
+            let df2_std = (n_total - k) as f64;
 
-            // Calculate mean squares
+            // Calculate mean squares (always use standard df2 for ms_within and F)
             let ms_between = ss_between / (df1 as f64);
-            let ms_within = ss_within / (df2 as f64);
+            let ms_within = ss_within / df2_std;
 
             // Calculate F-statistic
             let f_statistic = ms_between / ms_within;
 
-            // Calculate significance (p-value)
-            let f_dist = FisherSnedecor::new(df1 as f64, df2 as f64).unwrap();
-            let significance = 1.0 - f_dist.cdf(f_statistic);
+            // df2 for p-value:
+            // test_idx==2 ("Based on Median and with adjusted df") uses the
+            // Welch-Satterthwaite approximation — df2_adj can be fractional.
+            // All other variants use the standard residual df2 = N - k.
+            let df2: f64 = if test_idx == 2 {
+                // Welch-Satterthwaite: df2_adj = (Σᵢ s²ᵢ/nᵢ)² / Σᵢ[(s²ᵢ/nᵢ)²/(nᵢ-1)]
+                // where s²ᵢ is within-group variance of the absolute deviations.
+                let mut sum_term = 0.0_f64;
+                let mut sum_term_sq_over_df = 0.0_f64;
+                for gi in 0..k {
+                    let ni = group_counts[gi] as f64;
+                    if ni <= 1.0 { continue; }
+                    let zi_mean = group_abs_means[gi];
+                    let ss_i: f64 = (0..abs_deviations.len())
+                        .filter(|&j| group_indices[j] == gi)
+                        .map(|j| (abs_deviations[j] - zi_mean).powi(2))
+                        .sum();
+                    let s2_i = ss_i / (ni - 1.0);
+                    let term = s2_i / ni;
+                    sum_term += term;
+                    sum_term_sq_over_df += term * term / (ni - 1.0);
+                }
+                if sum_term_sq_over_df > 0.0 {
+                    sum_term * sum_term / sum_term_sq_over_df
+                } else {
+                    df2_std
+                }
+            } else {
+                df2_std
+            };
+
+            // Calculate significance (p-value) using the appropriate df2
+            let significance = FisherSnedecor::new(df1 as f64, df2)
+                .map(|dist| 1.0 - dist.cdf(f_statistic))
+                .unwrap_or(0.0);
 
             levene_results.push(LeveneResult {
                 levene_statistic: f_statistic,

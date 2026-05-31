@@ -33,8 +33,9 @@ export async function resultMultivariateAnalysis({
                 });
             }
 
-            // ── Descriptive Statistics (one per DV) ───────────────────────
+            // ── Descriptive Statistics (combined table) ───────────────────
             const descTables = formattedResult.tables.filter((t: Table) =>
+                t.key === "descriptive_statistics" ||
                 t.key.startsWith("descriptive_statistics_")
             );
             for (const table of descTables) {
@@ -80,9 +81,9 @@ export async function resultMultivariateAnalysis({
                 });
             }
 
-            // ── Levene's Test (one per DV) ────────────────────────────────
+            // ── Levene's Test (combined table) ───────────────────────────
             const leveneTables = formattedResult.tables.filter((t: Table) =>
-                t.key.startsWith("levene_test_")
+                t.key === "levene_test" || t.key.startsWith("levene_test_")
             );
             for (const table of leveneTables) {
                 const analyticId = await addAnalytic(logId, {

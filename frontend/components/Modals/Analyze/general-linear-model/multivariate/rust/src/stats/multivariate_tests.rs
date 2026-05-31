@@ -393,12 +393,8 @@ fn calculate_hypothesis_error_matrices(
             .map(|(g, m)| g - m)
             .collect();
 
-        // H = n · (x̄ − μ₀)(x̄ − μ₀)ᵀ
-        for i in 0..p {
-            for j in 0..p {
-                h_matrix[i][j] = (n_obs as f64) * centered[i] * centered[j];
-            }
-        }
+        // H matrix is set below, after cell means are available for the
+        // Type III intercept formula when factors are present.
 
         // SPSS uses the full-model residual SSCP for the error matrix (the same
         // E that is used for every effect), not the corrected total SSCP. Build
@@ -466,6 +462,48 @@ fn calculate_hypothesis_error_matrices(
                 means.push(m);
             }
             cell_means.push(means);
+        }
+
+        // Intercept H matrix.
+        // When factors are present use the Type III unweighted-mean formula:
+        //   H[i,j] = sum_k(ȳ_ki) × sum_k(ȳ_kj) / Σ_k(1/n_k)
+        // This gives the same result as N × ȳ² only for balanced designs.
+        // When no factors are present (one-population T² or paired), fall back
+        // to the original: H[i,j] = N × (x̄_i − μ₀_i) × (x̄_j − μ₀_j).
+        if factors.is_empty() {
+            // No-factor case: one-population T² with optional μ₀.
+            for i in 0..p {
+                for j in 0..p {
+                    h_matrix[i][j] = (n_obs as f64) * centered[i] * centered[j];
+                }
+            }
+        } else {
+            // Factor case: Type III intercept SSCP.
+            let mut sum_means = vec![0.0_f64; p];
+            let mut sum_inv_n = 0.0_f64;
+            for c_idx in 0..cell_keys.len() {
+                let n_k = cell_values[c_idx][0].len();
+                if n_k > 0 {
+                    for dv_i in 0..p {
+                        sum_means[dv_i] += cell_means[c_idx][dv_i];
+                    }
+                    sum_inv_n += 1.0 / (n_k as f64);
+                }
+            }
+            if sum_inv_n > 0.0 {
+                for i in 0..p {
+                    for j in 0..p {
+                        h_matrix[i][j] = sum_means[i] * sum_means[j] / sum_inv_n;
+                    }
+                }
+            } else {
+                // Fallback (degenerate): weighted formula.
+                for i in 0..p {
+                    for j in 0..p {
+                        h_matrix[i][j] = (n_obs as f64) * centered[i] * centered[j];
+                    }
+                }
+            }
         }
 
         // E = sum over rows of (y_i - cell_mean)(y_j - cell_mean).

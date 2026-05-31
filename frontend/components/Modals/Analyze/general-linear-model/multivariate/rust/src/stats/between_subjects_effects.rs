@@ -11,8 +11,11 @@ use super::core::{
     calculate_f_significance,
     calculate_mean,
     calculate_observed_power,
+    data_value_to_string,
+    extract_dependent_value,
     generate_interaction_terms,
     get_factor_levels,
+    merge_records,
     to_dmatrix,
     to_dvector,
 };
@@ -112,8 +115,47 @@ pub fn calculate_tests_between_subjects_effects(
 
         // Add "Intercept" effect if included
         if config.model.intercept {
-            // Calculate intercept statistics
-            let intercept_ss = (n as f64) * mean_y.powi(2);
+            // Type III SS for Intercept in unbalanced designs:
+            //   SS = (Σᵢ ȳᵢ)² / Σᵢ(1/nᵢ)
+            // This equals N * grand_mean² only for balanced designs.
+            // Fall back to N * ȳ² when no factors are present (one-pop T² case).
+            let intercept_ss = if config.main.fix_factor
+                .as_ref()
+                .map_or(false, |f| !f.is_empty())
+            {
+                let factor = &config.main.fix_factor.as_ref().unwrap()[0];
+                let merged_rows = merge_records(data);
+                let mut sum_group_means = 0.0_f64;
+                let mut sum_inv_n = 0.0_f64;
+                if let Ok(levels) = get_factor_levels(data, factor) {
+                    for level in &levels {
+                        let group_vals: Vec<f64> = merged_rows
+                            .iter()
+                            .filter_map(|rec| {
+                                let fv = rec.values
+                                    .get(factor.as_str())
+                                    .map(|v| data_value_to_string(v));
+                                if fv.as_deref() == Some(level.as_str()) {
+                                    extract_dependent_value(rec, dep_var)
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect();
+                        if !group_vals.is_empty() {
+                            sum_group_means += calculate_mean(&group_vals);
+                            sum_inv_n += 1.0 / (group_vals.len() as f64);
+                        }
+                    }
+                }
+                if sum_inv_n > 0.0 {
+                    sum_group_means * sum_group_means / sum_inv_n
+                } else {
+                    (n as f64) * mean_y.powi(2)
+                }
+            } else {
+                (n as f64) * mean_y.powi(2)
+            };
             let intercept_df = 1;
             let intercept_ms = intercept_ss;
             let intercept_f = intercept_ms / ms_error;

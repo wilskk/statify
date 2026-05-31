@@ -117,16 +117,34 @@ pub fn calculate_box_test(
 
     let chi_square = ((1.0 - c) * box_m).max(0.0);
 
-    // Use an F-like scaled statistic for the displayed "F" column while keeping
-    // significance derived from an F distribution with residual df.
-    let (f_statistic, df2, significance) = if total_df > 0 {
-        let f_statistic = chi_square / (df1 as f64);
-        let df2 = total_df as f64;
-        let significance = calculate_f_significance(df1, total_df, f_statistic);
-        (f_statistic, df2, significance)
+    // F approximation following Box (1949).
+    // Second correction factor c₂ = (p−1)(p+2) / [6(p+1)(g−1)] × Σ(1/νᵢ² − 1/ν²).
+    let mut sum_sq_reciprocal = 0.0_f64;
+    for (_, _, n) in &group_covariance_matrices {
+        let df = (n - 1) as f64;
+        sum_sq_reciprocal += 1.0 / df.powi(2);
+    }
+    let c2 = ((p as f64 - 1.0) * (p as f64 + 2.0) /
+              (6.0 * (p as f64 + 1.0) * (g as f64 - 1.0))) *
+             (sum_sq_reciprocal - 1.0 / (total_df as f64).powi(2));
+
+    let df1_f = df1 as f64;
+    let b = (df1_f * (df1_f + 2.0)) / (c2 - c * c).abs().max(1e-10);
+
+    let (f_statistic, df2, significance) = if c2 > c * c {
+        // Full F approximation: finite df₂.
+        let f_stat = (1.0 - c - df1_f / b) * box_m / df1_f;
+        let df2_val = b;
+        let sig = calculate_f_significance(df1, df2_val as usize, f_stat);
+        (f_stat.max(0.0), df2_val, sig)
     } else {
-        let significance = 1.0 - chi_square_cdf(chi_square, df1 as f64);
-        (chi_square, 0.0, significance)
+        // Chi-square approximation (df₂ → ∞).
+        // F = χ²/df₁ ~ F(df₁, ∞); p-value from χ²(df₁) distribution.
+        let f_stat = chi_square / df1_f;
+        let sig = 1.0 - chi_square_cdf(chi_square, df1_f);
+        // df₂ computed as b (though conceptually ∞); cap at a display ceiling.
+        let df2_display = b.min(1_000_000.0);
+        (f_stat, df2_display, sig)
     };
 
     // Step 7: Assemble result
