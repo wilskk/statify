@@ -19,10 +19,18 @@ export interface ClusteringInput {
     random_seed?: number | null;
     n_init?: number;
     convergence_tolerance?: number;
+    /** PAM only: true = BUILD initialization, false = random initialization. */
+    use_build_phase?: boolean;
+    /** PAM only: true = R-style path, false = native non-R path. */
+    use_r_implementation?: boolean;
     /** CLARA: number of sub-samples to draw (default: 5) */
     clara_num_samples?: number;
     /** CLARA: explicit sample size per sub-sample (default: 40 + 2*k) */
     clara_sample_size?: number;
+    /** CLARANS: number of local searches to perform (default: 2) */
+    clarans_num_local?: number;
+    /** CLARANS: maximum number of neighbors to check per search (default: max(250, 1.25% of n*k)) */
+    clarans_max_neighbors?: number;
 }
 
 /**
@@ -230,7 +238,10 @@ export class ClusterWorker {
      * Initialize WASM module in worker
      */
     async init(wasmPath?: string): Promise<void> {
-        await this.sendMessage({ type: "init", wasmPath });
+        await this.sendMessage({
+            type: "init",
+            wasmPath: wasmPath ?? "/workers/Clustering/K-Medoids/wasm_bg.wasm",
+        });
     }
 
     /**

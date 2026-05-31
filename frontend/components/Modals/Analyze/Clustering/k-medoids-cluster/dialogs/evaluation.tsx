@@ -64,6 +64,22 @@ export const KMedoidsClusterEvaluation = ({
 
                 <div className="flex items-center space-x-2">
                     <Checkbox
+                        id="ShowOptimalKChart"
+                        checked={data.ShowOptimalKChart}
+                        onCheckedChange={(checked) =>
+                            handleChange("ShowOptimalKChart", checked)
+                        }
+                    />
+                    <label
+                        htmlFor="ShowOptimalKChart"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                        Grafik K Optimal
+                    </label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                    <Checkbox
                         id="ShowOverallQualityAssessment"
                         checked={data.ShowOverallQualityAssessment}
                         onCheckedChange={(checked) =>

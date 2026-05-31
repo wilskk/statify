@@ -397,6 +397,7 @@ pub fn calculate_box_tidwell(
 // ============================================================================
 // HELPER: Pearson correlation between two vectors
 // ============================================================================
+#[allow(dead_code)]
 fn pearson_correlation(a: &[f64], b: &[f64]) -> f64 {
     let n = a.len() as f64;
     if n < 2.0 { return 0.0; }
