@@ -317,7 +317,7 @@ const calculator = new StatCalculator(JSON.stringify(inputData));
 const resultJson = calculator.process();
 const result = JSON.parse(resultJson);
 
-console.log("Hasil analisis:", result);
+// Gunakan result sesuai kebutuhan aplikasi.
 ```
 
 ### Pendekatan Fungsional
@@ -341,7 +341,7 @@ const inputData = {
 const resultJson = calculate_stats(JSON.stringify(inputData));
 const result = JSON.parse(resultJson);
 
-console.log("Hasil analisis:", result);
+// Gunakan result sesuai kebutuhan aplikasi.
 ```
 
 ## Pengembangan

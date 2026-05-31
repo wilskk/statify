@@ -38,8 +38,10 @@ export const KNNSave = ({
   });
 
   useEffect(() => {
-    if (JSON.stringify(data) === JSON.stringify(saveState)) return;
-    setSaveState({ ...data, MaxCatsToSave: data.MaxCatsToSave ?? 25 });
+    setSaveState((previous) => {
+      if (JSON.stringify(data) === JSON.stringify(previous)) return previous;
+      return { ...data, MaxCatsToSave: data.MaxCatsToSave ?? 25 };
+    });
   }, [data]);
 
   useEffect(() => {
@@ -47,7 +49,7 @@ export const KNNSave = ({
     Object.entries(saveState).forEach(([key, value]) => {
       updateFormData(key as keyof KNNSaveType, value);
     });
-  }, [saveState]);
+  }, [data, saveState, updateFormData]);
 
   const isCategorical = targetType === "nominal" || targetType === "ordinal";
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- WASM result payloads are validated while formatting. */
 import { formatDisplayNumber } from "@/hooks/useFormatter";
 import type { ResultJson, Row, Table } from "@/types/Table";
 

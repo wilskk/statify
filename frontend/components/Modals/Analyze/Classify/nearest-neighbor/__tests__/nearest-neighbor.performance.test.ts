@@ -246,7 +246,6 @@ describe("KNNAnalysis Constructor Performance Test", () => {
             performanceResultsPath,
             JSON.stringify(performanceResults, null, 2)
         );
-        console.log(`Hasil disimpan ke ${performanceResultsPath}`);
     });
 
     ROW_COUNTS.forEach((rowCount) => {
@@ -280,9 +279,6 @@ describe("KNNAnalysis Constructor Performance Test", () => {
                         ),
                     };
 
-                    console.log(
-                        `KNN -> Baris: ${rowCount}, Feature: ${featureCount}, Eksekusi: ${NUM_RUNS}`
-                    );
                 }, 300000);
             });
         });

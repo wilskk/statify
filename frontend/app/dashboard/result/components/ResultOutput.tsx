@@ -5,8 +5,18 @@ import { Card } from "@/components/ui/card";
 import dynamic from "next/dynamic";
 import { useResultStore } from "@/stores/useResultStore";
 import GeneralChartContainer from "@/components/Output/Chart/GeneralChartContainer";
-import KNNPredictorSpaceChart from "@/components/Modals/Analyze/Classify/nearest-neighbor/components/KNNPredictorSpaceChart";
 import KNNKPredictorSelectionChart from "@/components/Modals/Analyze/Classify/nearest-neighbor/components/KNNKPredictorSelectionChart";
+const KNNPredictorSpaceChart = dynamic(
+  () => import("@/components/Modals/Analyze/Classify/nearest-neighbor/components/KNNPredictorSpaceChart"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="p-4 text-sm text-muted-foreground">
+        Loading predictor space...
+      </div>
+    ),
+  },
+);
 const KMedoidsOutputRenderer = dynamic(
   () => import("@/components/Modals/Analyze/Clustering/k-medoids-cluster/components/OutputRenderer").then(m => ({ default: m.KMedoidsOutputRenderer })),
   { ssr: false, loading: () => <div className="p-4 text-sm text-muted-foreground">Loading...</div> }

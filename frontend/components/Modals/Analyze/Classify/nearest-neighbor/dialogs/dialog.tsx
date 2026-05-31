@@ -1,10 +1,8 @@
 import React, { useMemo, useState } from "react";
-import { Info } from "lucide-react";
 import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useVariableStore } from "@/stores/useVariableStore";
 import type { KNNDialogProps } from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor";
 
-import { useModal } from "@/hooks/useModal";
 import type { Variable } from "@/types/Variable";
 
 import VariableListManager from "@/components/Common/VariableListManager";
@@ -22,16 +20,20 @@ export const KNNDialog = ({
     source: string;
   } | null>(null);
 
-  const { closeModal } = useModal();
-
   const variables = useVariableStore((state) => state.variables);
 
   const allVariables = variables;
 
-  const targetVar = data.TargetVar ? [data.TargetVar] : [];
-  const featureVars = data.FeatureVar || [];
-  const focalVars = data.FocalCaseIdenVar ? [data.FocalCaseIdenVar] : [];
-  const caseLabelVars = data.CaseIdenVar ? [data.CaseIdenVar] : [];
+  const targetVar = useMemo(() => data.TargetVar ? [data.TargetVar] : [], [data.TargetVar]);
+  const featureVars = useMemo(() => data.FeatureVar ?? [], [data.FeatureVar]);
+  const focalVars = useMemo(
+    () => data.FocalCaseIdenVar ? [data.FocalCaseIdenVar] : [],
+    [data.FocalCaseIdenVar],
+  );
+  const caseLabelVars = useMemo(
+    () => data.CaseIdenVar ? [data.CaseIdenVar] : [],
+    [data.CaseIdenVar],
+  );
 
   const variableMap = useMemo(() => {
     return new Map(allVariables.map((v) => [v.name, v]));
@@ -40,7 +42,7 @@ export const KNNDialog = ({
   const availableVars = useMemo(() => {
     const used = new Set([
       data.TargetVar,
-      ...(data.FeatureVar || []),
+      ...(data.FeatureVar ?? []),
       data.FocalCaseIdenVar,
       data.CaseIdenVar,
     ]);
@@ -48,9 +50,6 @@ export const KNNDialog = ({
     return allVariables.filter((v) => !used.has(v.name));
   }, [allVariables, data]);
 
-  const isScale = (v: Variable) => v.measure === "scale";
-  const isCategorical = (v: Variable) =>
-    v.measure === "nominal" || v.measure === "ordinal";
   const isNumericVariable = (v: Variable) =>
     [
       "NUMERIC",
@@ -120,13 +119,14 @@ export const KNNDialog = ({
 
   const errors = externalErrors ?? [];
 
-  const mapToVariables = (names: string[]) =>
-    names
-      .map((name) => variableMap.get(name))
-      .filter((v): v is Variable => Boolean(v));
-
   const targetListsConfig: TargetListConfig[] = useMemo(
-    () => [
+    () => {
+      const mapToVariables = (names: string[]) =>
+        names
+          .map((name) => variableMap.get(name))
+          .filter((v): v is Variable => Boolean(v));
+
+      return [
       {
         id: "TargetVar",
         title: "Target:",
@@ -162,7 +162,8 @@ export const KNNDialog = ({
         maxItems: 1,
         height: "80px",
       },
-    ],
+      ];
+    },
     [targetVar, featureVars, focalVars, caseLabelVars, variableMap],
   );
 

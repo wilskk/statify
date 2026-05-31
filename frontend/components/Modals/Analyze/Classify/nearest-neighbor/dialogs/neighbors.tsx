@@ -1,10 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { CheckedState } from "@radix-ui/react-checkbox";
-
 import type {
   KNNNeighborsProps,
   KNNNeighborsType,
@@ -26,6 +24,18 @@ export const KNNNeighbors = ({
     setNeighborsState({ ...data });
   }, [data]);
 
+  const handleChange = useCallback((
+    field: keyof KNNNeighborsType,
+    value: number | boolean | null,
+  ) => {
+    setNeighborsState((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+
+    updateFormData(field, value);
+  }, [updateFormData]);
+
   useEffect(() => {
     if (!neighborsState.AutoSelection) {
       if (neighborsState.MinK !== null) updateFormData("MinK", null);
@@ -44,7 +54,7 @@ export const KNNNeighbors = ({
       handleChange("Specify", true);
       handleChange("Weight", false);
     }
-  }, [hasTarget]);
+  }, [handleChange, hasTarget]);
 
   useEffect(() => {
     if (targetType !== "scale") {
@@ -53,19 +63,7 @@ export const KNNNeighbors = ({
     } else if (!neighborsState.PredictionsMean && !neighborsState.PredictionsMedian) {
       handleChange("PredictionsMean", true);
     }
-  }, [targetType, neighborsState.PredictionsMean, neighborsState.PredictionsMedian]);
-
-  const handleChange = (
-    field: keyof KNNNeighborsType,
-    value: CheckedState | number | boolean | string | null,
-  ) => {
-    setNeighborsState((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-
-    updateFormData(field, value as any);
-  };
+  }, [handleChange, targetType, neighborsState.PredictionsMean, neighborsState.PredictionsMedian]);
 
   const handleSpecifyGrp = (value: string) => {
     const isAutoSelection = value === "AutoSelection";
@@ -274,7 +272,7 @@ export const KNNNeighbors = ({
                       checked={neighborsState.Weight}
                       disabled={!hasTarget}
                       onCheckedChange={(checked) =>
-                        handleChange("Weight", checked)
+                        handleChange("Weight", checked === true)
                       }
                     />
                     <Label>

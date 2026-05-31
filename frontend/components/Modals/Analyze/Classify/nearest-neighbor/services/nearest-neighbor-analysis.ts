@@ -201,16 +201,16 @@ export async function analyzeKNN({
           return;
         }
 
-        await saveKnnVariablesToDataViewer(
-          result.saved_variables,
-          configData.save.CustomName,
-        );
-
         await resultNearestNeighbor({
           formattedResult: formattedResults,
           rawResult: result,
           configData,
         });
+
+        await saveKnnVariablesToDataViewer(
+          result.saved_variables,
+          configData.save.CustomName,
+        );
 
         worker.terminate();
         resolve();

@@ -13,6 +13,8 @@ use super::{
 };
 
 pub const EXCLUDED_FOLD: usize = usize::MAX;
+type PartitionSplit = (Vec<usize>, Vec<usize>, Vec<usize>);
+type PartitionAndFoldSplit = (Vec<usize>, Vec<usize>, Vec<usize>, Vec<usize>);
 
 pub fn split_training_holdout_by_partition_config(
     data: &AnalysisData,
@@ -36,7 +38,7 @@ pub fn split_training_holdout_by_partition_config_detailed(
     config: &KnnConfig,
     processed_case_count: usize,
     processed_case_indices: &[usize],
-) -> Result<(Vec<usize>, Vec<usize>, Vec<usize>), String> {
+) -> Result<PartitionSplit, String> {
     if config.partition.use_variable {
         if let Some(ref partition_var) = config.partition.partitioning_variable {
             return split_by_partition_variable(data, partition_var, processed_case_indices);
@@ -60,7 +62,7 @@ pub fn split_partition_and_cross_validation_by_config(
     config: &KnnConfig,
     processed_case_count: usize,
     processed_case_indices: &[usize],
-) -> Result<(Vec<usize>, Vec<usize>, Vec<usize>, Vec<usize>), String> {
+) -> Result<PartitionAndFoldSplit, String> {
     let effective_seed = if config.partition.set_seed {
         config.partition.seed
     } else {
@@ -208,7 +210,7 @@ fn split_by_partition_variable(
     data: &AnalysisData,
     partition_var: &str,
     processed_case_indices: &[usize],
-) -> Result<(Vec<usize>, Vec<usize>, Vec<usize>), String> {
+) -> Result<PartitionSplit, String> {
     let mut training_indices = Vec::new();
     let mut holdout_indices = Vec::new();
     let mut excluded_indices = Vec::new();

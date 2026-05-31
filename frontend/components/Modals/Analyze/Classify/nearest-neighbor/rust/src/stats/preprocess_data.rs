@@ -23,7 +23,7 @@ pub fn preprocess_knn_data(data: &AnalysisData, config: &KnnConfig) -> Result<Kn
             let mut feature_set = HashSet::new();
             for dataset in &data.features_data {
                 for record in dataset {
-                    for (key, _) in &record.values {
+                    for key in record.values.keys() {
                         feature_set.insert(key.clone());
                     }
                 }

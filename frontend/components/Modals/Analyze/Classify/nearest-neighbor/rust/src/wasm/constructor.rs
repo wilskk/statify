@@ -17,6 +17,7 @@ pub struct KNNAnalysis {
 #[wasm_bindgen]
 impl KNNAnalysis {
     #[wasm_bindgen(constructor)]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         target_data: JsValue,
         features_data: JsValue,
@@ -141,8 +142,8 @@ impl KNNAnalysis {
             .main
             .target_var
             .as_ref()
-            .map_or(true, |target| target.trim().is_empty());
-        let features_are_missing = config.main.feature_var.as_ref().map_or(true, |features| {
+            .is_none_or(|target| target.trim().is_empty());
+        let features_are_missing = config.main.feature_var.as_ref().is_none_or(|features| {
             features.is_empty() || features.iter().any(|feature| feature.trim().is_empty())
         });
 

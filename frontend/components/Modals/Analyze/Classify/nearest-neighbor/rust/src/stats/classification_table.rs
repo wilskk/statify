@@ -292,13 +292,13 @@ fn extract_marginals(confusion: &[Vec<usize>], n_categories: usize) -> (Vec<usiz
     let mut observed = Vec::with_capacity(n_categories);
     let mut predicted = Vec::with_capacity(n_categories);
 
-    for i in 0..n_categories {
-        let row_sum: usize = confusion[i].iter().sum();
+    for row in confusion.iter().take(n_categories) {
+        let row_sum: usize = row.iter().sum();
         observed.push(row_sum);
     }
 
     for j in 0..n_categories {
-        let col_sum: usize = (0..n_categories).map(|i| confusion[i][j]).sum();
+        let col_sum: usize = confusion.iter().take(n_categories).map(|row| row[j]).sum();
         predicted.push(col_sum);
     }
 

@@ -15,7 +15,7 @@ impl ErrorCollector {
         let entry = self
             .errors
             .entry(context.to_string())
-            .or_insert_with(Vec::new);
+            .or_default();
         entry.push(message.to_string());
     }
 

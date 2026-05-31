@@ -255,7 +255,7 @@ fn build_fold_variable(
     folds: &[usize],
 ) -> SavedVariable {
     let mut values = vec![DataValue::Null; total_cases];
-    let uses_zero_based_folds = folds.iter().any(|&fold| fold == 0);
+    let uses_zero_based_folds = folds.contains(&0);
 
     for (processed_idx, &raw_idx) in processed_case_indices.iter().enumerate() {
         if raw_idx < values.len() {

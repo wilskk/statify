@@ -2,7 +2,7 @@ use nalgebra::DMatrix;
 
 /// Normalizes features using adjusted normalization to range [-1, 1]
 /// Uses nalgebra for more efficient matrix operations
-pub fn normalize_features(data_matrix: &mut Vec<Vec<f64>>) {
+pub fn normalize_features(data_matrix: &mut [Vec<f64>]) {
     if data_matrix.is_empty() {
         return;
     }
@@ -25,18 +25,17 @@ pub fn normalize_features(data_matrix: &mut Vec<Vec<f64>>) {
         let max_val = col.max();
 
         if (max_val - min_val).abs() < f64::EPSILON {
-            for i in 0..n_rows {
-                if j < data_matrix[i].len() {
-                    data_matrix[i][j] = 0.0;
+            for row in data_matrix.iter_mut().take(n_rows) {
+                if j < row.len() {
+                    row[j] = 0.0;
                 }
             }
             continue;
         }
 
-        for i in 0..n_rows {
-            if j < data_matrix[i].len() {
-                data_matrix[i][j] =
-                    (2.0 * (data_matrix[i][j] - min_val)) / (max_val - min_val) - 1.0;
+        for row in data_matrix.iter_mut().take(n_rows) {
+            if j < row.len() {
+                row[j] = (2.0 * (row[j] - min_val)) / (max_val - min_val) - 1.0;
             }
         }
     }

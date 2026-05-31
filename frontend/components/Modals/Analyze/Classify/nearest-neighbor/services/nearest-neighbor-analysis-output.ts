@@ -1,4 +1,5 @@
 // nearest-neighbor-analysis-output.ts
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/prefer-nullish-coalescing -- Chart payloads preserve empty-string fallback semantics from deserialized WASM results. */
 import type { KNNFinalResultType } from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor-worker";
 import type { Table } from "@/types/Table";
 import { useResultStore } from "@/stores/useResultStore";
@@ -10,8 +11,7 @@ export async function resultNearestNeighbor({
   rawResult,
   configData,
 }: KNNFinalResultType) {
-  try {
-    const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
+  const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
 
     const findTable = (key: string) => {
       const foundTable = formattedResult.tables.find(
@@ -144,10 +144,7 @@ export async function resultNearestNeighbor({
         });
       }
     };
-    await nearestNeighborAnalysisResult();
-  } catch (e) {
-    console.error(e);
-  }
+  await nearestNeighborAnalysisResult();
 }
 
 function createPredictorSpaceChart(

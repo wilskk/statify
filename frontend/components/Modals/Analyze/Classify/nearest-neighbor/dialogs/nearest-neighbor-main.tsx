@@ -29,6 +29,78 @@ import { toast } from "sonner";
 
 type KNNFormValue = string[] | string | number | boolean | null;
 
+const KNN_SETTINGS_LOAD_ERROR_TOAST_ID = "knn-settings-load-error";
+const KNN_VALIDATION_ERROR_TOAST_ID = "knn-validation-error";
+
+const getUserFriendlyKNNError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const normalizedMessage = message.toLowerCase();
+
+  if (normalizedMessage.includes("target variable")) {
+    return "Select a target variable before running the KNN analysis.";
+  }
+
+  if (
+    normalizedMessage.includes("feature variable") ||
+    normalizedMessage.includes("at least one feature") ||
+    normalizedMessage.includes("no valid features") ||
+    normalizedMessage.includes("no predictors")
+  ) {
+    return "Select at least one feature variable before running the KNN analysis.";
+  }
+
+  if (
+    normalizedMessage.includes("no cases found") ||
+    normalizedMessage.includes("no data available") ||
+    normalizedMessage.includes("no valid data records")
+  ) {
+    return "No valid cases are available for analysis. Check the selected variables for missing or invalid values.";
+  }
+
+  if (normalizedMessage.includes("no focal cases")) {
+    return "No matching focal cases were found. Check the focal case identifier values.";
+  }
+
+  if (
+    normalizedMessage.includes("partition variable") &&
+    normalizedMessage.includes("no training cases")
+  ) {
+    return "The selected partition variable does not contain any training cases. Use positive values for training cases.";
+  }
+
+  if (normalizedMessage.includes("partition variable")) {
+    return "Select a partition variable or switch to random partitioning.";
+  }
+
+  if (
+    normalizedMessage.includes("cross-validation fold variable") ||
+    normalizedMessage.includes("fold variable")
+  ) {
+    return "Select a cross-validation fold variable or switch to automatic fold assignment.";
+  }
+
+  if (
+    normalizedMessage.includes("cross-validation") ||
+    normalizedMessage.includes("fold")
+  ) {
+    return "Review the cross-validation settings. Use at least two valid folds and ensure the number of folds does not exceed the available training cases.";
+  }
+
+  if (normalizedMessage.includes("training case")) {
+    return "There are not enough valid training cases for this analysis. Review the partition settings and selected variables.";
+  }
+
+  if (
+    normalizedMessage.includes("worker") ||
+    normalizedMessage.includes("wasm") ||
+    normalizedMessage.includes("module")
+  ) {
+    return "The KNN analysis engine could not be loaded. Please refresh the page and try again.";
+  }
+
+  return "The KNN analysis could not be completed. Review the selected variables and settings, then try again.";
+};
+
 const stripRemovedConfig = <T extends object>(
   data: T & { options?: unknown },
 ): Omit<T, "options"> => {
@@ -113,22 +185,34 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
   const { closeModal } = useModal();
 
   useEffect(() => {
-    const loadFormData = async () => {
-      const savedData = await getFormData("NearestNeighbor");
+    let isActive = true;
 
-      if (savedData) {
-        const { id: _id, ...formDataWithoutId } = savedData;
-        setFormData(normalizeFormData(formDataWithoutId));
-      } else {
-        setFormData(createDefaultFormData());
+    const loadFormData = async () => {
+      try {
+        const savedData = await getFormData("NearestNeighbor");
+        if (!isActive) return;
+
+        if (savedData) {
+          const { id: _id, ...formDataWithoutId } = savedData;
+          setFormData(normalizeFormData(formDataWithoutId));
+        } else {
+          setFormData(createDefaultFormData());
+        }
+      } catch {
+        if (!isActive) return;
+
+        toast.error(
+          "Saved KNN settings could not be loaded. Default settings will be used.",
+          { id: KNN_SETTINGS_LOAD_ERROR_TOAST_ID },
+        );
       }
     };
 
-    toast.promise(loadFormData, {
-      loading: "Loading KNN settings...",
-      success: "KNN settings loaded successfully.",
-      error: "Failed to load KNN settings.",
-    });
+    void loadFormData();
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -192,10 +276,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
     toast.promise(promise, {
       loading: "Running KNN analysis...",
       success: "KNN analysis completed successfully.",
-      error: (error) =>
-        error instanceof Error
-          ? error.message
-          : "An error occurred during KNN analysis.",
+      error: getUserFriendlyKNNError,
     });
   };
 
@@ -206,9 +287,12 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
       setFormData(createDefaultFormData());
       await clearFormData("NearestNeighbor");
 
-      toast.success("Form data cleared successfully");
+      toast.success("KNN settings have been reset.");
     } catch {
-      toast.error("Failed to clear form data");
+      toast.error(
+        "KNN settings could not be reset. Please try again.",
+        { id: "knn-settings-reset-error" },
+      );
     }
   };
 
@@ -249,11 +333,11 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
     const featureVars = formData.main.FeatureVar ?? [];
 
     if (!formData.main.TargetVar) {
-      errors.push("A target variable is required for KNN classification.");
+      errors.push("Select a target variable.");
     }
 
     if (featureVars.length === 0) {
-      errors.push("At least one feature variable is required.");
+      errors.push("Select at least one feature variable.");
     }
 
     return {
@@ -273,7 +357,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
     const usesFixedNumber = f.MaxReached && !f.BelowMin;
 
     if (usesFixedNumber && (!f.MaxToSelect || f.MaxToSelect <= 0)) {
-      return "Enter a positive integer for the number of features to select.";
+      return "Enter a positive whole number for the number of features to select.";
     }
 
     if (
@@ -281,7 +365,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
       f.MaxToSelect !== null &&
       f.MaxToSelect > forwardCount
     ) {
-      return "The number of features to select must be less than or equal to the number of features to evaluate (the number of features in the Forward Selection list).";
+      return "The number of features to select cannot exceed the number of features in the Forward Selection list.";
     }
 
     return null;
@@ -296,7 +380,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
             const error = validateFeatureSelection();
 
             if (error) {
-              toast.error(error);
+              toast.error(error, { id: KNN_VALIDATION_ERROR_TOAST_ID });
               return;
             }
             setActiveTab(nextTab);
@@ -451,7 +535,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
             const error = validateFeatureSelection();
 
             if (error) {
-              toast.error(error);
+              toast.error(error, { id: KNN_VALIDATION_ERROR_TOAST_ID });
               return;
             }
 

@@ -399,9 +399,7 @@ fn minimum_change_stop_reason(
         return Some("zero_error".to_string());
     }
 
-    let Some(previous_error) = previous_error else {
-        return None;
-    };
+    let previous_error = previous_error?;
 
     if previous_error <= f64::EPSILON {
         return Some("zero_error".to_string());
