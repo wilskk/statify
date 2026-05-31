@@ -4,6 +4,7 @@ import type {
 } from "@/components/Modals/Analyze/general-linear-model/multivariate/types/multivariate-worker";
 import { transformMultivariateResult } from "./multivariate-analysis-formatter";
 import { resultMultivariateAnalysis } from "./multivariate-analysis-output";
+import { buildDifferenceData } from "./paired-difference";
 import init, {
     MultivariateAnalysis,
 } from "@/components/Modals/Analyze/general-linear-model/multivariate/rust/pkg";
@@ -13,18 +14,62 @@ export async function analyzeMultivariate({
     dataVariables,
     variables,
 }: MultivariateAnalysisType) {
-    const DependentVariables = configData.main.DepVar || [];
-    const FixFactorVariables = configData.main.FixFactor || [];
-    const CovariateVariables = configData.main.Covar || [];
-    const WlsWeightVariable = configData.main.WlsWeight
-        ? [configData.main.WlsWeight]
-        : [];
+    // Paired Hotelling T² is implemented entirely in TS by synthesising
+    // difference columns (d_k = v1_k − v2_k) and routing them through the
+    // existing Test Values pipeline (cabang Intercept dengan μ₀ = δ₀).
+    // No Rust changes are required.
+    const pairedMode = configData.main.PairedMode;
+    const pairedActive =
+        (pairedMode?.pairs?.length ?? 0) > 0;
 
-    const slicedDataForDependent = getSlicedData({
-        dataVariables,
-        variables,
-        selectedVariables: DependentVariables,
-    });
+    let slicedDataForDependent;
+    let varDefsForDependent;
+    let effectiveConfig = configData;
+
+    if (pairedActive && pairedMode) {
+        const built = buildDifferenceData(
+            dataVariables,
+            variables,
+            pairedMode.pairs
+        );
+        slicedDataForDependent = built.slicedData;
+        varDefsForDependent = built.varDefs;
+
+        const delta0: number[] = pairedMode.delta0
+            ? built.diffNames.map((_, i) =>
+                  Number.isFinite(pairedMode.delta0![i])
+                      ? pairedMode.delta0![i]
+                      : 0
+              )
+            : new Array(built.diffNames.length).fill(0);
+
+        effectiveConfig = {
+            ...configData,
+            main: {
+                ...configData.main,
+                DepVar: built.diffNames,
+                FixFactor: [],
+                Covar: [],
+                WlsWeight: null,
+                TestValues: delta0,
+                VarianceMode: null,
+            },
+        };
+    } else {
+        const DependentVariables = configData.main.DepVar || [];
+        slicedDataForDependent = getSlicedData({
+            dataVariables,
+            variables,
+            selectedVariables: DependentVariables,
+        });
+        varDefsForDependent = getVarDefs(variables, DependentVariables);
+    }
+
+    const FixFactorVariables = effectiveConfig.main.FixFactor || [];
+    const CovariateVariables = effectiveConfig.main.Covar || [];
+    const WlsWeightVariable = effectiveConfig.main.WlsWeight
+        ? [effectiveConfig.main.WlsWeight]
+        : [];
 
     const slicedDataForFixFactor = getSlicedData({
         dataVariables,
@@ -44,12 +89,28 @@ export async function analyzeMultivariate({
         selectedVariables: WlsWeightVariable,
     });
 
-    const varDefsForDependent = getVarDefs(variables, DependentVariables);
     const varDefsForFixFactor = getVarDefs(variables, FixFactorVariables);
     const varDefsForCovariate = getVarDefs(variables, CovariateVariables);
     const varDefsForWlsWeight = getVarDefs(variables, WlsWeightVariable);
 
     await init();
+
+    // Rust's MainConfig deserializes VarianceMode as a non-optional enum with
+    // #[serde(default)] (config.rs:110-111). serde's `default` only fires when
+    // the field is MISSING — a `null` payload still attempts deserialization
+    // and fails with "invalid type: unit value, expected enum VarianceMode".
+    // The dialog persists VarianceMode = null whenever the design isn't
+    // exactly one Fixed Factor, so we normalise here before crossing the WASM
+    // boundary. PairedMode is also stripped defensively because Rust doesn't
+    // know about it.
+    const { PairedMode: _stripPaired, ...mainForRust } = effectiveConfig.main;
+    const configForRust = {
+        ...effectiveConfig,
+        main: {
+            ...mainForRust,
+            VarianceMode: mainForRust.VarianceMode ?? "Pooled",
+        },
+    };
 
     const multivariate = new MultivariateAnalysis(
         slicedDataForDependent,
@@ -60,7 +121,7 @@ export async function analyzeMultivariate({
         varDefsForFixFactor,
         varDefsForCovariate,
         varDefsForWlsWeight,
-        configData
+        configForRust
     );
 
     const results = multivariate.get_formatted_results();
@@ -129,12 +190,18 @@ export async function analyzeMultivariate({
     }
 
     const formattedResults = transformMultivariateResult(results, errors, {
-        testValues: configData.main.TestValues,
-        varianceMode: configData.main.VarianceMode,
+        testValues: effectiveConfig.main.TestValues,
+        varianceMode: effectiveConfig.main.VarianceMode,
         factor:
-            (configData.main.FixFactor?.length ?? 0) === 1
-                ? configData.main.FixFactor?.[0] ?? null
+            (effectiveConfig.main.FixFactor?.length ?? 0) === 1
+                ? effectiveConfig.main.FixFactor?.[0] ?? null
                 : null,
+        pairedMode: pairedActive && pairedMode
+            ? {
+                  pairs: pairedMode.pairs,
+                  delta0: effectiveConfig.main.TestValues ?? [],
+              }
+            : null,
     });
 
     // SPSS only shows the "Contrast Coefficients" table when the user

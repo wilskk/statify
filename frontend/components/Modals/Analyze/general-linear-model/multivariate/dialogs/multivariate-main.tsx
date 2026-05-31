@@ -17,6 +17,7 @@ import { MultivariateSave } from "@/components/Modals/Analyze/general-linear-mod
 import { MultivariateOptions } from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/options";
 import { MultivariateBootstrap } from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/bootstrap";
 import { MultivariateTestValues } from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/test-values";
+import { MultivariatePaired } from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/paired";
 import { useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
@@ -49,6 +50,7 @@ export const MultivariateContainer = ({
     const [isOptionsOpen, setIsOptionsOpen] = useState(false);
     const [isBootstrapOpen, setIsBootstrapOpen] = useState(false);
     const [isTestValuesOpen, setIsTestValuesOpen] = useState(false);
+    const [isPairedOpen, setIsPairedOpen] = useState(false);
 
     const { closeModal } = useModal();
 
@@ -67,6 +69,8 @@ export const MultivariateContainer = ({
                             formDataWithoutId.main?.TestValues ?? null,
                         VarianceMode:
                             formDataWithoutId.main?.VarianceMode ?? null,
+                        PairedMode:
+                            formDataWithoutId.main?.PairedMode ?? null,
                     },
                 };
                 setFormData(normalized);
@@ -245,6 +249,7 @@ export const MultivariateContainer = ({
             | "options"
             | "bootstrap"
             | "testValues"
+            | "paired"
     ) => {
         setIsMainOpen(false);
         setIsModelOpen(false);
@@ -256,6 +261,7 @@ export const MultivariateContainer = ({
         setIsOptionsOpen(false);
         setIsBootstrapOpen(false);
         setIsTestValuesOpen(false);
+        setIsPairedOpen(false);
 
         switch (section) {
             case "main":
@@ -287,6 +293,9 @@ export const MultivariateContainer = ({
                 break;
             case "testValues":
                 setIsTestValuesOpen(true);
+                break;
+            case "paired":
+                setIsPairedOpen(true);
                 break;
         }
     };
@@ -337,6 +346,11 @@ export const MultivariateContainer = ({
                         value
                             ? openSection("testValues")
                             : setIsTestValuesOpen(false)
+                    }
+                    setIsPairedOpen={(value) =>
+                        value
+                            ? openSection("paired")
+                            : setIsPairedOpen(false)
                     }
                     updateFormData={(field, value) =>
                         updateFormData("main", field, value)
@@ -464,6 +478,19 @@ export const MultivariateContainer = ({
                     testValues={formData.main.TestValues}
                     onSave={(testValues) =>
                         updateFormData("main", "TestValues", testValues)
+                    }
+                />
+            )}
+
+            {isPairedOpen && (
+                <MultivariatePaired
+                    isPairedOpen={isPairedOpen}
+                    setIsPairedOpen={(value) =>
+                        value ? openSection("paired") : handleContinue()
+                    }
+                    pairedMode={formData.main.PairedMode}
+                    onSave={(pairedMode) =>
+                        updateFormData("main", "PairedMode", pairedMode)
                     }
                 />
             )}

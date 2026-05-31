@@ -41,6 +41,7 @@ export const MultivariateDialog = ({
     setIsOptionsOpen,
     setIsBootstrapOpen,
     setIsTestValuesOpen,
+    setIsPairedOpen,
     updateFormData,
     data,
     globalVariables,
@@ -239,18 +240,27 @@ export const MultivariateDialog = ({
     );
 
     const handleContinue = () => {
-        if (depVar.length < 2) {
-            toast.warning(
-                "Please select at least two dependent variables for multivariate analysis."
-            );
-            return;
-        }
+        // Paired (Hotelling T²) mode supplies its own dependent vector built
+        // from variable pairs and runs as a one-population test on the
+        // difference vector — so the standard DepVar/FixFactor guards do not
+        // apply.
+        const pairedActive =
+            (mainState.PairedMode?.pairs?.length ?? 0) > 0;
 
-        if (fixFactor.length === 0 && covar.length === 0) {
-            toast.warning(
-                "Please select at least one fixed factor or covariate."
-            );
-            return;
+        if (!pairedActive) {
+            if (depVar.length < 2) {
+                toast.warning(
+                    "Please select at least two dependent variables for multivariate analysis."
+                );
+                return;
+            }
+
+            if (fixFactor.length === 0 && covar.length === 0) {
+                toast.warning(
+                    "Please select at least one fixed factor or covariate."
+                );
+                return;
+            }
         }
 
         Object.entries(mainState).forEach(([key, value]) => {
@@ -382,6 +392,13 @@ export const MultivariateDialog = ({
                                     onClick={openDialog(setIsTestValuesOpen)}
                                 >
                                     Test Values
+                                </Button>
+                                <Button
+                                    className="w-full"
+                                    variant="outline"
+                                    onClick={openDialog(setIsPairedOpen)}
+                                >
+                                    Paired
                                 </Button>
                             </div>
                         </div>

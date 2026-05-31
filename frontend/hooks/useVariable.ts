@@ -118,17 +118,20 @@ export function getVarDefs(
             : [];
 
         const varDefObj = {
-            id: varDef?.id,
-            columnIndex: varDef?.columnIndex ?? 0,
+            // Coerce numeric fields to Number so string-typed values (e.g.
+            // "0") from the store don't cause Rust i32/usize deserialisation
+            // failures when serde_wasm_bindgen processes the varDefs payload.
+            id: varDef?.id != null ? Number(varDef.id) : undefined,
+            columnIndex: Number(varDef?.columnIndex ?? 0),
             name: varDef?.name ?? "",
             type: varDef?.type ?? "STRING",
-            width: varDef?.width ?? 0,
-            decimals: varDef?.decimals ?? 0,
+            width: Number(varDef?.width ?? 0),
+            decimals: Number(varDef?.decimals ?? 0),
             label: varDef?.label ?? "",
             values: normalizedValueLabels,
             // Rust GLM schema expects `missing` as an array of values.
             missing: [],
-            columns: varDef?.columns ?? 0,
+            columns: Number(varDef?.columns ?? 0),
             align: varDef?.align ?? "left",
             measure: varDef?.measure ?? "unknown",
             role: varDef?.role ?? "none",

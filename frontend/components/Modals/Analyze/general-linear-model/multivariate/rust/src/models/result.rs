@@ -31,6 +31,9 @@ pub struct MultivariateResult {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BetweenSubjectFactors {
     pub value_counts: HashMap<String, usize>,
+    /// Maps raw level value (e.g. "1") → user-defined label (e.g. "laki-laki").
+    /// Empty when no value labels are defined for this factor.
+    pub value_labels: HashMap<String, String>,
     pub n: Option<usize>,
 }
 

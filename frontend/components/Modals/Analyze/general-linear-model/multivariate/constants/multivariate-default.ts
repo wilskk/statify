@@ -18,6 +18,7 @@ export const MultivariateMainDefault: MultivariateMainType = {
     WlsWeight: null,
     TestValues: null,
     VarianceMode: null,
+    PairedMode: null,
 };
 
 export const MultivariateModelDefault: MultivariateModelType = {

@@ -5,7 +5,30 @@ export type MultivariateFormatterOptions = {
     testValues?: number[] | null;
     varianceMode?: "Pooled" | "Welch" | null;
     factor?: string | null;
+    /** When set, the analysis ran in paired Hotelling T² mode. The formatter
+     *  uses this to relabel the Intercept effect, rewrite synthetic diff
+     *  variable names back to "v1 − v2" form, and adjust interpretation
+     *  copy to match Modul 4A APG STIS conventions. */
+    pairedMode?: {
+        pairs: [string, string][];
+        delta0: number[];
+    } | null;
 };
+
+// Maps a synthetic difference-column name (d_v1_minus_v2) back to its human
+// label ("v1 − v2"). Returns the original name when no pair matches.
+function makeDiffLabelMap(
+    pairedMode: MultivariateFormatterOptions["pairedMode"]
+): (name: string) => string {
+    if (!pairedMode || pairedMode.pairs.length === 0) {
+        return (name) => name;
+    }
+    const map = new Map<string, string>();
+    pairedMode.pairs.forEach(([v1, v2]) => {
+        map.set(`d_${v1}_minus_${v2}`, `${v1} − ${v2}`);
+    });
+    return (name) => map.get(name) ?? name;
+}
 
 export function transformMultivariateResult(
     data: any,
@@ -16,8 +39,11 @@ export function transformMultivariateResult(
 
     if (!data) return resultJson;
 
+    const pairedMode = options.pairedMode ?? null;
+    const relabelDiff = makeDiffLabelMap(pairedMode);
+
     formatBetweenSubjectsFactors(data, resultJson);
-    formatDescriptiveStatistics(data, resultJson);
+    formatDescriptiveStatistics(data, resultJson, relabelDiff);
     formatBoxTest(data, resultJson);
     formatBartlettTest(data, resultJson);
     formatLeveneTest(data, resultJson);
@@ -25,7 +51,8 @@ export function transformMultivariateResult(
         data,
         resultJson,
         options.testValues ?? null,
-        options.varianceMode === "Welch" ? options.factor ?? null : null
+        options.varianceMode === "Welch" ? options.factor ?? null : null,
+        pairedMode
     );
     formatTestsBetweenSubjectsEffects(data, resultJson);
     formatParameterEstimates(data, resultJson);
@@ -53,7 +80,8 @@ function formatBetweenSubjectsFactors(data: any, resultJson: ResultJson) {
         title: "Between-Subjects Factors",
         columnHeaders: [
             { header: "", key: "factor" },
-            { header: "", key: "value_label" },
+            { header: "", key: "level" },
+            { header: "Value Label", key: "value_label" },
             { header: "N", key: "n" },
         ],
         rows: [],
@@ -64,12 +92,14 @@ function formatBetweenSubjectsFactors(data: any, resultJson: ResultJson) {
     Object.entries(data.between_subjects_factors).forEach(
         ([factorName, factorData]: [string, any]) => {
             const valueCounts: Record<string, number> = factorData.value_counts || {};
+            const valueLabels: Record<string, string> = factorData.value_labels || {};
             const entries = Object.entries(valueCounts);
-            entries.forEach(([levelLabel, count], idx) => {
+            entries.forEach(([levelValue, count], idx) => {
                 table.rows.push({
                     rowHeader: [],
                     factor: idx === 0 ? factorName : "",
-                    value_label: levelLabel,
+                    level: levelValue,
+                    value_label: valueLabels[levelValue] ?? "",
                     n: String(count),
                 });
             });
@@ -80,14 +110,19 @@ function formatBetweenSubjectsFactors(data: any, resultJson: ResultJson) {
 }
 
 // ── 2. Descriptive Statistics ─────────────────────────────────────────────────
-function formatDescriptiveStatistics(data: any, resultJson: ResultJson) {
+function formatDescriptiveStatistics(
+    data: any,
+    resultJson: ResultJson,
+    relabelDiff: (name: string) => string = (n) => n
+) {
     if (!data.descriptive_statistics) return;
 
     Object.entries(data.descriptive_statistics).forEach(
         ([dvName, stat]: [string, any]) => {
+            const displayDvName = relabelDiff(dvName);
             const table: Table = {
                 key: `descriptive_statistics_${dvName}`,
-                title: `Descriptive Statistics — Dependent Variable: ${dvName}`,
+                title: `Descriptive Statistics — Dependent Variable: ${displayDvName}`,
                 columnHeaders: [
                     { header: "", key: "group_label" },
                     { header: "Mean", key: "mean" },
@@ -221,18 +256,26 @@ function formatMultivariateTests(
     data: any,
     resultJson: ResultJson,
     testValues: number[] | null,
-    welchFactor: string | null
+    welchFactor: string | null,
+    pairedMode: MultivariateFormatterOptions["pairedMode"] = null
 ) {
     if (!data.multivariate_tests) return;
 
     const mt = data.multivariate_tests;
     const effects: Record<string, Record<string, any>> = mt.effects || {};
 
+    // Paired Hotelling T² runs the Test Values pipeline against the difference
+    // vector, so `testValues` is also set in this mode. Detect paired first to
+    // pick the right Intercept label and interpretation copy.
+    const pairedActive = (pairedMode?.pairs?.length ?? 0) > 0;
+
     // Hotelling T² one-population mode: when the user supplied a μ₀ vector
     // (even an explicit zero vector), relabel the Intercept effect and
     // surface an extra T² column derived from Hotelling-Lawley trace.
     const hotellingT2Mode = testValues !== null;
-    const interceptLabel = hotellingT2Mode
+    const interceptLabel = pairedActive
+        ? "Hotelling T² Berpasangan"
+        : hotellingT2Mode
         ? "Hotelling T² (vs μ₀)"
         : "Intercept";
 
@@ -258,7 +301,10 @@ function formatMultivariateTests(
     }
 
     let interpretation: string;
-    if (welchMode) {
+    if (pairedActive) {
+        interpretation =
+            "Hotelling T² Berpasangan menguji H₀: δ = δ₀ pada vektor selisih d = M1 − M2. T² = n · (d̄ − δ₀)ᵀ Sd⁻¹ (d̄ − δ₀), dan F = ((n − p) / (p(n − 1))) · T² ~ F(p, n − p). Tolak H₀ jika Sig. < α.";
+    } else if (welchMode) {
         interpretation = `Hotelling T² Dua Populasi dengan asumsi Σ₁ ≠ Σ₂ (Welch-Satterthwaite). T² = dᵀV⁻¹d dengan V = S₁/n₁ + S₂/n₂; F = ((ν − p + 1)/(pν))·T² ~ F(p, ν − p + 1) dengan ν = derajat kebebasan Krishnamoorthy-Yu. Tolak H₀: μ₁ = μ₂ jika Sig. < α.`;
     } else if (hotellingT2Mode) {
         interpretation =
@@ -268,14 +314,29 @@ function formatMultivariateTests(
             "Tests the joint effect of each predictor on the combined dependent variables using four multivariate statistics (Pillai's Trace, Wilks' Lambda, Hotelling's Trace, Roy's Largest Root). A significant Sig. (< .05) indicates that the effect significantly influences the joint distribution of the dependent variables.";
     }
 
+    let tableNote: string | undefined;
+    if (pairedActive && pairedMode) {
+        const pairList = pairedMode.pairs
+            .map(([v1, v2], i) => `d${i + 1} = ${v1} − ${v2}`)
+            .join("; ");
+        const delta0Str = `[${pairedMode.delta0
+            .map((v) => Number(v.toFixed(4)).toString())
+            .join(", ")}]`;
+        tableNote = `Analisis dilakukan pada vektor selisih ${pairList}. δ₀ = ${delta0Str}.`;
+    } else if (welchMode) {
+        tableNote = `${mt.design ?? ""} — Computed using Welch-Satterthwaite approximation for unequal covariance matrices.`;
+    } else {
+        tableNote = mt.design;
+    }
+
     const table: Table = {
         key: "multivariate_tests",
-        title: "Multivariate Tests",
+        title: pairedActive
+            ? "Multivariate Tests — Hotelling T² Berpasangan"
+            : "Multivariate Tests",
         columnHeaders,
         rows: [],
-        note: welchMode
-            ? `${mt.design ?? ""} — Computed using Welch-Satterthwaite approximation for unequal covariance matrices.`
-            : mt.design,
+        note: tableNote,
         interpretation,
     };
 

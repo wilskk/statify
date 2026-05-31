@@ -22,17 +22,18 @@ Analisis General Linear Model (GLM) Multivariate: menguji pengaruh satu atau leb
 multivariate/
 ├── constants/          # Konfigurasi default & konstanta UI
 ├── dialogs/            # Komponen dialog (sub-panel)
-│   ├── dialog.tsx              # Wrapper dialog utama (shadcn Dialog)
-│   ├── multivariate-main.tsx   # Layout sidebar + ResizablePanelGroup
+│   ├── dialog.tsx              # Dialog utama: VariableListManager + sidebar tombol + radio VarianceMode
+│   ├── multivariate-main.tsx   # Orkestrasi state seluruh sub-dialog (IndexedDB load/save)
 │   ├── bootstrap.tsx           # Sub-dialog Bootstrap
 │   ├── contrast.tsx            # Sub-dialog Contrast
 │   ├── emmeans.tsx             # Sub-dialog Estimated Marginal Means
 │   ├── model.tsx               # Sub-dialog Model
 │   ├── options.tsx             # Sub-dialog Options
+│   ├── paired.tsx              # Sub-dialog Paired (Hotelling T² Berpasangan): pasangan variabel + δ₀ + preview
 │   ├── plots.tsx               # Sub-dialog Plots
 │   ├── posthoc.tsx             # Sub-dialog Post Hoc
 │   ├── save.tsx                # Sub-dialog Save
-│   └── test-values.tsx         # Sub-dialog Test Values (μ₀ Hotelling T²)
+│   └── test-values.tsx         # Sub-dialog Test Values (μ₀ Hotelling T² Satu Populasi)
 ├── hooks/              # Custom React hooks
 ├── rust/               # Crate Rust/WASM (engine komputasi)
 │   └── src/
@@ -43,9 +44,10 @@ multivariate/
 │       ├── wasm/               # constructor.rs, function.rs (JS API)
 │       └── test/               # Unit test & validation data
 ├── services/           # Orkestrasi WASM dari sisi JS/TS
-│   ├── multivariate-analysis.ts           # Inisialisasi & run WASM
+│   ├── multivariate-analysis.ts           # Inisialisasi & run WASM; intercepts PairedMode
 │   ├── multivariate-analysis-formatter.ts # Transform result → tabel HTML
-│   └── multivariate-analysis-output.ts    # Render output ke resultStore
+│   ├── multivariate-analysis-output.ts    # Render output ke resultStore
+│   └── paired-difference.ts               # Sintesis kolom d_k = v1_k − v2_k; preview tabel
 ├── types/              # TypeScript type definitions
 └── __test__/           # Integration / snapshot tests
 ```
@@ -59,7 +61,15 @@ Data spreadsheet (useDataStore)
         │
         ▼
 multivariate-analysis.ts
+  ┌─ if PairedMode active ──────────────────────────────────────────────────────┐
+  │  buildDifferenceData(dataRows, variables, pairs)                            │
+  │    → slicedData berupa kolom d_k = v1_k − v2_k per pasangan                │
+  │    → effectiveConfig.main.DepVar = diffNames                                │
+  │    → effectiveConfig.main.TestValues = δ₀ (atau zeros)                     │
+  │    → FixFactor/Covar/WlsWeight dikosongkan                                 │
+  └─ else ──────────────────────────────────────────────────────────────────────┘
   getSlicedData() → menyiapkan AnalysisData (subject rows)
+  PairedMode & VarianceMode=null di-strip sebelum crossing WASM boundary
   new MultivariateAnalysis(data, config, ...)
         │
         ▼
@@ -89,6 +99,7 @@ Rust/WASM — run_analysis()
         ▼
 multivariate-analysis-formatter.ts
   transformMultivariateResult() → memetakan JsValue ke tabel output
+  pairedMode context → relabel kolom T² dan baris "Intercept" → "Hotelling T² Berpasangan"
         │
         ▼
 multivariate-analysis-output.ts
@@ -295,6 +306,71 @@ Existing Box's M tests (dataset_a/b/c) tetap pass setelah refactor — output nu
 
 ---
 
+## Fitur Hotelling T² Berpasangan (Paired)
+
+Sub-dialog **Paired** mengaktifkan uji Hotelling T² untuk dua pengukuran berulang pada subjek yang sama (repeated measurements / matched pairs multivariate). Tidak memerlukan perubahan Rust — seluruh logik diimplementasikan di TypeScript dengan merouting data melalui pipeline Test Values existing.
+
+### Statistik
+```
+d_k = v1_k − v2_k  (per baris, per pasangan)
+T² = n · (d̄ − δ₀)ᵀ Sd⁻¹ (d̄ − δ₀)
+F  = ((n − p) / (p(n − 1))) · T²   ~   F(p, n − p)
+```
+di mana `p` = jumlah pasangan (dimensi vektor selisih), `n` = jumlah baris lengkap.
+
+### Implementasi: "Zero-Rust" Approach
+Paired mode tidak menambahkan kode Rust baru. Alih-alih, `paired-difference.ts` men-sintesis kolom virtual `d_k = v1_k − v2_k` dan kemudian `multivariate-analysis.ts` mengirimkan kolom-kolom tersebut ke WASM seolah-olah merupakan DepVar biasa dengan `TestValues = δ₀`. Pipeline Intercept MANOVA existing (H = n·(d̄−δ₀)(d̄−δ₀)ᵀ) menangani sisanya.
+
+### Alur Aktivasi
+```
+User membuka sub-dialog Paired → pilih pasangan (V1, V2) + input δ₀
+        │
+        ▼
+PairedModeType = { pairs: [string, string][], delta0: number[] | null }
+disimpan di formData.main.PairedMode (IndexedDB key "Multivariate")
+        │
+        ▼ executeMultivariate() → analyzeMultivariate()
+paired-difference.ts: buildDifferenceData(dataRows, variables, pairs)
+  → kolom d_k row-wise; missing jika salah satu sisi null
+  → varDefs sintetis: name="d_v1_minus_v2", label="v1 − v2"
+        │
+        ▼
+effectiveConfig override:
+  DepVar   ← diffNames
+  TestValues ← δ₀ (atau zeros jika delta0 = null)
+  FixFactor / Covar / WlsWeight ← dikosongkan
+        │
+        ▼ strip PairedMode & normalise VarianceMode sebelum WASM boundary
+Rust: Intercept H = n·(d̄−δ₀)(d̄−δ₀)ᵀ  (cabang yang sama dengan T² Satu Populasi)
+        │
+        ▼ formatter pairedMode context
+Label "Intercept" → "Hotelling T² Berpasangan"
+Baris Hotelling's Trace: tampil kolom T², F, df, Sig.
+Note: daftar pasangan (v1 − v2) ditampilkan di header tabel
+```
+
+### Sub-dialog Paired (paired.tsx)
+Dialog dengan tiga bagian:
+1. **A — Pemilihan Pasangan Variabel**: `PairedVariablesTab` (komponen bersama `/Common/PairedVariablesTab.tsx`) untuk memasangkan V1 ↔ V2 dengan dukungan reorder, swap, remove.
+2. **B — Preview Vektor Selisih**: tabel 10 baris pertama kolom d_k = V1−V2 dari data aktual, dirender secara live saat pasangan berubah (`computeDifferencePreview`).
+3. **C — Nilai Selisih Hipotesis (δ₀)**: input numerik per pasangan; default 0 (H₀: tidak ada perbedaan).
+
+Tombol **Disable Paired Mode** (`onSave(null)`) menghapus konfigurasi paired sepenuhnya tanpa menutup dialog utama.
+
+### Guard Validasi
+- `handleContinue` di `dialog.tsx` memeriksa `PairedMode?.pairs?.length > 0` — jika paired aktif, persyaratan `DepVar ≥ 2` dan `FixFactor/Covar ≥ 1` di-bypass karena paired menyediakan vektor dependen sendiri.
+- `buildDifferenceData` melempar error jika: pasangan kosong, pair incomplete (salah satu nama kosong), v1 === v2, atau variabel tidak ditemukan di dataset.
+- `computeDifferencePreview` menggunakan validasi lunak (skip pair invalid) agar preview dapat ditampilkan selama user masih memilih variabel.
+
+### Shared Component
+`/frontend/components/Common/PairedVariablesTab.tsx` — diekstrak dari PairedSamplesTTest. Diterima `idPrefix` prop sehingga DOM id dapat diparameterisasi; default `"paired-samples-t-test"` menjaga backward compat dengan test PairedSamplesTTest.
+
+### Persistensi
+- IndexedDB key `"Multivariate"` — field `main.PairedMode` di-hydrate dengan `formDataWithoutId.main?.PairedMode ?? null`.
+- `PairedMode` di-strip dari payload sebelum melewati WASM boundary (Rust tidak mengenal field ini).
+
+---
+
 ## Pola Arsitektur Utama
 
 - **WASM class pattern**: Semua state analisis disimpan dalam satu struct `MultivariateAnalysis` yang di-expose ke JS sebagai `#[wasm_bindgen]` class (constructor + method chaining).
@@ -306,3 +382,4 @@ Existing Box's M tests (dataset_a/b/c) tetap pass setelah refactor — output nu
 - **Enum with `#[derive(Default)]`**: Enum config seperti `VarianceMode { Pooled (default), Welch }` dipadu `#[serde(default)]` di field-nya memberi backward compat tanpa boilerplate — state lama otomatis dideserialisasi sebagai variant default.
 - **Branch-and-override pattern**: Cabang khusus (Welch) di akhir `calculate_multivariate_tests` tidak menggantikan dispatcher generik — ia hanya menimpa entry tertentu di `effects` HashMap setelah pipeline normal selesai. Memudahkan reuse machinery existing + isolasi blast radius.
 - **Shared per-group helper**: Logika "kumpulkan rows per kombinasi level → hitung S_i, x̄_i, n_i" dipakai oleh ≥ 2 tempat (Box's M, Welch T²) → diekstrak ke `common.rs` sebagai `compute_per_group_covariances` untuk eliminasi duplikasi.
+- **Zero-Rust extension pattern**: Fitur baru yang secara matematika setara dengan fitur existing dapat diimplementasikan seluruhnya di TS dengan mentransformasi input sebelum melewati WASM boundary — seperti Paired T² yang merouting melalui pipeline Test Values tanpa menambah kode Rust. Biaya: overhead baris invalid (null diff) di data sintetis; manfaat: zero Rust churn.
