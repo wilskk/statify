@@ -137,9 +137,30 @@ impl KNNAnalysis {
         };
 
         // Validate important configuration
-        if config.main.target_var.is_none() && config.main.feature_var.is_none() {
+        let target_is_missing = config
+            .main
+            .target_var
+            .as_ref()
+            .map_or(true, |target| target.trim().is_empty());
+        let features_are_missing = config.main.feature_var.as_ref().map_or(true, |features| {
+            features.is_empty() || features.iter().any(|feature| feature.trim().is_empty())
+        });
+
+        if target_is_missing && features_are_missing {
             let msg = "At least one target or feature variable must be selected".to_string();
             error_collector.add_error("config.validation.variables", &msg);
+            return Err(string_to_js_error(msg));
+        }
+
+        if target_is_missing {
+            let msg = "A target variable is required for KNN classification".to_string();
+            error_collector.add_error("config.validation.target_var", &msg);
+            return Err(string_to_js_error(msg));
+        }
+
+        if features_are_missing {
+            let msg = "At least one feature variable is required".to_string();
+            error_collector.add_error("config.validation.feature_var", &msg);
             return Err(string_to_js_error(msg));
         }
 

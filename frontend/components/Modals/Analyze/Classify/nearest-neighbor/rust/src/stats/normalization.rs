@@ -41,3 +41,29 @@ pub fn normalize_features(data_matrix: &mut Vec<Vec<f64>>) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_features;
+
+    #[test]
+    fn normalization_returns_early_for_empty_matrix() {
+        let mut matrix = Vec::new();
+
+        normalize_features(&mut matrix);
+
+        assert!(matrix.is_empty());
+    }
+
+    #[test]
+    fn normalization_maps_range_to_minus_one_and_one_and_constant_column_to_zero() {
+        let mut matrix = vec![vec![10.0, 5.0], vec![20.0, 5.0], vec![30.0, 5.0]];
+
+        normalize_features(&mut matrix);
+
+        assert_eq!(
+            matrix,
+            vec![vec![-1.0, 0.0], vec![0.0, 0.0], vec![1.0, 0.0]]
+        );
+    }
+}

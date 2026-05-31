@@ -78,4 +78,20 @@ mod tests {
 
         assert_ne!(first, second);
     }
+
+    #[test]
+    fn random_split_handles_empty_input_and_clamps_training_percentage() {
+        assert_eq!(
+            split_training_holdout(0, 60, true, Some(1234)),
+            (Vec::new(), Vec::new())
+        );
+        assert_eq!(
+            split_training_holdout(3, -10, true, Some(1234)),
+            (Vec::new(), vec![0, 1, 2])
+        );
+        assert_eq!(
+            split_training_holdout(3, 110, true, Some(1234)),
+            (vec![0, 1, 2], Vec::new())
+        );
+    }
 }

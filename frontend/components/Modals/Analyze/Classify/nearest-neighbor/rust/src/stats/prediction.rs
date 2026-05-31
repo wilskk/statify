@@ -252,8 +252,8 @@ mod tests {
 
     use super::{
         calculate_categorical_prediction, calculate_categorical_probabilities,
-        calculate_mean_prediction, calculate_median_prediction, calculate_predictions,
-        sorted_target_categories_for_indices,
+        calculate_categorical_vote_probabilities, calculate_mean_prediction,
+        calculate_median_prediction, calculate_predictions, sorted_target_categories_for_indices,
     };
 
     #[test]
@@ -445,6 +445,54 @@ mod tests {
         assert!(matches!(
             calculate_predictions(&neighbors, &targets, &config, true),
             DataValue::Number(value) if (value - 2.0).abs() < f64::EPSILON
+        ));
+    }
+
+    #[test]
+    fn categorical_probabilities_handle_empty_categories_and_invalid_neighbors() {
+        let targets = vec![DataValue::Text("A".to_string())];
+
+        assert!(calculate_categorical_probabilities(&[(0, 1.0)], &targets, &[]).is_empty());
+        assert_eq!(
+            calculate_categorical_probabilities(&[(99, 1.0)], &targets, &["A".to_string()]),
+            vec![("A".to_string(), 0.0)]
+        );
+        assert_eq!(
+            calculate_categorical_vote_probabilities(&[(99, 1.0)], &targets),
+            vec![("A".to_string(), 0.0)]
+        );
+    }
+
+    #[test]
+    fn numeric_predictions_ignore_invalid_or_non_numeric_neighbors() {
+        let targets = vec![
+            DataValue::Number(10.0),
+            DataValue::Text("missing".to_string()),
+        ];
+        let neighbors = vec![(1, 1.0), (99, 2.0)];
+
+        assert!(matches!(
+            calculate_mean_prediction(&neighbors, &targets),
+            DataValue::Null
+        ));
+        assert!(matches!(
+            calculate_median_prediction(&neighbors, &targets),
+            DataValue::Null
+        ));
+    }
+
+    #[test]
+    fn median_prediction_averages_middle_values_for_even_neighbor_count() {
+        let targets = vec![
+            DataValue::Number(40.0),
+            DataValue::Number(10.0),
+            DataValue::Number(20.0),
+            DataValue::Number(30.0),
+        ];
+
+        assert!(matches!(
+            calculate_median_prediction(&[(0, 1.0), (1, 2.0), (2, 3.0), (3, 4.0)], &targets),
+            DataValue::Number(value) if (value - 25.0).abs() < f64::EPSILON
         ));
     }
 }

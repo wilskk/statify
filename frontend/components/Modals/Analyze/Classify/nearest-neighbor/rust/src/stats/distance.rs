@@ -141,6 +141,7 @@ mod tests {
     use super::{
         calculate_distance_with_weights, calculate_euclidean_distance,
         calculate_manhattan_distance, find_k_nearest_neighbors,
+        find_k_nearest_neighbors_with_weights,
     };
 
     #[test]
@@ -212,6 +213,53 @@ mod tests {
             Some(&original_case_indices),
         );
 
+        assert_eq!(
+            neighbors.iter().map(|(idx, _)| *idx).collect::<Vec<_>>(),
+            vec![2, 1]
+        );
+    }
+
+    #[test]
+    fn distance_skips_non_finite_dimensions_and_defaults_missing_weights_to_one() {
+        let a = [0.0, f64::NAN, 2.0];
+        let b = [3.0, 10.0, 6.0];
+        let weights = [0.25];
+
+        assert_eq!(
+            calculate_distance_with_weights(&a, &b, true, Some(&weights)),
+            (0.25_f64 * 9.0 + 16.0).sqrt()
+        );
+        assert_eq!(
+            calculate_distance_with_weights(&a, &b, false, Some(&weights)),
+            0.25 * 3.0 + 4.0
+        );
+    }
+
+    #[test]
+    fn nearest_neighbors_ignore_invalid_indices_and_keep_one_neighbor_when_k_is_zero() {
+        let data_matrix = vec![vec![0.0], vec![3.0], vec![1.0]];
+        let neighbors =
+            find_k_nearest_neighbors(&data_matrix[0], &data_matrix, &[99, 1, 2], 0, true, None);
+
+        assert_eq!(neighbors, vec![(2, 1.0)]);
+    }
+
+    #[test]
+    fn nearest_neighbors_sort_non_finite_distances_last() {
+        let data_matrix = vec![vec![0.0], vec![1.0], vec![2.0]];
+        let weights = [-1.0];
+        let neighbors = find_k_nearest_neighbors_with_weights(
+            &data_matrix[0],
+            &data_matrix,
+            &[1, 2],
+            2,
+            true,
+            None,
+            Some(&weights),
+        );
+
+        assert!(neighbors[0].1.is_nan());
+        assert!(neighbors[1].1.is_nan());
         assert_eq!(
             neighbors.iter().map(|(idx, _)| *idx).collect::<Vec<_>>(),
             vec![2, 1]

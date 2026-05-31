@@ -42,9 +42,7 @@ pub fn split_training_holdout_by_partition_config_detailed(
             return split_by_partition_variable(data, partition_var, processed_case_indices);
         }
 
-        let (training_indices, holdout_indices) =
-            split_training_holdout_randomly(config, processed_case_count);
-        return Ok((training_indices, holdout_indices, Vec::new()));
+        return Err("No partition variable specified".to_string());
     }
 
     if config.partition.use_randomly {
@@ -74,12 +72,7 @@ pub fn split_partition_and_cross_validation_by_config(
         if let Some(ref partition_var) = config.partition.partitioning_variable {
             split_by_partition_variable(data, partition_var, processed_case_indices)?
         } else {
-            let (training_indices, holdout_indices) = split_training_holdout_with_rng(
-                processed_case_count,
-                config.partition.training_number,
-                &mut rng,
-            );
-            (training_indices, holdout_indices, Vec::new())
+            return Err("No partition variable specified".to_string());
         }
     } else if config.partition.use_randomly {
         let (training_indices, holdout_indices) = split_training_holdout_with_rng(
