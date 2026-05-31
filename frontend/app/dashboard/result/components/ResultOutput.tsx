@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { useResultStore } from "@/stores/useResultStore";
 import GeneralChartContainer from "@/components/Output/Chart/GeneralChartContainer";
 import KNNKPredictorSelectionChart from "@/components/Modals/Analyze/Classify/nearest-neighbor/components/KNNKPredictorSelectionChart";
+// KNN predictor space chart is a bit heavy to load, so we dynamically import it with a loading state
 const KNNPredictorSpaceChart = dynamic(
   () => import("@/components/Modals/Analyze/Classify/nearest-neighbor/components/KNNPredictorSpaceChart"),
   {
