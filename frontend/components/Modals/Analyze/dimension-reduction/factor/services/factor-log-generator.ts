@@ -81,6 +81,19 @@ function getExtractionCriteriaSyntax(extractionConfig: FactorType["extraction"])
 }
 
 /**
+ * Gets the rotation criteria syntax
+ */
+function getRotationCriteriaSyntax(rotationConfig: FactorType["rotation"]): string[] {
+    const criteria: string[] = [];
+
+    if (rotationConfig.MaxIter !== null) {
+        criteria.push(`ITERATE(${rotationConfig.MaxIter})`);
+    }
+
+    return criteria;
+}
+
+/**
  * Gets the print options based on descriptives config
  */
 function getPrintOptionsSyntax(descriptivesConfig: FactorType["descriptives"]): string[] {
@@ -184,7 +197,13 @@ export function generateFactorAnalysisLog(configData: FactorType): string {
     // Extraction method
     const extractionMethod = getExtractionMethodSyntax(configData.extraction.Method);
     logParts.push(`  /EXTRACTION ${extractionMethod}`);
-    
+
+    // Rotation criteria (separate line, matches SPSS when rotation is enabled)
+    const rotationCriteria = getRotationCriteriaSyntax(configData.rotation);
+    if (rotationCriteria.length > 0 && !configData.rotation.None) {
+        logParts.push(`  /CRITERIA ${rotationCriteria.join(" ")}`);
+    }
+
     // Rotation method
     const rotationMethod = getRotationMethodSyntax(configData.rotation);
     logParts.push(`  /ROTATION ${rotationMethod}`);
@@ -213,11 +232,13 @@ export function generateFactorAnalysisLogCompact(configData: FactorType): string
     const missingMethod = getMissingValueSyntax(configData.options);
     const analysisMatrix = getAnalysisMatrixSyntax(configData.extraction);
     
-    const criteriaStr = configData.extraction.Eigen && configData.extraction.EigenVal !== null
-        ? `MINEIGEN(${configData.extraction.EigenVal})`
-        : configData.extraction.Factor && configData.extraction.MaxFactors !== null
-            ? `FACTORS(${configData.extraction.MaxFactors})`
-            : "";
-    
-    return `FACTOR /VARIABLES ${variablesList} /MISSING ${missingMethod} /EXTRACTION ${extractionMethod} /CRITERIA ${criteriaStr} /ROTATION ${rotationMethod} /METHOD=${analysisMatrix}.`;
+    const extractionCriteria = getExtractionCriteriaSyntax(configData.extraction).join(" ");
+    const rotationCriteria = getRotationCriteriaSyntax(configData.rotation).join(" ");
+
+    const extractionCriteriaPart = extractionCriteria ? ` /CRITERIA ${extractionCriteria}` : "";
+    const rotationCriteriaPart = rotationCriteria && !configData.rotation.None
+        ? ` /CRITERIA ${rotationCriteria}`
+        : "";
+
+    return `FACTOR /VARIABLES ${variablesList} /MISSING ${missingMethod}${extractionCriteriaPart} /EXTRACTION ${extractionMethod}${rotationCriteriaPart} /ROTATION ${rotationMethod} /METHOD=${analysisMatrix}.`;
 }

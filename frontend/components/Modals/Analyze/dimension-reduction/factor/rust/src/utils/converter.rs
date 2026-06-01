@@ -189,16 +189,25 @@ struct FormattedReproducedCovariances {
 #[derive(Serialize)]
 struct FormattedRotatedComponentMatrix {
     components: Vec<FormattedComponentEntry>,
+    is_converged: bool,
+    iterations_required: u32,
+    convergence_value: f64,
 }
 
 #[derive(Serialize)]
 struct FormattedPatternMatrix {
     components: Vec<FormattedComponentEntry>,
+    is_converged: bool,
+    iterations_required: u32,
+    convergence_value: f64,
 }
 
 #[derive(Serialize)]
 struct FormattedStructureMatrix {
     components: Vec<FormattedComponentEntry>,
+    is_converged: bool,
+    iterations_required: u32,
+    convergence_value: f64,
 }
 
 #[derive(Serialize)]
@@ -736,6 +745,9 @@ impl FormatResult {
 
             FormattedRotatedComponentMatrix {
                 components,
+                is_converged: matrix.is_converged,        
+                iterations_required: matrix.iterations_required, 
+                convergence_value: matrix.convergence_value,
             }
         });
 
@@ -766,6 +778,9 @@ impl FormatResult {
 
             FormattedPatternMatrix {
                 components,
+                is_converged: matrix.is_converged,               
+                iterations_required: matrix.iterations_required, 
+                convergence_value: matrix.convergence_value,
             }
         });
 
@@ -796,6 +811,9 @@ impl FormatResult {
 
             FormattedStructureMatrix {
                 components,
+                is_converged: matrix.is_converged,            
+                iterations_required: matrix.iterations_required, 
+                convergence_value: matrix.convergence_value,
             }
         });
 

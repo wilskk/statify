@@ -2,6 +2,7 @@
 use serde::{ Deserialize, Serialize };
 use std::collections::HashMap;
 use nalgebra::DMatrix;
+use crate::models::config::ExtractionStatus;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 
@@ -130,6 +131,11 @@ pub struct AnalysisStatus {
     pub termination_reason: Option<String>,
     #[serde(rename = "has_heywood_case")]
     pub has_heywood_case: bool,
+    #[serde(rename = "extraction_status")]
+    pub extraction_status: Option<String>,
+    // PERBAIKAN: Data quality warnings untuk near-constant atau extreme variance variables
+    #[serde(rename = "data_quality_warnings")]
+    pub data_quality_warnings: Option<Vec<String>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -235,6 +241,12 @@ pub struct RotatedComponentMatrix {
     pub components: HashMap<String, Vec<f64>>,
     #[serde(rename = "variable_order")]
     pub variable_order: Vec<String>,
+    #[serde(rename = "is_converged")]
+    pub is_converged: bool,
+    #[serde(rename = "iterations_required")]
+    pub iterations_required: u32,
+    #[serde(rename = "convergence_value")]
+    pub convergence_value: f64, 
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -262,13 +274,24 @@ pub struct ExtractionResult {
     pub cumulative_variance: Vec<f64>,
     pub n_factors: usize,
     pub var_names: Vec<String>,
+    // pub has_heywood_case: bool,
+    pub status: ExtractionStatus,
+    // SPSS diagnostics
     pub has_heywood_case: bool,
+    pub extraction_status: ExtractionStatus,
+    pub warning_message: Option<String>,
 }
 
 pub struct RotationResult {
     pub rotated_loadings: DMatrix<f64>,
     pub transformation_matrix: DMatrix<f64>,
     pub factor_correlations: Option<DMatrix<f64>>,
+    // --- TAMBAHAN BARU ---
+    pub is_converged: bool,      
+    pub iterations_required: u32,
+    pub convergence_value: f64,
+    // Revisi 31 Mei 2026
+    // pub normalized_loadings: Option<DMatrix<f64>>, 
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -276,6 +299,12 @@ pub struct PatternMatrix {
     pub components: HashMap<String, Vec<f64>>,
     #[serde(rename = "variable_order")]
     pub variable_order: Vec<String>,
+    #[serde(rename = "is_converged")]
+    pub is_converged: bool,      
+    #[serde(rename = "iterations_required")]
+    pub iterations_required: u32,
+    #[serde(rename = "convergence_value")]
+    pub convergence_value: f64, 
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -283,6 +312,12 @@ pub struct StructureMatrix {
     pub components: HashMap<String, Vec<f64>>,
     #[serde(rename = "variable_order")]
     pub variable_order: Vec<String>,
+    #[serde(rename = "is_converged")]
+    pub is_converged: bool,      
+    #[serde(rename = "iterations_required")]
+    pub iterations_required: u32,
+    #[serde(rename = "convergence_value")]
+    pub convergence_value: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -304,4 +339,30 @@ pub struct LoadingPoint {
     pub label: String,
     /// Koordinat: [x, y] atau [x, y, z]
     pub coordinates: Vec<f64>, 
+}
+
+
+
+impl ExtractionResult {
+
+    pub fn failed(
+        status: ExtractionStatus,
+        msg: &str
+    ) -> Self {
+
+        Self {
+            loadings: nalgebra::DMatrix::zeros(0,0),
+            eigenvalues: vec![],
+            communalities: vec![],
+            explained_variance: vec![],
+            cumulative_variance: vec![],
+            n_factors: 0,
+            var_names: vec![],
+
+            has_heywood_case: false,
+            status: status.clone(), 
+            extraction_status: status,
+            warning_message: Some(msg.to_string()),
+        }
+    }
 }

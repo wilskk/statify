@@ -401,7 +401,9 @@ export async function resultFactorAnalysis({
                 const componentScoreCoefficientMatrixRaw = findRawTable(
                     "component_score_coefficient_matrix"
                 );
-                if (componentScoreCoefficientMatrix && componentScoreCoefficientMatrixRaw && hasSuccessfulExtraction) {
+                // PERBAIKAN: Tampilkan table jika ada, meskipun extraction gagal (non-positive definite matrix)
+                // Pseudoinverse fallback di Rust memastikan matrix tetap tersedia
+                if (componentScoreCoefficientMatrix && componentScoreCoefficientMatrixRaw) {
                     const tableTitle = componentScoreCoefficientMatrixRaw.title;
                     await addStatistic(analyticId, {
                         title: tableTitle,
@@ -420,7 +422,8 @@ export async function resultFactorAnalysis({
                 const componentScoreCovarianceMatrixRaw = findRawTable(
                     "component_score_covariance_matrix"
                 );
-                if (componentScoreCovarianceMatrix && componentScoreCovarianceMatrixRaw && hasSuccessfulExtraction) {
+                // PERBAIKAN: Tampilkan table jika ada, meskipun extraction gagal (non-positive definite matrix)
+                if (componentScoreCovarianceMatrix && componentScoreCovarianceMatrixRaw) {
                     const tableTitle = componentScoreCovarianceMatrixRaw.title;
                     await addStatistic(analyticId, {
                         title: tableTitle,
