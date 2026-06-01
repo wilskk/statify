@@ -317,12 +317,12 @@ const OrdinalMain: React.FC = () => {
       const covariates = options.covariates;
 
       const factorIdentities = new Set(factors.map(getVariableIdentity));
-      const covariateIdentities = new Set(covariates.map(get VariableIdentity));
-      for (const identity of factorIdentities) {
+      const covariateIdentities = new Set(covariates.map(getVariableIdentity));
+      Array.from(factorIdentities).forEach((identity) => {
         if (covariateIdentities.has(identity)) {
           throw new Error("Variabel yang sama tidak boleh muncul di factors dan covariates.");
         }
-      }
+      });
       const locationPredictorsRaw: LocationModelTerm[] = locationParams.locationModel.length > 0
         ? locationParams.locationModel
         : [...factors, ...covariates];
@@ -335,6 +335,8 @@ const OrdinalMain: React.FC = () => {
         responseVariable,
         locationPredictorsRaw
       );
+
+      const scalePredictors = scaleParams.scaleModel ?? [];
 
       for (const predictor of locationPredictors) {
         const identity = getVariableIdentity(predictor);
@@ -390,6 +392,20 @@ const OrdinalMain: React.FC = () => {
           if (isMissingValue(predictorValue)) {
             rowValid = false;
             break;
+          }
+        }
+
+        if (rowValid && Array.isArray(scalePredictors) && scalePredictors.length > 0) {
+          for (const predictor of scalePredictors) {
+            const predictorIndex = predictor?.columnIndex;
+            if (typeof predictorIndex !== "number") {
+              throw new Error(`Scale predictor "${predictor?.name ?? ""}" does not have a valid columnIndex.`);
+            }
+            const predictorValue = getRowValue(row, predictorIndex);
+            if (isMissingValue(predictorValue)) {
+              rowValid = false;
+              break;
+            }
           }
         }
 
@@ -550,7 +566,6 @@ const OrdinalMain: React.FC = () => {
         })),
       });
 
-      const scalePredictors = scaleParams.scaleModel ?? [];
       const scaleDesignMatrix: number[][] = validRows.map((row) => {
         const rowValues: number[] = [];
         for (const predictor of scalePredictors) {

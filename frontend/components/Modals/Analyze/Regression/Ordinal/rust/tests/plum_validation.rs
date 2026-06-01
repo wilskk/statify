@@ -15,6 +15,10 @@ fn base_input() -> PlumWorkerPayload {
         procedure: "PLUM".to_string(),
         version: "plum-v1".to_string(),
         weights: None,
+        dependent: None,
+        factors: Vec::new(),
+        covariates: Vec::new(),
+        factor_level_metadata: Vec::new(),
         response: PlumResponse {
             variable_name: "y".to_string(),
             column_index: 0,
@@ -34,6 +38,7 @@ fn base_input() -> PlumWorkerPayload {
             location_design_matrix: location_design_matrix.clone(),
             location_term_names: vec!["x1".to_string()],
             parameter_count: 1,
+            factor_level_metadata: Vec::new(),
         },
         scale_model: PlumScaleModel {
             enabled: false,
@@ -62,6 +67,7 @@ fn base_input() -> PlumWorkerPayload {
             location_parameter_count: 1,
             scale_parameter_count: 0,
             reference_categories: HashMap::new(),
+            factor_level_metadata: Vec::new(),
         },
     }
 }

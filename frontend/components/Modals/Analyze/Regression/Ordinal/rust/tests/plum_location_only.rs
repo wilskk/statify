@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use statify_ordinal::{
     aggregate_data, build_plum_output, fit_plum, EstimationOptions, PlumEstimationOptions,
-    PlumLocationModel, PlumMetadata, PlumPredictor, PlumResponse, PlumScaleModel, PlumSpec,
-    PlumWorkerPayload,
+    IterationHistoryOptions, PlumLocationModel, PlumMetadata, PlumPredictor, PlumResponse,
+    PlumScaleModel, PlumSpec, PlumWorkerPayload,
 };
 use serde_json::json;
 
@@ -28,6 +28,10 @@ fn build_input() -> PlumWorkerPayload {
         procedure: "PLUM".to_string(),
         version: "plum-v1".to_string(),
         weights: None,
+        dependent: None,
+        factors: Vec::new(),
+        covariates: Vec::new(),
+        factor_level_metadata: Vec::new(),
         response: PlumResponse {
             variable_name: "y".to_string(),
             column_index: 0,
@@ -47,6 +51,7 @@ fn build_input() -> PlumWorkerPayload {
             location_design_matrix: location_design_matrix.clone(),
             location_term_names: vec!["x1".to_string()],
             parameter_count: 1,
+            factor_level_metadata: Vec::new(),
         },
         scale_model: PlumScaleModel {
             enabled: false,
@@ -75,6 +80,7 @@ fn build_input() -> PlumWorkerPayload {
             location_parameter_count: 1,
             scale_parameter_count: 0,
             reference_categories: HashMap::new(),
+            factor_level_metadata: Vec::new(),
         },
     }
 }
@@ -85,8 +91,9 @@ fn location_only_fit_converges() {
     let data = aggregate_data(&input).expect("data");
     let spec = PlumSpec::from_input(&input).expect("spec");
     let options = EstimationOptions::from_payload(Some(&input.estimation_options));
+    let history_options = IterationHistoryOptions::disabled();
 
-    let fit = fit_plum(&data, &spec, &options).expect("fit");
+    let fit = fit_plum(&data, &spec, &options, &history_options).expect("fit");
 
     assert!(fit.converged);
     assert_eq!(fit.params.theta.len(), spec.threshold_count());

@@ -165,6 +165,97 @@ function normalizeCategoryProbabilities(categoryProbabilities) {
   return cleaned.map((value) => value / sumProb);
 }
 
+function canonicalizeParameterName(name) {
+  if (name === null || name === undefined) return "";
+  let text = String(name).trim();
+  if (text.startsWith("[") && text.endsWith("]")) {
+    text = text.slice(1, -1);
+  }
+  // Normalize whitespace and "=" spacing so:
+  //  - "[A = B]" => "A=B"
+  //  - "A = B" => "A=B"
+  //  - "A=B" => "A=B"
+  text = text.replace(/\s+/g, " ").trim();
+  text = text.replace(/\s*=\s*/g, "=");
+  return text;
+}
+
+function buildLocationBetaVector({
+  locationTermNames,
+  locationParameterEstimates,
+}) {
+  const terms = Array.isArray(locationTermNames) ? locationTermNames : [];
+  const rows = Array.isArray(locationParameterEstimates) ? locationParameterEstimates : [];
+
+  const estimateByName = new Map();
+  for (const row of rows) {
+    if (!row || typeof row !== "object") continue;
+    const rawName = row.variable ?? row.parameter;
+    const key = canonicalizeParameterName(rawName);
+    if (!key) continue;
+    const estimate = Number(row.estimate);
+    if (!Number.isFinite(estimate)) continue;
+    if (!estimateByName.has(key)) {
+      estimateByName.set(key, estimate);
+    }
+  }
+
+  const betas = terms.map((termName) => {
+    const key = canonicalizeParameterName(termName);
+    const estimate = estimateByName.get(key);
+    return Number.isFinite(estimate) ? estimate : 0;
+  });
+
+  return betas;
+}
+
+function computeEta(xRow, betas) {
+  let eta = 0;
+  for (let j = 0; j < betas.length; j += 1) {
+    eta += Number(xRow[j]) * betas[j];
+  }
+  return eta;
+}
+
+function computeCellProbabilities({ eta, thresholds, linkFunction }) {
+  // gamma_ij = F(theta_j - eta_i) for j=1..J-1
+  const gamma = thresholds.map((theta) => {
+    const value = inverseLink(Number(theta) - eta, linkFunction);
+    // clamp only to [0, 1] (not eps) to preserve SPSS-like behavior
+    return Math.min(Math.max(Number(value), 0), 1);
+  });
+
+  // enforce monotonicity (numerical safety)
+  for (let j = 1; j < gamma.length; j += 1) {
+    if (gamma[j] < gamma[j - 1]) gamma[j] = gamma[j - 1];
+  }
+
+  const pi = [];
+  if (gamma.length === 0) {
+    // J=1 is invalid for ordinal; caller should guard
+    return pi;
+  }
+
+  pi.push(gamma[0]);
+  for (let j = 1; j < gamma.length; j += 1) {
+    pi.push(gamma[j] - gamma[j - 1]);
+  }
+  pi.push(1 - gamma[gamma.length - 1]);
+
+  // Numerical cleanup (avoid negatives or >1 due to float errors)
+  for (let j = 0; j < pi.length; j += 1) {
+    const value = Number(pi[j]);
+    if (!Number.isFinite(value)) return null;
+    pi[j] = Math.min(Math.max(value, 0), 1);
+  }
+
+  const sum = pi.reduce((acc, value) => acc + value, 0);
+  if (!(sum > 0)) return null;
+  // Mild renormalization to ensure the row sums to 1 after clamping.
+  // This preserves the intended SPSS interpretation of EST* as cell probabilities.
+  return pi.map((value) => value / sum);
+}
+
 function computeOrdinalSavedVariables({
   thresholds,
   betas,
@@ -213,28 +304,12 @@ function computeOrdinalSavedVariables({
       continue;
     }
 
-    let eta = 0;
-    for (let j = 0; j < betas.length; j += 1) {
-      eta += Number(x[j]) * betas[j];
-    }
-
-    const cumulativeProbabilities = thresholds.map((theta) => clampProb(inverseLink(theta - eta, linkFunction), 0, 1));
-    for (let j = 1; j < cumulativeProbabilities.length; j += 1) {
-      cumulativeProbabilities[j] = Math.max(cumulativeProbabilities[j], cumulativeProbabilities[j - 1]);
-    }
-
-    const rawCellProbabilities = [];
-    rawCellProbabilities.push(cumulativeProbabilities[0]);
-    for (let j = 1; j < cumulativeProbabilities.length; j += 1) {
-      rawCellProbabilities.push(cumulativeProbabilities[j] - cumulativeProbabilities[j - 1]);
-    }
-    rawCellProbabilities.push(1 - cumulativeProbabilities[cumulativeProbabilities.length - 1]);
-
-    const cellProbabilities = normalizeCategoryProbabilities(rawCellProbabilities);
-    if (!cellProbabilities) {
+    const eta = computeEta(x, betas);
+    const cellProbabilities = computeCellProbabilities({ eta, thresholds, linkFunction });
+    if (!cellProbabilities || cellProbabilities.length !== categoryCount) {
       console.warn("[ORDINAL][SAVED_VARIABLES] Invalid probability row; values set to null.", {
         row: originalRowIndex,
-        rawCellProbabilities,
+        eta,
       });
       continue;
     }
@@ -264,7 +339,6 @@ function computeOrdinalSavedVariables({
       sampleRows.push({
         row: originalRowIndex,
         eta,
-        cumulativeProbabilities,
         cellProbabilities,
         predictedCategory: dependentCategories[predictedIndex] ?? null,
         predictedCategoryProbability,
@@ -339,11 +413,12 @@ function computePlumSavedVariables(mainPayload, normalizedResult) {
   const thresholds = Array.isArray(normalizedResult.thresholdEstimates)
     ? normalizedResult.thresholdEstimates.map((row) => Number(row.estimate))
     : [];
-  const betas = Array.isArray(normalizedResult.locationParameterEstimates)
-    ? normalizedResult.locationParameterEstimates
-      .filter((row) => !row?.isRedundant)
-      .map((row) => Number(row.estimate))
-    : [];
+
+  const locationTermNames = mainPayload?.locationModel?.locationTermNames || [];
+  const betas = buildLocationBetaVector({
+    locationTermNames,
+    locationParameterEstimates: normalizedResult.locationParameterEstimates || [],
+  });
 
   const dependentCategories = mainPayload?.response?.responseCategories || [];
   const actualY = mainPayload?.response?.responseVector || [];
@@ -368,6 +443,7 @@ function computePlumSavedVariables(mainPayload, normalizedResult) {
     console.warn("[ORDINAL][SAVED_VARIABLES] Beta length mismatch; skipping saved variables.", {
       betas: betas.length,
       designColumns: (designMatrix[0] || []).length,
+      termNames: Array.isArray(locationTermNames) ? locationTermNames.length : null,
     });
     return null;
   }
