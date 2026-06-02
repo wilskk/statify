@@ -1,4 +1,4 @@
-import {
+import type {
   LogisticResult,
   AnalysisSection,
   VariableRow,
@@ -164,9 +164,9 @@ export const formatBlock1 = (
       createSection("block1_summary", "Model Summary", modelSummaryData, {
         description: summaryDesc,
         note:
-          "a. Estimation terminated at iteration number " +
-          (summary?.iterations || "?") +
-          " because parameter estimates changed by less than .001.",
+          `a. Estimation terminated at iteration number ${ 
+          summary?.iterations || "?" 
+          } because parameter estimates changed by less than .001.`,
       })
     );
 

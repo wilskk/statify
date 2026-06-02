@@ -808,7 +808,14 @@ fn calculate_model_if_term_removed(
 
         // 2. Jika subset kosong, berarti kembali ke Null Model
         if subset_indices.is_empty() {
-            reduced_ll = null_log_likelihood;
+            // SPSS convention: when include_constant=false and no predictors remain,
+            // the model has ZERO parameters. SPSS reports LL = 0.0 for this degenerate case.
+            // When include_constant=true, the reduced model is the intercept-only (null) model.
+            if config.include_constant {
+                reduced_ll = null_log_likelihood;
+            } else {
+                reduced_ll = 0.0;
+            }
         } else {
             // Re-fit model subset
             let x_subset = build_design_matrix(x_matrix, &subset_indices, n_samples, config.include_constant);
@@ -862,7 +869,7 @@ fn calculate_step_snapshot(
     variable_groups: &[VariableGroup], included_group_indices: &[usize],
 ) -> StepDetail {
     let n = y_vector.len();
-    let n_total_vars = full_x.ncols();
+    let _n_total_vars = full_x.ncols();
     let chi_dist_1df = ChiSquared::new(1.0).unwrap();
     let z_score = crate::utils::probability::z_score_from_confidence(config.confidence_level);
 

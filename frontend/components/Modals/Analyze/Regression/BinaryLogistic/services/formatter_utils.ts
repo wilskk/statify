@@ -1,4 +1,4 @@
-import { AnalysisSection, TableResultContent } from "../types/binary-logistic";
+import type { AnalysisSection, TableResultContent } from "../types/binary-logistic";
 
 /**
  * Helper untuk menggabungkan note dan description
@@ -20,13 +20,13 @@ const mergeNoteAndDescription = (
 ): string | undefined => {
   const parts: string[] = [];
   
-  if (note && note.trim()) {
+  if (note?.trim()) {
     // Konversi \n menjadi <br> untuk HTML rendering
     const formattedNote = note.trim().replace(/\n/g, "<br>");
     parts.push(formattedNote);
   }
   
-  if (description && description.trim()) {
+  if (description?.trim()) {
     parts.push(description.trim());
   }
   

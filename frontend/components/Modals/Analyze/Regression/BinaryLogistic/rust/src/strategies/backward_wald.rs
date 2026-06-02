@@ -263,7 +263,7 @@ pub fn run(
         step_count += 1;
         let mut worst_group_loc: Option<usize> = None;
         let mut max_p_val = -1.0;
-        let mut wald_statistic_of_worst = 0.0;
+        let mut _wald_statistic_of_worst = 0.0;
         let beta_offset = if config.include_constant { 1 } else { 0 };
 
         // Evaluate each included group using joint Wald test
@@ -282,7 +282,7 @@ pub fn run(
                 if p_val > max_p_val {
                     max_p_val = p_val;
                     worst_group_loc = Some(loc);
-                    wald_statistic_of_worst = wald;
+                    _wald_statistic_of_worst = wald;
                 }
             }
         }
@@ -533,7 +533,7 @@ fn calculate_step_snapshot(
     iteration_history: Option<IterationHistoryBlock>,
     variable_groups: &[VariableGroup], included_group_indices: &[usize],
 ) -> StepDetail {
-    let n_total_vars = full_x.ncols();
+    let _n_total_vars = full_x.ncols();
     let chi_dist_1df = ChiSquared::new(1.0).unwrap();
     let z_score = crate::utils::probability::z_score_from_confidence(config.confidence_level);
 

@@ -1,23 +1,10 @@
 import React, { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import type {
   KNNFeaturesProps,
   KNNFeaturesType,
 } from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor";
 import type { CheckedState } from "@radix-ui/react-checkbox";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -31,105 +18,109 @@ import { PopoverArrow } from "@radix-ui/react-popover";
 import { Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { FieldHelp } from "./field-help";
 
 export const KNNFeatures = ({
-  isFeaturesOpen,
-  setIsFeaturesOpen,
   updateFormData,
   data,
+  hasTarget,
+  showFieldHelp = false,
 }: KNNFeaturesProps) => {
-  const [featuresState, setFeaturesState] = useState<KNNFeaturesType>({
-    ...data,
-  });
-  const [isContinueDisabled, setIsContinueDisabled] = useState(false);
   const [availableVariables, setAvailableVariables] = useState<string[]>([]);
 
   useEffect(() => {
-    if (isFeaturesOpen) {
-      setFeaturesState({ ...data });
-      setAvailableVariables(data.ForwardSelection ?? []);
-    }
-  }, [isFeaturesOpen, data]);
+    const usedVariables = [...(data.ForcedEntryVar ?? [])].filter(Boolean);
 
-  useEffect(() => {
-    const usedVariables = [...(featuresState.ForcedEntryVar || [])].filter(
-      Boolean,
+    const updatedVariables = (data.ForwardSelection ?? []).filter(
+      (variable) => !usedVariables.includes(variable),
     );
 
-    if (!(featuresState.ForwardSelection === null)) {
-      const updatedVariables = featuresState.ForwardSelection.filter(
-        (variable) => !usedVariables.includes(variable),
-      );
-      setAvailableVariables(updatedVariables);
+    setAvailableVariables(updatedVariables);
+  }, [data.ForwardSelection, data.ForcedEntryVar]);
+
+  useEffect(() => {
+    const forcedCount = (data.ForcedEntryVar ?? []).length;
+    const forwardCount = (data.ForwardSelection ?? []).filter(
+      (variable) => !(data.ForcedEntryVar ?? []).includes(variable),
+    ).length;
+
+    if (data.FeaturesToEvaluate !== forwardCount) {
+      updateFormData("FeaturesToEvaluate", forwardCount);
     }
-  }, [featuresState]);
+
+    if (data.ForcedFeatures !== forcedCount) {
+      updateFormData("ForcedFeatures", forcedCount);
+    }
+  }, [
+    data.ForwardSelection,
+    data.ForcedEntryVar,
+    data.FeaturesToEvaluate,
+    data.ForcedFeatures,
+    updateFormData,
+  ]);
+
+  useEffect(() => {
+    if (
+      data.PerformSelection &&
+      data.MaxReached &&
+      (data.MaxToSelect === null || data.MaxToSelect === undefined)
+    ) {
+      updateFormData("MaxToSelect", 1);
+    }
+  }, [data.PerformSelection, data.MaxReached, data.MaxToSelect, updateFormData]);
 
   const handleChange = (
     field: keyof KNNFeaturesType,
     value: CheckedState | number | boolean | string | null,
   ) => {
-    setFeaturesState((prevState) => ({
-      ...prevState,
-      [field]: value,
-    }));
+    updateFormData(field, value);
   };
 
   const handleDrop = (target: string, variable: string) => {
-    setFeaturesState((prev) => {
-      const updatedState = { ...prev };
-      if (target === "ForcedEntryVar") {
-        updatedState.ForcedEntryVar = [
-          ...(updatedState.ForcedEntryVar || []),
-          variable,
-        ];
-      }
-      return updatedState;
-    });
+    if (!variable || (data.ForcedEntryVar ?? []).includes(variable)) return;
+
+    updateFormData("ForcedEntryVar", [
+      ...(data.ForcedEntryVar ?? []),
+      variable,
+    ]);
   };
 
   const handleRemoveVariable = (target: string, variable?: string) => {
-    setFeaturesState((prev) => {
-      const updatedState = { ...prev };
-      if (target === "ForcedEntryVar") {
-        updatedState.ForcedEntryVar = (
-          updatedState.ForcedEntryVar || []
-        ).filter((item) => item !== variable);
-      }
-      return updatedState;
-    });
+    if (target === "ForcedEntryVar") {
+      const updated = (data.ForcedEntryVar ?? []).filter(
+        (item) => item !== variable,
+      );
+
+      updateFormData("ForcedEntryVar", updated);
+    }
   };
 
   const handleCriterionGrp = (value: string) => {
-    setFeaturesState((prevState) => ({
-      ...prevState,
-      MaxReached: value === "MaxReached",
-      BelowMin: value === "BelowMin",
-    }));
+    updateFormData("MaxReached", value === "MaxReached");
+    updateFormData("BelowMin", value === "BelowMin");
   };
 
-  const handleContinue = () => {
-    Object.entries(featuresState).forEach(([key, value]) => {
-      updateFormData(key as keyof KNNFeaturesType, value);
-    });
-    setIsFeaturesOpen(false);
-  };
-  if (!isFeaturesOpen) return null;
+  const canUseFeatureSelection =
+    hasTarget && (data.ForwardSelection ?? []).length > 0;
+
+  const isSelectionActive = data.PerformSelection && canUseFeatureSelection;
+
+  const forwardCount = availableVariables.length;
+  const forcedCount = (data.ForcedEntryVar ?? []).length;
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto">
-        <div className="flex flex-col items-start gap-2 p-4">
-          <ResizablePanelGroup
-            direction="vertical"
-            className="min-h-[450px] max-w-2xl rounded-lg border md:min-w-[200px]"
-          >
-            <ResizablePanel defaultSize={60}>
+    <div className="flex flex-col h-full min-h-0 w-full overflow-hidden">
+      <div className="flex-1 min-h-0 w-full overflow-y-auto">
+        <div className="flex flex-col items-start gap-2 p-4 w-full">
+          <div className="w-full max-w-2xl rounded-lg border md:min-w-[200px]">
+            <section className="border-b">
               <div className="flex flex-col gap-2 p-2 w-full">
                 <div className="flex flex-row items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="PerformSelection"
-                      checked={featuresState.PerformSelection}
+                      checked={data.PerformSelection}
+                      disabled={!canUseFeatureSelection}
                       onCheckedChange={(checked) =>
                         handleChange("PerformSelection", checked)
                       }
@@ -140,6 +131,10 @@ export const KNNFeatures = ({
                     >
                       Perform Feature Selection
                     </label>
+                    <FieldHelp
+                      show={showFieldHelp}
+                      text="Aktifkan pemilihan fitur otomatis untuk mengevaluasi fitur mana yang paling membantu model."
+                    />
                   </div>
                   <div>
                     <Popover>
@@ -162,10 +157,15 @@ export const KNNFeatures = ({
                     </Popover>
                   </div>
                 </div>
-                <ResizablePanelGroup direction="horizontal">
-                  <ResizablePanel defaultSize={50}>
-                    <div className="flex flex-col h-full gap-2">
-                      <Label className="font-bold">Forward Selection:</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex min-w-0 flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <Label className="font-bold">Forward Selection:</Label>
+                        <FieldHelp
+                          show={showFieldHelp}
+                          text="Daftar fitur kandidat yang akan dievaluasi oleh prosedur forward selection."
+                        />
+                      </div>
                       <div className="w-full h-[150px] p-2 border rounded overflow-hidden">
                         <ScrollArea>
                           <div className="flex flex-col h-[130px] gap-1 justify-start items-start">
@@ -175,7 +175,7 @@ export const KNNFeatures = ({
                                   key={index}
                                   className="w-full text-start text-sm font-light p-2 cursor-pointer"
                                   variant="outline"
-                                  draggable
+                                  draggable={isSelectionActive}
                                   onDragStart={(e) =>
                                     e.dataTransfer.setData("text", variable)
                                   }
@@ -187,42 +187,52 @@ export const KNNFeatures = ({
                           </div>
                         </ScrollArea>
                       </div>
+                      <p className="text-sm text-muted-foreground">
+                        Features to evaluate: {forwardCount}
+                      </p>
                     </div>
-                  </ResizablePanel>
-                  <ResizableHandle withHandle />
-                  <ResizablePanel defaultSize={50}>
+                  <div className="flex min-w-0 flex-col gap-2">
                     <div
                       className="flex flex-col w-full gap-2"
-                      onDragOver={(e) => e.preventDefault()}
+                      onDragOver={(e) => {
+                        if (!isSelectionActive) return;
+                        e.preventDefault();
+                      }}
                       onDrop={(e) => {
+                        if (!isSelectionActive) return;
                         const variable = e.dataTransfer.getData("text");
                         handleDrop("ForcedEntryVar", variable);
                       }}
                     >
-                      <Label className="font-bold">Forced Entry:</Label>
+                      <div className="flex items-center gap-2">
+                        <Label className="font-bold">Forced Entry:</Label>
+                        <FieldHelp
+                          show={showFieldHelp}
+                          text="Fitur yang wajib masuk ke model dan tidak dikeluarkan oleh proses seleksi."
+                        />
+                      </div>
                       <div className="w-full h-[150px] p-2 border rounded overflow-hidden">
                         <ScrollArea>
                           <div className="w-full h-[130px]">
-                            {featuresState.ForcedEntryVar &&
-                            featuresState.ForcedEntryVar.length > 0 ? (
+                            {data.ForcedEntryVar &&
+                            data.ForcedEntryVar.length > 0 ? (
                               <div className="flex flex-col gap-1">
-                                {featuresState.ForcedEntryVar.map(
-                                  (variable, index) => (
-                                    <Badge
-                                      key={index}
-                                      className="text-start text-sm font-light p-2 cursor-pointer"
-                                      variant="outline"
-                                      onClick={() =>
-                                        handleRemoveVariable(
-                                          "ForcedEntryVar",
-                                          variable,
-                                        )
-                                      }
-                                    >
-                                      {variable}
-                                    </Badge>
-                                  ),
-                                )}
+                                {data.ForcedEntryVar.map((variable, index) => (
+                                  <Badge
+                                    key={index}
+                                    className="text-start text-sm font-light p-2 cursor-pointer"
+                                    variant="outline"
+                                    onClick={() => {
+                                      if (!isSelectionActive) return;
+                                      handleRemoveVariable(
+                                        "ForcedEntryVar",
+                                        variable,
+                                      );
+                                    }}
+                                  >
+                                    {variable}
+                                  </Badge>
+                                ))}
                               </div>
                             ) : (
                               <span className="text-sm font-light text-gray-500">
@@ -234,40 +244,57 @@ export const KNNFeatures = ({
                       </div>
                       <input
                         type="hidden"
-                        value={featuresState.ForcedEntryVar ?? ""}
+                        value={data.ForcedEntryVar ?? ""}
                         name="Independents"
                       />
+                      <p className="text-sm text-muted-foreground">
+                        Features to force: {forcedCount}
+                      </p>
                     </div>
-                  </ResizablePanel>
-                </ResizablePanelGroup>
+                  </div>
+                </div>
               </div>
-            </ResizablePanel>
-            <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={40}>
+            </section>
+
+            <section>
               <RadioGroup
-                value={featuresState.MaxReached ? "MaxReached" : "BelowMin"}
-                disabled={!featuresState.PerformSelection}
+                value={data.BelowMin ? "BelowMin" : "MaxReached"}
+                disabled={!data.PerformSelection}
                 onValueChange={handleCriterionGrp}
               >
                 <div className="flex flex-col gap-2 p-2">
-                  <Label className="font-bold">Stopping Criterion</Label>
+                  <div className="flex items-center gap-2">
+                    <Label className="font-bold">Stopping Criterion</Label>
+                    <FieldHelp
+                      show={showFieldHelp}
+                      text="Aturan kapan proses pemilihan fitur harus berhenti."
+                    />
+                  </div>
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="MaxReached" id="MaxReached" />
                       <Label htmlFor="MaxReached">
                         Stop when the specified number of features is reached
                       </Label>
+                      <FieldHelp
+                        show={showFieldHelp}
+                        text="Hentikan seleksi saat jumlah fitur terpilih mencapai batas yang ditentukan."
+                      />
                     </div>
                     <div className="flex flex-col space-x-2 pl-4">
                       <div className="flex items-center space-x-2 pl-2">
                         <Label className="w-[150px]">Number to Select:</Label>
+                        <FieldHelp
+                          show={showFieldHelp}
+                          text="Jumlah maksimum fitur yang boleh dipilih oleh proses seleksi."
+                        />
                         <div className="w-[75px]">
                           <Input
                             id="MaxToSelect"
                             type="number"
                             placeholder=""
-                            value={featuresState.MaxToSelect ?? ""}
-                            disabled={!featuresState.MaxReached}
+                            value={data.MaxToSelect ?? ""}
+                            disabled={!data.MaxReached || data.BelowMin}
                             onChange={(e) =>
                               handleChange(
                                 "MaxToSelect",
@@ -286,17 +313,25 @@ export const KNNFeatures = ({
                         Stop when the change in the absolute error ratio is less
                         than or equal to minimum
                       </Label>
+                      <FieldHelp
+                        show={showFieldHelp}
+                        text="Hentikan seleksi ketika penurunan error sudah terlalu kecil."
+                      />
                     </div>
                     <div className="flex flex-col space-x-2 pl-4 gap-1">
                       <div className="flex items-center space-x-2 pl-2">
                         <Label className="w-[150px]">Minimum Change:</Label>
+                        <FieldHelp
+                          show={showFieldHelp}
+                          text="Ambang minimum perubahan error ratio agar fitur berikutnya masih dianggap berguna."
+                        />
                         <div className="w-[75px]">
                           <Input
                             id="MinChange"
                             type="number"
                             placeholder=""
-                            value={featuresState.MinChange ?? ""}
-                            disabled={!featuresState.BelowMin}
+                            value={data.MinChange ?? ""}
+                            disabled={!data.BelowMin}
                             onChange={(e) =>
                               handleChange("MinChange", Number(e.target.value))
                             }
@@ -307,47 +342,8 @@ export const KNNFeatures = ({
                   </div>
                 </div>
               </RadioGroup>
-            </ResizablePanel>
-          </ResizablePanelGroup>
-        </div>
-      </div>
-      <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-        <div>
-          {/* <TooltipProvider>
-                                                                                <Tooltip>
-                                                                                  <TooltipTrigger asChild>
-                                                                                    <Button
-                                                                                      variant="ghost"
-                                                                                      size="icon"
-                                                                                      onClick={startTour}
-                                                                                      className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
-                                                                                    >
-                                                                                      <HelpCircle className="h-4 w-4" />
-                                                                                    </Button>
-                                                                                  </TooltipTrigger>
-                                                                                  <TooltipContent side="top">
-                                                                                    <p className="text-xs">Start feature tour</p>
-                                                                                  </TooltipContent>
-                                                                                </Tooltip>
-                                                                              </TooltipProvider> */}
-        </div>
-        <div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setIsFeaturesOpen(false)}
-            className="mr-2"
-          >
-            Cancel
-          </Button>
-          <Button
-            id="knn-features-continue-button"
-            disabled={isContinueDisabled}
-            type="button"
-            onClick={handleContinue}
-          >
-            Continue
-          </Button>
+            </section>
+          </div>
         </div>
       </div>
     </div>

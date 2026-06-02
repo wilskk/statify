@@ -1,6 +1,6 @@
-import { LogisticResult, AnalysisSection } from "../types/binary-logistic";
+import type { LogisticResult, AnalysisSection } from "../types/binary-logistic";
 import { createSection, fmtPct } from "./formatter_utils";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 
 export const formatSummaryTables = (
   result: LogisticResult,
@@ -102,8 +102,7 @@ export const formatSummaryTables = (
       let displayLabel = originalKey;
 
       if (
-        dependentVar &&
-        dependentVar.values &&
+        dependentVar?.values &&
         Array.isArray(dependentVar.values) &&
         dependentVar.values.length > 0
       ) {
@@ -217,8 +216,7 @@ export const formatSummaryTables = (
               categoryDisplay = foundKey;
             }
           } else if (
-            matchingVar &&
-            matchingVar.values &&
+            matchingVar?.values &&
             Array.isArray(matchingVar.values)
           ) {
             const foundVal = matchingVar.values.find(

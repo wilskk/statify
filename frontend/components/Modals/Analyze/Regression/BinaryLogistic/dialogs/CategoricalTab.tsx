@@ -11,11 +11,12 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Variable } from "@/types/Variable";
-import {
+import type { Variable } from "@/types/Variable";
+import type {
   BinaryLogisticCategoricalParams,
   ContrastMethodType,
-  ReferenceCategoryType,
+  ReferenceCategoryType} from "../types/binary-logistic";
+import {
   DEFAULT_CONTRAST,
   DEFAULT_REFERENCE,
 } from "../types/binary-logistic";
@@ -153,11 +154,7 @@ export const CategoricalTab: React.FC<CategoricalTabProps> = ({
                   >
                     <Checkbox
                       checked={isChecked}
-                      onCheckedChange={(e) => {
-                        // Stop propagation so the row onClick doesn't also fire
-                        e; // consume the value
-                        toggleCovariate(v.name);
-                      }}
+                      onCheckedChange={() => toggleCovariate(v.name)}
                       onClick={(e) => e.stopPropagation()}
                     />
                     <div className="flex flex-col flex-grow min-w-0">

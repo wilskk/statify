@@ -1,4 +1,4 @@
-import {
+import type {
   LogisticResult,
   AnalysisSection,
   CasewiseRow,
@@ -153,11 +153,11 @@ export const formatCasewiseListing = (
     "casewise_listing",
     "Casewise List",
     {
-      columnHeaders: columnHeaders,
-      rows: rows,
+      columnHeaders,
+      rows,
     },
     {
-      description: description,
+      description,
       note: footnotes.join("\n"),
     }
   );
