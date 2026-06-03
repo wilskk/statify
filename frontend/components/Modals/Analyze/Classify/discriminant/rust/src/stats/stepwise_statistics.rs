@@ -272,7 +272,7 @@ fn should_enter_variable(
     }
 
     // Use SPSS defaults if thresholds are 0 or not set.
-    // Default F-to-enter = 3.84, P-to-enter = 0.05
+    // Default F-to-enter = 3.84, V-to-enter (Rao's V) = 3.84, P-to-enter = 0.05.
     let f_entry_threshold = if config.method.f_entry > 0.0 {
         config.method.f_entry
     } else {
@@ -283,6 +283,20 @@ fn should_enter_variable(
     } else {
         0.05
     };
+
+    // Rao's V uses the V-to-enter threshold (SPSS default 3.84) and the
+    // value being compared is the change-in-V (ΔV), not an F. SPSS does
+    // not produce a p-value for the V-to-enter path, so the f_probability
+    // option falls through to the ΔV comparison as well.
+    let method_type = determine_method_type(config);
+    if method_type == MethodType::Raos {
+        let v_enter_threshold = if config.method.v_enter > 0.0 {
+            config.method.v_enter
+        } else {
+            3.84
+        };
+        return stats.f_to_enter >= v_enter_threshold;
+    }
 
     if config.method.f_value {
         stats.f_to_enter >= f_entry_threshold
@@ -378,6 +392,13 @@ fn create_step_data(
 
     let vars_not_in_analysis =
         analyze_variables_not_in_model(remaining_variables, dataset, current_variables, config);
+
+    // SPSS only displays the top 4 ranked candidates in the "Variables not in
+    // the Analysis" table. Selection logic in find_best_variable_to_enter still
+    // works against the full ranked list (caller passes the untruncated result
+    // there), so this is display-only truncation.
+    let mut vars_not_in_analysis = vars_not_in_analysis;
+    vars_not_in_analysis.truncate(4);
 
     let combined_vars = current_variables.to_vec();
     let p = combined_vars.len() as f64;

@@ -128,6 +128,11 @@ pub fn analyze_variables_not_in_model(
         }
     }
 
+    // SPSS only displays the top 4 ranked candidates in the "Variables not in
+    // the Analysis" table, but selects from the full ranked list. We keep
+    // the full ranked list and let display callers (create_step_data) slice
+    // the top 4 — the selection routines (find_best_variable_to_enter) need
+    // the full list.
     variables_not_in_analysis
 }
 
