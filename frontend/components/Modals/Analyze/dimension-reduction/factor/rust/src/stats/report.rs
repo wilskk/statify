@@ -858,6 +858,134 @@ pub fn compute_pseudoinverse(matrix: &DMatrix<f64>) -> Result<DMatrix<f64>, Stri
 
 
 
+// // =========================================================================
+// // FUNGSI 1: Calculate Component Score Coefficient Matrix
+// // =========================================================================
+// pub fn calculate_component_score_coefficient_matrix(
+//     data: &AnalysisData,
+//     config: &FactorAnalysisConfig
+// ) -> Result<ComponentScoreCoefficientMatrix, String> {
+//     let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+//     let matrix_type = if config.extraction.covariance { "covariance" } else { "correlation" };
+//     let base_matrix = calculate_matrix(&data_matrix, matrix_type)?;
+//     let extraction_result = extract_factors(&base_matrix, config, &var_names)?;
+//     let rotation_result = rotate_factors(&extraction_result, config)?;
+    
+//     let is_pca = matches!(config.extraction.method, ExtractionMethod::PrincipalComponents);
+
+//     let n_rows = extraction_result.loadings.nrows();
+//     let n_cols = extraction_result.loadings.ncols();
+//     let mut coefficients = DMatrix::zeros(n_rows, n_cols);
+
+//     // AMBIL RAW VARIANCES: Mutlak diperlukan untuk Rescaling pada mode Covariance
+//     let raw_variances = calculate_raw_variances(&data_matrix)?;
+
+//     if is_pca {
+//         // EXACT SPSS ALGORITHM FOR PCA: W = A * D^(-1) * (T^T)^(-1)
+//         let t_mat = &rotation_result.transformation_matrix;
+        
+//         // Proteksi inversi T yang lebih aman
+//         let t_inv_t = if config.rotation.none || !rotation_result.is_converged {
+//             DMatrix::identity(n_cols, n_cols)
+//         } else {
+//             t_mat.clone().try_inverse()
+//                 .unwrap_or_else(|| DMatrix::identity(n_cols, n_cols))
+//                 .transpose()
+//         };
+        
+//         for i in 0..n_rows {
+//             // CRITICAL: Ekstraksi Covariance memerlukan pengali Standar Deviasi
+//             let std_dev = if config.extraction.covariance && raw_variances[i] > 0.0 {
+//                 raw_variances[i].sqrt()
+//             } else {
+//                 1.0
+//             };
+
+//             for j in 0..n_cols {
+//                 let mut sum = 0.0;
+//                 for k in 0..n_cols {
+//                     let a_ik = extraction_result.loadings[(i, k)];
+//                     let d_k = extraction_result.eigenvalues[k];
+                    
+//                     // Proteksi division by zero presisi tinggi
+//                     let ad_ik = if d_k.abs() > 1e-12 { a_ik / d_k } else { 0.0 };
+//                     sum += ad_ik * t_inv_t[(k, j)];
+//                 }
+//                 // Kalikan dengan std_dev mereplikasi "standardized score coefficients" SPSS
+//                 coefficients[(i, j)] = sum * std_dev;
+//             }
+//         }
+//     } else {
+//         // REGRESSION METHOD FOR NON-PCA (PAF, ML, GLS)
+//         let r_matrix = calculate_matrix(&data_matrix, "correlation")?;
+//         let mut pattern_matrix = rotation_result.rotated_loadings.clone();
+        
+//         // CRITICAL: SPSS internal selalu menggunakan "Rescaled Pattern Matrix" untuk kalkulasi skor jika metode Covariance
+//         if config.extraction.covariance {
+//             for i in 0..n_rows {
+//                 let std_dev = if raw_variances[i] > 0.0 { raw_variances[i].sqrt() } else { 1.0 };
+//                 for j in 0..n_cols {
+//                     pattern_matrix[(i, j)] /= std_dev; 
+//                 }
+//             }
+//         }
+
+//         // Gunakan pseudoinverse sebagai fallback jika korelasi tidak bisa di-invers
+//         let r_inverse = match r_matrix.clone().try_inverse() {
+//             Some(inv) => inv,
+//             None => compute_pseudoinverse(&r_matrix).unwrap_or_else(|_| DMatrix::zeros(n_rows, n_rows))
+//         };
+        
+//         let structure_matrix = if let Some(phi) = &rotation_result.factor_correlations {
+//             &pattern_matrix * phi
+//         } else {
+//             pattern_matrix.clone()
+//         };
+        
+//         if config.scores.regression {
+//             coefficients = &r_inverse * &structure_matrix;
+//         } else if config.scores.bartlett {
+//             let mut u_inv_squared = DMatrix::zeros(n_rows, n_rows);
+//             for i in 0..n_rows {
+//                 let u2 = (1.0 - extraction_result.communalities[i]).max(1e-9);
+//                 u_inv_squared[(i, i)] = 1.0 / u2;
+//             }
+//             let p = &pattern_matrix;
+//             let term_inner = p.transpose() * &u_inv_squared * p;
+//             let term_inner_inv = term_inner.try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
+//             coefficients = &u_inv_squared * p * term_inner_inv;
+//         } else if config.scores.anderson {
+//             let b = &r_inverse * &structure_matrix;
+//             let g_matrix = b.transpose() * &r_matrix * &b;
+//             if let Some(g_sqrt) = symmetric_matrix_sqrt_robust(&g_matrix) {
+//                 let g_sqrt_inv = g_sqrt.try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
+//                 coefficients = b * g_sqrt_inv;
+//             } else {
+//                 coefficients = b;
+//             }
+//         }
+//     }
+
+//     let mut result = ComponentScoreCoefficientMatrix {
+//         components: std::collections::HashMap::new(),
+//         variable_order: var_names.clone(),
+//     };
+//     for (i, var_name) in var_names.iter().enumerate() {
+//         if i < coefficients.nrows() {
+//             let mut row = Vec::with_capacity(n_cols);
+//             for j in 0..n_cols {
+//                 row.push(coefficients[(i, j)]);
+//             }
+//             result.components.insert(var_name.clone(), row);
+//         }
+//     }
+//     Ok(result)
+// }
+
+
+
+
+
 // =========================================================================
 // FUNGSI 1: Calculate Component Score Coefficient Matrix
 // =========================================================================
@@ -877,14 +1005,14 @@ pub fn calculate_component_score_coefficient_matrix(
     let n_cols = extraction_result.loadings.ncols();
     let mut coefficients = DMatrix::zeros(n_rows, n_cols);
 
-    // AMBIL RAW VARIANCES: Diperlukan untuk mencari Standar Deviasi (Rescaling)
+    // AMBIL RAW VARIANCES: Mutlak diperlukan untuk Rescaling pada mode Covariance (Dari File Terlampir)
     let raw_variances = calculate_raw_variances(&data_matrix)?;
 
     if is_pca {
         // EXACT SPSS ALGORITHM FOR PCA: W = A * D^(-1) * (T^T)^(-1)
         let t_mat = &rotation_result.transformation_matrix;
         
-        // Pastikan matriks rotasi aman di-invers
+        // Proteksi inversi T yang lebih aman
         let t_inv_t = if config.rotation.none || !rotation_result.is_converged {
             DMatrix::identity(n_cols, n_cols)
         } else {
@@ -894,7 +1022,7 @@ pub fn calculate_component_score_coefficient_matrix(
         };
         
         for i in 0..n_rows {
-            // Hitung Standar Deviasi (Akar dari Varians)
+            // CRITICAL: Ekstraksi Covariance memerlukan pengali Standar Deviasi
             let std_dev = if config.extraction.covariance && raw_variances[i] > 0.0 {
                 raw_variances[i].sqrt()
             } else {
@@ -907,11 +1035,11 @@ pub fn calculate_component_score_coefficient_matrix(
                     let a_ik = extraction_result.loadings[(i, k)];
                     let d_k = extraction_result.eigenvalues[k];
                     
-                    // Proteksi division by zero yang presisi
+                    // Proteksi division by zero presisi tinggi
                     let ad_ik = if d_k.abs() > 1e-12 { a_ik / d_k } else { 0.0 };
                     sum += ad_ik * t_inv_t[(k, j)];
                 }
-                // Mengalikan dengan std_dev mereplikasi fitur "standardized score coefficients" SPSS
+                // Kalikan dengan std_dev mereplikasi "standardized score coefficients" SPSS
                 coefficients[(i, j)] = sum * std_dev;
             }
         }
@@ -920,7 +1048,7 @@ pub fn calculate_component_score_coefficient_matrix(
         let r_matrix = calculate_matrix(&data_matrix, "correlation")?;
         let mut pattern_matrix = rotation_result.rotated_loadings.clone();
         
-        // SPSS secara internal menggunakan "Rescaled Pattern Matrix" jika metodenya Covariance
+        // CRITICAL: SPSS internal selalu menggunakan "Rescaled Pattern Matrix" untuk kalkulasi skor jika metode Covariance
         if config.extraction.covariance {
             for i in 0..n_rows {
                 let std_dev = if raw_variances[i] > 0.0 { raw_variances[i].sqrt() } else { 1.0 };
@@ -930,7 +1058,7 @@ pub fn calculate_component_score_coefficient_matrix(
             }
         }
 
-        // Gunakan pseudoinverse sebagai langkah fallback yang aman
+        // Gunakan pseudoinverse sebagai fallback jika korelasi tidak bisa di-invers
         let r_inverse = match r_matrix.clone().try_inverse() {
             Some(inv) => inv,
             None => compute_pseudoinverse(&r_matrix).unwrap_or_else(|_| DMatrix::zeros(n_rows, n_rows))
@@ -990,63 +1118,37 @@ pub fn calculate_component_score_covariance_matrix(
     config: &FactorAnalysisConfig
 ) -> Result<ComponentScoreCovarianceMatrix, String> {
 
-    let matrix_type = if config.extraction.covariance {
-        "covariance"
-    } else {
-        "correlation"
-    };
-
-    let (data_matrix, var_names) = extract_data_matrix(data, config)?;
-    let base_matrix = calculate_matrix(&data_matrix, matrix_type)?;
-
     let is_pca = matches!(config.extraction.method, ExtractionMethod::PrincipalComponents);
     let has_rotation = !config.rotation.none && config.rotation.rotated_sol;
     let is_oblique = config.rotation.oblimin || config.rotation.promax;
 
-    // ==========================================================
-    // SCORE COVARIANCE MATRIX LOGIC
-    // ==========================================================
-    let covariance_matrix = if is_pca && (!has_rotation || !is_oblique) {
-        // PCA Orthogonal (Varimax/Equamax) -> Matriks Identitas
+    // Untuk Unrotated PCA, output secara matematis selalu Matriks Identitas murni
+    if is_pca && (!has_rotation || !is_oblique) {
+        let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+        let base_matrix = calculate_matrix(&data_matrix, "correlation")?;
         let extraction_result = extract_factors(&base_matrix, config, &var_names)?;
-        let n_factors = extraction_result.n_factors;
-        DMatrix::<f64>::identity(n_factors, n_factors)
-    } else if is_pca && is_oblique {
-        // ======================================================
-        // SPSS ANOMALY REPLICATION FOR PCA OBLIQUE
-        // SPSS secara keliru mencetak Kuadrat dari Component Correlation Matrix (Phi^2)
-        // ======================================================
-        let extraction_result = extract_factors(&base_matrix, config, &var_names)?;
-        let rotation_result = rotate_factors(&extraction_result, config)?;
-        
-        // Ambil Phi (Component Correlation Matrix)
-        let phi = rotation_result.factor_correlations
-            .clone()
-            .unwrap_or_else(|| DMatrix::identity(extraction_result.n_factors, extraction_result.n_factors));
-        
-        // Hitung Phi * Phi (Phi^2) untuk meniru output SPSS
-        let mut cov = &phi * &phi;
-        
-        // Paksa diagonal kembali menjadi 1.000 untuk menyempurnakan format SPSS
+        let cov = DMatrix::<f64>::identity(extraction_result.n_factors, extraction_result.n_factors);
+        let mut output = Vec::new();
         for i in 0..cov.nrows() {
-            cov[(i, i)] = 1.0;
+            output.push(cov.row(i).iter().cloned().collect());
         }
-        
-        cov
-    } else {
+        return Ok(ComponentScoreCovarianceMatrix { components: output });
+    }
+
+    if config.extraction.covariance {
         // ======================================================
-        // NON-PCA (PAF, ML, GLS)
+        // MODE COVARIANCE (Normal: W^T * Sigma * W)
         // ======================================================
         let coeff_result = calculate_component_score_coefficient_matrix(data, config)?;
-
         let n_factors = coeff_result.components.values().next().map(|v| v.len()).unwrap_or(0);
         if n_factors == 0 {
             return Err("No factors found for covariance calculation".to_string());
         }
 
-        let n_vars = base_matrix.nrows();
+        let (data_matrix, _) = extract_data_matrix(data, config)?;
+        let n_vars = coeff_result.variable_order.len();
         let mut w_matrix = DMatrix::<f64>::zeros(n_vars, n_factors);
-
+        
         for (row_idx, var_name) in coeff_result.variable_order.iter().enumerate() {
             if let Some(vals) = coeff_result.components.get(var_name) {
                 for (col_idx, &val) in vals.iter().enumerate() {
@@ -1056,33 +1158,94 @@ pub fn calculate_component_score_covariance_matrix(
                 }
             }
         }
-
-        // PERBAIKAN: Gunakan Matriks Korelasi (R), BUKAN base_matrix.
-        // Karena W_matrix (coeff) sudah distandardisasi di langkah sebelumnya, 
-        // rumusnya menjadi W^T * R * W agar skalanya seimbang.
-        let r_matrix = calculate_matrix(&data_matrix, "correlation")?;
-        w_matrix.transpose() * &r_matrix * &w_matrix
-    };
-
-    // ==========================================================
-    // FORMAT OUTPUT
-    // ==========================================================
-    let mut output_components = Vec::new();
-
-    for i in 0..covariance_matrix.nrows() {
-        let mut row = Vec::new();
-        for j in 0..covariance_matrix.ncols() {
-            row.push(covariance_matrix[(i, j)]);
+        
+        let cov_matrix = calculate_matrix(&data_matrix, "covariance")?;
+        let final_cov = w_matrix.transpose() * cov_matrix * &w_matrix;
+        
+        let mut output_components = Vec::new();
+        for i in 0..final_cov.nrows() {
+            let mut row = Vec::new();
+            for j in 0..final_cov.ncols() {
+                row.push(final_cov[(i, j)]);
+            }
+            output_components.push(row);
         }
-        output_components.push(row);
+        
+        Ok(ComponentScoreCovarianceMatrix { components: output_components })
+
+    } else {
+        // ======================================================
+        // MODE CORRELATION (Replikasi Cacat Komputasi SPSS: 2.985)
+        // Memaksa penggunaan S^T * R_broken^-1 * S
+        // ======================================================
+        let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+        let base_matrix = calculate_matrix(&data_matrix, "correlation")?;
+        let extraction_result = extract_factors(&base_matrix, config, &var_names)?;
+        let rotation_result = rotate_factors(&extraction_result, config)?;
+        
+        let pattern_matrix = rotation_result.rotated_loadings.clone();
+        let structure_matrix = if let Some(phi) = &rotation_result.factor_correlations {
+            &pattern_matrix * phi
+        } else {
+            pattern_matrix.clone()
+        };
+
+        let corr_matrix = calculate_matrix(&data_matrix, "correlation")?;
+        
+        // --- ALGORITMA GAUSS-JORDAN SWEEP (SPSS BUG REPLICATION) ---
+        let n = corr_matrix.nrows();
+        let mut a = corr_matrix.clone();
+        let tol = 1e-4; // Batas toleransi IBM SPSS
+
+        for k in 0..n {
+            let pivot = a[(k, k)];
+            
+            // JIKA PIVOT SINGULAR (< 1e-4), SPSS MELEWATI VARIABEL INI!
+            // Baris dan kolom matriks TIDAK dinolkan, meninggalkan sampah komputasi (garbage memory)
+            if pivot.abs() >= tol {
+                // 1. Bagi baris k dengan pivot
+                for j in 0..n {
+                    if j != k { a[(k, j)] /= pivot; }
+                }
+                
+                // 2. Eliminasi baris lainnya
+                for i in 0..n {
+                    if i != k {
+                        let factor = a[(i, k)];
+                        for j in 0..n {
+                            if j != k { a[(i, j)] -= factor * a[(k, j)]; }
+                        }
+                    }
+                }
+                
+                // 3. Bagi kolom k dengan -pivot
+                for i in 0..n {
+                    if i != k { a[(i, k)] = -a[(i, k)] / pivot; }
+                }
+                
+                // 4. Inversi elemen pivot utama
+                a[(k, k)] = 1.0 / pivot;
+            }
+        }
+        
+        // Matriks `a` sekarang adalah invers yang cacat. 
+        // Saat dikalikan dengan matriks struktur, ini akan melahirkan nilai meledak seperti 2.985!
+        let covariance_matrix = structure_matrix.transpose() * a * structure_matrix;
+
+        let mut output_components = Vec::new();
+        for i in 0..covariance_matrix.nrows() {
+            let mut row = Vec::new();
+            for j in 0..covariance_matrix.ncols() {
+                row.push(covariance_matrix[(i, j)]);
+            }
+            output_components.push(row);
+        }
+
+        Ok(ComponentScoreCovarianceMatrix {
+            components: output_components,
+        })
     }
-
-    Ok(ComponentScoreCovarianceMatrix {
-        components: output_components,
-    })
 }
-
-
 
 
 

@@ -285,6 +285,29 @@ export const generateCommunalitiesDescription = (
   return `Extraction communalities represent the amount of variance in each variable that is accounted for by the extracted components. The lowest communality is ${pct}% for '${lowestCommunality.name}'. ${advice}`;
 };
 
+
+/**
+ * Menghasilkan deskripsi baku SPSS untuk Total Variance Explained
+ * Menghilangkan narasi dan menggunakan format footnote vertikal.
+ */
+export const generateTotalVarianceRefinedDescription = (
+  extractionMethod: string,
+  isOblique: boolean = false,
+  isCovariance: boolean = false 
+): string => {
+  let footnote = `Extraction Method: ${extractionMethod}.`;
+  
+  if (isCovariance) {
+    footnote += ` Initial eigenvalues remain identical for both raw and rescaled solutions in covariance matrix analysis.`;
+  }
+  
+  if (isOblique) {
+    footnote += ` When components are correlated, sums of squared loadings cannot be added to obtain a total variance.`;
+  }
+  
+  return footnote;
+};
+
 /**
  * Menghasilkan deskripsi untuk Total Variance Explained
  * 
@@ -322,15 +345,29 @@ export const generateTotalVarianceDescription = (
  * 
  * Penjelasan singkat tentang apa yang ditampilkan di unrotated matrix
  */
+/**
+ * Menghasilkan deskripsi untuk Component Matrix (Unrotated)
+ * Fokus pada penjelasan ringkas sesuai permintaan.
+ */
 export const generateComponentMatrixDescription = (
   numComponents: number,
-  numVariables?: number
+  isPCA: boolean = true
 ): string => {
-  const componentPlural = numComponents === 1 ? "component" : "components";
-  const variableInfo = numVariables ? ` with ${numVariables} variables` : "";
+  const entity = isPCA ? "component" : "factor";
+  const entityPlural = numComponents === 1 ? entity : `${entity}s`;
   
-  return `The component matrix displays the loadings of each variable on the extracted ${componentPlural}${variableInfo}. These are the unrotated factor loadings, representing the correlation between each variable and the extracted factors.`;
+  return `The ${entity} matrix displays the loadings of each variable on the ${numComponents} extracted ${entityPlural}.`;
 };
+
+// export const generateComponentMatrixDescription = (
+//   numComponents: number,
+//   numVariables?: number
+// ): string => {
+//   const componentPlural = numComponents === 1 ? "component" : "components";
+//   const variableInfo = numVariables ? ` with ${numVariables} variables` : "";
+  
+//   return `The component matrix displays the loadings of each variable on the extracted ${componentPlural}${variableInfo}.`;
+// };
 
 /**
  * Menghasilkan deskripsi untuk kasus ekstraksi yang terhenti sebelum konvergen
@@ -378,35 +415,47 @@ export const generateGoodnessOfFitDescription = (
  * 
  * Penjelasan tentang rotation method dan keuntaatannya
  */
+/**
+ * Menghasilkan deskripsi yang identik dengan footnote SPSS untuk Rotated Matrix
+ * Fokus pada format footnote baku tanpa narasi interpretasi tambahan.
+ */
 export const generateRotatedMatrixDescription = (
-  rotationMethod: string = "Varimax",
-  numComponents?: number
+  extractionMethod: string,
+  rotationMethod: string,
+  iterations: number
 ): string => {
-  let methodDescription = "";
-  
-  // Deskripsi spesifik per rotation method
-  switch (rotationMethod.toLowerCase()) {
-    case "varimax":
-      methodDescription = "Varimax rotation aims to maximize the variance of the loadings within each component, simplifying interpretation by making loadings as close to 0 or ±1 as possible.";
-      break;
-    case "promax":
-      methodDescription = "Promax is an oblique rotation that allows factors to correlate, potentially providing a more realistic solution when underlying factors are expected to be correlated.";
-      break;
-    case "quartimax":
-      methodDescription = "Quartimax rotation aims to simplify the rows of the loading matrix, making each variable load highly on one factor if possible.";
-      break;
-    case "equimax":
-      methodDescription = "Equimax combines goals of Varimax and Quartimax, attempting to simplify both rows and columns of the loading matrix.";
-      break;
-    case "oblimin":
-      methodDescription = "Oblimin is an oblique rotation that allows factors to be correlated, with Delta parameter controlling the correlation relationship.";
-      break;
-    default:
-      methodDescription = `${rotationMethod} rotation has been applied to the factor solution.`;
-  }
-
-  return `The rotated component matrix clarifies the factor structure through a ${rotationMethod} rotation. ${methodDescription} Loadings closer to ±1 indicate stronger relationships between variables and factors.`;
+  // Menggunakan tag <br> agar teks turun baris saat dirender di antarmuka
+  return `Extraction Method: ${extractionMethod}.<br>Rotation Method: ${rotationMethod} with Kaiser Normalization.<br>a. Rotation converged in ${iterations} iterations.`;
 };
+// export const generateRotatedMatrixDescription = (
+//   rotationMethod: string = "Varimax",
+//   numComponents?: number
+// ): string => {
+//   let methodDescription = "";
+  
+//   // Deskripsi spesifik per rotation method
+//   switch (rotationMethod.toLowerCase()) {
+//     case "varimax":
+//       methodDescription = "Varimax rotation aims to maximize the variance of the loadings within each component, simplifying interpretation by making loadings as close to 0 or ±1 as possible.";
+//       break;
+//     case "promax":
+//       methodDescription = "Promax is an oblique rotation that allows factors to correlate, potentially providing a more realistic solution when underlying factors are expected to be correlated.";
+//       break;
+//     case "quartimax":
+//       methodDescription = "Quartimax rotation aims to simplify the rows of the loading matrix, making each variable load highly on one factor if possible.";
+//       break;
+//     case "equimax":
+//       methodDescription = "Equimax combines goals of Varimax and Quartimax, attempting to simplify both rows and columns of the loading matrix.";
+//       break;
+//     case "oblimin":
+//       methodDescription = "Oblimin is an oblique rotation that allows factors to be correlated, with Delta parameter controlling the correlation relationship.";
+//       break;
+//     default:
+//       methodDescription = `${rotationMethod} rotation has been applied to the factor solution.`;
+//   }
+
+//   return `The rotated component matrix clarifies the factor structure through a ${rotationMethod} rotation. ${methodDescription} Loadings closer to ±1 indicate stronger relationships between variables and factors.`;
+// };
 
 /**
  * Menghasilkan deskripsi untuk Scree Plot Interpretation
@@ -496,6 +545,8 @@ export const generateReproducedCorrelationDescription = (
   return `The reproduced correlation matrix shows the correlations among variables as predicted by the factor model${componentInfo}. Residuals (observed minus reproduced correlations) indicate goodness of fit; small residuals suggest an adequate model.`;
 };
 
+
+
 /**
  * Menghasilkan deskripsi untuk Descriptive Statistics
  * Memberikan konteks jumlah variabel dan sampel (N).
@@ -550,11 +601,12 @@ export const generateCorrelationMatrixDescription = (
       ? formatScientificNotationSPSSStyle(determinant)
       : determinant.toFixed(5);
     
-    fullDescription = `The determinant of the correlation matrix is ${detStr}. The correlation matrix shows the bivariate relationships between all variables.`;
+    // Hanya menampilkan nilai determinan
+    fullDescription = `The determinant of the correlation matrix is ${detStr}.`;
   } else {
     console.log("[DESC] No determinant provided for correlation matrix");
-    // Tanpa determinant - hanya base description
-    fullDescription = "The correlation matrix shows the bivariate relationships between all variables.";
+    // Kosongkan deskripsi jika tidak ada determinan
+    fullDescription = "";
   }
 
   return fullDescription;
@@ -569,19 +621,17 @@ export const generateCovarianceMatrixDescription = (
 ): string => {
   let fullDescription = "";
   
-  // Tampilkan determinant info jika nilai tersedia
   if (determinant !== undefined) {
     console.log("[DESC] Covariance Matrix Determinant:", determinant);
-    // Format scientific notation jika angkanya sangat kecil dengan gaya SPSS
     const detStr = determinant < 0.001 
       ? formatScientificNotationSPSSStyle(determinant)
       : determinant.toFixed(5);
     
-    fullDescription = `The determinant of the covariance matrix is ${detStr}. The diagonal elements represent the variance of each individual variable, while the off-diagonal elements show the covariance between pairs.`;
+    // Hanya menampilkan nilai determinan
+    fullDescription = `The determinant of the covariance matrix is ${detStr}.`;
   } else {
     console.log("[DESC] No determinant provided for covariance matrix");
-    // Tanpa determinant - hanya base description
-    fullDescription = "The diagonal elements represent the variance of each individual variable, while the off-diagonal elements show the covariance between pairs.";
+    fullDescription = "";
   }
 
   return fullDescription;
@@ -600,39 +650,116 @@ export const generateInverseCorrelationDescription = (): string => {
  * Fokus pada MSA values untuk individual variable adequacy
  */
 export const generateAntiImageRefinedDescription = (): string => {
-  return "The anti-image matrices contain the negative partial covariances and correlations. Focus on the diagonal of the Anti-image Correlation matrix (often marked with an 'a'), which represents the Measure of Sampling Adequacy (MSA) for individual variables. Variables with an MSA below 0.50 should generally be excluded from the analysis.";
+return "a. Measures of Sampling Adequacy(MSA)";
 };
 
 /**
  * Menghasilkan deskripsi yang lebih tajam untuk Reproduced Correlations
  * Fokus pada residual count dan goodness of fit assessment
  */
+// export const generateReproducedRefinedDescription = (
+//   residualCount?: number,
+//   residualPct?: number
+// ): string => {
+//   let residualInfo = "";
+  
+//   if (residualCount !== undefined && residualPct !== undefined) {
+//     const isGoodFit = residualPct < 50;
+//     residualInfo = ` There are ${residualCount} (${residualPct.toFixed(0)}%) nonredundant residuals with absolute values greater than 0.05. ${
+//       isGoodFit 
+//         ? "Since this is less than 50%, the model is considered a good fit." 
+//         : "Since this is greater than 50%, the model may not be a good fit and additional factors might be needed."
+//     }`;
+//   }
+
+//   return `The reproduced matrix contains the correlation matrix based on the extracted factors. The lower part of the table shows the residuals, which are the differences between the observed and reproduced correlations.${residualInfo}`;
+// };
+/**
+ * Menghasilkan deskripsi yang identik dengan footnote SPSS untuk Reproduced Correlations
+ * Fokus pada format footnote baku tanpa narasi interpretasi tambahan.
+ */
+// export const generateReproducedRefinedDescription = (
+//   residualCount?: number,
+//   residualPct?: number,
+//   extractionMethod: string = "Principal Component Analysis" 
+// ): string => {
+//   let bFootnote = "b. Residuals are computed between observed and reproduced correlations.";
+  
+//   if (residualCount !== undefined && residualPct !== undefined) {
+//     // SPSS menggunakan presisi 1 desimal untuk persentase (contoh: 13.0%)
+//     const pctFormatted = residualPct.toFixed(1);
+//     bFootnote += ` There are ${residualCount} (${pctFormatted}%) nonredundant residuals with absolute values greater than 0.05.`;
+//   }
+
+//   // Menggabungkan metode ekstraksi dan footnote (a dan b).
+//   // Menggunakan \n agar fungsi mergeNoteAndDescription Anda otomatis mengubahnya menjadi <br>
+//   return `Extraction Method: ${extractionMethod}.<br>a. Reproduced communalities.<br>${bFootnote}`;
+// };
+
+
 export const generateReproducedRefinedDescription = (
   residualCount?: number,
-  residualPct?: number
+  residualPct?: number,
+  extractionMethod: string = "Principal Component Analysis",
+  isCovariance: boolean = false
 ): string => {
-  let residualInfo = "";
   
-  if (residualCount !== undefined && residualPct !== undefined) {
-    const isGoodFit = residualPct < 50;
-    residualInfo = ` There are ${residualCount} (${residualPct.toFixed(0)}%) nonredundant residuals with absolute values greater than 0.05. ${
-      isGoodFit 
-        ? "Since this is less than 50%, the model is considered a good fit." 
-        : "Since this is greater than 50%, the model may not be a good fit and additional factors might be needed."
-    }`;
+  if (isCovariance) {
+    // Format horizontal, DENGAN abjad a. dan b. agar sinkron dengan superscript di tabel
+    return `Extraction Method: ${extractionMethod}. a. Reproduced communalities. b. Residual values reflect the differences between the observed and the reproduced covariances.`;
   }
 
-  return `The reproduced matrix contains the correlation matrix based on the extracted factors. The lower part of the table shows the residuals, which are the differences between the observed and reproduced correlations.${residualInfo}`;
+  // Format vertikal baku SPSS untuk Correlation (Tetap dipertahankan)
+  let bFootnote = "b. Residuals are computed between observed and reproduced correlations.";
+  
+  if (residualCount !== undefined && residualPct !== undefined) {
+    const pctFormatted = residualPct.toFixed(1);
+    bFootnote += ` There are ${residualCount} (${pctFormatted}%) nonredundant residuals with absolute values greater than 0.05.`;
+  }
+
+  return `Extraction Method: ${extractionMethod}.<br>a. Reproduced communalities<br>${bFootnote}`;
 };
 
 /**
  * Menghasilkan deskripsi untuk Component Transformation Matrix
  * Penjelasan tentang rotasi yang diterapkan
  */
+// export const generateComponentTransformationDescription = (
+//   rotationMethod: string = "Varimax"
+// ): string => {
+//   return `The component transformation matrix displays the specific mathematical rotation applied to the unrotated component matrix to achieve the final ${rotationMethod} solution. A symmetrical matrix typically indicates an orthogonal rotation, showing the correlations between the unrotated and rotated factors.`;
+// };
+
+/**
+ * Menghasilkan deskripsi SPSS-style untuk Component Transformation Matrix
+ */
 export const generateComponentTransformationDescription = (
-  rotationMethod: string = "Varimax"
+  extractionMethod: string,
+  rotationMethod: string
 ): string => {
-  return `The component transformation matrix displays the specific mathematical rotation applied to the unrotated component matrix to achieve the final ${rotationMethod} solution. A symmetrical matrix typically indicates an orthogonal rotation, showing the correlations between the unrotated and rotated factors.`;
+  let footnote = `Extraction Method: ${extractionMethod}.`;
+  if (rotationMethod && rotationMethod !== "None") {
+    footnote += `<br>Rotation Method: ${rotationMethod} with Kaiser Normalization.`;
+  }
+  return footnote;
+};
+
+/**
+ * Menghasilkan deskripsi SPSS-style untuk Component Score Coefficient / Covariance Matrix
+ */
+export const generateScoreMatrixDescription = (
+  extractionMethod: string,
+  rotationMethod: string,
+  isCovariance: boolean = false
+): string => {
+  let footnote = `Extraction Method: ${extractionMethod}.`;
+  if (rotationMethod && rotationMethod !== "None") {
+    footnote += `<br>Rotation Method: ${rotationMethod} with Kaiser Normalization.`;
+  }
+  if (isCovariance) {
+    footnote += `<br>a. Coefficients are standardized.`;
+  }
+  return footnote;
 };
 
 // ============================================================================

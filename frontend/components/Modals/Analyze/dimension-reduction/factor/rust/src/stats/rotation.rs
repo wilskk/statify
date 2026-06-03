@@ -113,8 +113,10 @@ pub fn rotate_varimax(
         25
     };
 
-    let tol = if is_pca { 1e-5 } else { 1e-7 };
-    let criterion_tol = if is_pca { 1e-8 } else { 1e-10 };
+    // let tol = if is_pca { 1e-5 } else { 1e-7 };
+    // let criterion_tol = if is_pca { 1e-8 } else { 1e-10 };
+    let tol = if is_pca { 1e-4 } else { 1e-7 };
+    let criterion_tol = if is_pca { 1e-5 } else { 1e-10 };
     let p = n_rows as f64;
 
     let compute_varimax_criterion = |lambda: &DMatrix<f64>| -> f64 {
@@ -139,6 +141,7 @@ pub fn rotate_varimax(
     let mut iterations_required = 0;
     let mut is_converged = false;
     let mut final_convergence = 0.0;
+    let mut confirmation_sweep = false;
 
     // =========================================================
     // 3. SPSS-like pairwise varimax (orthomax gamma=1)
@@ -192,28 +195,61 @@ pub fn rotate_varimax(
             }
         }
 
-        let current_criterion = compute_varimax_criterion(&normalized_loadings);
+    //     let current_criterion = compute_varimax_criterion(&normalized_loadings);
+    //     let criterion_change = (current_criterion - previous_criterion).abs();
+    //     previous_criterion = current_criterion;
+
+    //     // SPSS-style reporting uses a scaled convergence value.
+    //     final_convergence = max_angle * 100.0;
+
+    //     // // Require both angle and criterion change to be below tolerance.
+    //     // let criteria_met = max_angle < tol && criterion_change < criterion_tol;
+    //     // if criteria_met {
+    //     //     // Avoid claiming convergence in a single-iteration run unless there was no rotation.
+    //     //     if max_iterations <= 1 {
+    //     //         if max_angle == 0.0 && criterion_change == 0.0 {
+    //     //             is_converged = true;
+    //     //             break;
+    //     //         }
+    //     //     } else {
+    //     //         is_converged = true;
+    //     //         break;
+    //     //     }
+    //     // }
+    //     // Require both angle and criterion change to be below tolerance.
+    //     let criteria_met = max_angle < tol && criterion_change < criterion_tol;
+    //     if criteria_met {
+    //         if confirmation_sweep {
+    //             is_converged = true;
+    //             break;
+    //         }
+    //         confirmation_sweep = true;
+    //     } else {
+    //         confirmation_sweep = false;
+    //     }
+    // }
+
+    let current_criterion = compute_varimax_criterion(&normalized_loadings);
         let criterion_change = (current_criterion - previous_criterion).abs();
         previous_criterion = current_criterion;
 
         // SPSS-style reporting uses a scaled convergence value.
         final_convergence = max_angle * 100.0;
 
-        // Require both angle and criterion change to be below tolerance.
-        let criteria_met = max_angle < tol && criterion_change < criterion_tol;
+        // PERBAIKAN: Hapus syarat '&& criterion_change < criterion_tol'
+        // SPSS murni bergantung pada max_angle untuk rotasi pairwise orthogonal
+        let criteria_met = max_angle < tol; 
+        
         if criteria_met {
-            // Avoid claiming convergence in a single-iteration run unless there was no rotation.
-            if max_iterations <= 1 {
-                if max_angle == 0.0 && criterion_change == 0.0 {
-                    is_converged = true;
-                    break;
-                }
-            } else {
+            if confirmation_sweep {
                 is_converged = true;
                 break;
             }
+            confirmation_sweep = true;
+        } else {
+            confirmation_sweep = false;
         }
-    }
+    } 
 
     // =========================================================
     // 4. De-normalize rotated loadings
@@ -309,7 +345,8 @@ pub fn rotate_quartimax(
     let gamma = 0.0_f64; 
     let p_f64 = n_rows as f64;
     let max_iterations = config.rotation.max_iter as usize;
-    let tol = 1e-6;
+    // let tol = 1e-6;
+    let tol = 1e-4;
 
     let mut transformation_matrix = DMatrix::<f64>::identity(n_cols, n_cols);
     let mut rotated_normalized = normalized_loadings.clone();
@@ -317,6 +354,7 @@ pub fn rotate_quartimax(
     let mut iterations_required = 0;
     let mut is_converged = false;
     let mut final_convergence = 0.0;
+    let mut confirmation_sweep = false;
 
     for _ in 0..max_iterations {
         iterations_required += 1;
@@ -373,8 +411,13 @@ pub fn rotate_quartimax(
 
         final_convergence = max_angle;
         if max_angle < tol {
-            is_converged = true;
-            break;
+            if confirmation_sweep {
+                is_converged = true;
+                break;
+            }
+            confirmation_sweep = true;
+        } else {
+            confirmation_sweep = false;
         }
     }
 
@@ -439,7 +482,8 @@ pub fn rotate_equimax(
     let gamma = n_cols as f64 / 2.0; 
     let p_f64 = n_rows as f64;
     let max_iterations = config.rotation.max_iter as usize;
-    let tol = 1e-6;
+    // let tol = 1e-6;
+    let tol = 1e-4;
 
     let mut transformation_matrix = DMatrix::<f64>::identity(n_cols, n_cols);
     let mut rotated_normalized = normalized_loadings.clone();
@@ -447,6 +491,7 @@ pub fn rotate_equimax(
     let mut iterations_required = 0;
     let mut is_converged = false;
     let mut final_convergence = 0.0;
+    let mut confirmation_sweep = false;
 
     for _ in 0..max_iterations {
         iterations_required += 1;
@@ -503,8 +548,13 @@ pub fn rotate_equimax(
         
         final_convergence = max_angle;
         if max_angle < tol {
-            is_converged = true;
-            break;
+            if confirmation_sweep {
+                is_converged = true;
+                break;
+            }
+            confirmation_sweep = true;
+        } else {
+            confirmation_sweep = false;
         }
     }
 
@@ -844,11 +894,13 @@ pub fn rotate_oblimin(
         250
     };
     
-    let tol = 1e-5;
+    // let tol = 1e-5;
+    let tol = 1e-4;
     let mut alpha = 1.0; 
     let mut iterations_required = 0;
     let mut is_converged = false;
     let mut final_convergence = 0.0;
+    let mut confirmation_sweep = false;
 
     // Kalkulasi Status Awal dengan Parameter L = A * (T^T)^(-1)
     let t_inv_init = t_mat.clone().try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
@@ -876,8 +928,13 @@ pub fn rotate_oblimin(
         final_convergence = s_val;
         
         if s_val < tol { 
-            is_converged = true;
-            break; 
+            if confirmation_sweep {
+                is_converged = true;
+                break; 
+            }
+            confirmation_sweep = true;
+        } else {
+            confirmation_sweep = false;
         }
 
         alpha *= 2.0;
