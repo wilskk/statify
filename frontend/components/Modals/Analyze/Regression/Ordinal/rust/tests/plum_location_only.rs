@@ -128,8 +128,8 @@ fn displayed_minus2_log_likelihood_is_consistent_for_all_links() {
         let expected_constant = multinomial_log_likelihood_constant(&data);
 
         assert_eq!(
-            output.log_likelihood_display_mode, "KERNEL",
-            "{link}: Rust output must stay in kernel mode; worker owns displayed PLUM/SPSS mode"
+            output.log_likelihood_display_mode, "SPSS_COMPATIBLE",
+            "{link}: Rust output must own the requested displayed PLUM/SPSS mode"
         );
         assert!(
             (output.log_likelihood_constant - expected_constant).abs() < 1e-9,
@@ -141,6 +141,10 @@ fn displayed_minus2_log_likelihood_is_consistent_for_all_links() {
                 .abs()
                 < 1e-9,
             "{link}: complete log-likelihood must be kernel + constant"
+        );
+        assert!(
+            (output.log_likelihood - output.log_likelihood_complete).abs() < 1e-9,
+            "{link}: Including mode must display the complete SPSS-compatible log-likelihood"
         );
 
         assert!(

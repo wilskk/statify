@@ -1,10 +1,10 @@
 use crate::optimizer::fit_location_only;
 use crate::parallel::fit_non_parallel_location_only;
 use crate::statistics::{
-    actual_probabilities, correlation_matrix, covariance_matrix, goodness_of_fit,
-    model_fit_statistics, multinomial_log_likelihood_constant, parameter_statistics,
-    predicted_categories, predicted_cell_counts, predicted_probabilities,
-    LOG_LIKELIHOOD_MODE_KERNEL,
+    actual_probabilities, correlation_matrix, covariance_matrix, displayed_log_likelihood,
+    goodness_of_fit, model_fit_statistics, multinomial_log_likelihood_constant,
+    parameter_statistics, predicted_categories, predicted_cell_counts, predicted_probabilities,
+    LOG_LIKELIHOOD_MODE_KERNEL, LOG_LIKELIHOOD_MODE_SPSS,
 };
 use crate::types::{
     EstimationOptions, FitResult, IterationHistoryMeta, IterationHistoryOptions, ModelType,
@@ -168,10 +168,21 @@ pub fn build_plum_output(
         None
     };
 
+    let display_mode = output_options
+        .as_ref()
+        .and_then(|opt| opt.print_log_likelihood.as_deref())
+        .map(|value| match value {
+            "Including" | "SPSS_COMPATIBLE" => LOG_LIKELIHOOD_MODE_SPSS,
+            "Excluding" | "KERNEL" => LOG_LIKELIHOOD_MODE_KERNEL,
+            _ => LOG_LIKELIHOOD_MODE_KERNEL,
+        })
+        .unwrap_or(LOG_LIKELIHOOD_MODE_KERNEL);
+
     let log_likelihood_constant = multinomial_log_likelihood_constant(data);
     let log_likelihood_kernel = fit.log_likelihood;
     let log_likelihood_complete = log_likelihood_kernel + log_likelihood_constant;
-    let log_likelihood_displayed = log_likelihood_kernel;
+    let log_likelihood_displayed =
+        displayed_log_likelihood(log_likelihood_kernel, log_likelihood_constant, display_mode);
     let minus2_log_likelihood_displayed = -2.0 * log_likelihood_displayed;
 
     let summary = if want_summary {
@@ -186,17 +197,22 @@ pub fn build_plum_output(
             &options.method_label(),
             data.total_count,
             log_likelihood_constant,
-            LOG_LIKELIHOOD_MODE_KERNEL,
+            display_mode,
         ))
     } else {
         None
     };
 
     let iteration_history = if want_iteration {
+        let adjustment = if display_mode == LOG_LIKELIHOOD_MODE_SPSS {
+            -2.0 * log_likelihood_constant
+        } else {
+            0.0
+        };
         let mut rows = Vec::with_capacity(fit.iteration_history.len());
         for row in &fit.iteration_history {
             let mut cloned = row.clone();
-            cloned.minus2_log_likelihood_displayed = row.minus2_log_likelihood;
+            cloned.minus2_log_likelihood_displayed = row.minus2_log_likelihood + adjustment;
             rows.push(cloned);
         }
         Some(rows)
@@ -257,12 +273,17 @@ pub fn build_plum_output(
         match fit_non_parallel_location_only(data, spec, &options) {
             Ok(mut non_parallel_fit) => {
                 warnings.append(&mut non_parallel_fit.warnings);
-                let test = crate::parallel::test_parallel_lines(
+                let mut test = crate::parallel::test_parallel_lines(
                     fit,
                     &non_parallel_fit,
                     spec.location_parameter_count(),
                     spec.category_count,
                 );
+                if display_mode == LOG_LIKELIHOOD_MODE_SPSS {
+                    let adjustment = -2.0 * log_likelihood_constant;
+                    test.minus2_log_likelihood_parallel += adjustment;
+                    test.minus2_log_likelihood_non_parallel += adjustment;
+                }
                 if !non_parallel_fit.converged {
                     warnings.push(
                         "The general model may be unstable or failed to converge.".to_string(),
@@ -307,7 +328,7 @@ pub fn build_plum_output(
         log_likelihood_complete,
         log_likelihood_displayed,
         minus2_log_likelihood_displayed,
-        log_likelihood_display_mode: LOG_LIKELIHOOD_MODE_KERNEL.to_string(),
+        log_likelihood_display_mode: display_mode.to_string(),
         parameter_estimates,
         threshold_estimates,
         location_parameter_estimates,

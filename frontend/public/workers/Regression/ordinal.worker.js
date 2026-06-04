@@ -682,202 +682,6 @@ function pickNumber(...values) {
   return null;
 }
 
-const LOG_LIKELIHOOD_MODE_KERNEL = "KERNEL";
-const LOG_LIKELIHOOD_MODE_SPSS = "SPSS_COMPATIBLE";
-
-function normalizeLogLikelihoodDisplayMode(outputOptions) {
-  const raw = String(outputOptions?.printLogLikelihood || outputOptions?.print_log_likelihood || "Excluding");
-  if (raw === "Including" || raw === LOG_LIKELIHOOD_MODE_SPSS) {
-    return LOG_LIKELIHOOD_MODE_SPSS;
-  }
-  return LOG_LIKELIHOOD_MODE_KERNEL;
-}
-
-function logGamma(value) {
-  const coefficients = [
-    676.5203681218851,
-    -1259.1392167224028,
-    771.32342877765313,
-    -176.61502916214059,
-    12.507343278686905,
-    -0.13857109526572012,
-    9.9843695780195716e-6,
-    1.5056327351493116e-7,
-  ];
-
-  if (value < 0.5) {
-    return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * value)) - logGamma(1 - value);
-  }
-
-  let x = 0.99999999999980993;
-  const z = value - 1;
-  for (let i = 0; i < coefficients.length; i += 1) {
-    x += coefficients[i] / (z + i + 1);
-  }
-  const t = z + coefficients.length - 0.5;
-  return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
-}
-
-function buildSubpopulationKey(x, z) {
-  const format = (value) => `${Number(value).toFixed(12)}|`;
-  return `${x.map(format).join("")}#${z.map(format).join("")}`;
-}
-
-function encodeOrdinalCategory(value, categories) {
-  const numeric = Number(value);
-  for (let idx = 0; idx < categories.length; idx += 1) {
-    const categoryNumeric = Number(categories[idx]);
-    if (Number.isFinite(numeric) && Number.isFinite(categoryNumeric) && Math.abs(numeric - categoryNumeric) < 1e-9) {
-      return idx;
-    }
-  }
-
-  const rounded = Math.round(numeric);
-  if (Number.isFinite(numeric) && Math.abs(rounded - numeric) < 1e-9) {
-    const ordinalIndex = rounded - 1;
-    if (ordinalIndex >= 0 && ordinalIndex < categories.length) {
-      return ordinalIndex;
-    }
-  }
-
-  return -1;
-}
-
-function computeMultinomialLogLikelihoodConstantFromPayload(mainPayload) {
-  const responseVector = mainPayload?.response?.responseVector || [];
-  const categories = mainPayload?.response?.responseCategories || [];
-  const weights = Array.isArray(mainPayload?.weights) ? mainPayload.weights : null;
-  const locationMatrix = mainPayload?.locationModel?.locationDesignMatrix || [];
-  const scaleEnabled = Boolean(mainPayload?.scaleModel?.enabled);
-  const scaleMatrix = mainPayload?.scaleModel?.scaleDesignMatrix || [];
-  const zeroCellAdjustment = Number(mainPayload?.estimationOptions?.zeroCellAdjustment || 0);
-
-  if (!Array.isArray(responseVector) || !Array.isArray(categories) || categories.length === 0) {
-    return null;
-  }
-
-  const subpopulations = new Map();
-  for (let idx = 0; idx < responseVector.length; idx += 1) {
-    const weight = weights ? Number(weights[idx] ?? 0) : 1;
-    if (!Number.isFinite(weight) || weight <= 0) continue;
-
-    const x = Array.isArray(locationMatrix[idx]) ? locationMatrix[idx] : null;
-    const z = scaleEnabled && Array.isArray(scaleMatrix[idx]) ? scaleMatrix[idx] : [];
-    if (!x || (scaleEnabled && !Array.isArray(scaleMatrix[idx]))) continue;
-
-    const categoryIndex = encodeOrdinalCategory(responseVector[idx], categories);
-    if (categoryIndex < 0 || categoryIndex >= categories.length) continue;
-
-    const key = buildSubpopulationKey(x, z);
-    if (!subpopulations.has(key)) {
-      subpopulations.set(key, {
-        counts: Array(categories.length).fill(0),
-        marginalCount: 0,
-      });
-    }
-    const subpop = subpopulations.get(key);
-    subpop.counts[categoryIndex] += weight;
-    subpop.marginalCount += weight;
-  }
-
-  let constant = 0;
-  for (const subpop of subpopulations.values()) {
-    let marginalCount = subpop.marginalCount;
-    const counts = subpop.counts.slice();
-    if (zeroCellAdjustment > 0 && marginalCount > 0) {
-      for (let idx = 0; idx < counts.length; idx += 1) {
-        if (counts[idx] <= 1e-12) {
-          counts[idx] += zeroCellAdjustment;
-          marginalCount += zeroCellAdjustment;
-        }
-      }
-    }
-
-    if (marginalCount > 0) {
-      constant += logGamma(marginalCount + 1);
-      for (const count of counts) {
-        constant -= count > 0 ? logGamma(count + 1) : logGamma(1);
-      }
-    }
-  }
-
-  return Number.isFinite(constant) ? constant : null;
-}
-
-function displayLogLikelihood(kernel, constant, displayMode) {
-  if (!Number.isFinite(kernel)) return null;
-  return displayMode === LOG_LIKELIHOOD_MODE_SPSS ? kernel + (constant || 0) : kernel;
-}
-
-function toKernelLogLikelihood(rawLogLikelihood, constant, rawDisplayMode) {
-  if (!Number.isFinite(rawLogLikelihood)) return null;
-  return rawDisplayMode === LOG_LIKELIHOOD_MODE_SPSS ? rawLogLikelihood - (constant || 0) : rawLogLikelihood;
-}
-
-function toKernelMinus2(rawMinus2, constant, rawDisplayMode) {
-  if (!Number.isFinite(rawMinus2)) return null;
-  return rawDisplayMode === LOG_LIKELIHOOD_MODE_SPSS ? rawMinus2 + 2 * (constant || 0) : rawMinus2;
-}
-
-function normalizeLogLikelihoodRow(row, constant, rawDisplayMode, targetDisplayMode) {
-  if (!row || typeof row !== "object") return row;
-  const rawLogLikelihood = pickNumber(row.logLikelihood, row.log_likelihood);
-  const rawMinus2 = pickNumber(row.minus2LogLikelihood, row.minus2_log_likelihood);
-  const kernel = Number.isFinite(rawLogLikelihood)
-    ? toKernelLogLikelihood(rawLogLikelihood, constant, rawDisplayMode)
-    : (Number.isFinite(rawMinus2) ? -0.5 * toKernelMinus2(rawMinus2, constant, rawDisplayMode) : null);
-  const displayed = displayLogLikelihood(kernel, constant, targetDisplayMode);
-
-  return {
-    ...row,
-    logLikelihood: displayed,
-    minus2LogLikelihood: Number.isFinite(displayed) ? -2 * displayed : null,
-    logLikelihoodKernel: kernel,
-  };
-}
-
-function normalizeIterationHistoryLogLikelihood(rows, constant, rawDisplayMode, targetDisplayMode) {
-  if (!Array.isArray(rows)) return [];
-  return rows.map((row) => {
-    const rawMinus2Displayed = pickNumber(row.minus2LogLikelihoodDisplayed, row.minus2_log_likelihood_displayed);
-    const rawMinus2 = pickNumber(row.minus2LogLikelihood, row.minus2_log_likelihood, rawMinus2Displayed);
-    const kernelMinus2 = toKernelMinus2(rawMinus2, constant, rawDisplayMode);
-    const displayedMinus2 = Number.isFinite(kernelMinus2)
-      ? (targetDisplayMode === LOG_LIKELIHOOD_MODE_SPSS ? kernelMinus2 - 2 * (constant || 0) : kernelMinus2)
-      : null;
-
-    return {
-      ...row,
-      minus2LogLikelihood: kernelMinus2,
-      minus2LogLikelihoodDisplayed: displayedMinus2,
-    };
-  });
-}
-
-function normalizeParallelLinesLogLikelihood(test, constant, rawDisplayMode, targetDisplayMode) {
-  if (!test || typeof test !== "object") return test;
-  const parallelKernelMinus2 = toKernelMinus2(test.minus2LogLikelihoodParallel, constant, rawDisplayMode);
-  const nonParallelKernelMinus2 = toKernelMinus2(test.minus2LogLikelihoodNonParallel, constant, rawDisplayMode);
-  const adjustMinus2 = (value) => {
-    if (!Number.isFinite(value)) return null;
-    return targetDisplayMode === LOG_LIKELIHOOD_MODE_SPSS ? value - 2 * (constant || 0) : value;
-  };
-  const parallelDisplayedMinus2 = adjustMinus2(parallelKernelMinus2);
-  const nonParallelDisplayedMinus2 = adjustMinus2(nonParallelKernelMinus2);
-  const chiSquare = Number.isFinite(parallelDisplayedMinus2) && Number.isFinite(nonParallelDisplayedMinus2)
-    ? parallelDisplayedMinus2 - nonParallelDisplayedMinus2
-    : test.chiSquare;
-
-  return {
-    ...test,
-    minus2LogLikelihoodParallel: parallelDisplayedMinus2,
-    minus2LogLikelihoodNonParallel: nonParallelDisplayedMinus2,
-    chiSquare,
-    logLikelihoodKernelParallel: Number.isFinite(parallelKernelMinus2) ? -0.5 * parallelKernelMinus2 : null,
-    logLikelihoodKernelNonParallel: Number.isFinite(nonParallelKernelMinus2) ? -0.5 * nonParallelKernelMinus2 : null,
-  };
-}
-
 function normalizeModelSummaryRow(row) {
   if (!row || typeof row !== "object") return null;
   return {
@@ -979,44 +783,32 @@ function normalizeWasmResult(result, mainPayload) {
     ? base.scaleParameterEstimates.map(normalizeParameterEstimate)
     : scaleFromGroup.map(normalizeParameterEstimate);
 
-  const outputOptions = mainPayload?.outputOptions || {};
-  const targetDisplayMode = normalizeLogLikelihoodDisplayMode(outputOptions);
-  const rawDisplayMode = typeof base.logLikelihoodDisplayMode === "string"
-    ? base.logLikelihoodDisplayMode
-    : (typeof base.log_likelihood_display_mode === "string"
-      ? base.log_likelihood_display_mode
-      : LOG_LIKELIHOOD_MODE_KERNEL);
-  const rawLogLikelihoodConstant = pickNumber(
-    base.logLikelihoodConstant,
-    base.log_likelihood_constant
-  );
-  const logLikelihoodConstant = rawLogLikelihoodConstant
-    ?? computeMultinomialLogLikelihoodConstantFromPayload(mainPayload)
-    ?? 0;
+  const iterations = typeof base.iterations === "number" ? base.iterations : 0;
+  const logLikelihood = typeof base.logLikelihood === "number"
+    ? base.logLikelihood
+    : (typeof base.log_likelihood === "number" ? base.log_likelihood : null);
+  const minus2LogLikelihood = typeof base.minus2LogLikelihood === "number"
+    ? base.minus2LogLikelihood
+    : (typeof base.minus2_log_likelihood === "number" ? base.minus2_log_likelihood : null);
+
+  const logLikelihoodConstant = typeof base.logLikelihoodConstant === "number"
+    ? base.logLikelihoodConstant
+    : (typeof base.log_likelihood_constant === "number" ? base.log_likelihood_constant : null);
   const logLikelihoodKernel = typeof base.logLikelihoodKernel === "number"
     ? base.logLikelihoodKernel
-    : (typeof base.log_likelihood_kernel === "number"
-      ? base.log_likelihood_kernel
-      : toKernelLogLikelihood(
-        pickNumber(base.logLikelihood, base.log_likelihood),
-        logLikelihoodConstant,
-        rawDisplayMode
-      ));
-  const logLikelihoodComplete = Number.isFinite(logLikelihoodKernel)
-    ? logLikelihoodKernel + logLikelihoodConstant
-    : null;
-  const logLikelihoodDisplayed = displayLogLikelihood(
-    logLikelihoodKernel,
-    logLikelihoodConstant,
-    targetDisplayMode
-  );
-  const minus2LogLikelihoodDisplayed = Number.isFinite(logLikelihoodDisplayed)
-    ? -2 * logLikelihoodDisplayed
-    : null;
-  const logLikelihood = logLikelihoodDisplayed;
-  const minus2LogLikelihood = minus2LogLikelihoodDisplayed;
-  const logLikelihoodDisplayMode = targetDisplayMode;
-  const iterations = typeof base.iterations === "number" ? base.iterations : 0;
+    : (typeof base.log_likelihood_kernel === "number" ? base.log_likelihood_kernel : null);
+  const logLikelihoodComplete = typeof base.logLikelihoodComplete === "number"
+    ? base.logLikelihoodComplete
+    : (typeof base.log_likelihood_complete === "number" ? base.log_likelihood_complete : null);
+  const logLikelihoodDisplayed = typeof base.logLikelihoodDisplayed === "number"
+    ? base.logLikelihoodDisplayed
+    : (typeof base.log_likelihood_displayed === "number" ? base.log_likelihood_displayed : null);
+  const minus2LogLikelihoodDisplayed = typeof base.minus2LogLikelihoodDisplayed === "number"
+    ? base.minus2LogLikelihoodDisplayed
+    : (typeof base.minus2_log_likelihood_displayed === "number" ? base.minus2_log_likelihood_displayed : null);
+  const logLikelihoodDisplayMode = typeof base.logLikelihoodDisplayMode === "string"
+    ? base.logLikelihoodDisplayMode
+    : (typeof base.log_likelihood_display_mode === "string" ? base.log_likelihood_display_mode : null);
 
   const metadata = {
     modelType: mainPayload?.metadata?.modelType,
@@ -1035,43 +827,10 @@ function normalizeWasmResult(result, mainPayload) {
   const summaryStatistics = normalizeSummaryStatistics(
     base.summaryStatistics || base.summary_statistics
   );
-  if (summaryStatistics) {
-    summaryStatistics.model = normalizeLogLikelihoodRow(
-      summaryStatistics.model,
-      logLikelihoodConstant,
-      rawDisplayMode,
-      targetDisplayMode
-    );
-    summaryStatistics.interceptOnly = normalizeLogLikelihoodRow(
-      summaryStatistics.interceptOnly,
-      logLikelihoodConstant,
-      rawDisplayMode,
-      targetDisplayMode
-    );
-  }
   const goodnessOfFit = normalizeGoodnessOfFit(base.goodnessOfFit || base.goodness_of_fit);
-  const testOfParallelLines = normalizeParallelLinesLogLikelihood(
-    normalizeParallelLinesTest(base.testOfParallelLines || base.test_of_parallel_lines),
-    logLikelihoodConstant,
-    rawDisplayMode,
-    targetDisplayMode
+  const testOfParallelLines = normalizeParallelLinesTest(
+    base.testOfParallelLines || base.test_of_parallel_lines
   );
-  const iterationHistory = normalizeIterationHistoryLogLikelihood(
-    Array.isArray(base.iterationHistory) ? base.iterationHistory : (base.iteration_history || []),
-    logLikelihoodConstant,
-    rawDisplayMode,
-    targetDisplayMode
-  );
-
-  console.log("[ORDINAL][WORKER][LOG_LIKELIHOOD_NORMALIZED]", {
-    rawDisplayMode,
-    targetDisplayMode,
-    logLikelihoodKernel,
-    logLikelihoodConstant,
-    logLikelihoodComplete,
-    logLikelihoodDisplayed,
-    minus2LogLikelihoodDisplayed,
-  });
 
   return {
     ...base,
@@ -1093,9 +852,9 @@ function normalizeWasmResult(result, mainPayload) {
     goodnessOfFit,
     testOfParallelLines,
     estimationOptions: mainPayload?.estimationOptions || {},
-    outputOptions,
+    outputOptions: mainPayload?.outputOptions || {},
     savedVariableOptions: mainPayload?.savedVariables || {},
-    iterationHistory,
+    iterationHistory: Array.isArray(base.iterationHistory) ? base.iterationHistory : (base.iteration_history || []),
     iterationHistoryMeta,
     warnings: Array.isArray(base.warnings) ? base.warnings : [],
     metadata,
