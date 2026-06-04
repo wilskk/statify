@@ -1,10 +1,10 @@
 use crate::optimizer::fit_location_only;
 use crate::parallel::fit_non_parallel_location_only;
 use crate::statistics::{
-    actual_probabilities, correlation_matrix, covariance_matrix, displayed_log_likelihood,
-    goodness_of_fit, model_fit_statistics, multinomial_log_likelihood_constant,
-    parameter_statistics, predicted_cell_counts, predicted_categories, predicted_probabilities,
-    LOG_LIKELIHOOD_MODE_KERNEL, LOG_LIKELIHOOD_MODE_SPSS,
+    actual_probabilities, correlation_matrix, covariance_matrix, goodness_of_fit,
+    model_fit_statistics, multinomial_log_likelihood_constant, parameter_statistics,
+    predicted_categories, predicted_cell_counts, predicted_probabilities,
+    LOG_LIKELIHOOD_MODE_KERNEL,
 };
 use crate::types::{
     EstimationOptions, FitResult, IterationHistoryMeta, IterationHistoryOptions, ModelType,
@@ -93,7 +93,8 @@ pub fn build_plum_output(
     fit_with_cov.correlation = correlation.clone();
 
     let alpha = EstimationOptions::from_payload(Some(&input.estimation_options)).alpha;
-    let (mut parameter_estimates, mut param_warn) = parameter_statistics(&fit_with_cov, spec, alpha);
+    let (mut parameter_estimates, mut param_warn) =
+        parameter_statistics(&fit_with_cov, spec, alpha);
     warnings.append(&mut param_warn);
 
     let threshold_estimates: Vec<_> = parameter_estimates
@@ -167,21 +168,10 @@ pub fn build_plum_output(
         None
     };
 
-    let display_mode = output_options
-        .as_ref()
-        .and_then(|opt| opt.print_log_likelihood.as_deref())
-        .map(|value| match value {
-            "Including" | "SPSS_COMPATIBLE" => LOG_LIKELIHOOD_MODE_SPSS,
-            "Excluding" | "KERNEL" => LOG_LIKELIHOOD_MODE_KERNEL,
-            _ => LOG_LIKELIHOOD_MODE_KERNEL,
-        })
-        .unwrap_or(LOG_LIKELIHOOD_MODE_KERNEL);
-
     let log_likelihood_constant = multinomial_log_likelihood_constant(data);
     let log_likelihood_kernel = fit.log_likelihood;
     let log_likelihood_complete = log_likelihood_kernel + log_likelihood_constant;
-    let log_likelihood_displayed =
-        displayed_log_likelihood(log_likelihood_kernel, log_likelihood_constant, display_mode);
+    let log_likelihood_displayed = log_likelihood_kernel;
     let minus2_log_likelihood_displayed = -2.0 * log_likelihood_displayed;
 
     let summary = if want_summary {
@@ -196,22 +186,17 @@ pub fn build_plum_output(
             &options.method_label(),
             data.total_count,
             log_likelihood_constant,
-            display_mode,
+            LOG_LIKELIHOOD_MODE_KERNEL,
         ))
     } else {
         None
     };
 
     let iteration_history = if want_iteration {
-        let adjustment = if display_mode == LOG_LIKELIHOOD_MODE_SPSS {
-            -2.0 * log_likelihood_constant
-        } else {
-            0.0
-        };
         let mut rows = Vec::with_capacity(fit.iteration_history.len());
         for row in &fit.iteration_history {
             let mut cloned = row.clone();
-            cloned.minus2_log_likelihood_displayed = row.minus2_log_likelihood + adjustment;
+            cloned.minus2_log_likelihood_displayed = row.minus2_log_likelihood;
             rows.push(cloned);
         }
         Some(rows)
@@ -264,17 +249,36 @@ pub fn build_plum_output(
 
     let test_of_parallel_lines = if want_parallel && spec.model_type == ModelType::LocationOnly {
         let options = EstimationOptions::from_payload(Some(&input.estimation_options));
+        println!(
+            "[ORDINAL][PARALLEL_LINES][PARALLEL_LL] {{\"logLikelihood\":{},\"minus2LogLikelihood\":{}}}",
+            fit.log_likelihood,
+            fit.minus2_log_likelihood
+        );
         match fit_non_parallel_location_only(data, spec, &options) {
-            Ok(non_parallel_fit) => {
+            Ok(mut non_parallel_fit) => {
+                warnings.append(&mut non_parallel_fit.warnings);
                 let test = crate::parallel::test_parallel_lines(
                     fit,
                     &non_parallel_fit,
                     spec.location_parameter_count(),
                     spec.category_count,
                 );
+                if !non_parallel_fit.converged {
+                    warnings.push(
+                        "The general model may be unstable or failed to converge.".to_string(),
+                    );
+                }
+                if test.minus2_log_likelihood_non_parallel
+                    > test.minus2_log_likelihood_parallel + 1e-8
+                {
+                    warnings.push(
+                        "Parallel lines general model has a larger -2 Log Likelihood than the null hypothesis model; the general optimizer may not have reached the optimum.".to_string(),
+                    );
+                }
                 Some(test)
             }
             Err(err) => {
+                println!("[ORDINAL][PARALLEL_LINES][ERROR] {err}");
                 warnings.push(format!("Parallel lines test gagal: {err}"));
                 None
             }
@@ -298,11 +302,12 @@ pub fn build_plum_output(
         iterations: fit.iterations,
         log_likelihood: log_likelihood_displayed,
         minus2_log_likelihood: minus2_log_likelihood_displayed,
+        log_likelihood_constant,
         log_likelihood_kernel,
         log_likelihood_complete,
         log_likelihood_displayed,
         minus2_log_likelihood_displayed,
-        log_likelihood_display_mode: display_mode.to_string(),
+        log_likelihood_display_mode: LOG_LIKELIHOOD_MODE_KERNEL.to_string(),
         parameter_estimates,
         threshold_estimates,
         location_parameter_estimates,

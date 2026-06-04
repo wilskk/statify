@@ -435,7 +435,8 @@ export const formatOrdinalResult = (result: any) => {
         "Test of Parallel Lines",
         { columnHeaders, rows },
         {
-          description: "Uji asumsi parallel lines (null hypothesis states that the location parameters (slope coefficients) are the same across response categories)",
+          description: "Uji asumsi parallel lines.",
+          note: `The null hypothesis states that the location parameters (slope coefficients) are the same across response categories.\n${linkFunctionNote}`,
         }
       )
     );
@@ -457,11 +458,15 @@ export const formatOrdinalResult = (result: any) => {
     const scaleNames = Array.isArray(iterationHistoryMeta?.scaleNames)
       ? iterationHistoryMeta.scaleNames
       : [];
+    const hasMaxAbsGradient = iterationHistory.some(
+      (row: any) => typeof row?.maxAbsGradient === "number" || typeof row?.max_abs_gradient === "number"
+    );
 
     const columnHeaders = [
       { header: "Iteration", key: "rh1" },
       { header: "Number of Step-Halvings", key: "stepHalvings" },
       { header: "-2 Log Likelihood", key: "neg2ll" },
+      ...(hasMaxAbsGradient ? [{ header: "Max Absolute Gradient", key: "maxAbsGradient" }] : []),
       ...thresholdNames.map((name: string, index: number) => ({
         header: `Threshold: ${name}`,
         key: `threshold_${index}`,
@@ -496,6 +501,13 @@ export const formatOrdinalResult = (result: any) => {
         stepHalvings: Number.isFinite(stepHalvings) ? stepHalvings.toString() : "0",
         neg2ll: safeFixed(rowMinus2, 3),
       };
+
+      const maxAbsGradient = typeof row.maxAbsGradient === "number"
+        ? row.maxAbsGradient
+        : (typeof row.max_abs_gradient === "number" ? row.max_abs_gradient : null);
+      if (hasMaxAbsGradient) {
+        formatted.maxAbsGradient = safeFixed(maxAbsGradient, 3);
+      }
 
       thresholdNames.forEach((_: string, index: number) => {
         formatted[`threshold_${index}`] = safeFixed(thresholdValues[index], 6);

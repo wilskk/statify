@@ -216,7 +216,11 @@ impl Category {
     pub fn as_label(&self) -> String {
         match self {
             Category::Number(v) => {
-                let rounded = if v.fract().abs() < 1e-12 { *v as i64 } else { *v as i64 };
+                let rounded = if v.fract().abs() < 1e-12 {
+                    *v as i64
+                } else {
+                    *v as i64
+                };
                 if (rounded as f64 - *v).abs() < 1e-12 {
                     rounded.to_string()
                 } else {
@@ -300,7 +304,8 @@ pub struct PlumSpec {
 
 impl PlumSpec {
     pub fn from_input(input: &PlumWorkerPayload) -> Result<Self, PlumError> {
-        let link_function = LinkFunction::try_from(input.estimation_options.link_function.as_str())?;
+        let link_function =
+            LinkFunction::try_from(input.estimation_options.link_function.as_str())?;
         let model_type = ModelType::try_from(input.metadata.model_type.as_str())?;
         let scale_type = if input.scale_model.enabled {
             ScaleType::NonConstant
@@ -626,6 +631,7 @@ pub struct PlumFitOutput {
     pub iterations: usize,
     pub log_likelihood: f64,
     pub minus2_log_likelihood: f64,
+    pub log_likelihood_constant: f64,
     pub log_likelihood_kernel: f64,
     pub log_likelihood_complete: f64,
     pub log_likelihood_displayed: f64,

@@ -1,16 +1,14 @@
 use std::collections::HashMap;
 
-use statify_ordinal::{
-    aggregate_data, build_plum_output, fit_plum, EstimationOptions, PlumEstimationOptions,
-    IterationHistoryOptions, PlumLocationModel, PlumMetadata, PlumPredictor, PlumResponse,
-    PlumScaleModel, PlumSpec, PlumWorkerPayload,
-};
 use serde_json::json;
+use statify_ordinal::{
+    aggregate_data, build_plum_output, fit_plum, multinomial_log_likelihood_constant,
+    EstimationOptions, IterationHistoryOptions, PlumEstimationOptions, PlumLocationModel,
+    PlumMetadata, PlumPredictor, PlumResponse, PlumScaleModel, PlumSpec, PlumWorkerPayload,
+};
 
 fn build_input() -> PlumWorkerPayload {
-    let response_vector = vec![
-        1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0,
-    ];
+    let response_vector = vec![1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0];
     let location_design_matrix = vec![
         vec![0.1],
         vec![0.2],
@@ -127,6 +125,23 @@ fn displayed_minus2_log_likelihood_is_consistent_for_all_links() {
         let history_options = IterationHistoryOptions::disabled();
         let fit = fit_plum(&data, &spec, &options, &history_options).expect("fit");
         let output = build_plum_output(&input, &data, &spec, &fit).expect("output");
+        let expected_constant = multinomial_log_likelihood_constant(&data);
+
+        assert_eq!(
+            output.log_likelihood_display_mode, "KERNEL",
+            "{link}: Rust output must stay in kernel mode; worker owns displayed PLUM/SPSS mode"
+        );
+        assert!(
+            (output.log_likelihood_constant - expected_constant).abs() < 1e-9,
+            "{link}: log-likelihood constant must match aggregated SPSS multinomial constant"
+        );
+        assert!(
+            (output.log_likelihood_complete
+                - (output.log_likelihood_kernel + output.log_likelihood_constant))
+                .abs()
+                < 1e-9,
+            "{link}: complete log-likelihood must be kernel + constant"
+        );
 
         assert!(
             (output.minus2_log_likelihood - (-2.0 * output.log_likelihood)).abs() < 1e-9,
@@ -141,6 +156,54 @@ fn displayed_minus2_log_likelihood_is_consistent_for_all_links() {
         assert!(
             (summary.model.minus2_log_likelihood - output.minus2_log_likelihood).abs() < 1e-9,
             "{link}: model fitting table must use the same displayed -2LL"
+        );
+    }
+}
+
+#[test]
+fn parallel_lines_test_is_computed_for_all_links_when_requested() {
+    let links = [
+        "Logit",
+        "Probit",
+        "Complementary Log-Log",
+        "Negative Log-Log",
+        "Cauchit",
+    ];
+
+    for link in links {
+        let mut input = build_input();
+        input.estimation_options.link_function = link.to_string();
+        input.output_options = json!({
+            "summaryStatistics": true,
+            "testOfParallelLines": true
+        });
+
+        let data = aggregate_data(&input).expect("data");
+        let spec = PlumSpec::from_input(&input).expect("spec");
+        let options = EstimationOptions::from_payload(Some(&input.estimation_options));
+        let history_options = IterationHistoryOptions::disabled();
+        let fit = fit_plum(&data, &spec, &options, &history_options).expect("fit");
+        let output = build_plum_output(&input, &data, &spec, &fit).expect("output");
+        let test = output
+            .test_of_parallel_lines
+            .unwrap_or_else(|| panic!("{link}: expected parallel lines test result"));
+
+        assert!(
+            test.minus2_log_likelihood_parallel.is_finite(),
+            "{link}: parallel -2LL must be finite"
+        );
+        assert!(
+            test.minus2_log_likelihood_non_parallel.is_finite(),
+            "{link}: general -2LL must be finite"
+        );
+        assert!(
+            test.chi_square.is_finite(),
+            "{link}: chi-square must be finite"
+        );
+        assert_eq!(test.df, 1.0, "{link}: df must be (J - 2) * p");
+        assert!(
+            test.sig.is_some(),
+            "{link}: sig must be available for df > 0"
         );
     }
 }

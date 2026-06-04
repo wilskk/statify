@@ -33,7 +33,11 @@ export const createSection = (
 export const safeFixed = (val: number | undefined | null, digits = 3): string => {
   if (val === undefined || val === null || isNaN(val)) return ".";
   if (Math.abs(val) < 1e-9) return (0).toFixed(digits);
-  return val.toFixed(digits);
+  const factor = 10 ** digits;
+  const roundedMagnitude =
+    Math.round((Math.abs(val) + Number.EPSILON) * factor) / factor;
+  const rounded = val < 0 ? -roundedMagnitude : roundedMagnitude;
+  return rounded.toFixed(digits);
 };
 
 export const fmtSig = (num: number | undefined | null): string => {
