@@ -95,19 +95,16 @@ function inverseLink(eta, linkFunction) {
   const normalizedLink = String(linkFunction || "Logit").toLowerCase().replace(/[_\s]+/g, "-");
   switch (normalizedLink) {
     case "probit":
-    case "Probit":
       return normalCdf(eta);
+    case "cloglog":
     case "complementary-log-log":
-    case "Complementary Log-Log":
       return 1 - safeExp(-safeExp(eta));
+    case "nloglog":
     case "negative-log-log":
-    case "Negative Log-Log":
       return safeExp(-safeExp(-eta));
     case "cauchit":
-    case "Cauchit":
       return 0.5 + Math.atan(eta) / Math.PI;
     case "logit":
-    case "Logit":
     default: {
       if (eta >= 0) {
         return 1 / (1 + safeExp(-eta));
@@ -676,6 +673,95 @@ function normalizeParameterEstimate(row, index) {
   };
 }
 
+function pickNumber(...values) {
+  for (const value of values) {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) return numeric;
+  }
+  return null;
+}
+
+function normalizeModelSummaryRow(row) {
+  if (!row || typeof row !== "object") return null;
+  return {
+    ...row,
+    minus2LogLikelihood: pickNumber(row.minus2LogLikelihood, row.minus2_log_likelihood),
+    logLikelihood: pickNumber(row.logLikelihood, row.log_likelihood),
+    converged: Boolean(row.converged),
+    iterations: pickNumber(row.iterations),
+    method: row.method,
+  };
+}
+
+function normalizeInterceptOnlyRow(row) {
+  if (!row || typeof row !== "object") return null;
+  return {
+    ...row,
+    minus2LogLikelihood: pickNumber(row.minus2LogLikelihood, row.minus2_log_likelihood),
+    logLikelihood: pickNumber(row.logLikelihood, row.log_likelihood),
+  };
+}
+
+function normalizeFitStat(row) {
+  if (!row || typeof row !== "object") return null;
+  return {
+    ...row,
+    chiSquare: pickNumber(row.chiSquare, row.chi_square),
+    df: pickNumber(row.df),
+    sig: pickNumber(row.sig),
+  };
+}
+
+function normalizePseudoRSquare(row) {
+  if (!row || typeof row !== "object") return null;
+  return {
+    ...row,
+    coxSnell: pickNumber(row.coxSnell, row.cox_snell),
+    nagelkerke: pickNumber(row.nagelkerke),
+    mcfadden: pickNumber(row.mcfadden),
+  };
+}
+
+function normalizeSummaryStatistics(summary) {
+  if (!summary || typeof summary !== "object") return null;
+  return {
+    ...summary,
+    model: normalizeModelSummaryRow(summary.model),
+    interceptOnly: normalizeInterceptOnlyRow(summary.interceptOnly || summary.intercept_only),
+    modelChiSquare: normalizeFitStat(summary.modelChiSquare || summary.model_chi_square),
+    pseudoRSquare: normalizePseudoRSquare(summary.pseudoRSquare || summary.pseudo_r_square),
+  };
+}
+
+function normalizeGoodnessOfFit(gof) {
+  if (!gof || typeof gof !== "object") return null;
+  return {
+    ...gof,
+    pearson: normalizeFitStat(gof.pearson),
+    deviance: normalizeFitStat(gof.deviance),
+  };
+}
+
+function normalizeParallelLinesTest(test) {
+  if (!test || typeof test !== "object") return null;
+  return {
+    ...test,
+    minus2LogLikelihoodParallel: pickNumber(
+      test.minus2LogLikelihoodParallel,
+      test.minus2_log_likelihood_parallel
+    ),
+    minus2LogLikelihoodNonParallel: pickNumber(
+      test.minus2LogLikelihoodNonParallel,
+      test.minus2_log_likelihood_non_parallel
+    ),
+    chiSquare: pickNumber(test.chiSquare, test.chi_square),
+    df: pickNumber(test.df),
+    sig: pickNumber(test.sig),
+    converged: Boolean(test.converged),
+  };
+}
+
 function normalizeWasmResult(result, mainPayload) {
   const base = result && typeof result === "object" ? result : {};
   const rawParameterEstimates = Array.isArray(base.parameterEstimates)
@@ -737,6 +823,13 @@ function normalizeWasmResult(result, mainPayload) {
   const iterationHistoryMeta = base.iterationHistoryMeta
     || base.iteration_history_meta
     || null;
+  const summaryStatistics = normalizeSummaryStatistics(
+    base.summaryStatistics || base.summary_statistics
+  );
+  const goodnessOfFit = normalizeGoodnessOfFit(base.goodnessOfFit || base.goodness_of_fit);
+  const testOfParallelLines = normalizeParallelLinesTest(
+    base.testOfParallelLines || base.test_of_parallel_lines
+  );
 
   return {
     ...base,
@@ -753,6 +846,12 @@ function normalizeWasmResult(result, mainPayload) {
     thresholdEstimates,
     locationParameterEstimates,
     scaleParameterEstimates,
+    summaryStatistics,
+    goodnessOfFit,
+    testOfParallelLines,
+    estimationOptions: mainPayload?.estimationOptions || {},
+    outputOptions: mainPayload?.outputOptions || {},
+    savedVariableOptions: mainPayload?.savedVariables || {},
     iterationHistory: Array.isArray(base.iterationHistory) ? base.iterationHistory : (base.iteration_history || []),
     iterationHistoryMeta,
     warnings: Array.isArray(base.warnings) ? base.warnings : [],

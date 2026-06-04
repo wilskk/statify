@@ -2,7 +2,8 @@ import { createSection, safeFixed, fmtSig } from "./formatter_utils";
 import { AnalysisSection } from "../types/ordinal";
 
 export const formatParameterEstimates = (
-  payload: any[]
+  payload: any[],
+  options?: { linkFunctionNote?: string }
 ): { sections: AnalysisSection[] } => {
   const sections: AnalysisSection[] = [];
 
@@ -52,6 +53,10 @@ export const formatParameterEstimates = (
   const hasRedundant = payload.some((r: any) =>
     Boolean(r.isRedundant ?? r.is_redundant ?? (r.degreesOfFreedom === 0 || r.df === 0))
   );
+  const notes = [
+    options?.linkFunctionNote,
+    hasRedundant ? "0a. This parameter is set to zero because it is redundant." : undefined,
+  ].filter(Boolean);
 
   sections.push(
     createSection(
@@ -60,7 +65,7 @@ export const formatParameterEstimates = (
       data,
       {
         description: "Estimasi parameter model PLUM",
-        note: hasRedundant ? "0a. This parameter is set to zero because it is redundant." : undefined,
+        note: notes.length > 0 ? notes.join("\n") : undefined,
       }
     )
   );

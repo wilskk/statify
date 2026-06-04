@@ -143,4 +143,125 @@ describe("formatOrdinalResult", () => {
     expect(iterHistory?.data.rows[1].neg2ll).toBe("123.457");
     expect(iterHistory?.data.rows[1].maxAbsGradient).toBe("0.010");
   });
+
+  it("should render saved variables and parameter estimates when both are requested", () => {
+    const formatted = formatOrdinalResult({
+      outputOptions: { parameterEstimates: true },
+      savedVariableOptions: { predictedResponseCategory: true },
+      savedVariables: {
+        columns: [
+          { name: "PRE_1", label: "Predicted Response Category" },
+          { name: "PCP_1", label: "Estimated Classification Probability" },
+        ],
+      },
+      parameterEstimates: [
+        { group: "Threshold", variable: "[y = 1]", estimate: -1.2 },
+      ],
+    });
+
+    const saved = formatted.sections.find(s => s.id === "ordinal_saved_variables");
+    const params = formatted.sections.find(s => s.id === "ordinal_parameter_estimates");
+
+    expect(saved).toBeDefined();
+    expect(saved?.data.rows).toHaveLength(2);
+    expect(saved?.data.rows[0].status).toBe("Berhasil disimpan");
+    expect(params).toBeDefined();
+  });
+
+  it("should render only saved variables when parameter estimates are not requested", () => {
+    const formatted = formatOrdinalResult({
+      outputOptions: { parameterEstimates: false },
+      savedVariableOptions: { predictedResponseCategory: true },
+      savedVariables: {
+        columns: [
+          { name: "PRE_1", label: "Predicted Response Category" },
+        ],
+      },
+      parameterEstimates: [
+        { group: "Threshold", variable: "[y = 1]", estimate: -1.2 },
+      ],
+    });
+
+    expect(formatted.sections.find(s => s.id === "ordinal_saved_variables")).toBeDefined();
+    expect(formatted.sections.find(s => s.id === "ordinal_parameter_estimates")).toBeUndefined();
+  });
+
+  it("should render parameter estimates when requested without saved variables", () => {
+    const formatted = formatOrdinalResult({
+      outputOptions: { parameterEstimates: true },
+      savedVariableOptions: { predictedResponseCategory: false },
+      parameterEstimates: [
+        { group: "Threshold", variable: "[y = 1]", estimate: -1.2 },
+      ],
+    });
+
+    expect(formatted.sections.find(s => s.id === "ordinal_saved_variables")).toBeUndefined();
+    expect(formatted.sections.find(s => s.id === "ordinal_parameter_estimates")).toBeDefined();
+  });
+
+  it("should add selected link function notes to core ordinal tables", () => {
+    const formatted = formatOrdinalResult({
+      estimationOptions: { linkFunction: "Probit" },
+      outputOptions: {
+        goodnessOfFit: true,
+        summaryStatistics: true,
+        parameterEstimates: true,
+      },
+      summaryStatistics: {
+        model: { minus2LogLikelihood: 12, logLikelihood: -6, converged: true, iterations: 1 },
+        interceptOnly: { minus2LogLikelihood: 18, logLikelihood: -9 },
+        modelChiSquare: { chiSquare: 6, df: 1, sig: 0.01 },
+        pseudoRSquare: { coxSnell: 0.1, nagelkerke: 0.2, mcfadden: 0.3 },
+      },
+      goodnessOfFit: {
+        pearson: { chiSquare: 1, df: 2, sig: 0.5 },
+        deviance: { chiSquare: 1.5, df: 2, sig: 0.4 },
+      },
+      parameterEstimates: [
+        { group: "Threshold", variable: "[y = 1]", estimate: -1.2 },
+      ],
+    });
+
+    expect(formatted.sections.find(s => s.id === "ordinal_model_fitting_information")?.note).toBe("Link function: Probit.");
+    expect(formatted.sections.find(s => s.id === "ordinal_goodness_of_fit")?.note).toBe("Link function: Probit.");
+    expect(formatted.sections.find(s => s.id === "ordinal_pseudo_r_square")?.note).toBe("Link function: Probit.");
+    expect(formatted.sections.find(s => s.id === "ordinal_parameter_estimates")?.note).toBe("Link function: Probit.");
+  });
+
+  it("should not render display sections when their output options are false", () => {
+    const formatted = formatOrdinalResult({
+      outputOptions: {
+        goodnessOfFit: false,
+        summaryStatistics: false,
+        parameterEstimates: false,
+        testOfParallelLines: false,
+        iterationHistory: false,
+      },
+      summaryStatistics: {
+        model: { minus2LogLikelihood: 12, logLikelihood: -6, converged: true, iterations: 1 },
+        interceptOnly: { minus2LogLikelihood: 18, logLikelihood: -9 },
+        modelChiSquare: { chiSquare: 6, df: 1, sig: 0.01 },
+        pseudoRSquare: { coxSnell: 0.1, nagelkerke: 0.2, mcfadden: 0.3 },
+      },
+      goodnessOfFit: {
+        pearson: { chiSquare: 1, df: 2, sig: 0.5 },
+        deviance: { chiSquare: 1.5, df: 2, sig: 0.4 },
+      },
+      parameterEstimates: [
+        { group: "Threshold", variable: "[y = 1]", estimate: -1.2 },
+      ],
+      testOfParallelLines: {
+        minus2LogLikelihoodParallel: 12,
+        minus2LogLikelihoodNonParallel: 10,
+        chiSquare: 2,
+        df: 1,
+        sig: 0.15,
+      },
+      iterationHistory: [
+        { iteration: 1, minus2LogLikelihood: 12, threshold: [], location: [], scale: [] },
+      ],
+    });
+
+    expect(formatted.sections).toEqual([]);
+  });
 });

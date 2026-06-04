@@ -102,3 +102,45 @@ fn location_only_fit_converges() {
     let output = build_plum_output(&input, &data, &spec, &fit).expect("output");
     assert!(!output.parameter_estimates.is_empty());
 }
+
+#[test]
+fn displayed_minus2_log_likelihood_is_consistent_for_all_links() {
+    let links = [
+        "Logit",
+        "Probit",
+        "Complementary Log-Log",
+        "Negative Log-Log",
+        "Cauchit",
+    ];
+
+    for link in links {
+        let mut input = build_input();
+        input.estimation_options.link_function = link.to_string();
+        input.output_options = json!({
+            "summaryStatistics": true,
+            "printLogLikelihood": "Including"
+        });
+
+        let data = aggregate_data(&input).expect("data");
+        let spec = PlumSpec::from_input(&input).expect("spec");
+        let options = EstimationOptions::from_payload(Some(&input.estimation_options));
+        let history_options = IterationHistoryOptions::disabled();
+        let fit = fit_plum(&data, &spec, &options, &history_options).expect("fit");
+        let output = build_plum_output(&input, &data, &spec, &fit).expect("output");
+
+        assert!(
+            (output.minus2_log_likelihood - (-2.0 * output.log_likelihood)).abs() < 1e-9,
+            "{link}: top-level -2LL must be computed from displayed log-likelihood"
+        );
+        assert!(
+            (output.minus2_log_likelihood_displayed - output.minus2_log_likelihood).abs() < 1e-9,
+            "{link}: displayed -2LL must match top-level -2LL"
+        );
+
+        let summary = output.summary_statistics.expect("summary");
+        assert!(
+            (summary.model.minus2_log_likelihood - output.minus2_log_likelihood).abs() < 1e-9,
+            "{link}: model fitting table must use the same displayed -2LL"
+        );
+    }
+}

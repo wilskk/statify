@@ -120,9 +120,66 @@ export const formatOrdinalResult = (result: any) => {
   const allSections: AnalysisSection[] = [];
 
   if (!result) return { sections: allSections };
+  const outputOptions = result.outputOptions || result.output_options || {};
+  const estimationOptions = result.estimationOptions || result.estimation_options || {};
+  const readOutputFlag = (camelKey: string, snakeKey: string, defaultValue = true) =>
+    outputOptions[camelKey] ?? outputOptions[snakeKey] ?? defaultValue;
+  const normalizeLinkFunctionLabel = (value: any) => {
+    const raw = String(value || "Logit").trim();
+    const normalized = raw.toLowerCase().replace(/[_\s]+/g, "-");
+    switch (normalized) {
+      case "probit":
+        return "Probit";
+      case "cloglog":
+      case "complementary-log-log":
+        return "Complementary Log-Log";
+      case "nloglog":
+      case "negative-log-log":
+        return "Negative Log-Log";
+      case "cauchit":
+        return "Cauchit";
+      case "logit":
+      default:
+        return "Logit";
+    }
+  };
+  const linkFunctionLabel = normalizeLinkFunctionLabel(
+    estimationOptions.linkFunction
+    ?? estimationOptions.link_function
+    ?? result.iterationHistoryMeta?.linkFunction
+    ?? result.iteration_history_meta?.link_function
+  );
+  const linkFunctionNote = `Link function: ${linkFunctionLabel}.`;
+  const wantGoodnessOfFit = Boolean(readOutputFlag("goodnessOfFit", "goodness_of_fit"));
+  const wantSummaryStatistics = Boolean(readOutputFlag("summaryStatistics", "summary_statistics"));
+  const savedVariableOptions = result.savedVariableOptions
+    || result.saved_variable_options
+    || result.savedVariables?.options
+    || result.saved_variables?.options
+    || {};
+  const wantParameterEstimates = Boolean(readOutputFlag("parameterEstimates", "parameter_estimates"));
+  const wantTestOfParallelLines = Boolean(readOutputFlag("testOfParallelLines", "test_of_parallel_lines"));
+  const wantIterationHistory = Boolean(
+    readOutputFlag("printIterationHistory", "print_iteration_history", false)
+    || readOutputFlag("iterationHistory", "iteration_history", true)
+  );
+  const savedVariableColumns = Array.isArray(result.savedVariables?.columns)
+    ? result.savedVariables.columns.filter((column: any) => column?.name)
+    : [];
+  const hasSavedVariableResult = savedVariableColumns.length > 0;
+  const hasSavedVariableRequest = hasSavedVariableResult || [
+    savedVariableOptions.predictedResponseCategory,
+    savedVariableOptions.estimatedResponseProbabilities,
+    savedVariableOptions.predictedCategoryProbability,
+    savedVariableOptions.actualCategoryProbability,
+    outputOptions.predictedResponseCategory,
+    outputOptions.estimatedResponseProbabilities,
+    outputOptions.predictedCategoryProbability,
+    outputOptions.actualCategoryProbability,
+  ].some(Boolean);
 
   // 0. Case Processing Summary
-  if (result.summaryStatistics && result.metadata?.caseProcessingSummary) {
+  if (wantSummaryStatistics && result.summaryStatistics && result.metadata?.caseProcessingSummary) {
     const summary = result.metadata.caseProcessingSummary;
     const total = Number(summary.totalN ?? 0);
     const valid = Number(summary.validN ?? 0);
@@ -174,7 +231,7 @@ export const formatOrdinalResult = (result: any) => {
   }
 
   // 1. Model Fitting Information
-  if (result.summaryStatistics) {
+  if (wantSummaryStatistics && result.summaryStatistics) {
     const sumStats = result.summaryStatistics;
     const model = sumStats.model;
     const interceptOnly = sumStats.interceptOnly;
@@ -213,7 +270,7 @@ export const formatOrdinalResult = (result: any) => {
           { columnHeaders, rows },
           {
             description: "Uji signifikansi model secara keseluruhan (perbandingan model dengan konstanta saja vs model lengkap)",
-            note: "Link function: Logit.",
+            note: linkFunctionNote,
           }
         )
       );
@@ -221,7 +278,7 @@ export const formatOrdinalResult = (result: any) => {
   }
 
   // 2. Goodness-of-Fit
-  if (result.goodnessOfFit) {
+  if (wantGoodnessOfFit && result.goodnessOfFit) {
     const gof = result.goodnessOfFit;
     const pearson = gof.pearson;
     const deviance = gof.deviance;
@@ -256,6 +313,7 @@ export const formatOrdinalResult = (result: any) => {
           { columnHeaders, rows },
           {
             description: "Uji Goodness-of-Fit Pearson dan Deviance (menguji kecocokan model, null hypothesis: model cocok dengan data)",
+            note: linkFunctionNote,
           }
         )
       );
@@ -263,7 +321,7 @@ export const formatOrdinalResult = (result: any) => {
   }
 
   // 3. Pseudo R-Square
-  if (result.summaryStatistics && result.summaryStatistics.pseudoRSquare) {
+  if (wantSummaryStatistics && result.summaryStatistics && result.summaryStatistics.pseudoRSquare) {
     const pseudo = result.summaryStatistics.pseudoRSquare;
     const columnHeaders = [
       { header: "Pseudo R-Square", key: "rh1" },
@@ -292,15 +350,47 @@ export const formatOrdinalResult = (result: any) => {
         { columnHeaders, rows },
         {
           description: "Koefisien Pseudo R-Square (mengukur proporsi variansi dependen yang dapat dijelaskan oleh model)",
+          note: linkFunctionNote,
         }
       )
     );
   }
 
-  // 4. Parameter Estimates
+  // 4. Saved Variables
+  if (hasSavedVariableRequest && hasSavedVariableResult) {
+    const rows = savedVariableColumns.map((column: any) => {
+      const columnName = String(column.name);
+      return {
+        rowHeader: [columnName],
+        variable: columnName,
+        label: column.label ? String(column.label) : ".",
+        status: "Berhasil disimpan",
+      };
+    });
+
+    allSections.push(
+      createSection(
+        "ordinal_saved_variables",
+        "Saved Variables",
+        {
+          columnHeaders: [
+            { header: "Variable", key: "variable" },
+            { header: "Label", key: "label" },
+            { header: "Status", key: "status" },
+          ],
+          rows,
+        },
+        {
+          description: "Status penyimpanan saved variables.",
+        }
+      )
+    );
+  }
+
+  // 5. Parameter Estimates
   const estimates = result.parameterEstimates || result.parameter_estimates;
-  if (estimates && Array.isArray(estimates) && estimates.length > 0) {
-    const param = formatParameterEstimates(estimates);
+  if (wantParameterEstimates && estimates && Array.isArray(estimates) && estimates.length > 0) {
+    const param = formatParameterEstimates(estimates, { linkFunctionNote });
     if (param.sections) {
       allSections.push(...param.sections);
     }
@@ -311,8 +401,8 @@ export const formatOrdinalResult = (result: any) => {
     });
   }
 
-  // 5. Test of Parallel Lines
-  if (result.testOfParallelLines) {
+  // 6. Test of Parallel Lines
+  if (wantTestOfParallelLines && result.testOfParallelLines) {
     const parallelTest = result.testOfParallelLines;
     const columnHeaders = [
       { header: "Model", key: "rh1" },
@@ -351,13 +441,13 @@ export const formatOrdinalResult = (result: any) => {
     );
   }
 
-  // 6. Iteration History
+  // 7. Iteration History
   const iterationHistory = Array.isArray(result.iterationHistory)
     ? result.iterationHistory
     : (Array.isArray(result.iteration_history) ? result.iteration_history : []);
   const iterationHistoryMeta = result.iterationHistoryMeta || result.iteration_history_meta || null;
 
-  if (iterationHistory.length > 0) {
+  if (wantIterationHistory && iterationHistory.length > 0) {
     const thresholdNames = Array.isArray(iterationHistoryMeta?.thresholdNames)
       ? iterationHistoryMeta.thresholdNames
       : [];
@@ -420,7 +510,7 @@ export const formatOrdinalResult = (result: any) => {
       return formatted;
     });
 
-    const linkFunction = iterationHistoryMeta?.linkFunction || "Logit";
+    const linkFunction = iterationHistoryMeta?.linkFunction || linkFunctionLabel;
     const lastChangeNeg2ll = safeFixed(
       iterationHistoryMeta?.lastAbsChangeMinus2LogLikelihood,
       3
@@ -430,7 +520,7 @@ export const formatOrdinalResult = (result: any) => {
       6
     );
     const converged = Boolean(iterationHistoryMeta?.converged ?? result.converged);
-    const note = `a. Link function: ${linkFunction}.\n`
+    const note = `a. Link function: ${normalizeLinkFunctionLabel(linkFunction)}.\n`
       + `b. The parameter estimates ${converged ? "converged" : "did not converge"}. `
       + `Last absolute change in -2 Log Likelihood is ${lastChangeNeg2ll}, and last maximum absolute change in parameters is ${lastChangeParams}.`;
 

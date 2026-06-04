@@ -76,7 +76,8 @@ const OrdinalMain: React.FC = () => {
       parameterEstimates: true,
       asymptoticCorrelation: false,
       cellInformation: false,
-      testOfParallelLines: true,
+      testOfParallelLines: false,
+      multicolinearity: false,
       iterationHistory: false,
       iterationHistoryStep: 1,
       printIterationHistory: false,
@@ -772,6 +773,8 @@ const OrdinalMain: React.FC = () => {
             validateWorkerResult(payload);
             console.log("[ORDINAL][MAIN][WORKER_NORMALIZED_RESULT]", payload);
 
+            await addSavedVariableColumns(payload.savedVariables);
+
             const formattedResult = formatOrdinalResult(payload);
             if (!formattedResult || !Array.isArray(formattedResult.sections)) {
               throw new Error("Formatter result is invalid or missing sections.");
@@ -807,8 +810,6 @@ const OrdinalMain: React.FC = () => {
                 components: section.title,
               });
             }
-
-            await addSavedVariableColumns(payload.savedVariables);
 
             worker.terminate();
             setIsLoading(false);

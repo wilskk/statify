@@ -47,6 +47,7 @@ export interface OrdinalOutputParams {
     asymptoticCorrelation: boolean;
     cellInformation: boolean;
     testOfParallelLines: boolean;
+    multicolinearity: boolean;
     iterationHistory: boolean;
     iterationHistoryStep: number;
     printIterationHistory: boolean;
