@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
+use serde_json::json;
 use statify_ordinal::{
     validate_input, PlumEstimationOptions, PlumLocationModel, PlumMetadata, PlumPredictor,
     PlumResponse, PlumScaleModel, PlumWorkerPayload,
 };
-use serde_json::json;
 
 fn base_input() -> PlumWorkerPayload {
     let response_vector = vec![1.0];
@@ -58,6 +58,9 @@ fn base_input() -> PlumWorkerPayload {
             zero_cell_adjustment: 0.0,
         },
         output_options: serde_json::Value::Null,
+        saved_variables: None,
+        row_index_map: Vec::new(),
+        existing_column_names: Vec::new(),
         metadata: PlumMetadata {
             model_type: "location_only".to_string(),
             total_rows: response_vector.len(),

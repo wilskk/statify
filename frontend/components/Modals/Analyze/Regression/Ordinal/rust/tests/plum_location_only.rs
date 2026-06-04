@@ -4,7 +4,8 @@ use serde_json::json;
 use statify_ordinal::{
     aggregate_data, build_plum_output, fit_plum, multinomial_log_likelihood_constant,
     EstimationOptions, IterationHistoryOptions, PlumEstimationOptions, PlumLocationModel,
-    PlumMetadata, PlumPredictor, PlumResponse, PlumScaleModel, PlumSpec, PlumWorkerPayload,
+    PlumMetadata, PlumPredictor, PlumResponse, PlumSavedVariableOptions, PlumScaleModel, PlumSpec,
+    PlumWorkerPayload,
 };
 
 fn build_input() -> PlumWorkerPayload {
@@ -69,6 +70,9 @@ fn build_input() -> PlumWorkerPayload {
             zero_cell_adjustment: 0.0,
         },
         output_options: serde_json::Value::Null,
+        saved_variables: None,
+        row_index_map: Vec::new(),
+        existing_column_names: Vec::new(),
         metadata: PlumMetadata {
             model_type: "location_only".to_string(),
             total_rows: response_vector.len(),
@@ -210,4 +214,38 @@ fn parallel_lines_test_is_computed_for_all_links_when_requested() {
             "{link}: sig must be available for df > 0"
         );
     }
+}
+
+#[test]
+fn saved_variables_are_computed_by_rust_output() {
+    let mut input = build_input();
+    input.saved_variables = Some(PlumSavedVariableOptions {
+        predicted_response_category: Some(true),
+        estimated_response_probabilities: Some(true),
+        predicted_category_probability: Some(true),
+        actual_category_probability: Some(true),
+        ..Default::default()
+    });
+    input.row_index_map = (0..input.response.response_vector.len()).collect();
+
+    let data = aggregate_data(&input).expect("data");
+    let spec = PlumSpec::from_input(&input).expect("spec");
+    let options = EstimationOptions::from_payload(Some(&input.estimation_options));
+    let history_options = IterationHistoryOptions::disabled();
+    let fit = fit_plum(&data, &spec, &options, &history_options).expect("fit");
+    let output = build_plum_output(&input, &data, &spec, &fit).expect("output");
+    let saved = output.saved_variables.expect("saved variables");
+
+    assert_eq!(saved.batch_suffix, 1);
+    assert_eq!(saved.columns.len(), 6);
+    assert!(saved.columns.iter().any(|column| column.name == "PRE_1"));
+    assert!(saved.columns.iter().any(|column| column.name == "EST1_1"));
+    assert!(saved.columns.iter().any(|column| column.name == "EST2_1"));
+    assert!(saved.columns.iter().any(|column| column.name == "EST3_1"));
+    assert!(saved.columns.iter().any(|column| column.name == "PCP_1"));
+    assert!(saved.columns.iter().any(|column| column.name == "ACP_1"));
+    assert!(saved
+        .columns
+        .iter()
+        .all(|column| column.values.len() == input.metadata.total_rows));
 }

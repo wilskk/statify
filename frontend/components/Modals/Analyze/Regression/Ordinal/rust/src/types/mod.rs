@@ -27,6 +27,12 @@ pub struct PlumWorkerPayload {
     pub estimation_options: PlumEstimationOptions,
     #[serde(rename = "outputOptions")]
     pub output_options: serde_json::Value,
+    #[serde(rename = "savedVariables", default)]
+    pub saved_variables: Option<PlumSavedVariableOptions>,
+    #[serde(rename = "rowIndexMap", default)]
+    pub row_index_map: Vec<usize>,
+    #[serde(rename = "existingColumnNames", default)]
+    pub existing_column_names: Vec<String>,
     pub metadata: PlumMetadata,
 }
 
@@ -163,6 +169,17 @@ pub struct PlumOutputOptions {
     pub predicted_probability: Option<bool>,
     pub actual_probability: Option<bool>,
     pub print_log_likelihood: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PlumSavedVariableOptions {
+    pub predicted_response_category: Option<bool>,
+    pub predicted_category: Option<bool>,
+    pub estimated_response_probabilities: Option<bool>,
+    pub estimate_response_probability: Option<bool>,
+    pub predicted_category_probability: Option<bool>,
+    pub actual_category_probability: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -626,6 +643,24 @@ pub struct PredictedCategoryRow {
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SavedVariableColumn {
+    pub name: String,
+    pub label: String,
+    #[serde(rename = "type")]
+    pub column_type: String,
+    pub decimals: Option<usize>,
+    pub values: Vec<Option<serde_json::Value>>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SavedVariablesResult {
+    pub batch_suffix: usize,
+    pub columns: Vec<SavedVariableColumn>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PlumFitOutput {
     pub converged: bool,
     pub iterations: usize,
@@ -652,6 +687,7 @@ pub struct PlumFitOutput {
     pub predicted_category: Option<Vec<PredictedCategoryRow>>,
     pub predicted_probability: Option<Vec<ProbabilityRow>>,
     pub actual_probability: Option<Vec<ProbabilityRow>>,
+    pub saved_variables: Option<SavedVariablesResult>,
     pub covariance_matrix: Option<Vec<Vec<f64>>>,
     pub correlation_matrix: Option<Vec<Vec<f64>>>,
     pub errors: Vec<String>,

@@ -1,3 +1,4 @@
+use crate::model::{cell_probabilities, cumulative_probabilities};
 use crate::optimizer::fit_location_only;
 use crate::parallel::fit_non_parallel_location_only;
 use crate::statistics::{
@@ -8,7 +9,8 @@ use crate::statistics::{
 };
 use crate::types::{
     EstimationOptions, FitResult, IterationHistoryMeta, IterationHistoryOptions, ModelType,
-    PlumError, PlumFitOutput, PlumOutputMetadata, PlumOutputOptions, PlumSpec, PlumWorkerPayload,
+    PlumError, PlumFitOutput, PlumOutputMetadata, PlumOutputOptions, PlumSavedVariableOptions,
+    PlumSpec, PlumWorkerPayload, SavedVariableColumn, SavedVariablesResult, Subpopulation,
 };
 use crate::validation::validate_input;
 
@@ -262,6 +264,7 @@ pub fn build_plum_output(
     } else {
         None
     };
+    let saved_variables = build_saved_variables(input, spec, &fit_with_cov, &mut warnings);
 
     let test_of_parallel_lines = if want_parallel && spec.model_type == ModelType::LocationOnly {
         let options = EstimationOptions::from_payload(Some(&input.estimation_options));
@@ -344,6 +347,7 @@ pub fn build_plum_output(
         predicted_category,
         predicted_probability,
         actual_probability,
+        saved_variables,
         covariance_matrix: covariance.map(|m| matrix_to_vec(&m)),
         correlation_matrix: correlation.map(|m| matrix_to_vec(&m)),
         errors: Vec::new(),
@@ -368,4 +372,238 @@ fn matrix_to_vec(matrix: &nalgebra::DMatrix<f64>) -> Vec<Vec<f64>> {
         rows.push(row);
     }
     rows
+}
+
+fn build_saved_variables(
+    input: &PlumWorkerPayload,
+    spec: &PlumSpec,
+    fit: &FitResult,
+    warnings: &mut Vec<String>,
+) -> Option<SavedVariablesResult> {
+    let options = input.saved_variables.as_ref()?;
+    let flags = normalized_saved_variable_flags(options);
+    if !flags.any() {
+        return None;
+    }
+    if !fit.converged {
+        warnings.push("Model belum konvergen; saved variables tidak dibuat".to_string());
+        return None;
+    }
+
+    let total_rows = input.metadata.total_rows;
+    let valid_rows = input.response.response_vector.len();
+    if input.row_index_map.len() != valid_rows {
+        warnings.push("rowIndexMap tidak cocok; saved variables tidak dibuat".to_string());
+        return None;
+    }
+    if input.location_model.location_design_matrix.len() != valid_rows {
+        warnings.push("locationDesignMatrix tidak cocok; saved variables tidak dibuat".to_string());
+        return None;
+    }
+    if input.scale_model.enabled && input.scale_model.scale_design_matrix.len() != valid_rows {
+        warnings.push("scaleDesignMatrix tidak cocok; saved variables tidak dibuat".to_string());
+        return None;
+    }
+
+    let category_count = spec.category_count;
+    let batch_suffix = find_saved_variable_batch_suffix(&input.existing_column_names);
+    let predicted_type = if input
+        .dependent
+        .as_ref()
+        .and_then(|var| var.r#type.as_deref())
+        .map(|kind| kind.eq_ignore_ascii_case("STRING"))
+        .unwrap_or(false)
+        || input
+            .response
+            .response_categories
+            .iter()
+            .any(|category| category.is_string())
+    {
+        "string"
+    } else {
+        "numeric"
+    };
+
+    let mut predicted_values = vec![None; total_rows];
+    let mut estimated_values = vec![vec![None; total_rows]; category_count];
+    let mut predicted_probability_values = vec![None; total_rows];
+    let mut actual_probability_values = vec![None; total_rows];
+
+    for row_idx in 0..valid_rows {
+        let Some(&original_row_idx) = input.row_index_map.get(row_idx) else {
+            continue;
+        };
+        if original_row_idx >= total_rows {
+            continue;
+        }
+
+        let x = input.location_model.location_design_matrix[row_idx].clone();
+        let z = if input.scale_model.enabled {
+            input.scale_model.scale_design_matrix[row_idx].clone()
+        } else {
+            Vec::new()
+        };
+        let subpop = Subpopulation {
+            x,
+            z,
+            counts: vec![0.0; category_count],
+            cumulative_counts: Vec::new(),
+            marginal_count: 0.0,
+        };
+        let cumulative = cumulative_probabilities(&fit.params, &subpop, spec);
+        let probs = cell_probabilities(&cumulative);
+        if probs.len() != category_count {
+            continue;
+        }
+
+        let mut predicted_idx = 0;
+        let mut predicted_prob = probs[0];
+        for (idx, prob) in probs.iter().enumerate().skip(1) {
+            if *prob > predicted_prob {
+                predicted_prob = *prob;
+                predicted_idx = idx;
+            }
+        }
+
+        let actual_prob = crate::data::encode_category(
+            input.response.response_vector[row_idx],
+            &spec.ordered_categories,
+        )
+        .ok()
+        .and_then(|idx| probs.get(idx).copied());
+
+        predicted_values[original_row_idx] = input
+            .response
+            .response_categories
+            .get(predicted_idx)
+            .cloned();
+        for category_idx in 0..category_count {
+            estimated_values[category_idx][original_row_idx] =
+                Some(serde_json::Value::from(probs[category_idx]));
+        }
+        predicted_probability_values[original_row_idx] =
+            Some(serde_json::Value::from(predicted_prob));
+        actual_probability_values[original_row_idx] = actual_prob.map(serde_json::Value::from);
+    }
+
+    let mut columns = Vec::new();
+    if flags.predicted_response_category {
+        columns.push(SavedVariableColumn {
+            name: format!("PRE_{batch_suffix}"),
+            label: "Predicted Response Category".to_string(),
+            column_type: predicted_type.to_string(),
+            decimals: None,
+            values: predicted_values,
+        });
+    }
+    if flags.estimated_response_probabilities {
+        for category_idx in 0..category_count {
+            columns.push(SavedVariableColumn {
+                name: format!("EST{}_{}", category_idx + 1, batch_suffix),
+                label: format!(
+                    "Estimated Cell Probability for Response Category: {}",
+                    input
+                        .response
+                        .response_categories
+                        .get(category_idx)
+                        .map(value_to_label)
+                        .unwrap_or_else(|| spec.category_label(category_idx))
+                ),
+                column_type: "numeric".to_string(),
+                decimals: Some(6),
+                values: estimated_values[category_idx].clone(),
+            });
+        }
+    }
+    if flags.predicted_category_probability {
+        columns.push(SavedVariableColumn {
+            name: format!("PCP_{batch_suffix}"),
+            label: "Estimated Classification Probability for the Predicted Category".to_string(),
+            column_type: "numeric".to_string(),
+            decimals: Some(6),
+            values: predicted_probability_values,
+        });
+    }
+    if flags.actual_category_probability {
+        columns.push(SavedVariableColumn {
+            name: format!("ACP_{batch_suffix}"),
+            label: "Estimated Classification Probability for the Actual Category".to_string(),
+            column_type: "numeric".to_string(),
+            decimals: Some(6),
+            values: actual_probability_values,
+        });
+    }
+
+    Some(SavedVariablesResult {
+        batch_suffix,
+        columns,
+    })
+}
+
+#[derive(Default)]
+struct SavedVariableFlags {
+    predicted_response_category: bool,
+    estimated_response_probabilities: bool,
+    predicted_category_probability: bool,
+    actual_category_probability: bool,
+}
+
+impl SavedVariableFlags {
+    fn any(&self) -> bool {
+        self.predicted_response_category
+            || self.estimated_response_probabilities
+            || self.predicted_category_probability
+            || self.actual_category_probability
+    }
+}
+
+fn normalized_saved_variable_flags(options: &PlumSavedVariableOptions) -> SavedVariableFlags {
+    SavedVariableFlags {
+        predicted_response_category: options
+            .predicted_response_category
+            .or(options.predicted_category)
+            .unwrap_or(false),
+        estimated_response_probabilities: options
+            .estimated_response_probabilities
+            .or(options.estimate_response_probability)
+            .unwrap_or(false),
+        predicted_category_probability: options.predicted_category_probability.unwrap_or(false),
+        actual_category_probability: options.actual_category_probability.unwrap_or(false),
+    }
+}
+
+fn find_saved_variable_batch_suffix(existing_column_names: &[String]) -> usize {
+    let existing = existing_column_names
+        .iter()
+        .map(|name| name.to_uppercase())
+        .collect::<Vec<_>>();
+    let mut suffix = 1;
+    while saved_variable_suffix_exists(&existing, suffix) {
+        suffix += 1;
+    }
+    suffix
+}
+
+fn saved_variable_suffix_exists(existing: &[String], suffix: usize) -> bool {
+    let suffix_text = suffix.to_string();
+    existing.iter().any(|name| {
+        name == &format!("PRE_{suffix}")
+            || name == &format!("PCP_{suffix}")
+            || name == &format!("ACP_{suffix}")
+            || name
+                .strip_prefix("EST")
+                .and_then(|rest| rest.split_once('_'))
+                .map(|(_, candidate_suffix)| candidate_suffix == suffix_text)
+                .unwrap_or(false)
+    })
+}
+
+fn value_to_label(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::String(text) => text.clone(),
+        serde_json::Value::Number(number) => number.to_string(),
+        serde_json::Value::Bool(flag) => flag.to_string(),
+        serde_json::Value::Null => "null".to_string(),
+        other => other.to_string(),
+    }
 }
