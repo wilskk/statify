@@ -4,6 +4,7 @@ import type { DataRow } from "@/types/Data";
 import { toast } from "sonner";
 import { ChartService } from "@/services/chart/ChartService";
 import { useResultStore } from "@/stores/useResultStore";
+import { getTimeSeriesWorker } from "@/utils/timeseriesWorkerPool";
 
 export const useAnalyzeHook = (
     dependentVariable: Variable[],
@@ -77,10 +78,9 @@ export const useAnalyzeHook = (
                 ? qOrders 
                 : Array(independentVariables.length).fill(qOrders[0] || 1);
             
-            // Use Web Worker
-            const worker = new Worker("/workers/TimeSeries/worker.js", { type: "module" });
-            
-            worker.onmessage = async (e) => {
+            const client = getTimeSeriesWorker();
+
+            client.onMessage(async (e) => {
                 const { status, result, error } = e.data;
                 
                 if (status === "success") {
@@ -91,39 +91,168 @@ export const useAnalyzeHook = (
                     try {
                         const tables = [];
                         
-                        // Bounds Test Table
-                        if (result.boundsF) {
-                            tables.push({
-                                title: "Bounds Test F-Statistic (Pesaran et al.)",
-                                columnHeaders: [
-                                    { header: "Test Statistic", key: "stat" },
-                                    { header: "Value", key: "val" }
-                                ],
-                                rows: [
-                                    { stat: "F-Statistic", val: result.boundsF },
-                                    { stat: "Conclusion", val: parseFloat(result.boundsF) > 4.0 ? "Evidence of Cointegration" : "Inconclusive/No Cointegration" },
-                                    { stat: "R-Squared", val: result.rSquared }
-                                ]
+                        // 1. Long Run Equation
+                        const longRunRows = [];
+                        longRunRows.push({
+                            var: "C (Intercept)",
+                            coef: result.longRun.coefficients[0],
+                            se: result.longRun.stdErrors[0],
+                            tstat: result.longRun.tStats[0],
+                            prob: result.longRun.pValues[0]
+                        });
+                        for (let i = 0; i < independentVariables.length; i++) {
+                            longRunRows.push({
+                                var: independentVariables[i].name,
+                                coef: result.longRun.coefficients[i + 1],
+                                se: result.longRun.stdErrors[i + 1],
+                                tstat: result.longRun.tStats[i + 1],
+                                prob: result.longRun.pValues[i + 1]
                             });
+                        }
+                        tables.push({
+                            title: `Long Run Equation: ${yVar.name} ~ C + ${independentVariables.map(v => v.name).join(" + ")}`,
+                            columnHeaders: [
+                                { header: "Variable", key: "var" },
+                                { header: "Coefficient", key: "coef" },
+                                { header: "Std. Error", key: "se" },
+                                { header: "t-Statistic", key: "tstat" },
+                                { header: "Prob.", key: "prob" }
+                            ],
+                            rows: longRunRows,
+                            footer: `R-squared: ${result.longRun.rSquared} | Adjusted R-squared: ${result.longRun.adjRSquared} | F-statistic: ${result.longRun.fStat}`
+                        });
+
+                        // 2. Cointegration Test Table
+                        const isCointegrated = result.cointegration.isCointegrated;
+                        tables.push({
+                            title: "Cointegration Test (ADF on Residuals)",
+                            columnHeaders: [
+                                { header: "Statistic", key: "col" },
+                                { header: "Value", key: "val" }
+                            ],
+                            rows: [
+                                { col: "ADF Statistic", val: result.cointegration.statistic },
+                                { col: "p-value", val: result.cointegration.pValue },
+                                { col: "Result", val: isCointegrated ? "Cointegrated" : "Not Cointegrated" }
+                            ]
+                        });
+                        
+                        // 3. Short Run ARDL-ECM Table
+                        const srRows = [];
+                        let srVarIdx = 0;
+                        srRows.push({
+                            var: "C (Intercept)",
+                            coef: result.shortRun.coefficients[srVarIdx],
+                            se: result.shortRun.stdErrors[srVarIdx],
+                            tstat: result.shortRun.tStats[srVarIdx],
+                            prob: result.shortRun.pValues[srVarIdx]
+                        });
+                        srVarIdx++;
+                        
+                        srRows.push({
+                            var: "ECT(-1)",
+                            coef: result.shortRun.coefficients[srVarIdx],
+                            se: result.shortRun.stdErrors[srVarIdx],
+                            tstat: result.shortRun.tStats[srVarIdx],
+                            prob: result.shortRun.pValues[srVarIdx]
+                        });
+                        srVarIdx++;
+
+                        // Lags of D(Y)
+                        for (let i = 1; i <= pOrder; i++) {
+                            srRows.push({
+                                var: `D(${yVar.name}(-${i}))`,
+                                coef: result.shortRun.coefficients[srVarIdx],
+                                se: result.shortRun.stdErrors[srVarIdx],
+                                tstat: result.shortRun.tStats[srVarIdx],
+                                prob: result.shortRun.pValues[srVarIdx]
+                            });
+                            srVarIdx++;
                         }
 
-                        // Long Run Coefficients
-                        // result.longRun is an array of coefficients corresponding to X variables
-                        if (result.longRun && Array.isArray(result.longRun)) {
-                            const rows = result.longRun.map((val: string, index: number) => ({
-                                param: independentVariables[index]?.name || `Var ${index + 1}`,
-                                val: val
-                            }));
-                            
-                            tables.push({
-                                title: "Long Run Coefficients",
-                                columnHeaders: [
-                                     { header: "Variable", key: "param" },
-                                     { header: "Coefficient", key: "val" }
-                                ],
-                                rows: rows
-                            });
+                        // Lags of D(X)
+                        for (let k = 0; k < independentVariables.length; k++) {
+                            for (let j = 0; j <= qOrdersArray[k]; j++) {
+                                const lagSuffix = j === 0 ? "" : `(-${j})`;
+                                srRows.push({
+                                    var: `D(${independentVariables[k].name}${lagSuffix})`,
+                                    coef: result.shortRun.coefficients[srVarIdx],
+                                    se: result.shortRun.stdErrors[srVarIdx],
+                                    tstat: result.shortRun.tStats[srVarIdx],
+                                    prob: result.shortRun.pValues[srVarIdx]
+                                });
+                                srVarIdx++;
+                            }
                         }
+
+                        let srFormulaStr = `D(${yVar.name}) ~ C + ECT(-1)`;
+                        if (pOrder > 0) srFormulaStr += ` + D(${yVar.name}) lags`;
+                        srFormulaStr += ` + D(Xs) lags`;
+
+                        tables.push({
+                            title: `Short Run ARDL-ECM: ${srFormulaStr}`,
+                            columnHeaders: [
+                                { header: "Variable", key: "var" },
+                                { header: "Coefficient", key: "coef" },
+                                { header: "Std. Error", key: "se" },
+                                { header: "t-Statistic", key: "tstat" },
+                                { header: "Prob.", key: "prob" }
+                            ],
+                            rows: srRows,
+                            footer: `R-squared: ${result.shortRun.rSquared} | Adjusted R-squared: ${result.shortRun.adjRSquared} | F-statistic: ${result.shortRun.fStat}`
+                        });
+
+                        // 4. Classical Assumptions
+                        const diag = result.diagnostics;
+                        tables.push({
+                            title: "Classical Assumptions Tests (Short-Run Residuals)",
+                            columnHeaders: [
+                                { header: "Test", key: "test" },
+                                { header: "Statistic", key: "stat" },
+                                { header: "Prob.", key: "prob" },
+                                { header: "Conclusion", key: "conc" }
+                            ],
+                            rows: [
+                                { 
+                                    test: "Normality (Jarque-Bera)", 
+                                    stat: diag.jarqueBera.stat, 
+                                    prob: diag.jarqueBera.prob,
+                                    conc: parseFloat(diag.jarqueBera.prob) > 0.05 ? "Normal distribution" : "Not normal"
+                                },
+                                { 
+                                    test: "Autocorrelation (Breusch-Godfrey LM)", 
+                                    stat: diag.breuschGodfrey.stat, 
+                                    prob: diag.breuschGodfrey.prob,
+                                    conc: parseFloat(diag.breuschGodfrey.prob) > 0.05 ? "No Autocorrelation" : "Autocorrelation detected"
+                                },
+                                { 
+                                    test: "Heteroskedasticity (Breusch-Pagan)", 
+                                    stat: diag.breuschPagan.stat, 
+                                    prob: diag.breuschPagan.prob,
+                                    conc: parseFloat(diag.breuschPagan.prob) > 0.05 ? "Homoskedastic" : "Heteroskedastic"
+                                }
+                            ]
+                        });
+
+                        // 5. Interpretation
+                        const ectP = parseFloat(result.shortRun.pValues[1]);
+                        const ectC = parseFloat(result.shortRun.coefficients[1]);
+                        let ecmInterp = "The ECT(-1) coefficient is ";
+                        if (ectC < 0 && ectP < 0.05) {
+                            ecmInterp += "negative and statistically significant, indicating that there is a valid long-run equilibrium relationship and error correction occurs.";
+                        } else {
+                            ecmInterp += "NOT negative and significant, suggesting that short-run deviations do not reliably correct towards the long-run equilibrium.";
+                        }
+                        
+                        tables.push({
+                            title: "Automated Interpretation",
+                            columnHeaders: [{ header: "Insight", key: "insight" }],
+                            rows: [
+                                { insight: `The Cointegration Test (ADF) shows that the variables are ${isCointegrated ? 'cointegrated, implying a valid long-run relationship.' : 'NOT cointegrated (p > 0.05). Proceed with caution.'}` },
+                                { insight: ecmInterp },
+                                { insight: "Examine the Short Run ARDL-ECM table to interpret short-term dynamic effects." }
+                            ]
+                        });
 
                         const charts = [];
                         
@@ -158,33 +287,33 @@ export const useAnalyzeHook = (
 
                         setTimeout(() => {
                             onClose();
-                            worker.terminate();
+                            client.release();
                         }, 1500);
 
                     } catch (err) {
                         console.error("Processing Error", err);
                         setErrorMsg("Failed to process results.");
                     } finally {
-                        worker.terminate();
+                        client.release();
                         setIsCalculating(false);
                     }
-                    
+
                 } else {
                     setErrorMsg(error || "Unknown worker error");
                     toast.error(`Estimation Failed: ${error}`);
-                    worker.terminate();
+                    client.release();
                     setIsCalculating(false);
                 }
-            };
-            
-            worker.onerror = (err) => {
+            });
+
+            client.onError((err) => {
                 console.error("Worker connection error:", err);
                 setErrorMsg("Failed to connect to worker");
                 setIsCalculating(false);
-                worker.terminate();
-            };
-            
-            worker.postMessage({
+                client.release();
+            });
+
+            client.post({
                 type: "ARDL",
                 payload: {
                     y: yData,

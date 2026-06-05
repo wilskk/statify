@@ -24,7 +24,7 @@ pub fn wald_significance(wald_stat: f64) -> f64 {
 /// confidence_level should be between 0 and 1 (e.g., 0.95 for 95% CI)
 /// Returns the z-score for the upper tail (e.g., 1.96 for 95%)
 pub fn z_score_from_confidence(confidence_level: f64) -> f64 {
-    use statrs::distribution::{Normal, Continuous, ContinuousCDF};
+    use statrs::distribution::{Normal, ContinuousCDF};
     
     // Ensure confidence level is valid
     let conf = if confidence_level > 1.0 {

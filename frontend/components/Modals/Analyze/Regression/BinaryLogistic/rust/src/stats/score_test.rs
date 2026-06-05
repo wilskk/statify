@@ -201,3 +201,182 @@ pub fn calculate_global_score_test_with_constant(
 
     (score_stat, k as i32, sig)
 }
+
+/// Menghitung Score Test untuk sekelompok variabel kandidat (multi-df).
+/// Digunakan untuk variabel kategorik dengan lebih dari 2 kategori.
+///
+/// # Arguments
+/// * `residuals` - Residuals dari model saat ini (y - pi)
+/// * `weights` - Weights dari model saat ini (pi * (1 - pi))
+/// * `current_x` - Matriks X model saat ini (termasuk intercept jika ada)
+/// * `candidate_cols` - Matriks kolom kandidat (multiple columns for a group)
+/// * `inv_cov_matrix` - Matriks Kovarians model saat ini
+///
+/// # Returns
+/// (Score statistic, df, P-Value)
+pub fn calculate_group_score_test(
+    residuals: &DVector<f64>,
+    weights: &DVector<f64>,
+    current_x: &DMatrix<f64>,
+    candidate_cols: &DMatrix<f64>,
+    inv_cov_matrix: &DMatrix<f64>,
+) -> (f64, i32, f64) {
+    let k = candidate_cols.ncols();
+    if k == 0 {
+        return (0.0, 0, 1.0);
+    }
+
+    // Untuk single column, delegate ke fungsi existing
+    if k == 1 {
+        let col = candidate_cols.column(0).into_owned();
+        let (stat, pval) = calculate_score_test(
+            residuals, weights, current_x, &col, inv_cov_matrix,
+        );
+        return (stat, 1, pval);
+    }
+
+    // 1. Hitung Score Vector (U) = Z' * residuals  (k x 1)
+    let u = candidate_cols.transpose() * residuals;
+
+    // 2. Hitung Information Matrix
+    // V = Z'WZ - Z'WX * (X'WX)^-1 * X'WZ
+
+    // Z'WZ (k x k)
+    let mut z_weighted = candidate_cols.clone();
+    for (row_idx, &weight) in weights.iter().enumerate() {
+        for col_idx in 0..k {
+            z_weighted[(row_idx, col_idx)] *= weight;
+        }
+    }
+    let term1 = candidate_cols.transpose() * &z_weighted;
+
+    // Z'WX * (X'WX)^-1 * X'WZ
+    let term2 = if current_x.ncols() > 0 && inv_cov_matrix.ncols() > 0 {
+        let z_w_x = z_weighted.transpose() * current_x; // k x p
+        let correction = &z_w_x * inv_cov_matrix * z_w_x.transpose(); // k x k
+        correction
+    } else {
+        DMatrix::zeros(k, k)
+    };
+
+    let variance = term1 - term2;
+
+    // 3. Score Statistic = U' * Var^-1 * U
+    let score_stat = match variance.clone().cholesky() {
+        Some(chol) => {
+            let solution = chol.solve(&u);
+            u.dot(&solution)
+        }
+        None => {
+            match variance.try_inverse() {
+                Some(inv) => {
+                    let term = &inv * &u;
+                    u.dot(&term)
+                }
+                None => 0.0,
+            }
+        }
+    };
+
+    // 4. P-Value (Chi-Square df=k)
+    let df = k as i32;
+    let p_value = match ChiSquared::new(df as f64) {
+        Ok(dist) => {
+            if score_stat > 0.0 {
+                1.0 - dist.cdf(score_stat)
+            } else {
+                1.0
+            }
+        }
+        Err(_) => 1.0,
+    };
+
+    (score_stat, df, p_value)
+}
+
+/// Menghitung Score Test untuk sekelompok variabel di null model (Block 0, analytical).
+/// Digunakan untuk variabel kategorik dengan lebih dari 2 kategori.
+///
+/// # Arguments
+/// * `x_cols` - Matriks kolom variabel (multiple columns for a group)
+/// * `y` - Vector dependen (0/1)
+/// * `null_prob` - Probabilitas null
+/// * `include_constant` - Apakah model menyertakan constant
+///
+/// # Returns
+/// (Score statistic, df, Sig)
+pub fn calculate_single_group_score_test(
+    x_cols: &DMatrix<f64>,
+    y: &DVector<f64>,
+    null_prob: f64,
+    include_constant: bool,
+) -> (f64, i32, f64) {
+    let n = x_cols.nrows();
+    let k = x_cols.ncols();
+
+    if k == 0 {
+        return (0.0, 0, 1.0);
+    }
+
+    // Untuk single column, delegate ke fungsi existing
+    if k == 1 {
+        let col = x_cols.column(0).into_owned();
+        let (stat, df, sig) = calculate_single_score_test(&col, y, null_prob, include_constant);
+        return (stat, df, sig);
+    }
+
+    // Residuals: y - p_null
+    let residuals: DVector<f64> = y.map(|yi| yi - null_prob);
+
+    // Variance dari null model
+    let w_val = null_prob * (1.0 - null_prob);
+
+    // Score U = X' * residuals (k x 1)
+    let u = x_cols.transpose() * &residuals;
+
+    // Information matrix (k x k)
+    let xt_x = x_cols.transpose() * x_cols;
+
+    let info_matrix = if include_constant {
+        // Dengan constant: perlu koreksi untuk centering
+        let ones = DVector::from_element(n, 1.0);
+        let x_sums = x_cols.transpose() * &ones; // k x 1
+        let correction = (&x_sums * x_sums.transpose()) / (n as f64); // k x k
+        (xt_x - correction) * w_val
+    } else {
+        xt_x * w_val
+    };
+
+    // Score statistic = U' * I^-1 * U
+    let score_stat = match info_matrix.clone().cholesky() {
+        Some(chol) => {
+            let solution = chol.solve(&u);
+            u.dot(&solution)
+        }
+        None => {
+            match info_matrix.try_inverse() {
+                Some(inv) => {
+                    let term = &inv * &u;
+                    u.dot(&term)
+                }
+                None => 0.0,
+            }
+        }
+    };
+
+    // P-value
+    let df = k as i32;
+    let sig = match ChiSquared::new(df as f64) {
+        Ok(dist) => {
+            if score_stat > 0.0 {
+                1.0 - dist.cdf(score_stat)
+            } else {
+                1.0
+            }
+        }
+        Err(_) => 1.0,
+    };
+
+    (score_stat, df, sig)
+}
+

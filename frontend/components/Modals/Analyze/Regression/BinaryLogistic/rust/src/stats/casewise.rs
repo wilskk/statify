@@ -11,8 +11,8 @@ use nalgebra::{DMatrix, DVector};
 /// - If casewise_type == "all": all cases
 /// 
 /// SPSS uses the Studentized Residual (SResid) for filtering, not the Standardized
-/// Residual (ZResid). The SPSS formula for SResid is: ZResid * sqrt(1 - h)
-/// where h is the leverage (hat value).
+/// Residual (ZResid). The SPSS SResid is the studentized deviance residual:
+/// d_i / sqrt(1 - h), where d_i is the deviance residual and h is leverage.
 pub fn calculate_casewise_list(
     x_matrix: &DMatrix<f64>,
     y_vector: &DVector<f64>,
@@ -22,7 +22,7 @@ pub fn calculate_casewise_list(
     y_label_1: &str,
 ) -> Vec<CasewiseRow> {
     let n = y_vector.len();
-    let p = model.beta.len();
+    let _p = model.beta.len();
     let cutoff = config.cutoff;
     let outlier_threshold = config.casewise_outliers;
     let show_all = config.casewise_type == "all";
@@ -30,8 +30,8 @@ pub fn calculate_casewise_list(
     let mut casewise_list: Vec<CasewiseRow> = Vec::new();
     
     // Pre-calculate leverage (hat values) for all observations
-    // We compute (X'WX)^-1 directly here to ensure correct leverage calculation
-    let leverages = calculate_leverages_correct(x_matrix, &model.predictions);
+    // Use model.covariance_matrix which is (X'WX)^{-1} from IRLS fitting
+    let leverages = calculate_leverages_correct(x_matrix, &model.predictions, &model.covariance_matrix);
     
     for i in 0..n {
         let y_obs = y_vector[i];
@@ -57,19 +57,38 @@ pub fn calculate_casewise_list(
         // 4. Leverage (hat value)
         let leverage = leverages[i];
         
-        // 5. Studentized Residual (Correct formula based on Pregibon 1981)
-        // Formula: r_student = r_pearson / sqrt(1 - h)
+        // 5. Studentized Residual — Studentized Deviance Residual
         //
-        // This DIVIDES by sqrt(1-h), which INCREASES the residual for high-leverage 
-        // points. This is the theoretically correct formula from:
-        // - Pregibon, D. (1981). Logistic Regression Diagnostics. The Annals of Statistics.
-        // - Hosmer, D.W. & Lemeshow, S. (2000). Applied Logistic Regression.
+        // Formula: SRE_i = d_i / sqrt(1 - h_i)
         //
-        // Note: This uses WEIGHTED leverage h = w_i * x_i'(X'WX)^{-1}x_i
-        let resid_studentized = if (1.0 - leverage) > 1e-12 {
-            resid_zresid / (1.0 - leverage).sqrt()  // DIVIDE, not multiply
+        // Where:
+        //   d_i = deviance residual (signed)
+        //   h_i = leverage (hat value)
+        //
+        // Dividing the deviance residual by sqrt(1-h) adjusts for leverage,
+        // making residuals comparable across observations.
+        // Verified against IBM SPSS Statistics output.
+        //
+        // References:
+        //   - Pregibon, D. (1981). Logistic Regression Diagnostics.
+        //   - Hosmer, D.W. & Lemeshow, S. (2000). Applied Logistic Regression.
+        
+        // Compute deviance residual d_i (signed)
+        let prob_safe = prob.max(1e-12).min(1.0 - 1e-12);
+        let dev_component_sq = {
+            let log_term = y_obs * prob_safe.ln() + (1.0 - y_obs) * (1.0 - prob_safe).ln();
+            -2.0 * log_term
+        };
+        let dev_resid_for_stud = if resid_raw >= 0.0 {
+            dev_component_sq.max(0.0).sqrt()
         } else {
-            resid_zresid // If leverage ≈ 1, just use ZResid
+            -dev_component_sq.max(0.0).sqrt()
+        };
+        
+        let resid_studentized = if (1.0 - leverage) > 1e-12 {
+            dev_resid_for_stud / (1.0 - leverage).sqrt()
+        } else {
+            dev_resid_for_stud // If leverage ≈ 1, use deviance residual as-is
         };
         
         // 6. Logit Residual: residual / (p * (1-p))
@@ -89,17 +108,19 @@ pub fn calculate_casewise_list(
             -((-2.0 * log_term).max(0.0)).sqrt()
         };
         
-        // 8. Cook's Distance for Logistic Regression (Pregibon 1981, Hosmer & Lemeshow 2000)
-        // Formula: D_i = (r_pearson^2 * h) / (1 - h)^2
+        // 8. Cook's Distance — Pregibon (1981) ΔX² influence diagnostic
         //
-        // IMPORTANT: Unlike Linear Regression, Logistic Regression does NOT divide by p.
-        // We use the Pearson residual (resid_zresid), not the studentized residual.
+        // Formula: D_i = r_std^2 * h / (1 - h)
         //
-        // Reference:
-        // - Hosmer, D.W. & Lemeshow, S. (2000). Applied Logistic Regression, 2nd Ed.
-        // - Pregibon, D. (1981). Logistic Regression Diagnostics.
+        // Measures approximate change in Pearson chi-squared when case i
+        // is removed. Uses (1-h) to the FIRST power, not (1-h)².
+        // Verified against IBM SPSS Statistics output.
+        //
+        // References:
+        //   - Pregibon, D. (1981). Logistic Regression Diagnostics.
+        //   - Hosmer, D.W. & Lemeshow, S. (2000). Applied Logistic Regression.
         let cooks = if (1.0 - leverage) > 1e-12 {
-            (resid_zresid.powi(2) * leverage) / (1.0 - leverage).powi(2)
+            (resid_zresid.powi(2) * leverage) / (1.0 - leverage)
         } else {
             0.0
         };
@@ -164,9 +185,9 @@ pub fn calculate_casewise_list(
 fn calculate_leverages_correct(
     x_matrix: &DMatrix<f64>,
     predictions: &DVector<f64>,
+    xtwx_inv: &DMatrix<f64>,
 ) -> Vec<f64> {
     let n = x_matrix.nrows();
-    let p = x_matrix.ncols();
     
     // Step 1: Compute weights W = diag(p * (1-p))
     let weights: Vec<f64> = predictions.iter()
@@ -176,35 +197,14 @@ fn calculate_leverages_correct(
         })
         .collect();
     
-    // Step 2: Compute X'WX
-    let mut xt_wx = DMatrix::zeros(p, p);
-    for i in 0..n {
-        let x_i = x_matrix.row(i).transpose();
-        let w_i = weights[i];
-        for j in 0..p {
-            for k in 0..p {
-                xt_wx[(j, k)] += w_i * x_i[j] * x_i[k];
-            }
-        }
-    }
-    
-    // Step 3: Compute (X'WX)^{-1}
-    let xt_wx_inv = match xt_wx.clone().try_inverse() {
-        Some(inv) => inv,
-        None => {
-            let svd = xt_wx.svd(true, true);
-            svd.pseudo_inverse(1e-10).unwrap_or_else(|_| DMatrix::identity(p, p))
-        }
-    };
-    
-    // Step 4: Compute leverage for each observation
+    // Step 2: Compute leverage for each observation using pre-computed (X'WX)^{-1}
     // h_ii = w_i * x_i' * (X'WX)^{-1} * x_i
     let mut leverages = Vec::with_capacity(n);
     
     for i in 0..n {
         let x_i = x_matrix.row(i).transpose();
         let w_i = weights[i];
-        let temp = &xt_wx_inv * &x_i;
+        let temp = xtwx_inv * &x_i;
         let h_ii = w_i * x_i.dot(&temp);
         leverages.push(h_ii.max(0.0).min(1.0));
     }
@@ -226,7 +226,16 @@ mod tests {
         ]);
         let predictions = DVector::from_vec(vec![0.5, 0.5, 0.5]);
         
-        let leverages = calculate_leverages_correct(&x, &predictions);
+        // Compute (X'WX)^{-1} for the test
+        let w = 0.25; // p*(1-p) = 0.5*0.5
+        let mut xtwx = DMatrix::<f64>::zeros(2, 2);
+        for i in 0..3 {
+            let x_i = x.row(i).transpose();
+            xtwx += w * &x_i * x_i.transpose();
+        }
+        let xtwx_inv = xtwx.try_inverse().unwrap();
+        
+        let leverages = calculate_leverages_correct(&x, &predictions, &xtwx_inv);
         
         assert_eq!(leverages.len(), 3);
         for h in &leverages {

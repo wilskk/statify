@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronRight, Ruler, Shapes, BarChartHorizontal } from "lucide-react";
 import type { Variable } from "@/types/Variable";
-import { BinaryLogisticOptions } from "../types/binary-logistic";
+import type { BinaryLogisticOptions } from "../types/binary-logistic";
 
 interface VariablesTabProps {
   availableVariables: Variable[];

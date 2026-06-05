@@ -1,7 +1,0 @@
-/target
-/pkg
-Cargo.lock
-*.wasm
-*.js
-*.ts
-!src/**/*.rs

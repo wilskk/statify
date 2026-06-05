@@ -2,146 +2,215 @@
 
 import React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-interface StatisticsTabProps {
-    options: {
-        caseProcessing: boolean;
-        modelFitting: boolean;
-        pseudoRSquare: boolean;
-        stepSummary: boolean;
-        classificationTable: boolean;
-        goodnessOfFit: boolean;
-        parameterEstimates: boolean;
-        likelihoodRatioTests: boolean;
-        confidenceInterval: number;
-    };
-    onChange: (stats: any) => void;
+export type SubpopulationMode = "factors" | "variableList";
+
+export interface StatisticsOptions {
+    caseProcessing: boolean;
+    pseudoRSquare: boolean;
+    stepSummary: boolean;
+    modelFitting: boolean;
+    informationCriteria: boolean;
+    cellProbabilities: boolean;
+    classificationTable: boolean;
+    goodnessOfFit: boolean;
+    monotonicityMeasures: boolean;
+    parameterEstimates: boolean;
+    likelihoodRatioTests: boolean;
+    asymptoticCorrelations: boolean;
+    asymptoticCovariances: boolean;
+    confidenceInterval: number;
+    subpopulationMode: SubpopulationMode;
+    subpopulationVariables: string[];
 }
 
-export const StatisticsTab: React.FC<StatisticsTabProps> = ({ options, onChange }) => {
+interface StatisticsTabProps {
+    options: StatisticsOptions;
+    onChange: (stats: StatisticsOptions) => void;
+    availableSubpopulationVariables: string[];
+}
 
-    const handleToggle = (key: string) => {
+type ToggleableStatistic = Exclude<
+    keyof StatisticsOptions,
+    "confidenceInterval" | "subpopulationMode" | "subpopulationVariables"
+>;
+
+export const StatisticsTab: React.FC<StatisticsTabProps> = ({
+    options,
+    onChange,
+    availableSubpopulationVariables,
+}) => {
+    const handleToggle = (key: ToggleableStatistic) => {
         onChange({
             ...options,
-            [key]: !options[key as keyof typeof options],
+            [key]: !options[key],
         });
     };
 
     const handleCIChange = (val: string) => {
-        const num = parseInt(val);
+        const num = parseInt(val, 10);
         onChange({
             ...options,
-            confidenceInterval: isNaN(num) ? 95 : num,
+            confidenceInterval: isNaN(num) ? 95 : Math.max(1, Math.min(99, num)),
         });
     };
 
+    const handleSubpopulationChange = (value: SubpopulationMode) => {
+        onChange({
+            ...options,
+            subpopulationMode: value,
+        });
+    };
+
+    const handleSubpopulationVariableToggle = (variableName: string) => {
+        const isSelected = options.subpopulationVariables.includes(variableName);
+        onChange({
+            ...options,
+            subpopulationVariables: isSelected
+                ? options.subpopulationVariables.filter((v) => v !== variableName)
+                : [...options.subpopulationVariables, variableName],
+        });
+    };
+
+    const modelOptions: Array<{ key: ToggleableStatistic; label: string }> = [
+        { key: "pseudoRSquare", label: "Pseudo R-square" },
+        { key: "stepSummary", label: "Step summary" },
+        { key: "modelFitting", label: "Model fitting information" },
+        { key: "informationCriteria", label: "Information criteria" },
+        { key: "cellProbabilities", label: "Cell probabilities" },
+        { key: "classificationTable", label: "Classification table" },
+        { key: "goodnessOfFit", label: "Goodness-of-fit" },
+        { key: "monotonicityMeasures", label: "Monotonicity measures" },
+    ];
+
+    const parameterOptions: Array<{ key: ToggleableStatistic; label: string }> = [
+        { key: "parameterEstimates", label: "Estimates" },
+        { key: "likelihoodRatioTests", label: "Likelihood ratio tests" },
+        { key: "asymptoticCorrelations", label: "Asymptotic correlations" },
+        { key: "asymptoticCovariances", label: "Asymptotic covariances" },
+    ];
+
     return (
-        <div className="grid grid-cols-2 gap-8 p-1">
-            {/* Sisi Kiri: Model & Regresi */}
-            <div className="space-y-5">
-                <div className="space-y-3">
-                    <h4 className="text-[11px] font-bold uppercase text-muted-foreground tracking-wider">Model Summary</h4>
-                    <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="caseProcessing"
-                            checked={options.caseProcessing}
-                            onCheckedChange={() => handleToggle("caseProcessing")}
-                        />
-                        <Label htmlFor="caseProcessing" className="text-sm font-normal">Case processing summary</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="pseudoRSquare"
-                            checked={options.pseudoRSquare}
-                            onCheckedChange={() => handleToggle("pseudoRSquare")}
-                        />
-                        <Label htmlFor="pseudoRSquare" className="text-sm font-normal">Pseudo R-square</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="modelFitting"
-                            checked={options.modelFitting}
-                            onCheckedChange={() => handleToggle("modelFitting")}
-                        />
-                        <Label htmlFor="modelFitting" className="text-sm font-normal">Model fitting information</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="goodnessOfFit"
-                            checked={options.goodnessOfFit}
-                            onCheckedChange={() => handleToggle("goodnessOfFit")}
-                        />
-                        <Label htmlFor="goodnessOfFit" className="text-sm font-normal">Goodness-of-fit (Pearson/Deviance)</Label>
-                    </div>
+        <div className="space-y-5 p-1">
+            <section className="rounded-md border bg-muted/10 p-4">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Case processing summary
+                </Label>
+                <div className="mt-3 flex items-center space-x-3">
+                    <Checkbox
+                        id="caseProcessing"
+                        checked={options.caseProcessing}
+                        onCheckedChange={() => handleToggle("caseProcessing")}
+                    />
+                    <Label htmlFor="caseProcessing" className="text-sm font-normal">
+                        Include case processing summary table
+                    </Label>
                 </div>
+            </section>
 
-                <Separator />
-
-                <div className="space-y-3">
-                    <h4 className="text-[11px] font-bold uppercase text-muted-foreground tracking-wider">Step Statistics</h4>
-                    <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="stepSummary"
-                            checked={options.stepSummary}
-                            onCheckedChange={() => handleToggle("stepSummary")}
-                        />
-                        <Label htmlFor="stepSummary" className="text-sm font-normal">Step summary</Label>
-                    </div>
+            <section className="rounded-md border p-4">
+                <div className="mb-3 flex items-center justify-between">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Model
+                    </Label>
                 </div>
-            </div>
-
-            {/* Sisi Kanan: Parameter & Klasifikasi */}
-            <div className="space-y-5">
-                <div className="space-y-3">
-                    <h4 className="text-[11px] font-bold uppercase text-muted-foreground tracking-wider">Parameters</h4>
-                    <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="parameterEstimates"
-                            checked={options.parameterEstimates}
-                            onCheckedChange={() => handleToggle("parameterEstimates")}
-                        />
-                        <Label htmlFor="parameterEstimates" className="text-sm font-normal">Parameter estimates</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="likelihoodRatioTests"
-                            checked={options.likelihoodRatioTests}
-                            onCheckedChange={() => handleToggle("likelihoodRatioTests")}
-                        />
-                        <Label htmlFor="likelihoodRatioTests" className="text-sm font-normal">Likelihood ratio tests</Label>
-                    </div>
-
-                    <div className="pl-6 pt-1 flex items-center gap-3">
-                        <Label htmlFor="ci" className="text-xs text-muted-foreground italic">Confidence interval (%):</Label>
-                        <Input
-                            id="ci"
-                            type="number"
-                            value={options.confidenceInterval}
-                            onChange={(e) => handleCIChange(e.target.value)}
-                            className="w-16 h-7 text-xs"
-                            min={1}
-                            max={99}
-                        />
-                    </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                    {modelOptions.map((item) => (
+                        <label key={item.key} className="flex items-center space-x-2 text-sm">
+                            <Checkbox
+                                id={item.key}
+                                checked={options[item.key] as boolean}
+                                onCheckedChange={() => handleToggle(item.key)}
+                            />
+                            <span>{item.label}</span>
+                        </label>
+                    ))}
                 </div>
+            </section>
 
-                <Separator />
-
-                <div className="space-y-3">
-                    <h4 className="text-[11px] font-bold uppercase text-muted-foreground tracking-wider">Classification</h4>
-                    <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="classificationTable"
-                            checked={options.classificationTable}
-                            onCheckedChange={() => handleToggle("classificationTable")}
-                        />
-                        <Label htmlFor="classificationTable" className="text-sm font-normal">Classification table</Label>
-                    </div>
+            <section className="rounded-md border p-4">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Parameters
+                </Label>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    {parameterOptions.map((item) => (
+                        <label key={item.key} className="flex items-center space-x-2 text-sm">
+                            <Checkbox
+                                id={item.key}
+                                checked={options[item.key] as boolean}
+                                onCheckedChange={() => handleToggle(item.key)}
+                            />
+                            <span>{item.label}</span>
+                        </label>
+                    ))}
                 </div>
-            </div>
+                <div className="mt-4 flex flex-wrap items-center gap-3 pl-1">
+                    <Label htmlFor="ci" className="text-xs font-semibold uppercase text-muted-foreground">
+                        Confidence interval (%)
+                    </Label>
+                    <Input
+                        id="ci"
+                        type="number"
+                        value={options.confidenceInterval}
+                        onChange={(e) => handleCIChange(e.target.value)}
+                        className="w-20"
+                        min={1}
+                        max={99}
+                    />
+                </div>
+            </section>
+
+            <section className="rounded-md border p-4">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Define subpopulations
+                </Label>
+                <RadioGroup
+                    className="mt-3 space-y-3"
+                    value={options.subpopulationMode}
+                    onValueChange={(value) => handleSubpopulationChange(value as SubpopulationMode)}
+                >
+                    <div className="flex items-start space-x-3">
+                        <RadioGroupItem value="factors" id="subpop-factors" />
+                        <div>
+                            <Label htmlFor="subpop-factors" className="text-sm font-normal">
+                                Covariate patterns defined by factors and covariates
+                            </Label>
+                            <p className="text-xs text-muted-foreground">Matches SPSS default behavior.</p>
+                        </div>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                        <RadioGroupItem value="variableList" id="subpop-variables" />
+                        <div className="w-full">
+                            <Label htmlFor="subpop-variables" className="text-sm font-normal">
+                                Covariate patterns defined by variable list below
+                            </Label>
+                            <p className="text-xs text-muted-foreground">
+                                Select model variables used to define subpopulation patterns (SPSS variable list mode).
+                            </p>
+                            <div className="mt-2 rounded border border-dashed border-muted-foreground/40 bg-muted/10 p-3 space-y-2">
+                                {availableSubpopulationVariables.length === 0 && (
+                                    <p className="text-[11px] text-muted-foreground">
+                                        Add factors/covariates in Model tab first.
+                                    </p>
+                                )}
+                                {availableSubpopulationVariables.map((variableName) => (
+                                    <label key={variableName} className="flex items-center space-x-2 text-sm">
+                                        <Checkbox
+                                            checked={options.subpopulationVariables.includes(variableName)}
+                                            onCheckedChange={() => handleSubpopulationVariableToggle(variableName)}
+                                            disabled={options.subpopulationMode !== "variableList"}
+                                        />
+                                        <span>{variableName}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </RadioGroup>
+            </section>
         </div>
     );
 };
