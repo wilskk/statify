@@ -264,4 +264,42 @@ describe("formatOrdinalResult", () => {
 
     expect(formatted.sections).toEqual([]);
   });
+
+  it("should render GVIF collinearity diagnostics when requested", () => {
+    const formatted = formatOrdinalResult({
+      outputOptions: {
+        test_of_multicolinearity: true,
+      },
+      collinearityDiagnostics: {
+        rows: [
+          {
+            predictor: "Education",
+            predictorType: "Factor",
+            df: 3,
+            gvif: 40.1,
+            adjustedGvif: 1.85,
+            interpretation: "Safe",
+          },
+          {
+            predictor: "Income",
+            predictorType: "Covariate",
+            df: 1,
+            gvif: 4.55,
+            adjustedGvif: 2.1334,
+            interpretation: "Attention",
+          },
+        ],
+        warnings: ["Correlation matrix was near-singular; a small ridge regularization was applied."],
+      },
+    });
+
+    const section = formatted.sections.find(s => s.id === "ordinal_collinearity_diagnostics");
+    expect(section).toBeDefined();
+    expect(section?.title).toBe("Collinearity Diagnostics");
+    expect(section?.data.rows[0].df).toBe("3");
+    expect(section?.data.rows[0].gvif).toBe("40.100");
+    expect(section?.data.rows[1].adjustedGvif).toBe("2.133");
+    expect(section?.note).toContain("GVIF is independent of the selected link function.");
+    expect(section?.note).toContain("Warning: Correlation matrix was near-singular");
+  });
 });

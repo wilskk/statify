@@ -161,6 +161,12 @@ pub struct PlumOutputOptions {
     pub asymptotic_correlation: Option<bool>,
     pub cell_information: Option<bool>,
     pub test_of_parallel_lines: Option<bool>,
+    #[serde(
+        rename = "test_of_multicolinearity",
+        alias = "testOfMulticolinearity",
+        alias = "multicolinearity"
+    )]
+    pub test_of_multicolinearity: Option<bool>,
     pub iteration_history: Option<bool>,
     pub iteration_history_step: Option<usize>,
     pub print_iteration_history: Option<bool>,
@@ -610,6 +616,44 @@ pub struct ParallelLinesTest {
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct GvifRow {
+    pub predictor: String,
+    pub predictor_type: String,
+    pub df: usize,
+    pub gvif: f64,
+    pub adjusted_gvif: f64,
+    pub interpretation: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CollinearityDiagnosticsResult {
+    pub rows: Vec<GvifRow>,
+    pub warnings: Vec<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct EncodedPredictorBlock {
+    pub predictor_name: String,
+    pub predictor_type: String,
+    pub column_indices: Vec<usize>,
+}
+
+#[derive(Clone, Debug)]
+pub struct GvifOptions {
+    pub ridge_lambda: f64,
+}
+
+impl Default for GvifOptions {
+    fn default() -> Self {
+        Self {
+            ridge_lambda: 1e-10,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CellInfo {
     pub subpopulation: usize,
     pub category: String,
@@ -683,6 +727,7 @@ pub struct PlumFitOutput {
     pub goodness_of_fit: Option<GoodnessOfFit>,
     pub summary_statistics: Option<SummaryStatistics>,
     pub test_of_parallel_lines: Option<ParallelLinesTest>,
+    pub collinearity_diagnostics: Option<CollinearityDiagnosticsResult>,
     pub cell_information: Option<Vec<CellInfo>>,
     pub predicted_category: Option<Vec<PredictedCategoryRow>>,
     pub predicted_probability: Option<Vec<ProbabilityRow>>,

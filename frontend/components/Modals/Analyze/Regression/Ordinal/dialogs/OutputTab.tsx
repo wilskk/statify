@@ -63,10 +63,13 @@ export const OutputTab: React.FC<Props> = ({ params, onChange }) => {
                         <Checkbox id="parallel" checked={params.display.testOfParallelLines} onCheckedChange={(c) => handleDisplayChange('testOfParallelLines', !!c)} />
                             <Label htmlFor="parallel">Test of parallel lines</Label>
                     </div>
-                    {/* blom diganti nih sop */}
                     <div className="flex items-center space-x-2">
-                        <Checkbox id="multicolinearity" checked={params.display.multicolinearity} onCheckedChange={(c) => handleDisplayChange('testOfParallelLines', !!c)} />
-                            <Label htmlFor="multicolinearity">Multicolinearity</Label>
+                        <Checkbox
+                            id="test-of-multicolinearity"
+                            checked={Boolean(params.display.test_of_multicolinearity)}
+                            onCheckedChange={(c) => handleDisplayChange('test_of_multicolinearity', !!c)}
+                        />
+                            <Label htmlFor="test-of-multicolinearity">Multicollinearity</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                         <Checkbox

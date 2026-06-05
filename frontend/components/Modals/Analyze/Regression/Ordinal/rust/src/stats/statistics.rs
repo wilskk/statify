@@ -5,6 +5,7 @@ use statrs::function::gamma::ln_gamma;
 use crate::model::{cell_probabilities, cumulative_probabilities};
 use crate::types::{
     AggregatedData, CellInfo, FitResult, FitStat, GoodnessOfFit, ModelChiSquare, ModelSummaryRow,
+    CollinearityDiagnosticsResult, EncodedPredictorBlock, GvifOptions, GvifRow,
     ParameterEstimateRow, PlumError, PlumSpec, ProbabilityRow, PseudoRSquare, SummaryStatistics,
 };
 use crate::utils::EPS;
@@ -55,6 +56,227 @@ pub fn correlation_matrix(covariance: &DMatrix<f64>) -> DMatrix<f64> {
         }
     }
     corr
+}
+
+pub fn compute_gvif_diagnostics(
+    x: &DMatrix<f64>,
+    blocks: Vec<EncodedPredictorBlock>,
+    options: GvifOptions,
+) -> CollinearityDiagnosticsResult {
+    let mut warnings = Vec::new();
+    let mut rows = Vec::new();
+
+    if blocks.len() < 2 || x.ncols() < 2 {
+        warnings.push(
+            "GVIF cannot be computed because at least two encoded predictor columns are required."
+                .to_string(),
+        );
+        return CollinearityDiagnosticsResult { rows, warnings };
+    }
+
+    let mut kept_columns = Vec::new();
+    let mut old_to_new = vec![None; x.ncols()];
+    for col in 0..x.ncols() {
+        let mean = (0..x.nrows()).map(|row| x[(row, col)]).sum::<f64>() / x.nrows() as f64;
+        let ss = (0..x.nrows())
+            .map(|row| {
+                let centered = x[(row, col)] - mean;
+                centered * centered
+            })
+            .sum::<f64>();
+        if ss > 1e-12 && ss.is_finite() {
+            old_to_new[col] = Some(kept_columns.len());
+            kept_columns.push(col);
+        }
+    }
+
+    if kept_columns.len() != x.ncols() {
+        warnings.push(
+            "One or more encoded predictor columns have zero variance and were excluded from GVIF computation."
+                .to_string(),
+        );
+    }
+
+    if kept_columns.len() < 2 {
+        warnings.push(
+            "GVIF cannot be computed because at least two encoded predictor columns are required."
+                .to_string(),
+        );
+        return CollinearityDiagnosticsResult { rows, warnings };
+    }
+
+    let filtered_blocks: Vec<EncodedPredictorBlock> = blocks
+        .into_iter()
+        .filter_map(|block| {
+            let column_indices = block
+                .column_indices
+                .into_iter()
+                .filter_map(|idx| old_to_new.get(idx).copied().flatten())
+                .collect::<Vec<_>>();
+            if column_indices.is_empty() {
+                None
+            } else {
+                Some(EncodedPredictorBlock {
+                    column_indices,
+                    ..block
+                })
+            }
+        })
+        .collect();
+
+    if filtered_blocks.len() < 2 {
+        warnings.push(
+            "GVIF cannot be computed because at least two encoded predictor columns are required."
+                .to_string(),
+        );
+        return CollinearityDiagnosticsResult { rows, warnings };
+    }
+
+    let filtered_x = DMatrix::from_fn(x.nrows(), kept_columns.len(), |row, col| {
+        x[(row, kept_columns[col])]
+    });
+    let r = design_correlation_matrix(&filtered_x);
+    let mut ridge_warning_added = false;
+    let logdet_r = match stable_logdet(&r, options.ridge_lambda, &mut ridge_warning_added) {
+        Some(value) => value,
+        None => return CollinearityDiagnosticsResult { rows, warnings },
+    };
+
+    for block in filtered_blocks {
+        let block_indices = block.column_indices.clone();
+        let other_indices = (0..r.ncols())
+            .filter(|idx| !block_indices.contains(idx))
+            .collect::<Vec<_>>();
+        if other_indices.is_empty() {
+            continue;
+        }
+
+        let r_block = submatrix(&r, &block_indices);
+        let r_other = submatrix(&r, &other_indices);
+        let logdet_block = stable_logdet(&r_block, options.ridge_lambda, &mut ridge_warning_added);
+        let logdet_other = stable_logdet(&r_other, options.ridge_lambda, &mut ridge_warning_added);
+        let (Some(logdet_block), Some(logdet_other)) = (logdet_block, logdet_other) else {
+            continue;
+        };
+
+        let df = block_indices.len();
+        let log_gvif = logdet_block + logdet_other - logdet_r;
+        let mut gvif = log_gvif.exp();
+        if !gvif.is_finite() {
+            continue;
+        }
+        if gvif < 1.0 && gvif > 0.999_999_999 {
+            gvif = 1.0;
+        }
+        gvif = gvif.max(1.0);
+        let adjusted_gvif = gvif.powf(1.0 / (2.0 * df as f64));
+        if !adjusted_gvif.is_finite() {
+            continue;
+        }
+
+        let interpretation = if adjusted_gvif < 2.0 {
+            "Safe"
+        } else if adjusted_gvif < 5.0 {
+            "Attention"
+        } else {
+            "Serious multicollinearity"
+        };
+
+        rows.push(GvifRow {
+            predictor: block.predictor_name,
+            predictor_type: block.predictor_type,
+            df,
+            gvif,
+            adjusted_gvif,
+            interpretation: interpretation.to_string(),
+        });
+    }
+
+    if ridge_warning_added {
+        warnings.push(
+            "Correlation matrix was near-singular; a small ridge regularization was applied."
+                .to_string(),
+        );
+    }
+
+    CollinearityDiagnosticsResult { rows, warnings }
+}
+
+fn design_correlation_matrix(x: &DMatrix<f64>) -> DMatrix<f64> {
+    let cols = x.ncols();
+    let rows = x.nrows();
+    let mut centered = x.clone();
+    let mut scales = vec![0.0; cols];
+
+    for col in 0..cols {
+        let mean = (0..rows).map(|row| x[(row, col)]).sum::<f64>() / rows as f64;
+        let ss = (0..rows)
+            .map(|row| {
+                centered[(row, col)] = x[(row, col)] - mean;
+                centered[(row, col)] * centered[(row, col)]
+            })
+            .sum::<f64>();
+        scales[col] = ss.sqrt();
+    }
+
+    DMatrix::from_fn(cols, cols, |i, j| {
+        if i == j {
+            1.0
+        } else if scales[i] > 0.0 && scales[j] > 0.0 {
+            let cross = (0..rows)
+                .map(|row| centered[(row, i)] * centered[(row, j)])
+                .sum::<f64>();
+            (cross / (scales[i] * scales[j])).clamp(-1.0, 1.0)
+        } else {
+            0.0
+        }
+    })
+}
+
+fn stable_logdet(matrix: &DMatrix<f64>, ridge_lambda: f64, ridge_used: &mut bool) -> Option<f64> {
+    if matrix.nrows() == 0 {
+        return Some(0.0);
+    }
+
+    if let Some(logdet) = cholesky_logdet(matrix) {
+        if logdet.is_finite() && logdet > 1e-12_f64.ln() {
+            return Some(logdet);
+        }
+    }
+
+    let mut regularized = matrix.clone();
+    for idx in 0..regularized.nrows() {
+        regularized[(idx, idx)] += ridge_lambda;
+    }
+    *ridge_used = true;
+
+    if let Some(logdet) = cholesky_logdet(&regularized) {
+        return Some(logdet);
+    }
+
+    let det = regularized.lu().determinant().abs();
+    if det.is_finite() && det > 0.0 {
+        Some(det.ln())
+    } else {
+        None
+    }
+}
+
+fn cholesky_logdet(matrix: &DMatrix<f64>) -> Option<f64> {
+    matrix.clone().cholesky().and_then(|chol| {
+        let diag = chol.l().diagonal();
+        if diag.iter().any(|value| !value.is_finite() || *value <= 0.0) {
+            None
+        } else {
+            Some(2.0 * diag.iter().map(|value| value.ln()).sum::<f64>())
+        }
+    })
+}
+
+fn submatrix(matrix: &DMatrix<f64>, indices: &[usize]) -> DMatrix<f64> {
+    DMatrix::from_fn(indices.len(), indices.len(), |row, col| {
+        matrix[(indices[row], indices[col])]
+    })
 }
 
 pub fn parameter_statistics(

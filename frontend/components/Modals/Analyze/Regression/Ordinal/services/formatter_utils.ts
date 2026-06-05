@@ -127,6 +127,10 @@ export const buildDefaultOutputOptions = (
     summaryStatistics: params.display.summaryStatistics,
     parameterEstimates: params.display.parameterEstimates,
     testOfParallelLines: params.display.testOfParallelLines,
+    test_of_multicolinearity: Boolean(
+      params.display.test_of_multicolinearity
+      ?? (params.display as any).multicolinearity
+    ),
     iterationHistory: printIterationHistory,
     iterationHistoryStep: iterationHistoryEvery,
     printIterationHistory,

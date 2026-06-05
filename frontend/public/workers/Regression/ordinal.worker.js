@@ -217,6 +217,18 @@ function validateMainPlumPayload(payload) {
   });
 }
 
+function normalizeOutputOptionsForCompatibility(payload) {
+  if (!payload || typeof payload !== "object") return;
+  const outputOptions = payload.outputOptions || {};
+  if (
+    outputOptions.test_of_multicolinearity === undefined
+    && outputOptions.multicolinearity !== undefined
+  ) {
+    outputOptions.test_of_multicolinearity = Boolean(outputOptions.multicolinearity);
+  }
+  payload.outputOptions = outputOptions;
+}
+
 function normalizeParameterEstimate(row, index) {
   if (!row || typeof row !== "object") {
     return {
@@ -356,6 +368,35 @@ function normalizeParallelLinesTest(test) {
   };
 }
 
+function normalizeCollinearityDiagnostics(diagnostics) {
+  if (!diagnostics || typeof diagnostics !== "object") return null;
+  const rawRows = Array.isArray(diagnostics.rows) ? diagnostics.rows : [];
+  const rows = rawRows
+    .map((row) => {
+      const gvif = pickNumber(row.gvif);
+      const adjustedGvif = pickNumber(row.adjustedGvif, row.adjusted_gvif);
+      const df = pickNumber(row.df);
+      if (gvif === null || adjustedGvif === null || df === null) return null;
+      return {
+        predictor: String(row.predictor ?? ""),
+        predictorType: String(row.predictorType ?? row.predictor_type ?? ""),
+        predictor_type: String(row.predictorType ?? row.predictor_type ?? ""),
+        df,
+        gvif,
+        adjustedGvif,
+        adjusted_gvif: adjustedGvif,
+        interpretation: String(row.interpretation ?? ""),
+      };
+    })
+    .filter(Boolean);
+
+  return {
+    ...diagnostics,
+    rows,
+    warnings: Array.isArray(diagnostics.warnings) ? diagnostics.warnings : [],
+  };
+}
+
 function normalizeWasmResult(result, mainPayload) {
   const base = result && typeof result === "object" ? result : {};
   const rawParameterEstimates = Array.isArray(base.parameterEstimates)
@@ -425,6 +466,9 @@ function normalizeWasmResult(result, mainPayload) {
   const testOfParallelLines = normalizeParallelLinesTest(
     base.testOfParallelLines || base.test_of_parallel_lines
   );
+  const collinearityDiagnostics = normalizeCollinearityDiagnostics(
+    base.collinearityDiagnostics || base.collinearity_diagnostics
+  );
   const savedVariables = base.savedVariables || base.saved_variables || null;
 
   return {
@@ -446,6 +490,7 @@ function normalizeWasmResult(result, mainPayload) {
     summaryStatistics,
     goodnessOfFit,
     testOfParallelLines,
+    collinearityDiagnostics,
     estimationOptions: mainPayload?.estimationOptions || {},
     outputOptions: mainPayload?.outputOptions || {},
     savedVariableOptions: mainPayload?.savedVariables || {},
@@ -478,6 +523,7 @@ self.onmessage = async (event) => {
   console.log("[ORDINAL][WORKER][RECEIVED]", event.data);
   try {
     const mainPayload = event.data;
+    normalizeOutputOptionsForCompatibility(mainPayload);
     const wasmPath = event.data?.wasmPath || mainPayload?.wasmPath;
     const outputOptions = mainPayload?.outputOptions || {};
     const printIterationHistory = Boolean(
@@ -491,6 +537,17 @@ self.onmessage = async (event) => {
       printIterationHistory,
       iterationHistoryEvery,
     });
+    if (Boolean(outputOptions?.test_of_multicolinearity ?? outputOptions?.multicolinearity)) {
+      console.log("[ORDINAL][MULTICOLLINEARITY][START]");
+      console.log("[ORDINAL][MULTICOLLINEARITY][PAYLOAD]", {
+        rows: mainPayload?.locationModel?.locationDesignMatrix?.length ?? 0,
+        columns: mainPayload?.locationModel?.locationTermNames?.length ?? 0,
+        predictors: mainPayload?.locationModel?.predictors?.map((predictor) => ({
+          name: predictor.name,
+          role: predictor.role,
+        })) ?? [],
+      });
+    }
 
     validateMainPlumPayload(mainPayload);
     console.log("[ORDINAL][WORKER][PAYLOAD_VALID]", {
@@ -522,6 +579,9 @@ self.onmessage = async (event) => {
     }
 
     const normalizedResult = normalizeWasmResult(parsedResult, mainPayload);
+    if (Boolean(outputOptions?.test_of_multicolinearity ?? outputOptions?.multicolinearity)) {
+      console.log("[ORDINAL][MULTICOLLINEARITY][RUST_RESULT]", normalizedResult.collinearityDiagnostics);
+    }
     console.log("[ORDINAL][WORKER][NORMALIZED_RESULT]", normalizedResult);
     console.log("[ORDINAL][PLUM_ESTIMATION]", {
       converged: normalizedResult.converged,
@@ -539,6 +599,10 @@ self.onmessage = async (event) => {
 
     postSuccess(normalizedResult);
   } catch (error) {
+    const outputOptions = event.data?.outputOptions || {};
+    if (Boolean(outputOptions?.test_of_multicolinearity ?? outputOptions?.multicolinearity)) {
+      console.error("[ORDINAL][MULTICOLLINEARITY][ERROR]", error);
+    }
     postError(error, "worker", { receivedKeys: Object.keys(event.data || {}) });
   }
 };

@@ -47,7 +47,7 @@ export interface OrdinalOutputParams {
     asymptoticCorrelation: boolean;
     cellInformation: boolean;
     testOfParallelLines: boolean;
-    multicolinearity: boolean;
+    test_of_multicolinearity: boolean;
     iterationHistory: boolean;
     iterationHistoryStep: number;
     printIterationHistory: boolean;
@@ -135,6 +135,8 @@ export interface PlumOutputOptions {
   goodnessOfFit?: boolean;
   summaryStatistics?: boolean;
   testOfParallelLines?: boolean;
+  test_of_multicolinearity?: boolean;
+  multicolinearity?: boolean;
   iterationHistory?: boolean;
   iterationHistoryStep?: number;
   printIterationHistory?: boolean;
