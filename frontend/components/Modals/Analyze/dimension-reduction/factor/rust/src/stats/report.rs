@@ -423,8 +423,15 @@ pub fn calculate_total_variance_explained_from_data(
             
             // HANYA HITUNG JIKA ROTASI BERHASIL KONVERGEN
             if rot_res.is_converged {
-                let rotated_loadings = &rot_res.rotated_loadings;
-                let n_cols = rotated_loadings.ncols();
+                // PERBAIKAN 1: Gunakan Structure Matrix untuk perhitungan Oblique, bukan Pattern Matrix
+                let pattern_matrix = &rot_res.rotated_loadings;
+                let structure_matrix = if let Some(phi) = &rot_res.factor_correlations {
+                    pattern_matrix * phi
+                } else {
+                    pattern_matrix.clone()
+                };
+
+                let n_cols = structure_matrix.ncols();
 
                 let mut raw_ssl_list = Vec::with_capacity(n_cols);
                 let mut rescaled_ssl_list = Vec::with_capacity(n_cols);
@@ -433,7 +440,8 @@ pub fn calculate_total_variance_explained_from_data(
                     let mut raw_ssl = 0.0;
                     let mut rescaled_ssl = 0.0;
                     for i in 0..n_variables {
-                        let l = rotated_loadings[(i, j)];
+                        // Hitung kuadrat dari Structure Matrix, bukan rotated_loadings
+                        let l = structure_matrix[(i, j)]; 
                         raw_ssl += l.powi(2);
                         
                         if is_covariance && raw_variances[i] > 0.0 {
@@ -446,11 +454,11 @@ pub fn calculate_total_variance_explained_from_data(
                     }
                 }
                 
-                raw_ssl_list.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+                // PERBAIKAN 2: Hapus sorting (.sort_by) karena SPSS mempertahankan 
+                // urutan komponen aslinya pada blok Rotation Sums of Squared Loadings.
                 raw_rot_evals = Some(raw_ssl_list);
 
                 if is_covariance {
-                    rescaled_ssl_list.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
                     rescaled_rot_evals = Some(rescaled_ssl_list);
                 }
             }

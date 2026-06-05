@@ -195,39 +195,6 @@ pub fn rotate_varimax(
             }
         }
 
-    //     let current_criterion = compute_varimax_criterion(&normalized_loadings);
-    //     let criterion_change = (current_criterion - previous_criterion).abs();
-    //     previous_criterion = current_criterion;
-
-    //     // SPSS-style reporting uses a scaled convergence value.
-    //     final_convergence = max_angle * 100.0;
-
-    //     // // Require both angle and criterion change to be below tolerance.
-    //     // let criteria_met = max_angle < tol && criterion_change < criterion_tol;
-    //     // if criteria_met {
-    //     //     // Avoid claiming convergence in a single-iteration run unless there was no rotation.
-    //     //     if max_iterations <= 1 {
-    //     //         if max_angle == 0.0 && criterion_change == 0.0 {
-    //     //             is_converged = true;
-    //     //             break;
-    //     //         }
-    //     //     } else {
-    //     //         is_converged = true;
-    //     //         break;
-    //     //     }
-    //     // }
-    //     // Require both angle and criterion change to be below tolerance.
-    //     let criteria_met = max_angle < tol && criterion_change < criterion_tol;
-    //     if criteria_met {
-    //         if confirmation_sweep {
-    //             is_converged = true;
-    //             break;
-    //         }
-    //         confirmation_sweep = true;
-    //     } else {
-    //         confirmation_sweep = false;
-    //     }
-    // }
 
     let current_criterion = compute_varimax_criterion(&normalized_loadings);
         let criterion_change = (current_criterion - previous_criterion).abs();
@@ -855,6 +822,611 @@ fn compute_oblimin_obj_grad_l(
     (obj / 4.0, dq)
 }
 
+// // =========================================================
+// // Direct Oblimin Rotation (Exact SPSS GPA Algorithm)
+// // =========================================================
+// pub fn rotate_oblimin(
+//     extraction_result: &ExtractionResult,
+//     config: &FactorAnalysisConfig
+// ) -> Result<RotationResult, String> {
+    
+//     // Warm start menggunakan Varimax agar konvergensi secepat SPSS
+//     let varimax_result = rotate_varimax(extraction_result, config)?;
+//     let start_t = varimax_result.transformation_matrix; 
+
+//     let unrotated_loadings = &extraction_result.loadings;
+//     let n_rows = unrotated_loadings.nrows();
+//     let n_cols = unrotated_loadings.ncols();
+//     let gamma = config.rotation.delta; 
+
+//     // Kaiser Normalization pada unrotated loadings
+//     let mut h = vec![0.0; n_rows];
+//     let mut a_mat = unrotated_loadings.clone(); 
+//     for i in 0..n_rows {
+//         let mut ss = 0.0;
+//         for j in 0..n_cols {
+//             ss += unrotated_loadings[(i, j)].powi(2);
+//         }
+//         h[i] = ss.sqrt().max(1e-12); 
+//         for j in 0..n_cols {
+//             a_mat[(i, j)] /= h[i];
+//         }
+//     }
+
+//     // Iterasi Optimasi
+//     let mut t_mat = start_t; 
+//     let max_iter = if config.rotation.max_iter > 0 {
+//         (config.rotation.max_iter as usize).max(250)
+//     } else {
+//         250
+//     };
+    
+//     // let tol = 1e-5;
+//     let tol = 1e-4;
+//     let mut alpha = 1.0; 
+//     let mut iterations_required = 0;
+//     let mut is_converged = false;
+//     let mut final_convergence = 0.0;
+//     let mut confirmation_sweep = false;
+
+//     // Kalkulasi Status Awal dengan Parameter L = A * (T^T)^(-1)
+//     let t_inv_init = t_mat.clone().try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
+//     let mut l_mat = &a_mat * t_inv_init.transpose();
+//     let (mut current_obj, mut g_q) = compute_oblimin_obj_grad_l(&l_mat, gamma);
+
+//     for _iter in 0..max_iter {
+//         iterations_required += 1;
+        
+//         let t_inv = t_mat.clone().try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
+        
+//         // G = - (L^T * G_q * T_inv)^T = - (T_inv)^T * G_q^T * L
+//         let g = -1.0 * (l_mat.transpose() * &g_q * &t_inv).transpose();
+
+//         // GPA Projection for Oblique Rotation: Gp = G - T * diag(T^T G)
+//         let tg = t_mat.transpose() * &g;
+//         let mut x_diag = DMatrix::<f64>::zeros(n_cols, n_cols);
+//         for i in 0..n_cols { x_diag[(i, i)] = tg[(i, i)]; }
+//         let gp = &g - &t_mat * &x_diag;
+
+//         // Hitung nilai konvergensi (Frobenius norm dari Gp)
+//         let mut s_val = 0.0;
+//         for v in gp.iter() { s_val += v * v; }
+//         s_val = s_val.sqrt();
+//         final_convergence = s_val;
+        
+//         if s_val < tol { 
+//             if confirmation_sweep {
+//                 is_converged = true;
+//                 break; 
+//             }
+//             confirmation_sweep = true;
+//         } else {
+//             confirmation_sweep = false;
+//         }
+
+//         alpha *= 2.0;
+//         let mut found = false;
+//         let mut best_t = t_mat.clone();
+
+//         // Line Search (Backtracking)
+//         for _s in 0..15 {
+//             let mut t_new = &t_mat - alpha * &gp;
+            
+//             // Retraction: Normalize columns of T untuk constraint Oblique
+//             let mut scale_diag = DMatrix::<f64>::zeros(n_cols, n_cols);
+//             for j in 0..n_cols {
+//                 let mut col_sq_sum = 0.0;
+//                 for i in 0..n_cols {
+//                     col_sq_sum += t_new[(i, j)].powi(2);
+//                 }
+//                 scale_diag[(j, j)] = 1.0 / col_sq_sum.sqrt().max(1e-12);
+//             }
+//             t_new = t_new * scale_diag;
+
+//             // Evaluasi dengan T baru
+//             let t_new_inv = t_new.clone().try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
+//             let l_new = &a_mat * t_new_inv.transpose();
+//             let (obj_new, g_q_new) = compute_oblimin_obj_grad_l(&l_new, gamma);
+            
+//             // Armijo condition
+//             let mut diff_tr = 0.0;
+//             let t_diff = &t_mat - &t_new;
+//             let gp_t_diff = gp.transpose() * t_diff;
+//             for i in 0..n_cols { diff_tr += gp_t_diff[(i, i)]; }
+
+//             if !obj_new.is_nan() && obj_new < current_obj - 0.5 * diff_tr {
+//                 current_obj = obj_new;
+//                 best_t = t_new;
+//                 g_q = g_q_new; 
+//                 l_mat = l_new; // Update L matriks
+//                 found = true;
+//                 break;
+//             }
+//             alpha *= 0.5; 
+//         }
+
+//         t_mat = best_t;
+//         if !found && alpha < 1e-7 { break; }
+//     }
+
+//     // SPSS Convention: Transformation Matrix (Tspss) adalah (T^T)^(-1)
+//     let t_inv_final = t_mat.clone().try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
+//     let mut t_spss = t_inv_final.transpose();
+
+//     // Denormalisasi Pattern Matrix (P = A_norm * Tspss * h)
+//     let l_final = &a_mat * &t_spss;
+//     let mut pattern = DMatrix::<f64>::zeros(n_rows, n_cols);
+//     for i in 0..n_rows {
+//         for j in 0..n_cols {
+//             pattern[(i, j)] = l_final[(i, j)] * h[i];
+//         }
+//     }
+
+//     // Factor Correlation Matrix (Phi = T^T * T)
+//     let mut phi = t_mat.transpose() * &t_mat;
+//     // Paksa diagonal bernilai absolut 1.0 untuk presisi
+//     for i in 0..n_cols { phi[(i, i)] = 1.0; } 
+
+//     // SPSS Sign Reflection
+//     for j in 0..n_cols {
+//         let mut col_sum = 0.0;
+//         for i in 0..n_rows {
+//             col_sum += pattern[(i, j)];
+//         }
+//         if col_sum < 0.0 {
+//             for i in 0..n_rows { pattern[(i, j)] *= -1.0; }
+//             for k in 0..n_cols { t_spss[(k, j)] *= -1.0; }
+//             for k in 0..n_cols {
+//                 if k != j {
+//                     phi[(j, k)] *= -1.0;
+//                     phi[(k, j)] *= -1.0;
+//                 }
+//             }
+//         }
+//     }
+
+//     // Sort Components berdasarkan SS Loadings
+//     let mut col_stats: Vec<(usize, f64)> = (0..n_cols)
+//         .map(|j| {
+//             let ssl: f64 = (0..n_rows).map(|i| pattern[(i, j)].powi(2)).sum();
+//             (j, ssl)
+//         })
+//         .collect();
+
+//     col_stats.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+//     let new_indices: Vec<usize> = col_stats.iter().map(|x| x.0).collect();
+
+//     let mut sorted_pattern = DMatrix::<f64>::zeros(n_rows, n_cols);
+//     let mut sorted_t = DMatrix::<f64>::zeros(n_cols, n_cols);
+    
+//     for (new_idx, &old_idx) in new_indices.iter().enumerate() {
+//         for i in 0..n_rows { sorted_pattern[(i, new_idx)] = pattern[(i, old_idx)]; }
+//         for i in 0..n_cols { sorted_t[(i, new_idx)] = t_spss[(i, old_idx)]; }
+//     }
+
+//     let mut sorted_phi = DMatrix::<f64>::zeros(n_cols, n_cols);
+//     for (new_row, &old_row) in new_indices.iter().enumerate() {
+//         for (new_col, &old_col) in new_indices.iter().enumerate() {
+//             sorted_phi[(new_row, new_col)] = phi[(old_row, old_col)];
+//         }
+//     }
+
+//     Ok(RotationResult {
+//         rotated_loadings: sorted_pattern,
+//         transformation_matrix: sorted_t,
+//         factor_correlations: Some(sorted_phi),
+//         iterations_required,
+//         is_converged,
+//         convergence_value: final_convergence,
+//     })
+// }
+
+
+
+// // =========================================================
+// // Direct Oblimin Rotation (Exact SPSS GPA Algorithm)
+// // =========================================================
+// pub fn rotate_oblimin(
+//     extraction_result: &ExtractionResult,
+//     config: &FactorAnalysisConfig
+// ) -> Result<RotationResult, String> {
+    
+//     let unrotated_loadings = &extraction_result.loadings;
+//     let n_rows = unrotated_loadings.nrows();
+//     let n_cols = unrotated_loadings.ncols();
+//     let gamma = config.rotation.delta; 
+
+//     // PERBAIKAN 1: Hapus Varimax Warm Start. 
+//     // SPSS memulai GPA Direct Oblimin murni dari Matriks Identitas (Unrotated).
+//     // let start_t = DMatrix::<f64>::identity(n_cols, n_cols); 
+//     let varimax_result = rotate_varimax(extraction_result, config)?;
+//     let start_t = varimax_result.transformation_matrix;
+
+
+//     // Kaiser Normalization pada unrotated loadings
+//     let mut h = vec![0.0; n_rows];
+//     let mut a_mat = unrotated_loadings.clone(); 
+//     for i in 0..n_rows {
+//         let mut ss = 0.0;
+//         for j in 0..n_cols {
+//             ss += unrotated_loadings[(i, j)].powi(2);
+//         }
+//         h[i] = ss.sqrt().max(1e-12); 
+//         for j in 0..n_cols {
+//             a_mat[(i, j)] /= h[i];
+//         }
+//     }
+
+//     // Iterasi Optimasi
+//     let mut t_mat = start_t; 
+//     let max_iter = if config.rotation.max_iter > 0 {
+//         (config.rotation.max_iter as usize).max(250)
+//     } else {
+//         250
+//     };
+    
+    
+//     // PERBAIKAN 2: Gunakan toleransi konvergensi standar
+//     let tol = 1e-6;
+//     let mut alpha = 1.0; 
+//     let mut iterations_required = 0;
+//     let mut is_converged = false;
+//     let mut final_convergence = 0.0;
+//     let mut confirmation_sweep = false;
+
+//     // Kalkulasi Status Awal dengan Parameter L = A * (T^T)^(-1)
+//     let t_inv_init = t_mat.clone().try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
+//     let mut l_mat = &a_mat * t_inv_init.transpose();
+//     let (mut current_obj, mut g_q) = compute_oblimin_obj_grad_l(&l_mat, gamma);
+
+//     for _iter in 0..max_iter {
+//         iterations_required += 1;
+        
+//         let t_inv = t_mat.clone().try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
+        
+//         // G = - (L^T * G_q * T_inv)^T = - (T_inv)^T * G_q^T * L
+//         let g = -1.0 * (l_mat.transpose() * &g_q * &t_inv).transpose();
+
+//         // GPA Projection for Oblique Rotation: Gp = G - T * diag(T^T G)
+//         let tg = t_mat.transpose() * &g;
+//         let mut x_diag = DMatrix::<f64>::zeros(n_cols, n_cols);
+//         for i in 0..n_cols { x_diag[(i, i)] = tg[(i, i)]; }
+//         let gp = &g - &t_mat * &x_diag;
+
+//         // Hitung nilai konvergensi (Frobenius norm dari Gp)
+//         let mut s_val = 0.0;
+//         for v in gp.iter() { s_val += v * v; }
+//         s_val = s_val.sqrt();
+//         final_convergence = s_val;
+        
+//         if s_val < tol { 
+//             if confirmation_sweep {
+//                 is_converged = true;
+//                 break; 
+//             }
+//             confirmation_sweep = true;
+//         } else {
+//             confirmation_sweep = false;
+//         }
+
+//         // PERBAIKAN 3: Selalu reset Step Size (alpha) ke 1.0 di setiap awal line search
+//         alpha = 1.0; 
+//         let mut found = false;
+//         let mut best_t = t_mat.clone();
+
+//         // Line Search (Backtracking)
+//         for _s in 0..15 {
+//             let mut t_new = &t_mat - alpha * &gp;
+            
+//             // Retraction: Normalize columns of T untuk constraint Oblique
+//             let mut scale_diag = DMatrix::<f64>::zeros(n_cols, n_cols);
+//             for j in 0..n_cols {
+//                 let mut col_sq_sum = 0.0;
+//                 for i in 0..n_cols {
+//                     col_sq_sum += t_new[(i, j)].powi(2);
+//                 }
+//                 scale_diag[(j, j)] = 1.0 / col_sq_sum.sqrt().max(1e-12);
+//             }
+//             t_new = t_new * scale_diag;
+
+//             // Evaluasi dengan T baru
+//             let t_new_inv = t_new.clone().try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
+//             let l_new = &a_mat * t_new_inv.transpose();
+//             let (obj_new, g_q_new) = compute_oblimin_obj_grad_l(&l_new, gamma);
+            
+//             // Armijo condition
+//             let mut diff_tr = 0.0;
+//             let t_diff = &t_mat - &t_new;
+//             let gp_t_diff = gp.transpose() * t_diff;
+//             for i in 0..n_cols { diff_tr += gp_t_diff[(i, i)]; }
+
+//             // PERBAIKAN 4: Gunakan syarat Armijo 1e-4 agar bisa turun di lembah datar (matriks NPD)
+//             if !obj_new.is_nan() && obj_new <= current_obj - 1e-4 * diff_tr {
+//                 current_obj = obj_new;
+//                 best_t = t_new;
+//                 g_q = g_q_new; 
+//                 l_mat = l_new; // Update L matriks
+//                 found = true;
+//                 break;
+//             }
+//             alpha *= 0.5; 
+//         }
+
+//         t_mat = best_t;
+//         if !found && alpha < 1e-7 { break; }
+//     }
+
+//     // SPSS Convention: Transformation Matrix (Tspss) adalah (T^T)^(-1)
+//     let t_inv_final = t_mat.clone().try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
+//     let mut t_spss = t_inv_final.transpose();
+
+//     // Denormalisasi Pattern Matrix (P = A_norm * Tspss * h)
+//     let l_final = &a_mat * &t_spss;
+//     let mut pattern = DMatrix::<f64>::zeros(n_rows, n_cols);
+//     for i in 0..n_rows {
+//         for j in 0..n_cols {
+//             pattern[(i, j)] = l_final[(i, j)] * h[i];
+//         }
+//     }
+
+//     // Factor Correlation Matrix (Phi = T^T * T)
+//     let mut phi = t_mat.transpose() * &t_mat;
+//     // Paksa diagonal bernilai absolut 1.0 untuk presisi
+//     for i in 0..n_cols { phi[(i, i)] = 1.0; } 
+
+//     // SPSS Sign Reflection
+//     for j in 0..n_cols {
+//         let mut col_sum = 0.0;
+//         for i in 0..n_rows {
+//             col_sum += pattern[(i, j)];
+//         }
+//         if col_sum < 0.0 {
+//             for i in 0..n_rows { pattern[(i, j)] *= -1.0; }
+//             for k in 0..n_cols { t_spss[(k, j)] *= -1.0; }
+//             for k in 0..n_cols {
+//                 if k != j {
+//                     phi[(j, k)] *= -1.0;
+//                     phi[(k, j)] *= -1.0;
+//                 }
+//             }
+//         }
+//     }
+
+//     // Sort Components berdasarkan SS Loadings
+//     let mut col_stats: Vec<(usize, f64)> = (0..n_cols)
+//         .map(|j| {
+//             let ssl: f64 = (0..n_rows).map(|i| pattern[(i, j)].powi(2)).sum();
+//             (j, ssl)
+//         })
+//         .collect();
+
+//     col_stats.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+//     let new_indices: Vec<usize> = col_stats.iter().map(|x| x.0).collect();
+
+//     let mut sorted_pattern = DMatrix::<f64>::zeros(n_rows, n_cols);
+//     let mut sorted_t = DMatrix::<f64>::zeros(n_cols, n_cols);
+    
+//     for (new_idx, &old_idx) in new_indices.iter().enumerate() {
+//         for i in 0..n_rows { sorted_pattern[(i, new_idx)] = pattern[(i, old_idx)]; }
+//         for i in 0..n_cols { sorted_t[(i, new_idx)] = t_spss[(i, old_idx)]; }
+//     }
+
+//     let mut sorted_phi = DMatrix::<f64>::zeros(n_cols, n_cols);
+//     for (new_row, &old_row) in new_indices.iter().enumerate() {
+//         for (new_col, &old_col) in new_indices.iter().enumerate() {
+//             sorted_phi[(new_row, new_col)] = phi[(old_row, old_col)];
+//         }
+//     }
+
+//     Ok(RotationResult {
+//         rotated_loadings: sorted_pattern,
+//         transformation_matrix: sorted_t,
+//         factor_correlations: Some(sorted_phi),
+//         iterations_required,
+//         is_converged,
+//         convergence_value: final_convergence,
+//     })
+// }
+
+
+
+
+// SEBELUM REVISI 4 JUNI - FIX BISMILLAH 
+
+// // =========================================================
+// // Direct Oblimin Rotation (Exact SPSS GPA Algorithm)
+// // =========================================================
+// pub fn rotate_oblimin(
+//     extraction_result: &ExtractionResult,
+//     config: &FactorAnalysisConfig
+// ) -> Result<RotationResult, String> {
+    
+//     let unrotated_loadings = &extraction_result.loadings;
+//     let n_rows = unrotated_loadings.nrows();
+//     let n_cols = unrotated_loadings.ncols();
+//     let gamma = config.rotation.delta; 
+
+//     // 1. SPSS selalu memulai Direct Oblimin murni dari Matriks Identitas
+//     let start_t = DMatrix::<f64>::identity(n_cols, n_cols); 
+
+//     // 2. Kaiser Normalization
+//     let mut h = vec![0.0; n_rows];
+//     let mut a_mat = unrotated_loadings.clone(); 
+//     for i in 0..n_rows {
+//         let mut ss = 0.0;
+//         for j in 0..n_cols {
+//             ss += unrotated_loadings[(i, j)].powi(2);
+//         }
+//         h[i] = ss.sqrt().max(1e-12); 
+//         for j in 0..n_cols {
+//             a_mat[(i, j)] /= h[i];
+//         }
+//     }
+
+//     let mut t_mat = start_t; 
+//     let max_iter = if config.rotation.max_iter > 0 {
+//         (config.rotation.max_iter as usize).max(250)
+//     } else {
+//         250
+//     };
+    
+//     // PERBAIKAN UTAMA: Gunakan kriteria konvergensi asli IBM SPSS 
+//     // Yaitu berhenti ketika perubahan nilai objektif (Criterion Change) < 1e-5
+//     let tol = 1e-5; 
+    
+//     let mut iterations_required = 0;
+//     let mut is_converged = false;
+
+//     // Kalkulasi Status Awal
+//     let t_inv_init = t_mat.clone().try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
+//     let mut l_mat = &a_mat * t_inv_init.transpose();
+//     let (mut current_obj, mut g_q) = compute_oblimin_obj_grad_l(&l_mat, gamma);
+
+//     for _iter in 0..max_iter {
+//         iterations_required += 1;
+        
+//         let t_inv = t_mat.clone().try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
+//         let g = -1.0 * (l_mat.transpose() * &g_q * &t_inv).transpose();
+
+//         // GPA Projection
+//         let tg = t_mat.transpose() * &g;
+//         let mut x_diag = DMatrix::<f64>::zeros(n_cols, n_cols);
+//         for i in 0..n_cols { x_diag[(i, i)] = tg[(i, i)]; }
+//         let gp = &g - &t_mat * &x_diag;
+
+//         // Gunakan step size konstan tanpa akselerasi ganda (meniru pergerakan lambat SPSS)
+//         let mut alpha = 1.0; 
+//         let mut found = false;
+//         let mut best_t = t_mat.clone();
+//         let mut best_obj = current_obj;
+
+//         // Line Search (Backtracking) standar
+//         for _s in 0..15 {
+//             let mut t_new = &t_mat - alpha * &gp;
+            
+//             // Retraction (Normalisasi kolom constraint Oblique)
+//             let mut scale_diag = DMatrix::<f64>::zeros(n_cols, n_cols);
+//             for j in 0..n_cols {
+//                 let mut col_sq_sum = 0.0;
+//                 for i in 0..n_cols { col_sq_sum += t_new[(i, j)].powi(2); }
+//                 scale_diag[(j, j)] = 1.0 / col_sq_sum.sqrt().max(1e-12);
+//             }
+//             t_new = t_new * scale_diag;
+
+//             let t_new_inv = t_new.clone().try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
+//             let l_new = &a_mat * t_new_inv.transpose();
+//             let (obj_new, g_q_new) = compute_oblimin_obj_grad_l(&l_new, gamma);
+            
+//             let mut diff_tr = 0.0;
+//             let t_diff = &t_mat - &t_new;
+//             let gp_t_diff = gp.transpose() * t_diff;
+//             for i in 0..n_cols { diff_tr += gp_t_diff[(i, i)]; }
+
+//             // Armijo condition murni tanpa toleransi paksa (+ 1e-14 dihilangkan)
+//             if !obj_new.is_nan() && obj_new < current_obj - 1e-4 * diff_tr {
+//                 best_obj = obj_new;
+//                 best_t = t_new;
+//                 g_q = g_q_new; 
+//                 l_mat = l_new; 
+//                 found = true;
+//                 break;
+//             }
+//             alpha *= 0.5; 
+//         }
+
+//         if found {
+//             let obj_change = (current_obj - best_obj).abs();
+//             t_mat = best_t;
+//             current_obj = best_obj;
+            
+//             // KUNCI REPLIKASI SPSS: Jika perubahan objektif sangat kecil, HENTIKAN ITERASI!
+//             if obj_change < tol {
+//                 is_converged = true;
+//                 break;
+//             }
+//         } else {
+//             // Jika tidak bisa bergeser lagi, berarti sudah terhenti di minimum
+//             is_converged = true;
+//             break;
+//         }
+//     }
+
+//     // SPSS Convention: Transformation Matrix (Tspss) adalah (T^T)^(-1)
+//     let t_inv_final = t_mat.clone().try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
+//     let mut t_spss = t_inv_final.transpose();
+
+//     // Denormalisasi Pattern Matrix (P = A_norm * Tspss * h)
+//     let l_final = &a_mat * &t_spss;
+//     let mut pattern = DMatrix::<f64>::zeros(n_rows, n_cols);
+//     for i in 0..n_rows {
+//         for j in 0..n_cols {
+//             pattern[(i, j)] = l_final[(i, j)] * h[i];
+//         }
+//     }
+
+//     // Factor Correlation Matrix (Phi = T^T * T)
+//     let mut phi = t_mat.transpose() * &t_mat;
+//     for i in 0..n_cols { phi[(i, i)] = 1.0; } 
+
+//     // SPSS Sign Reflection
+//     for j in 0..n_cols {
+//         let mut col_sum = 0.0;
+//         for i in 0..n_rows {
+//             col_sum += pattern[(i, j)];
+//         }
+//         if col_sum < 0.0 {
+//             for i in 0..n_rows { pattern[(i, j)] *= -1.0; }
+//             for k in 0..n_cols { t_spss[(k, j)] *= -1.0; }
+//             for k in 0..n_cols {
+//                 if k != j {
+//                     phi[(j, k)] *= -1.0;
+//                     phi[(k, j)] *= -1.0;
+//                 }
+//             }
+//         }
+//     }
+
+//     // Sort Components berdasarkan SS Loadings
+//     let mut col_stats: Vec<(usize, f64)> = (0..n_cols)
+//         .map(|j| {
+//             let ssl: f64 = (0..n_rows).map(|i| pattern[(i, j)].powi(2)).sum();
+//             (j, ssl)
+//         })
+//         .collect();
+
+//     col_stats.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+//     let new_indices: Vec<usize> = col_stats.iter().map(|x| x.0).collect();
+
+//     let mut sorted_pattern = DMatrix::<f64>::zeros(n_rows, n_cols);
+//     let mut sorted_t = DMatrix::<f64>::zeros(n_cols, n_cols);
+    
+//     for (new_idx, &old_idx) in new_indices.iter().enumerate() {
+//         for i in 0..n_rows { sorted_pattern[(i, new_idx)] = pattern[(i, old_idx)]; }
+//         for i in 0..n_cols { sorted_t[(i, new_idx)] = t_spss[(i, old_idx)]; }
+//     }
+
+//     let mut sorted_phi = DMatrix::<f64>::zeros(n_cols, n_cols);
+//     for (new_row, &old_row) in new_indices.iter().enumerate() {
+//         for (new_col, &old_col) in new_indices.iter().enumerate() {
+//             sorted_phi[(new_row, new_col)] = phi[(old_row, old_col)];
+//         }
+//     }
+
+//     Ok(RotationResult {
+//         rotated_loadings: sorted_pattern,
+//         transformation_matrix: sorted_t,
+//         factor_correlations: Some(sorted_phi),
+//         iterations_required,
+//         is_converged, // SEKARANG PASTI TRUE
+//         convergence_value: current_obj, 
+//     })
+// }
+
+
+
+
+// REVISIS 4 JUNI - FIX BISMILLAH
+
 // =========================================================
 // Direct Oblimin Rotation (Exact SPSS GPA Algorithm)
 // =========================================================
@@ -863,16 +1435,16 @@ pub fn rotate_oblimin(
     config: &FactorAnalysisConfig
 ) -> Result<RotationResult, String> {
     
-    // Warm start menggunakan Varimax agar konvergensi secepat SPSS
-    let varimax_result = rotate_varimax(extraction_result, config)?;
-    let start_t = varimax_result.transformation_matrix; 
-
     let unrotated_loadings = &extraction_result.loadings;
     let n_rows = unrotated_loadings.nrows();
     let n_cols = unrotated_loadings.ncols();
     let gamma = config.rotation.delta; 
 
-    // Kaiser Normalization pada unrotated loadings
+    // 1. PERBAIKAN: Gunakan Varimax Warm Start agar stabil di Covariance dan Correlation
+    let varimax_result = rotate_varimax(extraction_result, config)?;
+    let start_t = varimax_result.transformation_matrix;
+
+    // 2. Kaiser Normalization
     let mut h = vec![0.0; n_rows];
     let mut a_mat = unrotated_loadings.clone(); 
     for i in 0..n_rows {
@@ -886,107 +1458,92 @@ pub fn rotate_oblimin(
         }
     }
 
-    // Iterasi Optimasi
     let mut t_mat = start_t; 
     let max_iter = if config.rotation.max_iter > 0 {
-        (config.rotation.max_iter as usize).max(250)
+        // (config.rotation.max_iter as usize).max(250)
+        config.rotation.max_iter as usize
     } else {
         250
     };
     
-    // let tol = 1e-5;
-    let tol = 1e-4;
-    let mut alpha = 1.0; 
+    let tol = 1e-5; 
     let mut iterations_required = 0;
     let mut is_converged = false;
-    let mut final_convergence = 0.0;
-    let mut confirmation_sweep = false;
+    
 
-    // Kalkulasi Status Awal dengan Parameter L = A * (T^T)^(-1)
+    // Kalkulasi Status Awal
     let t_inv_init = t_mat.clone().try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
     let mut l_mat = &a_mat * t_inv_init.transpose();
     let (mut current_obj, mut g_q) = compute_oblimin_obj_grad_l(&l_mat, gamma);
+
+    let mut alpha = 1.0;
 
     for _iter in 0..max_iter {
         iterations_required += 1;
         
         let t_inv = t_mat.clone().try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
-        
-        // G = - (L^T * G_q * T_inv)^T = - (T_inv)^T * G_q^T * L
         let g = -1.0 * (l_mat.transpose() * &g_q * &t_inv).transpose();
 
-        // GPA Projection for Oblique Rotation: Gp = G - T * diag(T^T G)
         let tg = t_mat.transpose() * &g;
         let mut x_diag = DMatrix::<f64>::zeros(n_cols, n_cols);
         for i in 0..n_cols { x_diag[(i, i)] = tg[(i, i)]; }
         let gp = &g - &t_mat * &x_diag;
 
-        // Hitung nilai konvergensi (Frobenius norm dari Gp)
-        let mut s_val = 0.0;
-        for v in gp.iter() { s_val += v * v; }
-        s_val = s_val.sqrt();
-        final_convergence = s_val;
-        
-        if s_val < tol { 
-            if confirmation_sweep {
-                is_converged = true;
-                break; 
-            }
-            confirmation_sweep = true;
-        } else {
-            confirmation_sweep = false;
-        }
-
-        alpha *= 2.0;
         let mut found = false;
         let mut best_t = t_mat.clone();
+        let mut best_obj = current_obj;
 
-        // Line Search (Backtracking)
         for _s in 0..15 {
             let mut t_new = &t_mat - alpha * &gp;
             
-            // Retraction: Normalize columns of T untuk constraint Oblique
             let mut scale_diag = DMatrix::<f64>::zeros(n_cols, n_cols);
             for j in 0..n_cols {
                 let mut col_sq_sum = 0.0;
-                for i in 0..n_cols {
-                    col_sq_sum += t_new[(i, j)].powi(2);
-                }
+                for i in 0..n_cols { col_sq_sum += t_new[(i, j)].powi(2); }
                 scale_diag[(j, j)] = 1.0 / col_sq_sum.sqrt().max(1e-12);
             }
             t_new = t_new * scale_diag;
 
-            // Evaluasi dengan T baru
             let t_new_inv = t_new.clone().try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
             let l_new = &a_mat * t_new_inv.transpose();
             let (obj_new, g_q_new) = compute_oblimin_obj_grad_l(&l_new, gamma);
             
-            // Armijo condition
             let mut diff_tr = 0.0;
             let t_diff = &t_mat - &t_new;
             let gp_t_diff = gp.transpose() * t_diff;
             for i in 0..n_cols { diff_tr += gp_t_diff[(i, i)]; }
 
-            if !obj_new.is_nan() && obj_new < current_obj - 0.5 * diff_tr {
-                current_obj = obj_new;
+            if !obj_new.is_nan() && obj_new < current_obj - 1e-4 * diff_tr {
+                best_obj = obj_new;
                 best_t = t_new;
                 g_q = g_q_new; 
-                l_mat = l_new; // Update L matriks
+                l_mat = l_new; 
                 found = true;
                 break;
             }
             alpha *= 0.5; 
         }
 
-        t_mat = best_t;
-        if !found && alpha < 1e-7 { break; }
+        if found {
+            let obj_change = (current_obj - best_obj).abs();
+            t_mat = best_t;
+            current_obj = best_obj;
+            
+            if obj_change < tol {
+                is_converged = true;
+                break;
+            }
+            // Akselerasi alpha sedikit untuk mencegah stuck, namun tidak lebih dari 1.0
+            alpha = (alpha * 2.0).min(1.0);
+        } else {
+            // is_converged = true;
+            break;
+        }
     }
 
-    // SPSS Convention: Transformation Matrix (Tspss) adalah (T^T)^(-1)
     let t_inv_final = t_mat.clone().try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
     let mut t_spss = t_inv_final.transpose();
 
-    // Denormalisasi Pattern Matrix (P = A_norm * Tspss * h)
     let l_final = &a_mat * &t_spss;
     let mut pattern = DMatrix::<f64>::zeros(n_rows, n_cols);
     for i in 0..n_rows {
@@ -995,12 +1552,9 @@ pub fn rotate_oblimin(
         }
     }
 
-    // Factor Correlation Matrix (Phi = T^T * T)
     let mut phi = t_mat.transpose() * &t_mat;
-    // Paksa diagonal bernilai absolut 1.0 untuk presisi
     for i in 0..n_cols { phi[(i, i)] = 1.0; } 
 
-    // SPSS Sign Reflection
     for j in 0..n_cols {
         let mut col_sum = 0.0;
         for i in 0..n_rows {
@@ -1018,7 +1572,6 @@ pub fn rotate_oblimin(
         }
     }
 
-    // Sort Components berdasarkan SS Loadings
     let mut col_stats: Vec<(usize, f64)> = (0..n_cols)
         .map(|j| {
             let ssl: f64 = (0..n_rows).map(|i| pattern[(i, j)].powi(2)).sum();
@@ -1049,127 +1602,87 @@ pub fn rotate_oblimin(
         transformation_matrix: sorted_t,
         factor_correlations: Some(sorted_phi),
         iterations_required,
-        is_converged,
-        convergence_value: final_convergence,
+        is_converged, 
+        convergence_value: current_obj, 
     })
 }
 
-
-
-
-
-
-
-
-// REVISI 31 MEI 2026
-
+// =========================================================
+// Promax Rotation
+// =========================================================
 pub fn rotate_promax(
     extraction_result: &ExtractionResult,
     config: &FactorAnalysisConfig
 ) -> Result<RotationResult, String> {
 
-    // =====================================================
-    // STEP 1 : VARIMAX RESULT
-    // =====================================================
     let varimax_result = rotate_varimax(extraction_result, config)?;
-    let varimax_pattern = &varimax_result.rotated_loadings; // Denormalized Varimax
+    let t_varimax = &varimax_result.transformation_matrix;
 
-    let n_rows = varimax_pattern.nrows();
-    let n_cols = varimax_pattern.ncols();
+    let unrotated = &extraction_result.loadings;
+    let n_rows = unrotated.nrows();
+    let n_cols = unrotated.ncols();
+    let kappa = if config.rotation.kappa > 0 { config.rotation.kappa as f64 } else { 4.0 };
 
-    let kappa = if config.rotation.kappa > 0 {
-        config.rotation.kappa as f64
-    } else {
-        4.0
-    };
-
-    // =====================================================
-    // STEP 2 : COMMUNALITIES (h)
-    // Hitung h murni untuk keperluan pembentukan target
-    // =====================================================
+    // 1. Kaiser Normalization
     let mut h = vec![0.0; n_rows];
+    let mut lambda_norm = DMatrix::<f64>::zeros(n_rows, n_cols);
     for i in 0..n_rows {
         let mut ss = 0.0;
         for j in 0..n_cols {
-            ss += extraction_result.loadings[(i, j)].powi(2);
+            ss += unrotated[(i, j)].powi(2);
         }
         h[i] = ss.sqrt().max(1e-12);
+        for j in 0..n_cols {
+            lambda_norm[(i, j)] = unrotated[(i, j)] / h[i];
+        }
     }
 
-    // =====================================================
-    // STEP 3 : ASYMMETRIC TARGET MATRIX (SPSS SECRET)
-    // Target dibentuk MURNI dalam ruang Normalized.
-    // Tidak ada denormalisasi (perkalian dengan h) pada target.
-    // =====================================================
+    // 2. Normalized Varimax Pattern
+    let v_norm = &lambda_norm * t_varimax;
+
+    // 3. Asymmetric Target Matrix (from Normalized Varimax)
     let mut target = DMatrix::<f64>::zeros(n_rows, n_cols);
     for i in 0..n_rows {
         for j in 0..n_cols {
-            let v_norm = varimax_pattern[(i, j)] / h[i];
-            target[(i, j)] = v_norm.signum() * v_norm.abs().powf(kappa);
+            let v = v_norm[(i, j)];
+            target[(i, j)] = v.signum() * v.abs().powf(kappa);
         }
     }
 
-    // =====================================================
-    // STEP 4 : OLS REGRESSION (DENORMALIZED vs NORMALIZED)
-    // W = (V_denorm' * V_denorm)^(-1) * V_denorm' * Target_norm
-    // =====================================================
-    let v_t = varimax_pattern.transpose();
-    let vtv = &v_t * varimax_pattern;
-    let vth = &v_t * &target;
+    // 4. OLS Regression (Harus pada Normalized metric!)
+    let vt = v_norm.transpose();
+    let vtv = &vt * &v_norm;
+    let vtb = &vt * &target;
+    let w_mat = vtv.try_inverse().ok_or("Promax: singular regression matrix")? * vtb;
 
-    let w_mat = vtv.try_inverse()
-        .ok_or("Promax: singular regression matrix")?
-        * vth;
-
-    // =====================================================
-    // STEP 5 : COLUMN NORMALIZATION (Covariance Scaling)
-    // Memastikan (T'T)^(-1) memiliki nilai 1.0 di diagonal
-    // =====================================================
+    // 5. Column Normalization
     let wtw = w_mat.transpose() * &w_mat;
-    let wtw_inv = wtw.try_inverse()
-        .ok_or("Promax: singular W'W matrix")?;
-
+    let wtw_inv = wtw.try_inverse().ok_or("Promax: singular W'W matrix")?;
     let mut d_mat = DMatrix::<f64>::zeros(n_cols, n_cols);
     for j in 0..n_cols {
         d_mat[(j, j)] = wtw_inv[(j, j)].sqrt();
     }
 
-    let t_mat = w_mat * d_mat;
+    let t_promax = w_mat * d_mat;
+    let mut t_full = t_varimax * &t_promax;
 
-    // =====================================================
-    // STEP 6 : FACTOR CORRELATION MATRIX (Phi)
-    // =====================================================
-    let tt = t_mat.transpose() * &t_mat;
-    let mut phi = tt.try_inverse()
-        .unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
+    // 6. Factor Correlation Matrix
+    let t_inv = t_full.clone().try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
+    let mut phi = &t_inv * t_inv.transpose();
+    for i in 0..n_cols { phi[(i, i)] = 1.0; }
 
-    for i in 0..n_cols {
-        phi[(i, i)] = 1.0;
-    }
+    // 7. Raw Pattern Matrix
+    let mut pattern = unrotated * &t_full;
 
-    // =====================================================
-    // STEP 7 : PATTERN MATRIX (P = V_denorm * T)
-    // =====================================================
-    let mut pattern = varimax_pattern * &t_mat;
-
-    // =====================================================
-    // STEP 8 : FULL TRANSFORMATION MATRIX & SIGN REFLECTION
-    // =====================================================
-    let mut full_t = &varimax_result.transformation_matrix * &t_mat;
-
+    // 8. Sign Reflection
     for j in 0..n_cols {
         let mut sum = 0.0;
         for i in 0..n_rows {
             sum += pattern[(i, j)];
         }
-
         if sum < 0.0 {
-            for i in 0..n_rows {
-                pattern[(i, j)] *= -1.0;
-            }
-            for i in 0..n_cols {
-                full_t[(i, j)] *= -1.0;
-            }
+            for i in 0..n_rows { pattern[(i, j)] *= -1.0; }
+            for k in 0..n_cols { t_full[(k, j)] *= -1.0; }
             for k in 0..n_cols {
                 if k != j {
                     phi[(j, k)] *= -1.0;
@@ -1179,22 +1692,14 @@ pub fn rotate_promax(
         }
     }
 
-    // =====================================================
-    // STEP 9 : SORT BY SS LOADINGS
-    // =====================================================
+    // 9. Sort by Sum of Squared Loadings
     let mut ordering: Vec<(usize, f64)> = (0..n_cols)
         .map(|j| {
-            let ss: f64 = (0..n_rows)
-                .map(|i| pattern[(i, j)].powi(2))
-                .sum();
+            let ss: f64 = (0..n_rows).map(|i| pattern[(i, j)].powi(2)).sum();
             (j, ss)
         })
         .collect();
-
-    ordering.sort_by(|a, b| 
-        b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal)
-    );
-
+    ordering.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
     let indices: Vec<usize> = ordering.iter().map(|x| x.0).collect();
 
     let mut sorted_pattern = DMatrix::<f64>::zeros(n_rows, n_cols);
@@ -1202,14 +1707,9 @@ pub fn rotate_promax(
     let mut sorted_phi = DMatrix::<f64>::zeros(n_cols, n_cols);
 
     for (new_col, &old_col) in indices.iter().enumerate() {
-        for i in 0..n_rows {
-            sorted_pattern[(i, new_col)] = pattern[(i, old_col)];
-        }
-        for i in 0..n_cols {
-            sorted_t[(i, new_col)] = full_t[(i, old_col)];
-        }
+        for i in 0..n_rows { sorted_pattern[(i, new_col)] = pattern[(i, old_col)]; }
+        for i in 0..n_cols { sorted_t[(i, new_col)] = t_full[(i, old_col)]; }
     }
-
     for (new_row, &old_row) in indices.iter().enumerate() {
         for (new_col, &old_col) in indices.iter().enumerate() {
             sorted_phi[(new_row, new_col)] = phi[(old_row, old_col)];
@@ -1225,9 +1725,6 @@ pub fn rotate_promax(
         convergence_value: varimax_result.convergence_value,
     })
 }
-
-
-
 
 
 
@@ -1409,14 +1906,5 @@ pub fn calculate_rotated_component_matrix(
         convergence_value: rotation_result.convergence_value,
     })
 }
-
-
-
-
-
-
-
-
-
 
 

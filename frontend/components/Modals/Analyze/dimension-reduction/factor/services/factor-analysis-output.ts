@@ -302,7 +302,8 @@ export async function resultFactorAnalysis({
             if (reproducedCovariances && hasSuccessfulExtraction && configData.extraction.Covariance === true) {
                 await addStatistic(analyticId, {
                     title: `Reproduced Covariances`,
-                    description: `Reproduced Covariances`,
+                    // description: `Reproduced Covariances`,
+                    description: getTableDescription("reproduced_covariances", "Reproduced Covariances"),
                     output_data: reproducedCovariances,
                     components: `Reproduced Covariances`,
                 });
@@ -353,7 +354,8 @@ export async function resultFactorAnalysis({
             if (patternMatrix && hasSuccessfulExtraction) {
                 await addStatistic(analyticId, {
                     title: `Pattern Matrix`,
-                    description: `Pattern Matrix`,
+                    // description: `Pattern Matrix`,
+                    description: getTableDescription("pattern_matrix", "Pattern Matrix"),
                     output_data: patternMatrix,
                     components: `Pattern Matrix`,
                 });
@@ -366,7 +368,8 @@ export async function resultFactorAnalysis({
             if (structureMatrix && hasSuccessfulExtraction) {
                 await addStatistic(analyticId, {
                     title: `Structure Matrix`,
-                    description: `Structure Matrix`,
+                    // description: `Structure Matrix`,
+                    description: getTableDescription("structure_matrix", "Structure Matrix"),
                     output_data: structureMatrix,
                     components: `Structure Matrix`,
                 });

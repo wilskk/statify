@@ -208,44 +208,57 @@ export const fmtLoading = (val: number | undefined | null): string => {
  * 
  * Bartlett's Test harus signifikan (p < 0.05) untuk matrix bukan identity
  */
+/**
+ * Menghasilkan deskripsi baku untuk KMO and Bartlett's Test
+ */
 export const generateKMODescription = (
-  kmoValue: number | string,
-  bartlettSig: number | string,
-  bartlettChiSquare?: number | string,
-  bartlettDf?: number
+  isCovariance: boolean = false
 ): string => {
-  // Parse values from either number or formatted string
-  const kmoNumeric = typeof kmoValue === "string" ? parseFormattedValue(kmoValue) : kmoValue;
-  const bartlettSigNumeric = parseFormattedValue(bartlettSig);
-  const bartlettChiSquareNumeric = typeof bartlettChiSquare === "string" ? parseFormattedValue(bartlettChiSquare) : bartlettChiSquare;
-
-  const isKMOAdequate = kmoNumeric >= 0.5;
-  const isBartlettSig = bartlettSigNumeric < 0.05;
-  const pVal = bartlettSigNumeric < 0.001 ? "< .001" : `= ${bartlettSigNumeric.toFixed(3)}`;
-
-  // KMO interpretation label
-  let kmoLabel = "unacceptable";
-  if (kmoNumeric >= 0.9) kmoLabel = "marvelous";
-  else if (kmoNumeric >= 0.8) kmoLabel = "meritorious";
-  else if (kmoNumeric >= 0.7) kmoLabel = "middling";
-  else if (kmoNumeric >= 0.6) kmoLabel = "mediocre";
-  else if (kmoNumeric >= 0.5) kmoLabel = "miserable";
-
-  let interpretation = "";
-  if (isKMOAdequate && isBartlettSig) {
-    interpretation = "The data is suitable for factor analysis.";
-  } else if (!isKMOAdequate) {
-    interpretation = "The Kaiser-Meyer-Olkin measure is less than 0.5, suggesting the data may not be suitable for factor analysis.";
-  } else if (!isBartlettSig) {
-    interpretation = "Bartlett's test of sphericity is not significant, indicating the correlation matrix does not differ significantly from an identity matrix.";
+  if (isCovariance) {
+    return "KMO and Bartlett's Test are calculated based on correlations.";
   }
-
-  const chiSquareInfo = bartlettChiSquareNumeric !== undefined && bartlettDf !== undefined
-    ? `, χ²(${bartlettDf}) = ${(bartlettChiSquareNumeric as number).toFixed(3)},`
-    : ",";
-
-  return `The Kaiser-Meyer-Olkin measure of sampling adequacy was ${kmoNumeric.toFixed(3)} (${kmoLabel})${chiSquareInfo} and Bartlett's test of sphericity was significant (p ${pVal}). ${interpretation}`;
+  return "KMO and Bartlett's Test";
 };
+
+// export const generateKMODescription = (
+//   kmoValue: number | string,
+//   bartlettSig: number | string,
+//   bartlettChiSquare?: number | string,
+//   bartlettDf?: number,
+//   isCovariance: boolean = false
+// ): string => {
+//   // Parse values from either number or formatted string
+//   const kmoNumeric = typeof kmoValue === "string" ? parseFormattedValue(kmoValue) : kmoValue;
+//   const bartlettSigNumeric = parseFormattedValue(bartlettSig);
+//   const bartlettChiSquareNumeric = typeof bartlettChiSquare === "string" ? parseFormattedValue(bartlettChiSquare) : bartlettChiSquare;
+
+//   const isKMOAdequate = kmoNumeric >= 0.5;
+//   const isBartlettSig = bartlettSigNumeric < 0.05;
+//   const pVal = bartlettSigNumeric < 0.001 ? "< .001" : `= ${bartlettSigNumeric.toFixed(3)}`;
+
+//   // KMO interpretation label
+//   let kmoLabel = "unacceptable";
+//   if (kmoNumeric >= 0.9) kmoLabel = "marvelous";
+//   else if (kmoNumeric >= 0.8) kmoLabel = "meritorious";
+//   else if (kmoNumeric >= 0.7) kmoLabel = "middling";
+//   else if (kmoNumeric >= 0.6) kmoLabel = "mediocre";
+//   else if (kmoNumeric >= 0.5) kmoLabel = "miserable";
+
+//   let interpretation = "";
+//   if (isKMOAdequate && isBartlettSig) {
+//     interpretation = "The data is suitable for factor analysis.";
+//   } else if (!isKMOAdequate) {
+//     interpretation = "The Kaiser-Meyer-Olkin measure is less than 0.5, suggesting the data may not be suitable for factor analysis.";
+//   } else if (!isBartlettSig) {
+//     interpretation = "Bartlett's test of sphericity is not significant, indicating the correlation matrix does not differ significantly from an identity matrix.";
+//   }
+
+//   const chiSquareInfo = bartlettChiSquareNumeric !== undefined && bartlettDf !== undefined
+//     ? `, χ²(${bartlettDf}) = ${(bartlettChiSquareNumeric as number).toFixed(3)},`
+//     : ",";
+
+//   return `The Kaiser-Meyer-Olkin measure of sampling adequacy was ${kmoNumeric.toFixed(3)} (${kmoLabel})${chiSquareInfo} and Bartlett's test of sphericity was significant (p ${pVal}). ${interpretation}`;
+// };
 
 /**
  * Menghasilkan deskripsi untuk Communalities
@@ -255,35 +268,44 @@ export const generateKMODescription = (
  * 
  * Nilai rendah (< 0.5) mengindikasikan variabel tidak fit dengan good solution
  */
+/**
+ * Menghasilkan deskripsi untuk Communalities (SPSS Style Footnote)
+ */
 export const generateCommunalitiesDescription = (
-  communalities: { name: string; value: number }[],
-  extractionMethod?: string
+  extractionMethod: string = "Principal Component Analysis"
 ): string => {
-  if (!communalities || communalities.length === 0) {
-    return "Extraction communalities represent the proportion of variance in each variable accounted for by the extracted components.";
-  }
-
-  // Cari communalities terendah
-  const lowestCommunality = communalities.reduce((min, curr) => 
-    curr.value < min.value ? curr : min
-  );
-
-  const pct = (lowestCommunality.value * 100).toFixed(1);
-  
-  // Cari berapa banyak variabel yang < 0.5
-  const poorFitCount = communalities.filter(c => c.value < 0.5).length;
-  
-  let advice = "";
-  if (poorFitCount === 0) {
-    advice = "All variables are well represented by the extracted factors (all communalities > 0.50).";
-  } else if (poorFitCount === 1) {
-    advice = `One variable (${lowestCommunality.name}) has low communality (${pct}%), suggesting it does not fit well with the factor solution.`;
-  } else {
-    advice = `${poorFitCount} variables have communalities less than 0.50, indicating they are not well represented by the extracted factors.`;
-  }
-
-  return `Extraction communalities represent the amount of variance in each variable that is accounted for by the extracted components. The lowest communality is ${pct}% for '${lowestCommunality.name}'. ${advice}`;
+  return `Extraction Method: ${extractionMethod}.`;
 };
+
+// export const generateCommunalitiesDescription = (
+//   communalities: { name: string; value: number }[],
+//   extractionMethod?: string
+// ): string => {
+//   if (!communalities || communalities.length === 0) {
+//     return "Extraction communalities represent the proportion of variance in each variable accounted for by the extracted components.";
+//   }
+
+//   // Cari communalities terendah
+//   const lowestCommunality = communalities.reduce((min, curr) => 
+//     curr.value < min.value ? curr : min
+//   );
+
+//   const pct = (lowestCommunality.value * 100).toFixed(1);
+  
+//   // Cari berapa banyak variabel yang < 0.5
+//   const poorFitCount = communalities.filter(c => c.value < 0.5).length;
+  
+//   let advice = "";
+//   if (poorFitCount === 0) {
+//     advice = "All variables are well represented by the extracted factors (all communalities > 0.50).";
+//   } else if (poorFitCount === 1) {
+//     advice = `One variable (${lowestCommunality.name}) has low communality (${pct}%), suggesting it does not fit well with the factor solution.`;
+//   } else {
+//     advice = `${poorFitCount} variables have communalities less than 0.50, indicating they are not well represented by the extracted factors.`;
+//   }
+
+//   return `Extraction communalities represent the amount of variance in each variable that is accounted for by the extracted components. The lowest communality is ${pct}% for '${lowestCommunality.name}'. ${advice}`;
+// };
 
 
 /**
@@ -298,11 +320,11 @@ export const generateTotalVarianceRefinedDescription = (
   let footnote = `Extraction Method: ${extractionMethod}.`;
   
   if (isCovariance) {
-    footnote += ` Initial eigenvalues remain identical for both raw and rescaled solutions in covariance matrix analysis.`;
+    footnote += `<br>Initial eigenvalues remain identical for both raw and rescaled solutions in covariance matrix analysis.`;
   }
   
   if (isOblique) {
-    footnote += ` When components are correlated, sums of squared loadings cannot be added to obtain a total variance.`;
+    footnote += `When components are correlated, sums of squared loadings cannot be added to obtain a total variance.`;
   }
   
   return footnote;
@@ -555,10 +577,9 @@ export const generateDescriptiveDescription = (
   numVariables?: number,
   n?: number
 ): string => {
-  const varInfo = numVariables ? ` for the ${numVariables} variables` : "";
-  const nInfo = n ? ` based on a valid sample size of N = ${n}` : "";
-  
-  return `The descriptive statistics table displays the mean, standard deviation, and analysis N${varInfo}${nInfo}. This helps verify data integrity and identify variables with unusually high or low variances before proceeding with factor extraction.`;
+  // const varInfo = numVariables ? ` for the ${numVariables} variables` : "";
+  // const nInfo = n ? ` based on a valid sample size of N = ${n}` : "";
+  return 'Descriptive Statistics';
 };
 
 /**
@@ -642,7 +663,7 @@ export const generateCovarianceMatrixDescription = (
  * Fokus pada nilai diagonal yang bertindak sebagai pengukur multikolinearitas.
  */
 export const generateInverseCorrelationDescription = (): string => {
-  return "The inverse of the correlation matrix is another diagnostic tool for multicollinearity. The diagonal elements represent the Variance Inflation Factors (VIF) for each variable. High diagonal values suggest that a variable is highly correlated with others in the dataset.";
+  return "Inverse Correlation Matrix";
 };
 
 /**
@@ -706,7 +727,7 @@ export const generateReproducedRefinedDescription = (
   
   if (isCovariance) {
     // Format horizontal, DENGAN abjad a. dan b. agar sinkron dengan superscript di tabel
-    return `Extraction Method: ${extractionMethod}. a. Reproduced communalities. b. Residual values reflect the differences between the observed and the reproduced covariances.`;
+    return `Extraction Method: ${extractionMethod}.<br>a. Reproduced communalities.<br>b. Residual values reflect the differences between the observed and the reproduced covariances.`;
   }
 
   // Format vertikal baku SPSS untuk Correlation (Tetap dipertahankan)
@@ -757,7 +778,7 @@ export const generateScoreMatrixDescription = (
     footnote += `<br>Rotation Method: ${rotationMethod} with Kaiser Normalization.`;
   }
   if (isCovariance) {
-    footnote += `<br>a. Coefficients are standardized.`;
+    footnote += `<br>Coefficients are standardized.`;
   }
   return footnote;
 };
