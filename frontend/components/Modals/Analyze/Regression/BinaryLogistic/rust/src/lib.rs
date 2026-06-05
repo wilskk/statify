@@ -5,7 +5,6 @@ pub mod utils;
 
 use models::config::{LogisticConfig, RegressionMethod};
 use nalgebra::{DMatrix, DVector};
-use stats::design_matrix::VariableGroup;
 use wasm_bindgen::prelude::*;
 
 // Helper untuk format error ke JS

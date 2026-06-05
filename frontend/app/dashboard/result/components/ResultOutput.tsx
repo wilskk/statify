@@ -5,6 +5,19 @@ import { Card } from "@/components/ui/card";
 import dynamic from "next/dynamic";
 import { useResultStore } from "@/stores/useResultStore";
 import GeneralChartContainer from "@/components/Output/Chart/GeneralChartContainer";
+import KNNKPredictorSelectionChart from "@/components/Modals/Analyze/Classify/nearest-neighbor/components/KNNKPredictorSelectionChart";
+// KNN predictor space chart is a bit heavy to load, so we dynamically import it with a loading state
+const KNNPredictorSpaceChart = dynamic(
+  () => import("@/components/Modals/Analyze/Classify/nearest-neighbor/components/KNNPredictorSpaceChart"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="p-4 text-sm text-muted-foreground">
+        Loading predictor space...
+      </div>
+    ),
+  },
+);
 const KMedoidsOutputRenderer = dynamic(
   () => import("@/components/Modals/Analyze/Clustering/k-medoids-cluster/components/OutputRenderer").then(m => ({ default: m.KMedoidsOutputRenderer })),
   { ssr: false, loading: () => <div className="p-4 text-sm text-muted-foreground">Loading...</div> }
@@ -240,6 +253,30 @@ const ResultOutput: React.FC = () => {
                                           )}
                                         </button>
                                       )}
+                                    </div>
+                                  );
+                                } else if (
+                                  parsedData.charts?.[0]?.chartType ===
+                                  "KNN Predictor Space"
+                                ) {
+                                  return (
+                                    <div data-testid={`result-chart-${stat.id}`}>
+                                      <KNNPredictorSpaceChart
+                                        data={stat.output_data}
+                                      />
+                                    </div>
+                                  );
+                                } else if (
+                                  parsedData.charts?.[0]?.chartType ===
+                                  "KNN k and Predictor Selection" ||
+                                  parsedData.charts?.[0]?.chartType ===
+                                  "KNN k Selection Error Log"
+                                ) {
+                                  return (
+                                    <div data-testid={`result-chart-${stat.id}`}>
+                                      <KNNKPredictorSelectionChart
+                                        data={stat.output_data}
+                                      />
                                     </div>
                                   );
                                 } else if (parsedData.charts) {

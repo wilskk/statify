@@ -42,16 +42,17 @@ import { formatAssumptionTests } from "../services/formatter_assumptions";
 import { generateLogisticRegressionSyntax } from "../services/syntaxGenerator";
 
 // Types
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import type { CellUpdate } from "@/stores/useDataStore";
-import {
+import type {
   BinaryLogisticOptions,
   BinaryLogisticCategoricalParams,
   BinaryLogisticSaveParams,
   BinaryLogisticOptionsParams,
   BinaryLogisticAssumptionParams,
   LogisticResult,
-  SavedPredictions,
+  SavedPredictions} from "../types/binary-logistic";
+import {
   DEFAULT_BINARY_LOGISTIC_OPTIONS,
   DEFAULT_BINARY_LOGISTIC_CATEGORICAL_PARAMS,
   DEFAULT_BINARY_LOGISTIC_SAVE_PARAMS,
@@ -175,6 +176,7 @@ export const BinaryLogisticMain = () => {
       }));
 
       // 2. Cek apakah tipe datanya Nominal atau Ordinal (case-insensitive check)
+      //    Jika ya, auto-check di tab Categorical dengan setting default Indicator(Last)
       const measure = highlightedVariable.measure?.toLowerCase();
       if (measure === "nominal" || measure === "ordinal") {
         setCatParams((prev) => {
@@ -183,6 +185,14 @@ export const BinaryLogisticMain = () => {
             return {
               ...prev,
               covariates: [...prev.covariates, highlightedVariable.name],
+              variableSettings: {
+                ...prev.variableSettings,
+                [highlightedVariable.name]: {
+                  name: highlightedVariable.name,
+                  contrast: "Indicator" as const,
+                  referenceCategory: "Last" as const,
+                },
+              },
             };
           }
           return prev;
@@ -276,8 +286,8 @@ export const BinaryLogisticMain = () => {
           ...options.covariates.map((v) => v.id),
           ...options.factors.map((v) => v.id),
         ],
-        data: data,
-        variableDetails: variableDetails,
+        data,
+        variableDetails,
         config: JSON.stringify(analysisConfig),
       });
     });
@@ -367,7 +377,7 @@ export const BinaryLogisticMain = () => {
         type: "NUMERIC",
         width: 8,
         decimals: 5,
-        label: label,
+        label,
         values: [],
         missing: null,
         columns: 200,
@@ -384,7 +394,7 @@ export const BinaryLogisticMain = () => {
           allCellUpdates.push({
             row: rowIndex,
             col: nextColumnIndex,
-            value: value,
+            value,
           });
         }
       });
@@ -435,7 +445,7 @@ export const BinaryLogisticMain = () => {
           allCellUpdates.push({
             row: rowIndex,
             col: nextColumnIndex,
-            value: value,
+            value,
           });
         }
       });
@@ -449,20 +459,27 @@ export const BinaryLogisticMain = () => {
     const queueDfBetaVariables = (): void => {
       if (!variableNames?.influence_dfbeta?.length) return;
 
-      // Find the next available DfBeta suffix
+      // DfBeta names from Rust look like "DFB0_1", "DFB1_1".
+      // We extract the base name ("DFB0", "DFB1") and find the next available suffix.
       let dfbetaSuffix = 1;
       while (true) {
-        const anyExists = variableNames.influence_dfbeta.some((_, idx) =>
-          existingVarNames.has(`DFB${idx}_${dfbetaSuffix}`.toUpperCase())
-        );
+        const anyExists = variableNames.influence_dfbeta.some((rustName) => {
+          const baseName = rustName.split('_')[0];
+          return existingVarNames.has(`${baseName}_${dfbetaSuffix}`.toUpperCase());
+        });
         if (!anyExists) break;
         dfbetaSuffix++;
       }
 
       for (let i = 0; i < variableNames.influence_dfbeta.length; i++) {
-        const varName = `DFB${i}_${dfbetaSuffix}`;
-        const label = i === 0 ? "DfBeta for constant" : `DfBeta for B${i}`;
-
+        const rustName = variableNames.influence_dfbeta[i];
+        const baseName = rustName.split('_')[0]; // "DFB0" or "DFB1", etc.
+        const varName = `${baseName}_${dfbetaSuffix}`;
+        
+        const isConstant = baseName === "DFB0";
+        const paramIndex = baseName.replace("DFB", "");
+        const label = isConstant ? "DfBeta for constant" : `DfBeta for B${paramIndex}`;
+        
         const values = rows.map((row) => row.influence_dfbeta?.[i]);
         if (values.every((v) => v === undefined)) continue;
 
@@ -474,7 +491,7 @@ export const BinaryLogisticMain = () => {
           type: "NUMERIC",
           width: 8,
           decimals: 5,
-          label: label,
+          label,
           values: [],
           missing: null,
           columns: 200,
@@ -490,7 +507,7 @@ export const BinaryLogisticMain = () => {
             allCellUpdates.push({
               row: rowIndex,
               col: nextColumnIndex,
-              value: value,
+              value,
             });
           }
         });
@@ -617,7 +634,7 @@ export const BinaryLogisticMain = () => {
       }
     } catch (err: any) {
       console.error(err);
-      throw new Error("Failed to run VIF check: " + err.message);
+      throw new Error(`Failed to run VIF check: ${  err.message}`);
     }
   };
 
@@ -661,7 +678,7 @@ export const BinaryLogisticMain = () => {
       }
     } catch (err: any) {
       console.error(err);
-      throw new Error("Failed to run Box-Tidwell test: " + err.message);
+      throw new Error(`Failed to run Box-Tidwell test: ${  err.message}`);
     }
   };
 
@@ -735,7 +752,7 @@ export const BinaryLogisticMain = () => {
               factors: options.factors,
               method: options.method,
               categoricalParams: catParams,
-              saveParams: saveParams,
+              saveParams,
               optionParams: optParams,
             });
 
@@ -842,7 +859,7 @@ export const BinaryLogisticMain = () => {
             closeModal("BINARY_LOGISTIC");
           } catch (saveError: any) {
             console.error("[Main] Error inside SUCCESS block:", saveError);
-            setErrorMsg("Gagal menyimpan hasil: " + saveError.message);
+            setErrorMsg(`Gagal menyimpan hasil: ${  saveError.message}`);
             setIsLoading(false);
             worker.terminate();
           }
@@ -1053,13 +1070,13 @@ export const BinaryLogisticMain = () => {
           ...actualCovariates.map((v) => v.id),
           ...actualFactors.map((v) => v.id),
         ],
-        data: data,
+        data,
         variableDetails: currentVariableDetails, // Use refreshed variableDetails
         config: JSON.stringify(analysisConfig),
       });
     } catch (err: any) {
       console.error("Main Thread Error:", err);
-      setErrorMsg("Gagal memulai analisis: " + err.message);
+      setErrorMsg(`Gagal memulai analisis: ${  err.message}`);
       setIsLoading(false);
     }
   };

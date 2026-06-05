@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "es2017",
     "lib": [
       "dom",
       "dom.iterable",
@@ -20,8 +20,6 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "ignoreDeprecations": "6.0",
-    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./*"
@@ -42,6 +40,9 @@
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    ".next",
+    ".next-dev",
+    "**/target/**"
   ]
 }

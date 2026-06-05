@@ -56,7 +56,7 @@ export async function resultKMedoidsCluster(
 
         // Collect all tables
         const allTables: Table[] = [];
-        
+
         // 📊 Case Processing Summary
         const validCases = dataVariables.length;
         allTables.push({
@@ -134,57 +134,53 @@ export async function resultKMedoidsCluster(
             });
         }
 
-        // 🎯 Final Cluster Centers (Medoids)
-        if (config.results.ShowFinalMedoids) {
-            const medoidData = result.medoids.map((medoidIdx, clusterIdx) => {
-                const medoidRow = dataVariables[medoidIdx];
-                const row: any = { 
+        // 🎯 Final Cluster Centers (Medoids) - always shown
+        const medoidData = result.medoids.map((medoidIdx, clusterIdx) => {
+            const medoidRow = dataVariables[medoidIdx];
+            const row: any = {
+                rowHeader: [],
+                Cluster: `Cluster ${clusterIdx + 1}`,
+                CaseNumber: medoidIdx + 1  // Show which case is the medoid
+            };
+            variables.forEach(v => {
+                const value = medoidRow[v.name];
+                row[v.name] = typeof value === 'number' ? value.toFixed(4) : value;
+            });
+            return row;
+        });
+
+        allTables.push({
+            key: "final_cluster_centers",
+            title: "Final Cluster Centers (Medoids)",
+            columnHeaders: [
+                { header: "Cluster" },
+                { header: "Case #" },
+                ...variables.map(v => ({ header: v.label || v.name }))
+            ],
+            rows: medoidData
+        });
+
+        // 💰 Total Cost / Dissimilarity (always shown)
+        allTables.push({
+            key: "total_cost",
+            title: "Total Within-Cluster Dissimilarity",
+            columnHeaders: [
+                { header: "Metric" },
+                { header: "Value" }
+            ],
+            rows: [
+                {
                     rowHeader: [],
-                    Cluster: `Cluster ${clusterIdx + 1}`,
-                    CaseNumber: medoidIdx + 1  // Show which case is the medoid
-                };
-                variables.forEach(v => {
-                    const value = medoidRow[v.name];
-                    row[v.name] = typeof value === 'number' ? value.toFixed(4) : value;
-                });
-                return row;
-            });
-
-            allTables.push({
-                key: "final_cluster_centers",
-                title: "Final Cluster Centers (Medoids)",
-                columnHeaders: [
-                    { header: "Cluster" },
-                    { header: "Case #" },
-                    ...variables.map(v => ({ header: v.label || v.name }))
-                ],
-                rows: medoidData
-            });
-        }
-
-        // 💰 Total Cost / Dissimilarity
-        if (config.results.ShowTotalCost) {
-            allTables.push({
-                key: "total_cost",
-                title: "Total Within-Cluster Dissimilarity",
-                columnHeaders: [
-                    { header: "Metric" },
-                    { header: "Value" }
-                ],
-                rows: [
-                    { 
-                        rowHeader: [], 
-                        Metric: "Total Cost (Sum of Distances)", 
-                        Value: result.cost.toFixed(4) 
-                    },
-                    { 
-                        rowHeader: [], 
-                        Metric: "Average Distance to Medoid", 
-                        Value: (result.cost / dataVariables.length).toFixed(4) 
-                    }
-                ]
-            });
-        }
+                    Metric: "Total Cost (Sum of Distances)",
+                    Value: result.cost.toFixed(4)
+                },
+                {
+                    rowHeader: [],
+                    Metric: "Average Distance to Medoid",
+                    Value: (result.cost / dataVariables.length).toFixed(4)
+                }
+            ]
+        });
 
         // 📊 Iteration History & Convergence Information
         if (config.results.ShowIterationHistory) {
@@ -227,7 +223,7 @@ export async function resultKMedoidsCluster(
         // Create single analytic with all results
         const analyticId = await addAnalytic(logId, {
             title: `K-Medoids Cluster Analysis`,
-            note: automaticKSelection 
+            note: automaticKSelection
                 ? `Automatic k selection: k=${automaticKSelection.optimalK} (${automaticKSelection.method})`
                 : `Manual k selection: k=${config.main.Cluster}, Algorithm: ${method}`,
         });

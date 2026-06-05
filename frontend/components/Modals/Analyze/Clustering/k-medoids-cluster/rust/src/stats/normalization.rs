@@ -59,7 +59,7 @@ pub fn calculate_feature_statistics(data: &[Vec<f64>]) -> Vec<FeatureStatistics>
             continue;
         }
 
-        values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let n = values.len();
         let mean = values.iter().sum::<f64>() / n as f64;

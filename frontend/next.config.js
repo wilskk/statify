@@ -16,6 +16,17 @@ const nextConfig = {
             'node_modules',
         ];
 
+        config.watchOptions = {
+            ...config.watchOptions,
+            ignored: [
+                '**/node_modules/**',
+                '**/.next/**',
+                '**/.next-dev/**',
+                '**/dist/**',
+                '**/target/**',
+            ],
+        };
+
         // The dashboard client layout bundle is large in development mode.
         // Increase timeout to avoid false-positive ChunkLoadError on slower rebuilds.
         if (!isServer) {

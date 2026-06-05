@@ -45,7 +45,8 @@ export const createLineChart = (
       origin?: string;
     };
   },
-  chartColors?: string[]
+  chartColors?: string[],
+  showValueTooltip: boolean = false
 ) => {
   console.log("Creating chart with data:", data);
 
@@ -197,6 +198,25 @@ export const createLineChart = (
     )
     .attr("stroke-width", 1.5)
     .attr("d", line(processedData));
+
+  if (showValueTooltip) {
+    svg
+      .append("g")
+      .selectAll("circle")
+      .data(processedData)
+      .join("circle")
+      .attr("cx", (d) => (x(d.uniqueId) ?? 0) + x.bandwidth() / 2)
+      .attr("cy", (d) => y(d.value) ?? 0)
+      .attr("r", 4)
+      .attr(
+        "fill",
+        chartColors && chartColors.length > 0
+          ? chartColors[0]
+          : defaultChartColors[0],
+      )
+      .append("title")
+      .text((d) => `Error: ${formatAxisNumber(d.value)}`);
+  }
 
   if (useAxis) {
     // Use standardized axis functions for line chart

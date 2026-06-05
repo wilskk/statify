@@ -94,19 +94,19 @@ export function run_k_medoids_range(input_value) {
  * @param {string} distance_metric
  * @param {bigint} random_seed
  * @param {number} convergence_tolerance
- * @param {number} _n_init
+ * @param {number} n_init
  * @param {Function | null} [on_progress]
  * @param {Function | null} [on_initial_medoids]
  * @returns {any}
  */
-export function run_k_medoids_typed(flat_data, n_rows, n_cols, n_clusters, method, max_iterations, distance_metric, random_seed, convergence_tolerance, _n_init, on_progress, on_initial_medoids) {
+export function run_k_medoids_typed(flat_data, n_rows, n_cols, n_clusters, method, max_iterations, distance_metric, random_seed, convergence_tolerance, n_init, on_progress, on_initial_medoids) {
     const ptr0 = passArrayF64ToWasm0(flat_data, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
     const ptr1 = passStringToWasm0(method, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len1 = WASM_VECTOR_LEN;
     const ptr2 = passStringToWasm0(distance_metric, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len2 = WASM_VECTOR_LEN;
-    const ret = wasm.run_k_medoids_typed(ptr0, len0, n_rows, n_cols, n_clusters, ptr1, len1, max_iterations, ptr2, len2, random_seed, convergence_tolerance, _n_init, isLikeNone(on_progress) ? 0 : addToExternrefTable0(on_progress), isLikeNone(on_initial_medoids) ? 0 : addToExternrefTable0(on_initial_medoids));
+    const ret = wasm.run_k_medoids_typed(ptr0, len0, n_rows, n_cols, n_clusters, ptr1, len1, max_iterations, ptr2, len2, random_seed, convergence_tolerance, n_init, isLikeNone(on_progress) ? 0 : addToExternrefTable0(on_progress), isLikeNone(on_initial_medoids) ? 0 : addToExternrefTable0(on_initial_medoids));
     if (ret[2]) {
         throw takeFromExternrefTable0(ret[1]);
     }
@@ -243,6 +243,10 @@ function __wbg_get_imports() {
             arg0.getRandomValues(arg1);
         }, arguments); },
         __wbg_get_326e41e095fb2575: function() { return handleError(function (arg0, arg1) {
+            const ret = Reflect.get(arg0, arg1);
+            return ret;
+        }, arguments); },
+        __wbg_get_3ef1eba1850ade27: function() { return handleError(function (arg0, arg1) {
             const ret = Reflect.get(arg0, arg1);
             return ret;
         }, arguments); },
