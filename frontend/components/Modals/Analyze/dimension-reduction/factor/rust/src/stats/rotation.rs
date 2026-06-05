@@ -196,15 +196,36 @@ pub fn rotate_varimax(
         }
 
 
+    // let current_criterion = compute_varimax_criterion(&normalized_loadings);
+    //     let criterion_change = (current_criterion - previous_criterion).abs();
+    //     previous_criterion = current_criterion;
+
+    //     // SPSS-style reporting uses a scaled convergence value.
+    //     final_convergence = max_angle * 100.0;
+
+    //     // PERBAIKAN: Hapus syarat '&& criterion_change < criterion_tol'
+    //     // SPSS murni bergantung pada max_angle untuk rotasi pairwise orthogonal
+    //     let criteria_met = max_angle < tol; 
+        
+    //     if criteria_met {
+    //         if confirmation_sweep {
+    //             is_converged = true;
+    //             break;
+    //         }
+    //         confirmation_sweep = true;
+    //     } else {
+    //         confirmation_sweep = false;
+    //     }
+    // } 
+
     let current_criterion = compute_varimax_criterion(&normalized_loadings);
         let criterion_change = (current_criterion - previous_criterion).abs();
         previous_criterion = current_criterion;
 
-        // SPSS-style reporting uses a scaled convergence value.
-        final_convergence = max_angle * 100.0;
+        // PERBAIKAN: Untuk algoritma Jacobi, nilai yang dilaporkan adalah 
+        // Maximum Absolute Rotation Angle, bukan Criterion Change
+        final_convergence = max_angle; 
 
-        // PERBAIKAN: Hapus syarat '&& criterion_change < criterion_tol'
-        // SPSS murni bergantung pada max_angle untuk rotasi pairwise orthogonal
         let criteria_met = max_angle < tol; 
         
         if criteria_met {
@@ -216,7 +237,8 @@ pub fn rotate_varimax(
         } else {
             confirmation_sweep = false;
         }
-    } 
+    }
+
 
     // =========================================================
     // 4. De-normalize rotated loadings
@@ -824,6 +846,9 @@ fn compute_oblimin_obj_grad_l(
 
 
 
+
+
+
 // =========================================================
 // Direct Oblimin Rotation (Exact SPSS GPA Algorithm)
 // =========================================================
@@ -837,11 +862,9 @@ pub fn rotate_oblimin(
     let n_cols = unrotated_loadings.ncols();
     let gamma = config.rotation.delta; 
 
-    // 1. PERBAIKAN: SPSS selalu memulai Direct Oblimin murni dari Matriks Identitas (Unrotated)
-    // Jangan gunakan Varimax sebagai warm start karena akan membiaskan arah gradien
     let start_t = DMatrix::<f64>::identity(n_cols, n_cols);
 
-    // 2. Kaiser Normalization
+    // Kaiser Normalization
     let mut h = vec![0.0; n_rows];
     let mut a_mat = unrotated_loadings.clone(); 
     for i in 0..n_rows {
@@ -862,12 +885,19 @@ pub fn rotate_oblimin(
         250
     };
     
-    // let tol = 1e-5; 
-    let tol = 1e-11;
-    let mut iterations_required = 0;
-    let mut is_converged = false;
+    // =========================================================
+    // PERBAIKAN: STRATEGI DUAL TOLERANCE
+    // =========================================================
+    let tol_spss = 1e-4;     // Toleransi pencatat UI (Footnote iterasi)
+    let tol_compute = 1e-11; // Toleransi komputasi dalam (Presisi matriks)
 
-    // Kalkulasi Status Awal
+    let mut iterations_reported = 0;
+    let mut true_iterations = 0;
+    let mut spss_iterations_found = false;
+    let mut is_converged = false;
+    
+    let mut final_convergence = 0.0;
+
     let t_inv_init = t_mat.clone().try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
     let mut l_mat = &a_mat * t_inv_init.transpose();
     let (mut current_obj, mut g_q) = compute_oblimin_obj_grad_l(&l_mat, gamma);
@@ -875,7 +905,7 @@ pub fn rotate_oblimin(
     let mut alpha = 1.0;
 
     for _iter in 0..max_iter {
-        iterations_required += 1;
+        true_iterations += 1;
         
         let t_inv = t_mat.clone().try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
         let g = -1.0 * (l_mat.transpose() * &g_q * &t_inv).transpose();
@@ -889,7 +919,6 @@ pub fn rotate_oblimin(
         let mut best_t = t_mat.clone();
         let mut best_obj = current_obj;
 
-        // 2. PERBAIKAN: Akselerasi langkah GPA murni (Jennrich, 1979)
         alpha *= 2.0;
 
         for _s in 0..15 {
@@ -912,7 +941,6 @@ pub fn rotate_oblimin(
             let gp_t_diff = gp.transpose() * t_diff;
             for i in 0..n_cols { diff_tr += gp_t_diff[(i, i)]; }
 
-            // 3. PERBAIKAN: Gunakan konstanta Armijo 0.5 tepat seperti IBM SPSS
             if !obj_new.is_nan() && obj_new < current_obj - 0.5 * diff_tr {
                 best_obj = obj_new;
                 best_t = t_new;
@@ -926,15 +954,29 @@ pub fn rotate_oblimin(
 
         if found {
             let obj_change = (current_obj - best_obj).abs();
+            final_convergence = obj_change;
+            
             t_mat = best_t;
             current_obj = best_obj;
             
-            if obj_change < tol {
+            // 1. KUNCI ITERASI SPSS: Ambil foto jumlah iterasi saat perubahan < 1e-4
+            if obj_change < tol_spss && !spss_iterations_found {
+                iterations_reported = true_iterations;
+                spss_iterations_found = true;
+            }
+            
+            // 2. LANJUTKAN KOMPUTASI: Jangan berhenti sampai matriks mencapai 1e-11
+            if obj_change < tol_compute {
+                if !spss_iterations_found {
+                    iterations_reported = true_iterations;
+                }
                 is_converged = true;
                 break;
             }
         } else {
-            // Jika pencarian garis macet (minimum ditemukan)
+            if !spss_iterations_found {
+                iterations_reported = true_iterations;
+            }
             is_converged = true;
             break;
         }
@@ -1000,9 +1042,9 @@ pub fn rotate_oblimin(
         rotated_loadings: sorted_pattern,
         transformation_matrix: sorted_t,
         factor_correlations: Some(sorted_phi),
-        iterations_required,
+        iterations_required: iterations_reported, // Output akan menunjukkan iterasi ke-2
         is_converged, 
-        convergence_value: current_obj, 
+        convergence_value: final_convergence,
     })
 }
 
@@ -1124,10 +1166,6 @@ pub fn rotate_promax(
         convergence_value: varimax_result.convergence_value,
     })
 }
-
-
-
-
 
 
 pub fn calculate_component_transformation_matrix(

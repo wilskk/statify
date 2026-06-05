@@ -29,20 +29,7 @@ export type TableResultContent = {
 // SECTION BUILDER HELPER
 // ============================================================================
 
-/**
- * Helper untuk menggabungkan note dan description
- * Note (technical/methodological info) menjadi bagian awal
- * Description (interpretasi/insight) menjadi bagian akhir
- * 
- * Format output (HTML untuk TiptapEditor):
- * "a. [Note line 1]<br>
- *  b. [Note line 2]<br><br>
- *  [Description/Interpretation]"
- * 
- * Notes:
- * - Setiap poin (a., b., c., dll) dipisahkan dengan <br>
- * - Ada double <br> antara note dan interpretasi
- */
+
 const mergeNoteAndDescription = (
   note?: string,
   description?: string
@@ -188,29 +175,7 @@ export const fmtLoading = (val: number | undefined | null): string => {
   return val.toFixed(3);
 };
 
-// ============================================================================
-// FACTOR ANALYSIS DESCRIPTION GENERATORS (SPSS Style - English)
-// ============================================================================
 
-
-
-
-/**
- * Menghasilkan deskripsi untuk KMO and Bartlett's Test
- * 
- * Interpretasi KMO:
- * - 0.90+  : Marvelous
- * - 0.80+  : Meritorious
- * - 0.70+  : Middling
- * - 0.60+  : Mediocre
- * - 0.50+  : Miserable
- * - < 0.50 : Unacceptable
- * 
- * Bartlett's Test harus signifikan (p < 0.05) untuk matrix bukan identity
- */
-/**
- * Menghasilkan deskripsi baku untuk KMO and Bartlett's Test
- */
 export const generateKMODescription = (
   isCovariance: boolean = false
 ): string => {
@@ -220,45 +185,6 @@ export const generateKMODescription = (
   return "KMO and Bartlett's Test";
 };
 
-// export const generateKMODescription = (
-//   kmoValue: number | string,
-//   bartlettSig: number | string,
-//   bartlettChiSquare?: number | string,
-//   bartlettDf?: number,
-//   isCovariance: boolean = false
-// ): string => {
-//   // Parse values from either number or formatted string
-//   const kmoNumeric = typeof kmoValue === "string" ? parseFormattedValue(kmoValue) : kmoValue;
-//   const bartlettSigNumeric = parseFormattedValue(bartlettSig);
-//   const bartlettChiSquareNumeric = typeof bartlettChiSquare === "string" ? parseFormattedValue(bartlettChiSquare) : bartlettChiSquare;
-
-//   const isKMOAdequate = kmoNumeric >= 0.5;
-//   const isBartlettSig = bartlettSigNumeric < 0.05;
-//   const pVal = bartlettSigNumeric < 0.001 ? "< .001" : `= ${bartlettSigNumeric.toFixed(3)}`;
-
-//   // KMO interpretation label
-//   let kmoLabel = "unacceptable";
-//   if (kmoNumeric >= 0.9) kmoLabel = "marvelous";
-//   else if (kmoNumeric >= 0.8) kmoLabel = "meritorious";
-//   else if (kmoNumeric >= 0.7) kmoLabel = "middling";
-//   else if (kmoNumeric >= 0.6) kmoLabel = "mediocre";
-//   else if (kmoNumeric >= 0.5) kmoLabel = "miserable";
-
-//   let interpretation = "";
-//   if (isKMOAdequate && isBartlettSig) {
-//     interpretation = "The data is suitable for factor analysis.";
-//   } else if (!isKMOAdequate) {
-//     interpretation = "The Kaiser-Meyer-Olkin measure is less than 0.5, suggesting the data may not be suitable for factor analysis.";
-//   } else if (!isBartlettSig) {
-//     interpretation = "Bartlett's test of sphericity is not significant, indicating the correlation matrix does not differ significantly from an identity matrix.";
-//   }
-
-//   const chiSquareInfo = bartlettChiSquareNumeric !== undefined && bartlettDf !== undefined
-//     ? `, χ²(${bartlettDf}) = ${(bartlettChiSquareNumeric as number).toFixed(3)},`
-//     : ",";
-
-//   return `The Kaiser-Meyer-Olkin measure of sampling adequacy was ${kmoNumeric.toFixed(3)} (${kmoLabel})${chiSquareInfo} and Bartlett's test of sphericity was significant (p ${pVal}). ${interpretation}`;
-// };
 
 /**
  * Menghasilkan deskripsi untuk Communalities
@@ -276,36 +202,6 @@ export const generateCommunalitiesDescription = (
 ): string => {
   return `Extraction Method: ${extractionMethod}.`;
 };
-
-// export const generateCommunalitiesDescription = (
-//   communalities: { name: string; value: number }[],
-//   extractionMethod?: string
-// ): string => {
-//   if (!communalities || communalities.length === 0) {
-//     return "Extraction communalities represent the proportion of variance in each variable accounted for by the extracted components.";
-//   }
-
-//   // Cari communalities terendah
-//   const lowestCommunality = communalities.reduce((min, curr) => 
-//     curr.value < min.value ? curr : min
-//   );
-
-//   const pct = (lowestCommunality.value * 100).toFixed(1);
-  
-//   // Cari berapa banyak variabel yang < 0.5
-//   const poorFitCount = communalities.filter(c => c.value < 0.5).length;
-  
-//   let advice = "";
-//   if (poorFitCount === 0) {
-//     advice = "All variables are well represented by the extracted factors (all communalities > 0.50).";
-//   } else if (poorFitCount === 1) {
-//     advice = `One variable (${lowestCommunality.name}) has low communality (${pct}%), suggesting it does not fit well with the factor solution.`;
-//   } else {
-//     advice = `${poorFitCount} variables have communalities less than 0.50, indicating they are not well represented by the extracted factors.`;
-//   }
-
-//   return `Extraction communalities represent the amount of variance in each variable that is accounted for by the extracted components. The lowest communality is ${pct}% for '${lowestCommunality.name}'. ${advice}`;
-// };
 
 
 /**
@@ -449,35 +345,7 @@ export const generateRotatedMatrixDescription = (
   // Menggunakan tag <br> agar teks turun baris saat dirender di antarmuka
   return `Extraction Method: ${extractionMethod}.<br>Rotation Method: ${rotationMethod} with Kaiser Normalization.<br>Rotation converged in ${iterations} iterations.`;
 };
-// export const generateRotatedMatrixDescription = (
-//   rotationMethod: string = "Varimax",
-//   numComponents?: number
-// ): string => {
-//   let methodDescription = "";
-  
-//   // Deskripsi spesifik per rotation method
-//   switch (rotationMethod.toLowerCase()) {
-//     case "varimax":
-//       methodDescription = "Varimax rotation aims to maximize the variance of the loadings within each component, simplifying interpretation by making loadings as close to 0 or ±1 as possible.";
-//       break;
-//     case "promax":
-//       methodDescription = "Promax is an oblique rotation that allows factors to correlate, potentially providing a more realistic solution when underlying factors are expected to be correlated.";
-//       break;
-//     case "quartimax":
-//       methodDescription = "Quartimax rotation aims to simplify the rows of the loading matrix, making each variable load highly on one factor if possible.";
-//       break;
-//     case "equimax":
-//       methodDescription = "Equimax combines goals of Varimax and Quartimax, attempting to simplify both rows and columns of the loading matrix.";
-//       break;
-//     case "oblimin":
-//       methodDescription = "Oblimin is an oblique rotation that allows factors to be correlated, with Delta parameter controlling the correlation relationship.";
-//       break;
-//     default:
-//       methodDescription = `${rotationMethod} rotation has been applied to the factor solution.`;
-//   }
 
-//   return `The rotated component matrix clarifies the factor structure through a ${rotationMethod} rotation. ${methodDescription} Loadings closer to ±1 indicate stronger relationships between variables and factors.`;
-// };
 
 /**
  * Menghasilkan deskripsi untuk Scree Plot Interpretation

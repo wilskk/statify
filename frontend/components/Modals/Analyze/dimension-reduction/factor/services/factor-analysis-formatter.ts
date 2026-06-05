@@ -2289,30 +2289,68 @@ const hasSuccessfulExtraction = !suppressExtraction;
         const rotationIterations = data.rotated_component_matrix?.iterations_required ?? 0;
         const rotationConvergenceValue = data.rotated_component_matrix?.convergence_value ?? 0;
 
+        // if (!isRotationConverged) {
+        //     // ========================================================
+        //     // JIKA ROTASI GAGAL KONVERGEN (Struktur tanpa kolom)
+        //     // ========================================================
+        //     const convergenceStr = rotationConvergenceValue !== undefined && rotationConvergenceValue !== null 
+        //         ? rotationConvergenceValue.toFixed(3) 
+        //         : "N/A";
+        //     const rotationNote = `Rotation failed to converge in ${rotationIterations} iterations. (Convergence = ${convergenceStr}).`;
+
+        //     const table: Table = {
+        //         key: "rotated_component_matrix",
+        //         title: tableTitle,
+        //         columnHeaders: [{ header: "", key: "var" }], // Tanpa pembuatan header 
+        //         rows: [
+        //             {
+        //                 rowHeader: [rotationNote], // Tampilkan tulisan di dalam kotak tabel
+        //             },
+        //         ],
+        //         interpretation: rotationNote, // Ubah Description di UI menjadi warning
+        //     };
+
+        //     resultJson.tables.push(table);
+            
+        // } else {
+
         if (!isRotationConverged) {
             // ========================================================
-            // JIKA ROTASI GAGAL KONVERGEN (Struktur tanpa kolom)
+            // JIKA ROTASI GAGAL KONVERGEN (Ortogonal: Varimax, Quartimax, Equamax)
             // ========================================================
-            const convergenceStr = rotationConvergenceValue !== undefined && rotationConvergenceValue !== null 
+            const rotationIterations = data.rotated_component_matrix?.iterations_required ?? 0;
+            const rotationConvergenceValue = data.rotated_component_matrix?.convergence_value ?? 0;
+
+            let convergenceStr = rotationConvergenceValue !== undefined && rotationConvergenceValue !== null 
                 ? rotationConvergenceValue.toFixed(3) 
                 : "N/A";
-            const rotationNote = `Rotation failed to converge in ${rotationIterations} iterations. (Convergence = ${convergenceStr}).`;
+                
+            // Menghilangkan leading zero di depan desimal sesuai standar SPSS (.003)
+            if (rotationConvergenceValue !== undefined && rotationConvergenceValue !== null && Math.abs(rotationConvergenceValue) < 1) {
+                convergenceStr = convergenceStr.replace(/^(-?)0\./, "$1.");
+            }
+            
+            // Catatan sudut radian murni untuk komputasi Jacobi Ortogonal (Kode B)
+            const mathNote = " Convergence value represents the maximum absolute rotation angle in radians.";
+
+            const rotationNote = `Rotation failed to converge in ${rotationIterations} iterations. (Convergence = ${convergenceStr}).${mathNote}`;
 
             const table: Table = {
                 key: "rotated_component_matrix",
                 title: tableTitle,
-                columnHeaders: [{ header: "", key: "var" }], // Tanpa pembuatan header 
+                columnHeaders: [{ header: "", key: "var" }], 
                 rows: [
                     {
-                        rowHeader: [rotationNote], // Tampilkan tulisan di dalam kotak tabel
+                        rowHeader: [`a. ${rotationNote}`], 
                     },
                 ],
-                interpretation: rotationNote, // Ubah Description di UI menjadi warning
+                interpretation: `a. ${rotationNote}`, 
             };
 
             resultJson.tables.push(table);
             
         } else {
+
             // ========================================================
             // JIKA ROTASI KONVERGEN (Tampil normal dengan kolom)
             // ========================================================
@@ -2635,18 +2673,68 @@ const hasSuccessfulExtraction = !suppressExtraction;
         const methodDisplayName = getExtractionMethodDisplayName(methodValue);
         const columnGroupHeader = isPCA ? "Component" : "Factor";
 
+        // if (!isRotationConvergedForPattern) {
+        //     // ========================================================
+        //     // JIKA ROTASI GAGAL KONVERGEN (Tampilkan Warning ala SPSS)
+        //     // ========================================================
+        //     const rotationIterations = data.pattern_matrix?.iterations_required ?? 0;
+        //     const rotationConvergenceValue = data.pattern_matrix?.convergence_value ?? 0;
+            
+        //     const convergenceStr = rotationConvergenceValue !== undefined && rotationConvergenceValue !== null 
+        //         ? rotationConvergenceValue.toFixed(3) 
+        //         : "N/A";
+                
+        //     const rotationNote = `Rotation failed to converge in ${rotationIterations} iterations. (Convergence = ${convergenceStr}).`;
+
+        //     const table: Table = {
+        //         key: "pattern_matrix",
+        //         title: "Pattern Matrix",
+        //         columnHeaders: [{ header: "", key: "var" }],
+        //         rows: [
+        //             {
+        //                 rowHeader: [`a. ${rotationNote}`], // Tampilkan tulisan di dalam kotak tabel
+        //             },
+        //         ],
+        //         interpretation: `a. ${rotationNote}`,
+        //     };
+
+        //     resultJson.tables.push(table);
+            
+        // } else {
+
         if (!isRotationConvergedForPattern) {
             // ========================================================
-            // JIKA ROTASI GAGAL KONVERGEN (Tampilkan Warning ala SPSS)
+            // JIKA ROTASI GAGAL KONVERGEN (Oblique: Direct Oblimin, Promax)
             // ========================================================
             const rotationIterations = data.pattern_matrix?.iterations_required ?? 0;
             const rotationConvergenceValue = data.pattern_matrix?.convergence_value ?? 0;
             
-            const convergenceStr = rotationConvergenceValue !== undefined && rotationConvergenceValue !== null 
+            let convergenceStr = rotationConvergenceValue !== undefined && rotationConvergenceValue !== null 
                 ? rotationConvergenceValue.toFixed(3) 
                 : "N/A";
+            
+            // Menghilangkan leading zero di depan desimal sesuai standar SPSS (.003)
+            if (rotationConvergenceValue !== undefined && rotationConvergenceValue !== null && Math.abs(rotationConvergenceValue) < 1) {
+                convergenceStr = convergenceStr.replace(/^(-?)0\./, "$1.");
+            }
+            
+            // 1. Deteksi Nama Metode Rotasi Oblique secara spesifik
+            let rotationMethodStr = "Oblique"; 
+            if (configData?.rotation) {
+                if (configData.rotation.Oblimin) rotationMethodStr = "Oblimin";
+                else if (configData.rotation.Promax) rotationMethodStr = "Promax";
+            }
+
+            // 2. Tambahkan Penjelasan Matematis Dinamis Khusus Kondisi Gagal Konvergen
+            let mathNote = "";
+            const rotLower = rotationMethodStr.toLowerCase();
+            if (rotLower.includes("oblimin")) {
+                mathNote = " Convergence value represents the absolute criterion change of the normalized objective function.";
+            } else if (rotLower.includes("promax")) {
+                mathNote = " Convergence value represents the maximum absolute rotation angle in radians during the preliminary Varimax rotation.";
+            }
                 
-            const rotationNote = `Rotation failed to converge in ${rotationIterations} iterations. (Convergence = ${convergenceStr}).`;
+            const rotationNote = `Rotation failed to converge in ${rotationIterations} iterations. (Convergence = ${convergenceStr}).${mathNote}`;
 
             const table: Table = {
                 key: "pattern_matrix",
@@ -2654,7 +2742,7 @@ const hasSuccessfulExtraction = !suppressExtraction;
                 columnHeaders: [{ header: "", key: "var" }],
                 rows: [
                     {
-                        rowHeader: [`a. ${rotationNote}`], // Tampilkan tulisan di dalam kotak tabel
+                        rowHeader: [`a. ${rotationNote}`], 
                     },
                 ],
                 interpretation: `a. ${rotationNote}`,
@@ -2663,6 +2751,8 @@ const hasSuccessfulExtraction = !suppressExtraction;
             resultJson.tables.push(table);
             
         } else {
+        
+        
             // ========================================================
             // JIKA ROTASI KONVERGEN (Render Kolom Normal)
             // ========================================================
