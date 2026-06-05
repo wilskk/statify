@@ -447,7 +447,7 @@ export const generateRotatedMatrixDescription = (
   iterations: number
 ): string => {
   // Menggunakan tag <br> agar teks turun baris saat dirender di antarmuka
-  return `Extraction Method: ${extractionMethod}.<br>Rotation Method: ${rotationMethod} with Kaiser Normalization.<br>a. Rotation converged in ${iterations} iterations.`;
+  return `Extraction Method: ${extractionMethod}.<br>Rotation Method: ${rotationMethod} with Kaiser Normalization.<br>Rotation converged in ${iterations} iterations.`;
 };
 // export const generateRotatedMatrixDescription = (
 //   rotationMethod: string = "Varimax",

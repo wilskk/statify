@@ -121,16 +121,28 @@ export const FactorExtraction = ({
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectGroup>
-                                {EXTRACTIONMETHOD.map((method, index) => (
-                                    <SelectItem
-                                        key={index}
-                                        value={method.value}
-                                    >
-                                        {method.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectGroup>
+                          <SelectGroup>
+    {EXTRACTIONMETHOD.map((method, index) => {
+        // Logika evaluasi: True jika BUKAN PrincipalComp
+        const isItemDisabled = method.value !== "PrincipalComp";
+
+        return (
+            <SelectItem
+                key={index}
+                value={method.value}
+                disabled={isItemDisabled}
+                // Paksa injeksi class Tailwind agar visualnya abu-abu dan mematikan klik
+                className={
+                    isItemDisabled
+                        ? "opacity-50 pointer-events-none cursor-not-allowed"
+                        : "cursor-pointer"
+                }
+            >
+                {method.name}
+            </SelectItem>
+        );
+    })}
+</SelectGroup>
                         </SelectContent>
                     </Select>
                 </div>

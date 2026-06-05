@@ -543,8 +543,7 @@ const hasSuccessfulExtraction = !suppressExtraction;
 
         const table: Table = {
             key: "kmo_bartletts_test",
-            // Tambahkan superscript 'a' pada judul jika menggunakan Covariance
-            title: isCovarianceExtraction ? "KMO and Bartlett's Testᵃ" : "KMO and Bartlett's Test",
+            title: "KMO and Bartlett's Test",
             columnHeaders: [
                 { header: "", key: "test" },
                 { header: "", key: "var" },
@@ -710,7 +709,7 @@ const hasSuccessfulExtraction = !suppressExtraction;
 
         const table: Table = {
             key: "communalities",
-            title: heywoodWarningFlag ? "Communalities<sup>a</sup>" : "Communalities",
+            title: "Communalities",
             columnHeaders,
             rows: [],
         };
@@ -2651,7 +2650,7 @@ const hasSuccessfulExtraction = !suppressExtraction;
 
             const table: Table = {
                 key: "pattern_matrix",
-                title: "Pattern Matrixᵃ",
+                title: "Pattern Matrix",
                 columnHeaders: [{ header: "", key: "var" }],
                 rows: [
                     {
@@ -2722,7 +2721,7 @@ const hasSuccessfulExtraction = !suppressExtraction;
 
             const table: Table = {
                 key: "pattern_matrix",
-                title: "Pattern Matrixᵃ",
+                title: "Pattern Matrix",
                 columnHeaders,
                 rows: [],
             };
@@ -3362,9 +3361,6 @@ const hasSuccessfulExtraction = !suppressExtraction;
         
         const isCovariance = configData?.extraction?.Covariance === true;
         let tableTitle = isPCA ? "Component Score Coefficient Matrix" : "Factor Score Coefficient Matrix";
-        if (isCovariance) {
-            tableTitle += "ᵃ"; 
-        }
 
         const table: Table = {
             key: "component_score_coefficient_matrix",

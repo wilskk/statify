@@ -72,14 +72,23 @@ export const ExtractionTab: React.FC<ExtractionTabProps> = ({
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectGroup>
-                            {EXTRACTIONMETHOD.map((method, index) => (
-                                <SelectItem key={index} value={method.value}>
-                                    {method.name}
-                                </SelectItem>
-                            ))}
-                        </SelectGroup>
-                    </SelectContent>
+                    <SelectGroup>
+                        {EXTRACTIONMETHOD.map((method, index) => (
+                            <SelectItem 
+                                key={index} 
+                                value={method.value}
+                                disabled={method.isDisabled}
+                                className={
+                                    method.isDisabled
+                                        ? "opacity-50 pointer-events-none cursor-not-allowed"
+                                        : "cursor-pointer"
+                                }
+                            >
+                                {method.name}
+                            </SelectItem>
+                        ))}
+                    </SelectGroup>
+                </SelectContent>
                 </Select>
             </div>
 
