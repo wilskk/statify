@@ -172,13 +172,19 @@ export const ExtractionTab: React.FC<ExtractionTabProps> = ({
 
                                 <div className="flex items-center space-x-2 pl-6">
                                     <Label className="w-[160px]">Eigenvalues Greater than:</Label>
-                                    <Input
-                                        type="number"
-                                        className="w-[80px]"
-                                        value={data.EigenVal ?? ""}
-                                        disabled={!data.Eigen}
-                                        onChange={(e) => onChange("EigenVal", Number(e.target.value))}
-                                    />
+                                    <div className="flex items-center gap-2">
+                                        <Input
+                                            type="number"
+                                            className="w-[80px]"
+                                            value={data.EigenVal ?? ""}
+                                            disabled={!data.Eigen}
+                                            onChange={(e) => onChange("EigenVal", Number(e.target.value))}
+                                        />
+                                        {/* Teks tambahan hanya muncul jika Covariance dipilih */}
+                                        {data.Covariance && (
+                                            <span className="text-sm">times the mean eigenvalue</span>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="flex items-center space-x-2">

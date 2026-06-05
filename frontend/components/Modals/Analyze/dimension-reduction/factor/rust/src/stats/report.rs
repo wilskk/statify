@@ -478,9 +478,55 @@ pub fn calculate_total_variance_explained_from_data(
     ))
 }
 
-// =========================================================================
-// 3. FUNGSI LAINNYA (Original Code - Tidak Ada Perubahan)
-// =========================================================================
+// // =========================================================================
+// // 3. FUNGSI LAINNYA (Original Code - Tidak Ada Perubahan)
+// // =========================================================================
+
+// pub fn calculate_component_matrix(
+//     data: &AnalysisData,
+//     config: &FactorAnalysisConfig
+// ) -> Result<ComponentMatrix, String> {
+
+//     let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+
+//     let matrix_type = if config.extraction.covariance {
+//         "covariance"
+//     } else {
+//         "correlation"
+//     };
+
+//     let matrix = calculate_matrix(&data_matrix, matrix_type)?;
+//     let extraction_result = extract_factors(&matrix, config, &var_names)?;
+
+//     let mut loadings = extraction_result.loadings.clone();
+//     let (n_rows, n_cols) = loadings.shape();
+
+//     for col in 0..n_cols {
+//         let mut sum_cubes = 0.0;
+//         for row in 0..n_rows {
+//             sum_cubes += loadings[(row, col)].powi(3);
+//         }
+//         if sum_cubes < 0.0 {
+//             for row in 0..n_rows {
+//                 loadings[(row, col)] *= -1.0;
+//             }
+//         }
+//     }
+
+//     let mut components = HashMap::new();
+//     for (i, var_name) in var_names.iter().enumerate() {
+//         let mut row = Vec::with_capacity(n_cols);
+//         for j in 0..n_cols {
+//             row.push(loadings[(i, j)]);
+//         }
+//         components.insert(var_name.clone(), row);
+//     }
+
+//     Ok(ComponentMatrix {
+//         components,
+//         variable_order: var_names,
+//     })
+// }
 
 pub fn calculate_component_matrix(
     data: &AnalysisData,
@@ -501,12 +547,18 @@ pub fn calculate_component_matrix(
     let mut loadings = extraction_result.loadings.clone();
     let (n_rows, n_cols) = loadings.shape();
 
+    // =========================================================
+    // PERBAIKAN: SPSS Sign Reflection untuk Unrotated Matrix
+    // SPSS menggunakan jumlah absolut kolom, bukan sum of cubes
+    // =========================================================
     for col in 0..n_cols {
-        let mut sum_cubes = 0.0;
+        let mut col_sum = 0.0;
         for row in 0..n_rows {
-            sum_cubes += loadings[(row, col)].powi(3);
+            col_sum += loadings[(row, col)];
         }
-        if sum_cubes < 0.0 {
+        
+        // Jika total penjumlahan kolom negatif, balik seluruh tandanya
+        if col_sum < 0.0 {
             for row in 0..n_rows {
                 loadings[(row, col)] *= -1.0;
             }
