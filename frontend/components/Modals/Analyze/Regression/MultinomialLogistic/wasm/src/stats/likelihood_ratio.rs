@@ -30,7 +30,6 @@ pub fn calculate_likelihood_ratio_tests(
 
     // Group columns by SPSS-like effect names:
     // - "Intercept" remains its own effect.
-    // - Dummy-coded factors like "Map=1", "Map=2" are grouped into "Map".
     // - Continuous covariates stay as-is.
     let mut grouped_effects: Vec<(String, Vec<usize>)> = Vec::new();
     for var_idx in 0..p {
@@ -100,6 +99,7 @@ pub fn calculate_likelihood_ratio_tests(
             n_categories: J,
             weights: primary.weights.clone(),
             variable_names: primary.variable_names.clone(),
+            stepwise_trace: Vec::new(),
         };
 
         let reduced_ll = match run_newton_raphson_internal(&reduced_X, &reduced_primary, config) {

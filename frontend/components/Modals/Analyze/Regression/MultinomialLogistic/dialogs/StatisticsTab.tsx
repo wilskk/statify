@@ -24,19 +24,25 @@ export interface StatisticsOptions {
     asymptoticCovariances: boolean;
     confidenceInterval: number;
     subpopulationMode: SubpopulationMode;
+    subpopulationVariables: string[];
 }
 
 interface StatisticsTabProps {
     options: StatisticsOptions;
     onChange: (stats: StatisticsOptions) => void;
+    availableSubpopulationVariables: string[];
 }
 
 type ToggleableStatistic = Exclude<
     keyof StatisticsOptions,
-    "confidenceInterval" | "subpopulationMode"
+    "confidenceInterval" | "subpopulationMode" | "subpopulationVariables"
 >;
 
-export const StatisticsTab: React.FC<StatisticsTabProps> = ({ options, onChange }) => {
+export const StatisticsTab: React.FC<StatisticsTabProps> = ({
+    options,
+    onChange,
+    availableSubpopulationVariables,
+}) => {
     const handleToggle = (key: ToggleableStatistic) => {
         onChange({
             ...options,
@@ -56,6 +62,16 @@ export const StatisticsTab: React.FC<StatisticsTabProps> = ({ options, onChange 
         onChange({
             ...options,
             subpopulationMode: value,
+        });
+    };
+
+    const handleSubpopulationVariableToggle = (variableName: string) => {
+        const isSelected = options.subpopulationVariables.includes(variableName);
+        onChange({
+            ...options,
+            subpopulationVariables: isSelected
+                ? options.subpopulationVariables.filter((v) => v !== variableName)
+                : [...options.subpopulationVariables, variableName],
         });
     };
 
@@ -100,7 +116,6 @@ export const StatisticsTab: React.FC<StatisticsTabProps> = ({ options, onChange 
                     <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         Model
                     </Label>
-                    <span className="text-[11px] text-muted-foreground">Match SPSS layout</span>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                     {modelOptions.map((item) => (
@@ -173,10 +188,24 @@ export const StatisticsTab: React.FC<StatisticsTabProps> = ({ options, onChange 
                                 Covariate patterns defined by variable list below
                             </Label>
                             <p className="text-xs text-muted-foreground">
-                                Coming soon: select custom variables to mirror SPSS subpopulation lists.
+                                Select model variables used to define subpopulation patterns (SPSS variable list mode).
                             </p>
-                            <div className="mt-2 h-16 rounded border border-dashed border-muted-foreground/40 bg-muted/10 text-center text-[11px] text-muted-foreground flex items-center justify-center">
-                                Variable list placeholder
+                            <div className="mt-2 rounded border border-dashed border-muted-foreground/40 bg-muted/10 p-3 space-y-2">
+                                {availableSubpopulationVariables.length === 0 && (
+                                    <p className="text-[11px] text-muted-foreground">
+                                        Add factors/covariates in Model tab first.
+                                    </p>
+                                )}
+                                {availableSubpopulationVariables.map((variableName) => (
+                                    <label key={variableName} className="flex items-center space-x-2 text-sm">
+                                        <Checkbox
+                                            checked={options.subpopulationVariables.includes(variableName)}
+                                            onCheckedChange={() => handleSubpopulationVariableToggle(variableName)}
+                                            disabled={options.subpopulationMode !== "variableList"}
+                                        />
+                                        <span>{variableName}</span>
+                                    </label>
+                                ))}
                             </div>
                         </div>
                     </div>
