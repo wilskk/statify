@@ -194,12 +194,20 @@ pub struct LogDeterminants {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct StepwiseStatistics {
+    /// Which method was used: "wilks", "unexplained", "mahalanobis", "f_ratio", "raos_v"
+    pub method: String,
+    /// Number of groups (k) — used by frontend to compute df = step × (k-1) for Rao's V
+    #[serde(rename = "num_groups")]
+    pub num_groups: usize,
     #[serde(rename = "variables_entered")]
     pub variables_entered: Vec<String>,
     #[serde(rename = "variables_removed")]
     pub variables_removed: Vec<Option<String>>,
     #[serde(rename = "min_d_squared")]
     pub min_d_squared: Vec<f64>,
+    /// Per-step "Between Groups" pair (Mahalanobis & Smallest F methods)
+    #[serde(rename = "between_groups")]
+    pub between_groups: Vec<String>,
     #[serde(rename = "wilks_lambda")]
     pub wilks_lambda: Vec<f64>,
     #[serde(rename = "f_to_enter")]
@@ -210,6 +218,18 @@ pub struct StepwiseStatistics {
     pub f_to_enter_df2: Vec<i32>,
     #[serde(rename = "significance")]
     pub significance: Vec<f64>,
+    /// Rao's V cumulative statistic (for Rao's V method)
+    #[serde(rename = "raos_v")]
+    pub raos_v: Vec<f64>,
+    /// Chi-squared approx. significance of cumulative Rao's V (for Rao's V method)
+    #[serde(rename = "raos_v_sig")]
+    pub raos_v_sig: Vec<f64>,
+    /// Change in V (ΔV) between steps (for Rao's V method)
+    #[serde(rename = "change_in_v")]
+    pub change_in_v: Vec<f64>,
+    /// Approximate significance of change in V (for Rao's V method)
+    #[serde(rename = "change_sig")]
+    pub change_sig: Vec<f64>,
     #[serde(rename = "variables_in_analysis")]
     pub variables_in_analysis: HashMap<String, Vec<VariableInAnalysis>>,
     #[serde(rename = "variables_not_in_analysis")]

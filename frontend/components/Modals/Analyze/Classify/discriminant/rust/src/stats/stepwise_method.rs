@@ -4,8 +4,8 @@
 //! computing F-to-enter and F-to-remove statistics in stepwise discriminant analysis.
 
 use super::core::{
-    calculate_min_f_ratio, calculate_min_mahalanobis_distance, calculate_overall_wilks_lambda,
-    calculate_raos_v, calculate_tolerance, calculate_univariate_f, AnalyzedDataset, MethodType,
+    calculate_min_mahalanobis_distance, calculate_overall_wilks_lambda, calculate_raos_v,
+    calculate_univariate_f, AnalyzedDataset, MethodType,
 };
 
 /// Calculate F-to-enter for a variable based on the selected method
@@ -94,7 +94,7 @@ fn calculate_f_to_enter_wilks(
     let new_wilks = calculate_overall_wilks_lambda(dataset, &new_variables);
 
     let df1 = dataset.num_groups - 1;
-    let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups + 1;
+    let df2 = dataset.total_cases - (current_variables.len() + 1) - dataset.num_groups;
 
     // [PERBAIKAN KRUSIAL]: Pembagi harus new_wilks!
     let f_value = if df2 > 0 && new_wilks < current_wilks && new_wilks > 0.0 {
@@ -177,35 +177,11 @@ fn calculate_f_to_enter_unexplained(
     dataset: &AnalyzedDataset,
     current_variables: &[String],
 ) -> (f64, f64) {
-    let n = dataset.total_cases as f64;
-    let k = dataset.num_groups as f64;
-    let p = (current_variables.len() + 1) as f64;
-
-    // R² of x on the in-model set: tolerance = 1 - R² from within correlation
-    let (tolerance, _) = calculate_tolerance(variable, dataset, current_variables);
-    let tolerance_clamped = tolerance.clamp(0.0, 1.0);
-    let r2 = 1.0 - tolerance_clamped;
-
-    // unexplained = (N - k) / N · (1 - R²)
-    let one_minus_r2 = 1.0 - r2;
-    let unexplained = ((n - k) / n) * one_minus_r2;
-
-    let df1 = k - 1.0;
-    let df2 = n - k - p - 1.0;
-    let f_value = if df2 > 0.0 && df1 > 0.0 && one_minus_r2 > 0.0 && r2 < 1.0 {
-        (df2 / p) * unexplained / one_minus_r2
-    } else {
-        0.0
-    };
-
-    // Wilks' proxy for the in-analysis table display.
-    let wilks_lambda = if f_value > 0.0 && df2 > 0.0 {
-        df2 / (df2 + df1 * f_value)
-    } else {
-        1.0
-    };
-
-    (f_value, wilks_lambda)
+    // SPSS shows the standard partial Wilks F in the "F to Enter" column for the
+    // Unexplained Variance method, and gates entry on it (FIN = 3.84). The method
+    // statistic ("Residual Variance") only ranks candidates and is computed in
+    // analyze_variables_not_in_model (stored in min_d_squared).
+    calculate_f_to_enter_wilks(variable, dataset, current_variables)
 }
 
 /// Calculate F-to-remove using Unexplained Variance method
@@ -226,45 +202,9 @@ fn calculate_f_to_remove_unexplained(
     dataset: &AnalyzedDataset,
     current_variables: &[String],
 ) -> (f64, f64) {
-    // Reduced model = M \ {v}
-    let reduced_variables: Vec<String> = current_variables
-        .iter()
-        .filter(|&v| v != variable)
-        .cloned()
-        .collect();
-
-    // Cannot remove the last variable (would empty the model).
-    if reduced_variables.is_empty() {
-        return (0.0, 1.0);
-    }
-
-    let n = dataset.total_cases as f64;
-    let k = dataset.num_groups as f64;
-    let p = reduced_variables.len() as f64;
-
-    // R² of v on the reduced in-model set M \ {v}.
-    let (tolerance, _) = calculate_tolerance(variable, dataset, &reduced_variables);
-    let tolerance_clamped = tolerance.clamp(0.0, 1.0);
-    let r2 = 1.0 - tolerance_clamped;
-
-    let one_minus_r2 = 1.0 - r2;
-    let unexplained = ((n - k) / n) * one_minus_r2;
-
-    let df1 = k - 1.0;
-    let df2 = n - k - p - 1.0;
-    let f_value = if df2 > 0.0 && df1 > 0.0 && one_minus_r2 > 0.0 && r2 < 1.0 {
-        (df2 / p) * unexplained / one_minus_r2
-    } else {
-        0.0
-    };
-
-    let wilks_lambda = if f_value > 0.0 && df2 > 0.0 {
-        df2 / (df2 + df1 * f_value)
-    } else {
-        1.0
-    };
-
-    (f_value, wilks_lambda)
+    // Standard partial Wilks F-to-remove (FOUT = 2.71 gate). The "Residual
+    // Variance" column for variables in the model is computed separately.
+    calculate_f_to_remove_wilks(variable, dataset, current_variables)
 }
 
 /// Calculate F-to-enter using Mahalanobis Distance method
@@ -358,29 +298,11 @@ fn calculate_f_to_enter_fratio(
     dataset: &AnalyzedDataset,
     current_variables: &[String],
 ) -> (f64, f64) {
-    // If no current variables, use univariate F test
-    if current_variables.is_empty() {
-        return calculate_univariate_f(variable, dataset);
-    }
-
-    // Add the new variable to the set
-    let mut new_variables = current_variables.to_vec();
-    new_variables.push(variable.to_string());
-
-    // Calculate minimum F ratio between any two groups
-    let min_f_ratio = calculate_min_f_ratio(dataset, &new_variables);
-
-    // For Wilks' lambda, estimate from F
-    let _df1 = 1; // For pairwise comparisons
-    let df2 = dataset.total_cases - current_variables.len() - dataset.num_groups + 1;
-
-    let wilks_lambda = if min_f_ratio > 0.0 && df2 > 0 {
-        (df2 as f64) / ((df2 as f64) + min_f_ratio)
-    } else {
-        1.0
-    };
-
-    (min_f_ratio, wilks_lambda)
+    // SPSS shows the standard partial Wilks F in the "F to Enter" column for the
+    // Smallest F Ratio method, and gates entry on it (FIN = 3.84). The method
+    // statistic ("Min. F" + Between Groups) only ranks candidates and is computed
+    // in analyze_variables_not_in_model (stored in min_d_squared / between_groups).
+    calculate_f_to_enter_wilks(variable, dataset, current_variables)
 }
 
 /// Calculate F-to-remove using Smallest F Ratio method
@@ -401,125 +323,78 @@ fn calculate_f_to_remove_fratio(
     dataset: &AnalyzedDataset,
     current_variables: &[String],
 ) -> (f64, f64) {
-    // Reduced model = M \ {v}
-    let reduced_variables: Vec<String> = current_variables
-        .iter()
-        .filter(|&v| v != variable)
-        .cloned()
-        .collect();
-
-    // Cannot remove the last variable (would empty the model).
-    if reduced_variables.is_empty() {
-        return (0.0, 1.0);
-    }
-
-    // F-to-remove is the min F_ij on the reduced model.
-    let f_value = calculate_min_f_ratio(dataset, &reduced_variables);
-
-    // Wilks' proxy for the in-analysis table display.
-    let _df1 = 1; // For pairwise comparisons
-    let df2 = dataset.total_cases - dataset.num_groups - current_variables.len() + 1;
-    let wilks_lambda = if f_value > 0.0 && df2 > 0 {
-        (df2 as f64) / ((df2 as f64) + f_value)
-    } else {
-        1.0
-    };
-
-    (f_value, wilks_lambda)
+    // Standard partial Wilks F-to-remove (FOUT = 2.71 gate). The "Min. F" column
+    // for variables in the model is computed separately.
+    calculate_f_to_remove_wilks(variable, dataset, current_variables)
 }
 
 /// Calculate F-to-enter using Rao's V method
 ///
-/// This method maximizes Rao's V (Lawley-Hotelling Trace),
-/// which measures the separation between group means.
+/// Returns (partial_wilks_f, proxy_for_V_with) where:
+/// - partial_wilks_f: the standard partial F-to-enter (what SPSS shows in the "F to Enter"
+///   column for Rao's V; same partial-Wilks formula used by every method).
+/// - proxy_for_V_with: 1/(1 + V_with/n), so that raosVFromProxy() in the formatter can
+///   recover the cumulative Rao's V after entry (V_with = V(M ∪ {x})).
 ///
-/// # Parameters
-/// * `variable` - The variable to test
-/// * `dataset` - The analyzed dataset
-/// * `current_variables` - Variables currently in the model
-///
-/// # Returns
-/// A tuple of (F-to-enter = ΔV, Wilks' lambda)
-///
-/// Per the SPSS Rao's V criterion (ibmc0.c:2266-2356), the "F to enter"
-/// value reported in the table is the change in V when the variable is
-/// added (ΔV = V_with − V_without) — SPSS does NOT convert to an F
-/// statistic here. The V-to-enter threshold is also compared against
-/// this ΔV (default 3.84).
+/// Selection of which variable to enter is done on ΔV stored separately in
+/// VariableNotInAnalysis.min_d_squared by analyze_variables_not_in_model.
 fn calculate_f_to_enter_raos(
     variable: &str,
     dataset: &AnalyzedDataset,
     current_variables: &[String],
 ) -> (f64, f64) {
-    // If no current variables, there is no base V to subtract from.
-    // Use V on the singleton model as ΔV (the value the variable brings in).
-    if current_variables.is_empty() {
-        let v = calculate_raos_v(dataset, &[variable.to_string()]);
-        let wilks_lambda = if v > 0.0 {
-            1.0 / (1.0 + v / (dataset.total_cases as f64))
-        } else {
-            1.0
-        };
-        return (v, wilks_lambda);
-    }
-
-    // ΔV = V(M ∪ {x}) − V(M)
-    let current_v = calculate_raos_v(dataset, current_variables);
+    // V_with for the proxy (displayed as "Rao's V" column via raosVFromProxy in formatter)
     let mut new_variables = current_variables.to_vec();
     new_variables.push(variable.to_string());
     let new_v = calculate_raos_v(dataset, &new_variables);
-    let f_value = new_v - current_v;
 
-    // Wilks' proxy for the in-analysis table display.
+    // "F to Enter" column: partial Wilks F — same as every other stepwise method
+    let (partial_f, _) = calculate_f_to_enter_wilks(variable, dataset, current_variables);
+
     let wilks_lambda = if new_v > 0.0 {
         1.0 / (1.0 + new_v / (dataset.total_cases as f64))
     } else {
         1.0
     };
 
-    (f_value, wilks_lambda)
+    (partial_f, wilks_lambda)
 }
 
 /// Calculate F-to-remove using Rao's V method
 ///
-/// # Parameters
-/// * `variable` - The variable to test
-/// * `dataset` - The analyzed dataset
-/// * `current_variables` - Variables currently in the model
+/// Returns (partial_wilks_f, proxy_for_V_reduced) where:
+/// - partial_wilks_f: the standard partial F-to-remove (what SPSS shows in the "F to Remove"
+///   column; same partial-Wilks formula used by every method).
+/// - proxy_for_V_reduced: 1/(1 + V_reduced/n), so raosVFromProxy() in the formatter recovers
+///   V(M \ {v}) — the "Rao's V" column in Variables in the Analysis table.
 ///
-/// # Returns
-/// A tuple of (F-to-remove = ΔV on reduced model, Wilks' lambda)
-///
-/// F-to-remove is the change in V when the variable is removed
-/// (ΔV = V(M) − V(M \ {v})) — same shape as F-to-enter but on the
-/// reduced model. SPSS does not divide by df here.
+/// calculate_f_to_remove_wilks handles the single-variable case (reduced = empty → lambda = 1.0).
 fn calculate_f_to_remove_raos(
     variable: &str,
     dataset: &AnalyzedDataset,
     current_variables: &[String],
 ) -> (f64, f64) {
-    // ΔV = V(M) − V(M \ {v})
-    let current_v = calculate_raos_v(dataset, current_variables);
+    // "F to Remove" column: partial Wilks F
+    let (partial_f, _) = calculate_f_to_remove_wilks(variable, dataset, current_variables);
+
+    // V of reduced model: for the "Rao's V" column via raosVFromProxy
     let reduced_variables: Vec<String> = current_variables
         .iter()
         .filter(|&v| v != variable)
         .cloned()
         .collect();
 
-    // Cannot remove the last variable (would empty the model).
-    if reduced_variables.is_empty() {
-        return (0.0, 1.0);
-    }
+    let reduced_v = if reduced_variables.is_empty() {
+        0.0
+    } else {
+        calculate_raos_v(dataset, &reduced_variables)
+    };
 
-    let reduced_v = calculate_raos_v(dataset, &reduced_variables);
-    let f_value = current_v - reduced_v;
-
-    // Wilks' proxy for the in-analysis table display.
     let wilks_lambda = if reduced_v > 0.0 {
         1.0 / (1.0 + reduced_v / (dataset.total_cases as f64))
     } else {
         1.0
     };
 
-    (f_value, wilks_lambda)
+    (partial_f, wilks_lambda)
 }

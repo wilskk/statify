@@ -523,6 +523,19 @@ pub fn calculate_p_value_from_chi_square(chi_square: f64, df: usize) -> f64 {
     }
 }
 
+/// Calculate upper tail CDF (p-value) for chi-square distribution
+/// This is the same as calculate_p_value_from_chi_square but accepts f64 df
+pub fn chi_squared_cdf_upper(chi_square: f64, df: f64) -> f64 {
+    if chi_square <= 0.0 || df <= 0.0 {
+        return 1.0;
+    }
+
+    match ChiSquared::new(df) {
+        Ok(dist) => dist.sf(chi_square),
+        Err(_) => 1.0,
+    }
+}
+
 /// Filter valid cases based on config
 pub fn filter_valid_cases(
     data: &AnalysisData,

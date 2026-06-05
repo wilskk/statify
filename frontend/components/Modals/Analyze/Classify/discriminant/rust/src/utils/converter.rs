@@ -148,6 +148,8 @@ struct GroupMatrixEntry {
 
 #[derive(Serialize)]
 struct FormattedStepwiseStatistics {
+    method: String,
+    num_groups: usize,
     variables_entered: Vec<String>,
     variables_removed: Vec<Option<String>>,
     min_d_squared: Vec<f64>,
@@ -156,6 +158,10 @@ struct FormattedStepwiseStatistics {
     f_to_enter_df1: Vec<i32>,
     f_to_enter_df2: Vec<i32>,
     significance: Vec<f64>,
+    raos_v: Vec<f64>,
+    raos_v_sig: Vec<f64>,
+    change_in_v: Vec<f64>,
+    change_sig: Vec<f64>,
     variables_in_analysis: Vec<StepVariables>,
     variables_not_in_analysis: Vec<StepVariables>,
     pairwise_comparisons: Vec<GroupPairComparison>,
@@ -635,6 +641,8 @@ impl FormatResult {
                 .collect();
 
             FormattedStepwiseStatistics {
+                method: stats.method.clone(),
+                num_groups: stats.num_groups,
                 variables_entered: stats.variables_entered.clone(),
                 variables_removed: stats.variables_removed.clone(),
                 min_d_squared: stats.min_d_squared.clone(),
@@ -643,6 +651,10 @@ impl FormatResult {
                 f_to_enter_df1: stats.f_to_enter_df1.clone(),
                 f_to_enter_df2: stats.f_to_enter_df2.clone(),
                 significance: stats.significance.clone(),
+                raos_v: stats.raos_v.clone(),
+                raos_v_sig: stats.raos_v_sig.clone(),
+                change_in_v: stats.change_in_v.clone(),
+                change_sig: stats.change_sig.clone(),
                 variables_in_analysis,
                 variables_not_in_analysis,
                 pairwise_comparisons,

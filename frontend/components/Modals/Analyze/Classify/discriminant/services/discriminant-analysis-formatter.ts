@@ -804,128 +804,452 @@ export function transformDiscriminantResult(data: any): ResultJson {
     resultJson.tables.push(table);
   }
 
+  // ==========================================
+  // ROBUST METHOD DETECTION
+  // ==========================================
+  console.log(
+    "[DEBUG] Full stepwise_statistics keys:",
+    data.stepwise_statistics
+      ? Object.keys(data.stepwise_statistics)
+      : "TIDAK ADA",
+  );
+  console.log("[DEBUG] change_in_v:", data.stepwise_statistics?.change_in_v);
+  console.log("[DEBUG] method field:", data.stepwise_statistics?.method);
+  console.log(
+    "[DEBUG] isRaosVMethod akan jadi:",
+    Array.isArray(data.stepwise_statistics?.change_in_v) &&
+      data.stepwise_statistics?.change_in_v.length > 0,
+  );
+  let isMahalanobis = false;
+  let isRaosVMethod = false;
+  // Detected via the explicit method field emitted by Rust.
+  const isFRatio = data.stepwise_statistics?.method === "f_ratio";
+  const isUnexplained = data.stepwise_statistics?.method === "unexplained";
+
+  if (data.stepwise_statistics) {
+    // 1. Rao's V — detected via the explicit method field from Rust
+    isRaosVMethod = data.stepwise_statistics.method === "raos_v";
+
+    // 2. Mahalanobis — ada min_d_squared > 0, dan bukan Rao's V / F-ratio / Unexplained
+    if (!isRaosVMethod && !isFRatio && !isUnexplained) {
+      const notInAnalysis = data.stepwise_statistics.variables_not_in_analysis;
+      if (Array.isArray(notInAnalysis) && notInAnalysis.length > 0) {
+        isMahalanobis = notInAnalysis.some(
+          (step: any) =>
+            Array.isArray(step.variables) &&
+            step.variables.some(
+              (v: any) => v.min_d_squared !== undefined && v.min_d_squared > 0,
+            ),
+        );
+      }
+    }
+  }
+
+  // Helper: back-calculate actual Rao's V from the proxy Wilks' lambda stored in VariableInAnalysis
+  // proxy = 1 / (1 + v/n)  =>  v = n * (1/proxy - 1)
+  const _raosN = data.processing_summary?.valid_count ?? 1;
+  const raosVFromProxy = (proxy: number) =>
+    proxy > 0 && proxy < 1 ? _raosN * (1 / proxy - 1) : 0;
+
   // 15. Stepwise Statistics
   if (data.stepwise_statistics?.variables_entered) {
+    const columnHeaders = isRaosVMethod
+      ? [
+          { header: "", key: "step_header" },
+          { header: "Step", key: "step" },
+          { header: "Entered", key: "entered" },
+          {
+            header: "Rao's V",
+            key: "raos_v",
+            children: [
+              { header: "Statistic", key: "raos_v_statistic" },
+              { header: "df", key: "raos_v_df" },
+              { header: "Approx. Sig.", key: "raos_v_sig" },
+            ],
+          },
+          {
+            header: "Change in V",
+            key: "change_in_v",
+            children: [
+              { header: "Statistic", key: "change_statistic" },
+              { header: "Sig.", key: "change_sig" },
+            ],
+          },
+        ]
+      : isFRatio
+        ? [
+            { header: "", key: "step_header" },
+            { header: "Step", key: "step" },
+            { header: "Entered", key: "entered" },
+            { header: "Removed", key: "removed" },
+            {
+              header: "Min. F",
+              key: "min_f",
+              children: [
+                { header: "Statistic", key: "f_statistic" },
+                { header: "df1", key: "f_df1" },
+                { header: "df2", key: "f_df2" },
+                { header: "Sig.", key: "sig" },
+                { header: "Between Groups", key: "between_groups" },
+              ],
+            },
+          ]
+      : isUnexplained
+        ? [
+            { header: "", key: "step_header" },
+            { header: "Step", key: "step" },
+            { header: "Entered", key: "entered" },
+            { header: "Removed", key: "removed" },
+            { header: "Residual Variance", key: "residual_variance" },
+          ]
+      : isMahalanobis
+        ? [
+            { header: "", key: "step_header" },
+            { header: "Step", key: "step" },
+            { header: "Entered", key: "entered" },
+            { header: "Removed", key: "removed" },
+            {
+              header: "Min. D Squared",
+              key: "min_d_squared",
+              children: [
+                { header: "Statistic", key: "d_statistic" },
+                { header: "Between Groups", key: "between_groups" },
+              ],
+            },
+            {
+              header: "Exact F",
+              key: "exact_f",
+              children: [
+                { header: "Statistic", key: "f_statistic" },
+                { header: "df1", key: "f_df1" },
+                { header: "df2", key: "f_df2" },
+                { header: "Sig.", key: "sig" },
+              ],
+            },
+          ]
+        : [
+            { header: "", key: "step_header" },
+            { header: "Step", key: "step" },
+            { header: "Entered", key: "entered" },
+            { header: "Removed", key: "removed" },
+            {
+              header: "Wilks' Lambda",
+              key: "wilks_lambda",
+              children: [
+                { header: "Statistic", key: "lambda_statistic" },
+                { header: "df1", key: "lambda_df1" },
+                { header: "df2", key: "lambda_df2" },
+                { header: "Sig.", key: "lambda_sig" },
+              ],
+            },
+          ];
+
     const table: Table = {
       key: "stepwise_statistics",
       title: "Variables Entered/Removed",
-      columnHeaders: [
-        { header: "", key: "step_header" },
-        { header: "Step", key: "step" },
-        { header: "Entered", key: "entered" },
-        { header: "Removed", key: "removed" },
-        {
-          header: "Min. D Squared",
-          key: "min_d_squared",
-          children: [
-            { header: "Statistic", key: "d_statistic" },
-            { header: "Between Groups", key: "between_groups" },
-          ],
-        },
-        {
-          header: "Exact F",
-          key: "exact_f",
-          children: [
-            { header: "Statistic", key: "f_statistic" },
-            { header: "df1", key: "f_df1" },
-            { header: "df2", key: "f_df2" },
-            { header: "Sig.", key: "sig" },
-          ],
-        },
-      ],
+      columnHeaders,
       rows: [],
     };
 
     const stepsCount = data.stepwise_statistics.variables_entered.length;
-
-    // DEBUG: Log what WASM actually returned
-    console.log("[FORMATTER] stepwise_statistics:", {
-      f_to_enter: data.stepwise_statistics.f_to_enter,
-      f_to_enter_df1: data.stepwise_statistics.f_to_enter_df1,
-      f_to_enter_df2: data.stepwise_statistics.f_to_enter_df2,
-      significance: data.stepwise_statistics.significance,
-    });
+    // Use num_groups from Rust output (authoritative k from dataset.num_groups)
+    const numGroups = data.stepwise_statistics.num_groups ?? data.group_statistics?.groups?.length ?? 3;
+    const raosVdf = numGroups - 1;
 
     for (let i = 0; i < stepsCount; i++) {
+      const stepNum = i + 1;
+
+      if (isRaosVMethod) {
+        table.rows.push({
+          rowHeader: [""],
+          step: formatDisplayNumber(stepNum),
+          entered: data.stepwise_statistics.variables_entered[i] || "",
+          raos_v_statistic: formatDisplayNumber(
+            data.stepwise_statistics.raos_v?.[i] ?? 0,
+          ),
+          raos_v_df: formatDisplayNumber(raosVdf * stepNum),
+          raos_v_sig: formatDisplayNumber(
+            data.stepwise_statistics.raos_v_sig?.[i] ?? 1,
+          ),
+          change_statistic: formatDisplayNumber(
+            data.stepwise_statistics.change_in_v?.[i] ?? 0,
+          ),
+          change_sig: formatDisplayNumber(
+            data.stepwise_statistics.change_sig?.[i] ?? 1,
+          ),
+        });
+      } else if (isFRatio) {
+        table.rows.push({
+          rowHeader: [""],
+          step: formatDisplayNumber(stepNum),
+          entered: data.stepwise_statistics.variables_entered[i] || "",
+          removed: data.stepwise_statistics.variables_removed[i]
+            ? data.stepwise_statistics.variables_removed[i]
+            : "",
+          f_statistic: formatDisplayNumber(
+            data.stepwise_statistics.min_d_squared?.[i] ?? 0,
+          ),
+          f_df1: formatDisplayNumber(
+            data.stepwise_statistics.f_to_enter_df1?.[i] ?? 0,
+          ),
+          f_df2: formatDisplayNumber(
+            data.stepwise_statistics.f_to_enter_df2?.[i] ?? 0,
+          ),
+          sig: formatDisplayNumber(
+            data.stepwise_statistics.significance?.[i] ?? 1,
+          ),
+          between_groups: data.stepwise_statistics.between_groups?.[i] ?? "",
+        });
+      } else if (isUnexplained) {
+        table.rows.push({
+          rowHeader: [""],
+          step: formatDisplayNumber(stepNum),
+          entered: data.stepwise_statistics.variables_entered[i] || "",
+          removed: data.stepwise_statistics.variables_removed[i]
+            ? data.stepwise_statistics.variables_removed[i]
+            : "",
+          residual_variance: formatDisplayNumber(
+            data.stepwise_statistics.min_d_squared?.[i] ?? 0,
+          ),
+        });
+      } else if (isMahalanobis) {
+        table.rows.push({
+          rowHeader: [""],
+          step: formatDisplayNumber(stepNum),
+          entered: data.stepwise_statistics.variables_entered[i] || "",
+          removed: data.stepwise_statistics.variables_removed[i]
+            ? data.stepwise_statistics.variables_removed[i]
+            : "",
+          d_statistic: formatDisplayNumber(
+            data.stepwise_statistics.min_d_squared?.[i] ?? 0,
+          ),
+          between_groups: data.stepwise_statistics.between_groups?.[i] ?? "",
+          f_statistic: formatDisplayNumber(
+            data.stepwise_statistics.f_to_enter?.[i] ?? 0,
+          ),
+          f_df1: formatDisplayNumber(
+            data.stepwise_statistics.f_to_enter_df1?.[i] ?? 0,
+          ),
+          f_df2: formatDisplayNumber(
+            data.stepwise_statistics.f_to_enter_df2?.[i] ?? 0,
+          ),
+          sig: formatDisplayNumber(
+            data.stepwise_statistics.significance?.[i] ?? 1,
+          ),
+        });
+      } else {
+        table.rows.push({
+          rowHeader: [""],
+          step: formatDisplayNumber(stepNum),
+          entered: data.stepwise_statistics.variables_entered[i] || "",
+          removed: data.stepwise_statistics.variables_removed[i]
+            ? data.stepwise_statistics.variables_removed[i]
+            : "",
+          lambda_statistic: formatDisplayNumber(
+            data.stepwise_statistics.wilks_lambda?.[i] ?? 1,
+          ),
+          lambda_df1: formatDisplayNumber(
+            data.stepwise_statistics.f_to_enter_df1?.[i] ?? 0,
+          ),
+          lambda_df2: formatDisplayNumber(
+            data.stepwise_statistics.f_to_enter_df2?.[i] ?? 0,
+          ),
+          lambda_sig: formatDisplayNumber(
+            data.stepwise_statistics.significance?.[i] ?? 1,
+          ),
+        });
+      }
+    }
+
+    if (isRaosVMethod) {
       table.rows.push({
-        rowHeader: [""],
-        step: formatDisplayNumber(i + 1),
-        entered: data.stepwise_statistics.variables_entered[i] || "",
-        removed: data.stepwise_statistics.variables_removed[i]
-          ? data.stepwise_statistics.variables_removed[i]
-          : "",
-        d_statistic: formatDisplayNumber(
-          data.stepwise_statistics.min_d_squared?.[i] ?? 0,
-        ),
-        between_groups: "", // Filled dynamically if pairwise data available
-        f_statistic: formatDisplayNumber(
-          data.stepwise_statistics.f_to_enter?.[i] ?? 0,
-        ),
-        f_df1: formatDisplayNumber(
-          data.stepwise_statistics.f_to_enter_df1?.[i] ?? 0,
-        ),
-        f_df2: formatDisplayNumber(
-          data.stepwise_statistics.f_to_enter_df2?.[i] ?? 0,
-        ),
-        sig: formatDisplayNumber(
-          data.stepwise_statistics.significance?.[i] ?? 1,
-        ),
+        rowHeader: [
+          "At each step, the variable that produces the largest increase in Rao's V is entered.",
+        ],
+      });
+      table.rows.push({ rowHeader: ["a. Maximum number of steps is 18."] });
+      table.rows.push({
+        rowHeader: ["b. Minimum partial F to enter is 3.84."],
+      });
+      table.rows.push({
+        rowHeader: ["c. Maximum partial F to remove is 2.71."],
+      });
+      table.rows.push({ rowHeader: ["d. Minimum Rao's V to enter is 1."] });
+      table.rows.push({
+        rowHeader: [
+          "e. F level, tolerance, or VIN insufficient for further computation.",
+        ],
+      });
+    } else if (isMahalanobis) {
+      table.rows.push({
+        rowHeader: [
+          "At each step, the variable that maximizes the Mahalanobis distance between the two closest groups is entered.",
+        ],
+      });
+      table.rows.push({ rowHeader: ["a. Maximum number of steps is 18."] });
+      table.rows.push({
+        rowHeader: ["b. Minimum partial F to enter is 3.84."],
+      });
+      table.rows.push({
+        rowHeader: ["c. Maximum partial F to remove is 2.71."],
+      });
+      table.rows.push({
+        rowHeader: [
+          "d. F level, tolerance, or VIN insufficient for further computation.",
+        ],
+      });
+    } else {
+      table.rows.push({
+        rowHeader: [
+          "At each step, the variable that minimizes the overall Wilks' Lambda is entered.",
+        ],
+      });
+      table.rows.push({ rowHeader: ["a. Maximum number of steps is 18."] });
+      table.rows.push({
+        rowHeader: ["b. Minimum partial F to enter is 3.84."],
+      });
+      table.rows.push({
+        rowHeader: ["c. Maximum partial F to remove is 2.71."],
+      });
+      table.rows.push({
+        rowHeader: [
+          "d. F level, tolerance, or VIN insufficient for further computation.",
+        ],
       });
     }
 
-    // Add footnotes
-    table.rows.push({
-      rowHeader: [
-        "At each step, the variable that maximizes the Mahalanobis distance between the two closest groups is entered.",
-      ],
-    });
-    table.rows.push({
-      rowHeader: ["a. Maximum number of steps is 18."],
-    });
-    table.rows.push({
-      rowHeader: ["b. Minimum partial F to enter is 3.84."],
-    });
-    table.rows.push({
-      rowHeader: ["c. Maximum partial F to remove is 2.71."],
-    });
-    table.rows.push({
-      rowHeader: [
-        "d. F level, tolerance, or VIN insufficient for further computation.",
-      ],
-    });
-
     resultJson.tables.push(table);
+
+    // Stepwise Wilks' Lambda — per-step model table (SPSS "Wilks' Lambda" in stepwise output).
+    // Placed inside the same `if` block so it always renders when the stepwise table renders.
+    {
+      const swTable: Table = {
+        key: "stepwise_wilks_lambda",
+        title: "Wilks' Lambda",
+        columnHeaders: [
+          { header: "Step", key: "sw_step" },
+          { header: "Number of Variables", key: "num_vars" },
+          {
+            header: "Lambda",
+            key: "lambda_group",
+            children: [
+              { header: "Statistic", key: "lambda" },
+              { header: "df1", key: "lambda_df1" },
+              { header: "df2", key: "lambda_df2" },
+              { header: "df3", key: "lambda_df3" },
+            ],
+          },
+          {
+            header: "Exact F",
+            key: "exact_f_group",
+            children: [
+              { header: "Statistic", key: "f_stat" },
+              { header: "df1", key: "f_df1" },
+              { header: "df2", key: "f_df2" },
+              { header: "Sig.", key: "f_sig" },
+            ],
+          },
+        ],
+        rows: [],
+      };
+
+      const swEntries: string[] = Array.isArray(
+        data.stepwise_statistics.variables_entered,
+      )
+        ? data.stepwise_statistics.variables_entered
+        : [];
+      const swStepsCount = swEntries.length;
+
+      const swNumGroups: number =
+        data.stepwise_statistics.num_groups ??
+        data.group_statistics?.groups?.length ??
+        3;
+      const swN: number = data.processing_summary?.valid_count ?? 0;
+      const lambdaDf2 = swNumGroups - 1;
+      const lambdaDf3 = swN - swNumGroups;
+
+      const swWilks: number[] = Array.isArray(
+        data.stepwise_statistics.wilks_lambda,
+      )
+        ? data.stepwise_statistics.wilks_lambda
+        : [];
+      const swF: number[] = Array.isArray(data.stepwise_statistics.f_to_enter)
+        ? data.stepwise_statistics.f_to_enter
+        : [];
+      const swFdf1: number[] = Array.isArray(
+        data.stepwise_statistics.f_to_enter_df1,
+      )
+        ? data.stepwise_statistics.f_to_enter_df1
+        : [];
+      const swFdf2: number[] = Array.isArray(
+        data.stepwise_statistics.f_to_enter_df2,
+      )
+        ? data.stepwise_statistics.f_to_enter_df2
+        : [];
+      const swSig: number[] = Array.isArray(data.stepwise_statistics.significance)
+        ? data.stepwise_statistics.significance
+        : [];
+      const swRemoved: any[] = Array.isArray(
+        data.stepwise_statistics.variables_removed,
+      )
+        ? data.stepwise_statistics.variables_removed
+        : [];
+
+      let numVarsInModel = 0;
+      for (let i = 0; i < swStepsCount; i++) {
+        if (swEntries[i]) numVarsInModel++;
+        if (swRemoved[i]) numVarsInModel--;
+
+        swTable.rows.push({
+          rowHeader: [String(i + 1)],
+          sw_step: String(i + 1),
+          num_vars: formatDisplayNumber(numVarsInModel),
+          lambda: formatDisplayNumber(swWilks[i] ?? 1),
+          lambda_df1: formatDisplayNumber(numVarsInModel),
+          lambda_df2: formatDisplayNumber(lambdaDf2),
+          lambda_df3: formatDisplayNumber(lambdaDf3),
+          f_stat: formatDisplayNumber(swF[i] ?? 0),
+          f_df1: formatDisplayNumber(swFdf1[i] ?? 0),
+          f_df2: formatDisplayNumber(swFdf2[i] ?? 0),
+          f_sig: formatDisplayNumber(swSig[i] ?? 1),
+        });
+      }
+
+      if (swTable.rows.length > 0) {
+        resultJson.tables.push(swTable);
+      }
+    }
   }
 
   // 16. Variables in the Analysis
   if (data.stepwise_statistics?.variables_in_analysis) {
-    // Detect if using Mahalanobis method (any variable has min_d_squared > 0)
-    const isFirstStep = data.stepwise_statistics.variables_in_analysis[0];
-    const isMahalanobis =
-      isFirstStep?.variables?.some(
-        (v: any) => v.min_d_squared !== undefined && v.min_d_squared > 0,
-      ) ?? false;
-
-    // Conditionally set column headers based on method
-    // SPSS format: Step, Tolerance, Min. Tolerance, F to Remove, Min. D Squared, Between Groups
-    const columnHeaders = isMahalanobis
+    const columnHeaders = isRaosVMethod
       ? [
           { header: "Step", key: "step" },
           { header: "", key: "var" },
           { header: "Tolerance", key: "tolerance" },
           { header: "Min. Tolerance", key: "min_tolerance" },
           { header: "F to Remove", key: "f_to_remove" },
-          { header: "Min. D Squared", key: "min_d_squared" },
-          { header: "Between Groups", key: "between_groups" },
+          { header: "Rao's V", key: "raos_v" },
         ]
-      : [
-          { header: "Step", key: "step" },
-          { header: "", key: "var" },
-          { header: "Tolerance", key: "tolerance" },
-          { header: "Min. Tolerance", key: "min_tolerance" },
-          { header: "F to Remove", key: "f_to_remove" },
-          { header: "Wilks' Lambda", key: "wilks_lambda" },
-        ];
+      : isMahalanobis
+        ? [
+            { header: "Step", key: "step" },
+            { header: "", key: "var" },
+            { header: "Tolerance", key: "tolerance" },
+            { header: "Min. Tolerance", key: "min_tolerance" },
+            { header: "F to Remove", key: "f_to_remove" },
+            { header: "Min. D Squared", key: "min_d_squared" },
+            { header: "Between Groups", key: "between_groups" },
+          ]
+        : [
+            { header: "Step", key: "step" },
+            { header: "", key: "var" },
+            { header: "Tolerance", key: "tolerance" },
+            { header: "Min. Tolerance", key: "min_tolerance" },
+            { header: "F to Remove", key: "f_to_remove" },
+            { header: "Wilks' Lambda", key: "wilks_lambda" },
+          ];
 
     const table: Table = {
       key: "variables_in_analysis",
@@ -934,22 +1258,29 @@ export function transformDiscriminantResult(data: any): ResultJson {
       rows: [],
     };
 
-    // Sort variables_in_analysis by step number (ascending)
     const sortedSteps = [
       ...data.stepwise_statistics.variables_in_analysis,
-    ].sort((a, b) => parseInt(a.step) - parseInt(b.step));
+    ].sort((a: any, b: any) => parseInt(a.step) - parseInt(b.step));
 
-    // Iterate through steps and variables
     for (let i = 0; i < sortedSteps.length; i++) {
       const stepData = sortedSteps[i];
       const step = stepData.step;
 
-      // Check if variables array exists and has items
       if (stepData.variables && stepData.variables.length > 0) {
         for (let j = 0; j < stepData.variables.length; j++) {
           const variable = stepData.variables[j];
 
-          if (isMahalanobis) {
+          if (isRaosVMethod) {
+            table.rows.push({
+              rowHeader: [step, variable.variable],
+              tolerance: formatDisplayNumber(variable.tolerance),
+              min_tolerance: formatDisplayNumber(
+                variable.min_tolerance ?? variable.tolerance,
+              ),
+              f_to_remove: formatDisplayNumber(variable.f_to_remove),
+              raos_v: formatDisplayNumber(raosVFromProxy(variable.wilks_lambda)),
+            });
+          } else if (isMahalanobis) {
             table.rows.push({
               rowHeader: [step, variable.variable],
               tolerance: formatDisplayNumber(variable.tolerance),
@@ -980,33 +1311,33 @@ export function transformDiscriminantResult(data: any): ResultJson {
 
   // 17. Variables Not in the Analysis
   if (data.stepwise_statistics?.variables_not_in_analysis) {
-    // Detect if using Mahalanobis method
-    const isFirstStep = data.stepwise_statistics.variables_not_in_analysis[0];
-    const isMahalanobis =
-      isFirstStep?.variables?.some(
-        (v: any) => v.min_d_squared !== undefined && v.min_d_squared > 0,
-      ) ?? false;
-
-    // Conditionally set column headers based on method
-    // SPSS format: Step, Tolerance, Min. Tolerance, F to Enter, Min. D Squared, Between Groups
-    const columnHeaders = isMahalanobis
+    const columnHeaders = isRaosVMethod
       ? [
           { header: "Step", key: "step" },
           { header: "", key: "var" },
           { header: "Tolerance", key: "tolerance" },
           { header: "Min. Tolerance", key: "min_tolerance" },
           { header: "F to Enter", key: "f_to_enter" },
-          { header: "Min. D Squared", key: "min_d_squared" },
-          { header: "Between Groups", key: "between_groups" },
+          { header: "Rao's V", key: "raos_v" },
         ]
-      : [
-          { header: "Step", key: "step" },
-          { header: "", key: "var" },
-          { header: "Tolerance", key: "tolerance" },
-          { header: "Min. Tolerance", key: "min_tolerance" },
-          { header: "F to Enter", key: "f_to_enter" },
-          { header: "Wilks' Lambda", key: "wilks_lambda" },
-        ];
+      : isMahalanobis
+        ? [
+            { header: "Step", key: "step" },
+            { header: "", key: "var" },
+            { header: "Tolerance", key: "tolerance" },
+            { header: "Min. Tolerance", key: "min_tolerance" },
+            { header: "F to Enter", key: "f_to_enter" },
+            { header: "Min. D Squared", key: "min_d_squared" },
+            { header: "Between Groups", key: "between_groups" },
+          ]
+        : [
+            { header: "Step", key: "step" },
+            { header: "", key: "var" },
+            { header: "Tolerance", key: "tolerance" },
+            { header: "Min. Tolerance", key: "min_tolerance" },
+            { header: "F to Enter", key: "f_to_enter" },
+            { header: "Wilks' Lambda", key: "wilks_lambda" },
+          ];
 
     const table: Table = {
       key: "variables_not_in_analysis",
@@ -1015,22 +1346,29 @@ export function transformDiscriminantResult(data: any): ResultJson {
       rows: [],
     };
 
-    // Sort variables_not_in_analysis by step number (ascending)
     const sortedNotInSteps = [
       ...data.stepwise_statistics.variables_not_in_analysis,
-    ].sort((a, b) => parseInt(a.step) - parseInt(b.step));
+    ].sort((a: any, b: any) => parseInt(a.step) - parseInt(b.step));
 
-    // Iterate through steps and variables
     for (let i = 0; i < sortedNotInSteps.length; i++) {
       const stepData = sortedNotInSteps[i];
       const step = stepData.step;
 
-      // Check if variables array exists and has items
       if (stepData.variables && stepData.variables.length > 0) {
         for (let j = 0; j < stepData.variables.length; j++) {
           const variable = stepData.variables[j];
 
-          if (isMahalanobis) {
+          if (isRaosVMethod) {
+            table.rows.push({
+              rowHeader: [step, variable.variable],
+              tolerance: formatDisplayNumber(variable.tolerance),
+              min_tolerance: formatDisplayNumber(
+                variable.min_tolerance ?? variable.tolerance,
+              ),
+              f_to_enter: formatDisplayNumber(variable.f_to_enter),
+              raos_v: formatDisplayNumber(raosVFromProxy(variable.wilks_lambda)),
+            });
+          } else if (isMahalanobis) {
             table.rows.push({
               rowHeader: [step, variable.variable],
               tolerance: formatDisplayNumber(variable.tolerance),
@@ -1059,8 +1397,10 @@ export function transformDiscriminantResult(data: any): ResultJson {
     resultJson.tables.push(table);
   }
 
-  // 18. Wilks' Lambda Test
-  if (data.wilks_lambda_test) {
+  // 18. Wilks' Lambda Test (canonical-function chi-square test).
+  // For stepwise analysis SPSS shows the per-step model Wilks' Lambda table
+  // (rendered above as "stepwise_wilks_lambda") — not the canonical test.
+  if (data.wilks_lambda_test && !data.stepwise_statistics) {
     const testTable: Table = {
       key: "wilks_lambda_test",
       title: "Wilks' Lambda",
@@ -1160,22 +1500,25 @@ export function transformDiscriminantResult(data: any): ResultJson {
     });
 
     // Check if discriminant_scores exists and has entries
-    // discriminant_scores from WASM is a JavaScript object with keys like "0", "1", "Function 1", "Function 2"
-    const scoreKeys =
-      data.casewise_statistics.discriminant_scores &&
-      typeof data.casewise_statistics.discriminant_scores === "object"
-        ? Object.keys(data.casewise_statistics.discriminant_scores)
-        : [];
+    // discriminant_scores from WASM is a Vec<ScoreValue> array with {function, values} entries
+    const discriminantScoreEntries = Array.isArray(
+      data.casewise_statistics.discriminant_scores,
+    )
+      ? data.casewise_statistics.discriminant_scores
+      : [];
 
-    console.log("[Casewise] Score keys:", scoreKeys);
+    console.log(
+      "[Casewise] Discriminant score entries:",
+      discriminantScoreEntries,
+    );
 
-    const numFunctions = scoreKeys.length;
+    const numFunctions = discriminantScoreEntries.length;
 
-    // Create dynamic function headers - use "Function X" format for display
+    // Create dynamic function headers - use function name from WASM data
     const functionChildren = [];
-    for (let i = 0; i < scoreKeys.length; i++) {
+    for (let i = 0; i < discriminantScoreEntries.length; i++) {
       functionChildren.push({
-        header: `Function ${i + 1}`,
+        header: discriminantScoreEntries[i].function,
         key: `function_${i + 1}`,
       });
     }

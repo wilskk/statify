@@ -10,12 +10,14 @@ use crate::{
         },
         AnalysisData, DiscriminantConfig,
     },
+    stats::common::chi_squared_cdf_upper,
     stats::core::{calculate_p_value_from_f, extract_analyzed_dataset, AnalyzedDataset},
 };
 
 use super::core::{
-    analyze_variables_in_model, analyze_variables_not_in_model, calculate_min_mahalanobis_distance,
-    calculate_min_mahalanobis_distance_with_groups, calculate_overall_wilks_lambda,
+    analyze_variables_in_model, analyze_variables_not_in_model, calculate_min_f_ratio_with_groups,
+    calculate_min_mahalanobis_distance, calculate_min_mahalanobis_distance_with_groups,
+    calculate_overall_wilks_lambda, calculate_raos_v, calculate_total_unexplained_variation,
     determine_method_type, find_best_variable_to_enter, find_worst_variable_to_remove,
     generate_pairwise_comparisons,
 };
@@ -35,12 +37,16 @@ pub enum MethodType {
 struct StepData {
     variable_entered: Option<String>,
     variable_removed: Option<String>,
-    min_d_squared: f64,
+    min_d_squared: f64,       // method statistic of the model (Min D² / Min F / Residual Variance)
+    between_groups: String,   // closest/min pair for Mahalanobis & Smallest F methods
     wilks_lambda: f64,
     f_to_enter: f64,
     f_to_enter_df1: i32,
     f_to_enter_df2: i32,
     significance: f64,
+    raos_v: f64,              // Rao's V cumulative value
+    change_in_v: f64,         // Change in V (ΔV)
+    change_sig: f64,          // Significance of change
     variables_in_analysis: Vec<VariableInAnalysis>,
     variables_not_in_analysis: Vec<VariableNotInAnalysis>,
     pairwise_comparisons: HashMap<String, Vec<PairwiseComparison>>,
@@ -86,7 +92,8 @@ pub fn calculate_stepwise_statistics(
     }
 
     // Perform stepwise analysis
-    let steps_data = if config.method.f_value || config.method.f_probability {
+    // Stepwise is performed for F-value, F-probability, and Rao's V methods
+    let steps_data = if config.method.f_value || config.method.f_probability || determine_method_type(config) == MethodType::Raos {
         match perform_stepwise_analysis(&dataset, variables, config) {
             Ok(data) => data,
             Err(e) => {
@@ -98,7 +105,7 @@ pub fn calculate_stepwise_statistics(
     };
 
     // Convert step data to output format
-    match convert_steps_to_output(steps_data, config) {
+    match convert_steps_to_output(steps_data, config, dataset.num_groups) {
         Ok(result) => Ok(result),
         Err(e) => Err(e),
     }
@@ -136,6 +143,7 @@ fn perform_stepwise_analysis(
     let method_type = determine_method_type(config);
     let max_steps = variables.len() * 2;
     let mut step = 0;
+    let mut prev_raos_v: f64 = 0.0;
 
     while step < max_steps {
         let mut step_action_taken = false;
@@ -148,9 +156,8 @@ fn perform_stepwise_analysis(
             let should_remove = should_remove_variable(
                 &worst_var_to_remove,
                 &worst_stats,
-                dataset.num_groups,
-                dataset.total_cases,
-                current_variables.len(),
+                dataset,
+                &current_variables,
                 config,
             );
 
@@ -181,7 +188,9 @@ fn perform_stepwise_analysis(
                         (step as i32) + 1,
                         method_type,
                         config,
+                        prev_raos_v,
                     );
+                    prev_raos_v = step_data.raos_v;
                     steps_data.push(step_data);
 
                     step += 1;
@@ -203,9 +212,8 @@ fn perform_stepwise_analysis(
             let should_enter = should_enter_variable(
                 &best_var_to_enter,
                 &best_stats,
-                dataset.num_groups,
-                dataset.total_cases,
-                current_variables.len(),
+                dataset,
+                &current_variables,
                 config,
             );
 
@@ -236,7 +244,9 @@ fn perform_stepwise_analysis(
                         (step as i32) + 1,
                         method_type,
                         config,
+                        prev_raos_v,
                     );
+                    prev_raos_v = step_data.raos_v;
                     steps_data.push(step_data);
                 }
             }
@@ -262,17 +272,20 @@ struct StepResult {
 fn should_enter_variable(
     var_opt: &Option<String>,
     stats: &VariableNotInAnalysis,
-    num_groups: usize,
-    total_cases: usize,
-    num_current_vars: usize,
+    dataset: &AnalyzedDataset,
+    current_variables: &[String],
     config: &DiscriminantConfig,
 ) -> bool {
     if var_opt.is_none() {
         return false;
     }
 
+    let num_groups = dataset.num_groups;
+    let total_cases = dataset.total_cases;
+    let num_current_vars = current_variables.len();
+
     // Use SPSS defaults if thresholds are 0 or not set.
-    // Default F-to-enter = 3.84, V-to-enter (Rao's V) = 3.84, P-to-enter = 0.05.
+    // Default F-to-enter = 3.84, P-to-enter = 0.05.
     let f_entry_threshold = if config.method.f_entry > 0.0 {
         config.method.f_entry
     } else {
@@ -284,18 +297,22 @@ fn should_enter_variable(
         0.05
     };
 
-    // Rao's V uses the V-to-enter threshold (SPSS default 3.84) and the
-    // value being compared is the change-in-V (ΔV), not an F. SPSS does
-    // not produce a p-value for the V-to-enter path, so the f_probability
-    // option falls through to the ΔV comparison as well.
+    // Rao's V: f_to_enter now holds the partial Wilks F (for display), and
+    // min_d_squared holds ΔV (for selection and the VIN gate).
+    // Both gates must pass: VIN (ΔV ≥ 1.0) and FIN (partial F ≥ 3.84).
     let method_type = determine_method_type(config);
     if method_type == MethodType::Raos {
         let v_enter_threshold = if config.method.v_enter > 0.0 {
             config.method.v_enter
         } else {
-            3.84
+            1.0
         };
-        return stats.f_to_enter >= v_enter_threshold;
+        // VIN gate: ΔV is in stats.min_d_squared
+        if stats.min_d_squared < v_enter_threshold {
+            return false;
+        }
+        // FIN gate: partial Wilks F is in stats.f_to_enter
+        return stats.f_to_enter >= f_entry_threshold;
     }
 
     if config.method.f_value {
@@ -313,14 +330,17 @@ fn should_enter_variable(
 fn should_remove_variable(
     var_opt: &Option<String>,
     stats: &VariableInAnalysis,
-    num_groups: usize,
-    total_cases: usize,
-    num_current_vars: usize,
+    dataset: &AnalyzedDataset,
+    current_variables: &[String],
     config: &DiscriminantConfig,
 ) -> bool {
     if var_opt.is_none() {
         return false;
     }
+
+    let num_groups = dataset.num_groups;
+    let total_cases = dataset.total_cases;
+    let num_current_vars = current_variables.len();
 
     // Use SPSS defaults if thresholds are 0 or not set.
     // Default F-to-remove = 2.71, P-to-remove = 0.10
@@ -334,6 +354,12 @@ fn should_remove_variable(
     } else {
         0.10
     };
+
+    // Rao's V: f_to_remove now holds the partial Wilks F directly.
+    let method_type = determine_method_type(config);
+    if method_type == MethodType::Raos {
+        return stats.f_to_remove <= f_removal_threshold;
+    }
 
     if config.method.f_value || config.method.f_probability {
         // df2 must match how F-to-remove was computed in calculate_f_to_remove_wilks:
@@ -365,11 +391,15 @@ fn create_initial_step(
         variable_entered: None,
         variable_removed: None,
         min_d_squared: 0.0,
+        between_groups: String::new(),
         wilks_lambda: 1.0,
         f_to_enter: 0.0,
         f_to_enter_df1: 0,
         f_to_enter_df2: 0,
         significance: 1.0,
+        raos_v: 0.0,
+        change_in_v: 0.0,
+        change_sig: 1.0,
         variables_in_analysis: Vec::new(),
         variables_not_in_analysis: initial_variables_not_in,
         pairwise_comparisons: HashMap::new(),
@@ -386,6 +416,7 @@ fn create_step_data(
     step: i32,
     method_type: MethodType,
     config: &DiscriminantConfig,
+    prev_raos_v: f64,
 ) -> StepData {
     let vars_in_analysis =
         analyze_variables_in_model(current_variables, dataset, method_type, config);
@@ -393,12 +424,9 @@ fn create_step_data(
     let vars_not_in_analysis =
         analyze_variables_not_in_model(remaining_variables, dataset, current_variables, config);
 
-    // SPSS only displays the top 4 ranked candidates in the "Variables not in
-    // the Analysis" table. Selection logic in find_best_variable_to_enter still
-    // works against the full ranked list (caller passes the untruncated result
-    // there), so this is display-only truncation.
-    let mut vars_not_in_analysis = vars_not_in_analysis;
-    vars_not_in_analysis.truncate(4);
+    // SPSS displays ALL variables not in the model in this table (not just the
+    // top 4), so we keep the full ranked list.
+    let vars_not_in_analysis = vars_not_in_analysis;
 
     let combined_vars = current_variables.to_vec();
     let p = combined_vars.len() as f64;
@@ -411,10 +439,32 @@ fn create_step_data(
         calculate_overall_wilks_lambda(dataset, &combined_vars)
     };
 
-    let min_d_squared = if combined_vars.is_empty() {
-        0.0
+    // Method statistic of the current model, shown in the Variables Entered/Removed
+    // table (Min D² / Min F / Residual Variance). between_groups carries the pair
+    // for the Mahalanobis & Smallest F methods.
+    let (min_d_squared, step_between_groups) = if combined_vars.is_empty() {
+        (0.0, String::new())
     } else {
-        calculate_min_mahalanobis_distance(dataset, &combined_vars)
+        match method_type {
+            MethodType::FRatio => {
+                let r = calculate_min_f_ratio_with_groups(dataset, &combined_vars);
+                let pair = if r.group_i.is_empty() {
+                    String::new()
+                } else {
+                    format!("{} and {}", r.group_i, r.group_j)
+                };
+                (r.min_f, pair)
+            }
+            MethodType::Unexplained => (
+                calculate_total_unexplained_variation(dataset, &combined_vars),
+                String::new(),
+            ),
+            MethodType::Mahalanobis => {
+                let r = calculate_min_mahalanobis_distance_with_groups(dataset, &combined_vars);
+                (r.min_d2, format!("{} and {}", r.group_i, r.group_j))
+            }
+            _ => (calculate_min_mahalanobis_distance(dataset, &combined_vars), String::new()),
+        }
     };
 
     let pairwise_comparisons = if config.method.pairwise {
@@ -423,47 +473,52 @@ fn create_step_data(
         HashMap::new()
     };
 
+    // --- Calculate Rao's V for this step ---
+    let raos_v = if combined_vars.is_empty() {
+        0.0
+    } else {
+        calculate_raos_v(dataset, &combined_vars)
+    };
+
+    let change_in_v = raos_v - prev_raos_v;
+
+    // Change in V has df = k - 1 (number of groups minus 1), distributed as chi-squared
+    let df_change = k - 1.0;
+    let change_sig = if change_in_v > 0.0 && df_change > 0.0 {
+        // Rao's V change is approximately chi-squared distributed with df = k - 1
+        chi_squared_cdf_upper(change_in_v, df_change)
+    } else {
+        1.0
+    };
+
     // --- LOGIKA EXACT F UNTUK TABEL DISPLAY ---
     let (exact_f, exact_df1, exact_df2) = if combined_vars.is_empty() {
         (0.0, 0, (n - k) as i32)
+    } else if method_type == MethodType::FRatio {
+        // Smallest F Ratio: the entered/removed table shows the model's Min. F
+        // with df1 = p, df2 = N - g - p + 1, distributed as F(p, N-g-p+1).
+        let df1 = p;
+        let df2 = n - k - p + 1.0;
+        (min_d_squared, df1 as i32, df2 as i32)
     } else if method_type == MethodType::Mahalanobis {
         // MAHALANOBIS: Gunakan Exact F dari dua grup terdekat (between-groups)
-        //
-        // SPSS's "Between Groups" Exact F (Mahalanobis method):
-        //   F = [(n - g - p + 1) / (p * (n - g))] * [n_i * n_j / (n_i + n_j)] * D²_min
-        //
-        // Sumber: SPSS Algorithmic documentation, Section "F-to-enter and F-to-remove
-        // for Mahalanobis method", dan referensi akademis tentang stepwise DFA.
-        //
-        // Derivation:
-        //   - df1 = p  (number of variables discriminating)
-        //   - df2 = n - g - p + 1  (pooled df)
-        //   - n_i, n_j = sizes of the two closest groups
-        //   - D²_min = squared Mahalanobis distance between closest groups
-        //
-        // Key insight: SPSS uses the MINIMUM D² (closest groups) for the table's
-        // "Between Groups" Exact F. The variable entry/remove decision is based on
-        // comparing F-to-enter/F-to-remove thresholds, so this Exact F in the
-        // display table reflects the pairwise significance of the closest groups
-        // with the current variable set.
         let min_result = calculate_min_mahalanobis_distance_with_groups(dataset, &combined_vars);
         let df1 = p; // p variables
-        let df2 = n - k - p + 1.0;
+        let df2 = n - k - p;
 
-        // Exact F formula: F = [(n - g - p + 1) / (p * (n - g))] * [n_i * n_j / (n_i + n_j)] * D²_min
         let n_i = min_result.n_i as f64;
         let n_j = min_result.n_j as f64;
         let d2_min = min_result.min_d2;
 
         let f_val = if df2 > 0.0 && p > 0.0 && (n - k) > 0.0 && (n_i + n_j) > 0.0 {
-            ((n - k - p + 1.0) / (p * (n - k))) * ((n_i * n_j) / (n_i + n_j)) * d2_min
+            ((n - k - p) / (p * (n - k - 1.0))) * ((n_i * n_j) / (n_i + n_j)) * d2_min
         } else {
             0.0
         };
 
         (f_val, df1 as i32, df2 as i32)
     } else {
-        // 2. WILKS' LAMBDA (DAN LAINNYA): Gunakan Rao's Approximation (Kodemu yang sudah benar)
+        // 2. WILKS' LAMBDA (DAN LAINNYA): Gunakan Rao's Approximation
         let p_k1 = p * (k - 1.0);
         let exact_df1_val = p_k1;
 
@@ -499,12 +554,15 @@ fn create_step_data(
         variable_entered,
         variable_removed,
         min_d_squared,
+        between_groups: step_between_groups,
         wilks_lambda,
-        // Mapping ke nama properti struct lama yang kamu tulis di snippet
         f_to_enter: exact_f,
         f_to_enter_df1: exact_df1,
         f_to_enter_df2: exact_df2,
         significance,
+        raos_v,
+        change_in_v,
+        change_sig,
         variables_in_analysis: vars_in_analysis,
         variables_not_in_analysis: vars_not_in_analysis,
         pairwise_comparisons,
@@ -515,21 +573,40 @@ fn create_step_data(
 fn convert_steps_to_output(
     steps_data: Vec<StepData>,
     config: &DiscriminantConfig,
+    num_groups: usize,
 ) -> Result<StepwiseStatistics, String> {
+    let method_type = determine_method_type(config);
+    let method_str = match method_type {
+        MethodType::Wilks => "wilks",
+        MethodType::Unexplained => "unexplained",
+        MethodType::Mahalanobis => "mahalanobis",
+        MethodType::FRatio => "f_ratio",
+        MethodType::Raos => "raos_v",
+    }.to_string();
+
     let mut result = StepwiseStatistics {
+        method: method_str,
+        num_groups,
         variables_entered: Vec::new(),
         variables_removed: Vec::new(),
         min_d_squared: Vec::new(),
+        between_groups: Vec::new(),
         wilks_lambda: Vec::new(),
         f_to_enter: Vec::new(),
         f_to_enter_df1: Vec::new(),
         f_to_enter_df2: Vec::new(),
         significance: Vec::new(),
+        raos_v: Vec::new(),
+        raos_v_sig: Vec::new(),
+        change_in_v: Vec::new(),
+        change_sig: Vec::new(),
         variables_in_analysis: HashMap::new(),
         variables_not_in_analysis: HashMap::new(),
         pairwise_comparisons: HashMap::new(),
         note: create_stepwise_note(config),
     };
+
+    let k = num_groups as f64;
 
     for (step_idx, step) in steps_data.iter().enumerate() {
         // Kita butuh step 0 hanya untuk tabel "Variables Not in The Analysis" yang catat step 0:
@@ -548,14 +625,27 @@ fn convert_steps_to_output(
             continue;
         }
 
+        // Approx. sig. of cumulative Rao's V: chi-squared upper tail with df = step * (k-1)
+        let raos_v_df = step_idx as f64 * (k - 1.0);
+        let raos_v_sig = if step.raos_v > 0.0 && raos_v_df > 0.0 {
+            chi_squared_cdf_upper(step.raos_v, raos_v_df)
+        } else {
+            1.0
+        };
+
         result.variables_entered.push(step.variable_entered.clone().unwrap_or_default());
         result.variables_removed.push(step.variable_removed.clone());
         result.wilks_lambda.push(step.wilks_lambda);
         result.min_d_squared.push(step.min_d_squared);
+        result.between_groups.push(step.between_groups.clone());
         result.f_to_enter.push(step.f_to_enter);
         result.f_to_enter_df1.push(step.f_to_enter_df1);
         result.f_to_enter_df2.push(step.f_to_enter_df2);
         result.significance.push(step.significance);
+        result.raos_v.push(step.raos_v);
+        result.raos_v_sig.push(raos_v_sig);
+        result.change_in_v.push(step.change_in_v);
+        result.change_sig.push(step.change_sig);
 
         result.variables_in_analysis.insert(
             (step_idx).to_string(), step.variables_in_analysis.clone()

@@ -11,7 +11,8 @@ use crate::models::{
 };
 
 use super::core::{
-    calculate_min_mahalanobis_distance_with_groups, calculate_tolerance,
+    calculate_min_f_ratio_with_groups, calculate_min_mahalanobis_distance_with_groups,
+    calculate_raos_v, calculate_tolerance, calculate_total_unexplained_variation,
     calculate_variable_f_to_enter, calculate_variable_f_to_remove,
     AnalyzedDataset, MethodType, TOLERANCE_THRESHOLD, EPSILON,
 };
@@ -77,18 +78,42 @@ pub fn analyze_variables_not_in_model(
             let (f_to_enter, wilks_lambda) =
                 calculate_variable_f_to_enter(var_name, dataset, current_variables, method_type);
 
-            // For Mahalanobis method: compute min D² with this candidate variable included
-            let (min_d_squared, between_groups) = if method_type == MethodType::Mahalanobis {
-                let mut candidate_vars = current_variables.to_vec();
-                candidate_vars.push(var_name.clone());
-                let min_result =
-                    calculate_min_mahalanobis_distance_with_groups(dataset, &candidate_vars);
-                (
-                    min_result.min_d2,
-                    format!("{} and {}", min_result.group_i, min_result.group_j),
-                )
-            } else {
-                (0.0, String::new())
+            // The method-specific statistic used to RANK candidates (f_to_enter is the
+            // partial Wilks F that gates entry; min_d_squared holds the ranking stat):
+            //   Mahalanobis → min D² with candidate (+ closest pair in between_groups)
+            //   Rao's V     → ΔV (increase in Rao's V)
+            //   Smallest F  → min pairwise F with candidate (+ pair in between_groups)
+            //   Unexplained → Residual Variance with candidate
+            let mut candidate_vars = current_variables.to_vec();
+            candidate_vars.push(var_name.clone());
+            let (min_d_squared, between_groups) = match method_type {
+                MethodType::Mahalanobis => {
+                    let r = calculate_min_mahalanobis_distance_with_groups(dataset, &candidate_vars);
+                    (r.min_d2, format!("{} and {}", r.group_i, r.group_j))
+                }
+                MethodType::Raos => {
+                    let current_v = if current_variables.is_empty() {
+                        0.0
+                    } else {
+                        calculate_raos_v(dataset, current_variables)
+                    };
+                    let new_v = calculate_raos_v(dataset, &candidate_vars);
+                    (new_v - current_v, String::new())
+                }
+                MethodType::FRatio => {
+                    let r = calculate_min_f_ratio_with_groups(dataset, &candidate_vars);
+                    let pair = if r.group_i.is_empty() {
+                        String::new()
+                    } else {
+                        format!("{} and {}", r.group_i, r.group_j)
+                    };
+                    (r.min_f, pair)
+                }
+                MethodType::Unexplained => (
+                    calculate_total_unexplained_variation(dataset, &candidate_vars),
+                    String::new(),
+                ),
+                _ => (0.0, String::new()),
             };
 
             Some(VariableNotInAnalysis {
@@ -107,15 +132,32 @@ pub fn analyze_variables_not_in_model(
     let mut variables_not_in_analysis: Vec<VariableNotInAnalysis> =
         results.into_iter().filter_map(|x| x).collect();
 
-    // Sort variables — method-dependent ranking:
-    // Mahalanobis: wilks_lambda is -min_D² (proxy for max min D²), lowest = best
-    // All others: sort by F-to-enter descending (highest F = best)
+    // Sort variables — method-dependent ranking (best candidate first):
+    // Mahalanobis: wilks_lambda is -min_D², lowest = highest min D² = best
+    // Rao's V / Smallest F: highest method stat (ΔV / min F) in min_d_squared = best
+    // Unexplained: lowest method stat (Residual Variance) in min_d_squared = best
+    // All others (Wilks): highest F-to-enter = best
     match method_type {
         MethodType::Mahalanobis => {
-            // Lowest wilks_lambda = highest min D² = best candidate
             variables_not_in_analysis.sort_unstable_by(|a, b| {
                 a.wilks_lambda
                     .partial_cmp(&b.wilks_lambda)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+        }
+        MethodType::Raos | MethodType::FRatio => {
+            // Highest method statistic first (max ΔV / max of the smallest F ratio)
+            variables_not_in_analysis.sort_unstable_by(|a, b| {
+                b.min_d_squared
+                    .partial_cmp(&a.min_d_squared)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+        }
+        MethodType::Unexplained => {
+            // Lowest residual variance first (minimize unexplained variation)
+            variables_not_in_analysis.sort_unstable_by(|a, b| {
+                a.min_d_squared
+                    .partial_cmp(&b.min_d_squared)
                     .unwrap_or(std::cmp::Ordering::Equal)
             });
         }
@@ -173,17 +215,28 @@ pub fn analyze_variables_in_model(
             let (f_to_remove, wilks_lambda) =
                 calculate_variable_f_to_remove(var_name, dataset, variables, method_type);
 
-            // For Mahalanobis method: compute min D² with this variable EXCLUDED (reduced model)
-            // This represents the minimum separation when the variable is removed
-            let (min_d_squared, between_groups) = if method_type == MethodType::Mahalanobis {
-                let min_result =
-                    calculate_min_mahalanobis_distance_with_groups(dataset, &other_variables);
-                (
-                    min_result.min_d2,
-                    format!("{} and {}", min_result.group_i, min_result.group_j),
-                )
-            } else {
-                (0.0, String::new())
+            // Method-specific statistic for the model with this variable EXCLUDED
+            // (the reduced model) — what SPSS shows in the "Min. D Squared" /
+            // "Min. F" / "Residual Variance" column for variables in the analysis.
+            let (min_d_squared, between_groups) = match method_type {
+                MethodType::Mahalanobis => {
+                    let r = calculate_min_mahalanobis_distance_with_groups(dataset, &other_variables);
+                    (r.min_d2, format!("{} and {}", r.group_i, r.group_j))
+                }
+                MethodType::FRatio => {
+                    let r = calculate_min_f_ratio_with_groups(dataset, &other_variables);
+                    let pair = if r.group_i.is_empty() {
+                        String::new()
+                    } else {
+                        format!("{} and {}", r.group_i, r.group_j)
+                    };
+                    (r.min_f, pair)
+                }
+                MethodType::Unexplained => (
+                    calculate_total_unexplained_variation(dataset, &other_variables),
+                    String::new(),
+                ),
+                _ => (0.0, String::new()),
             };
 
             VariableInAnalysis {
@@ -199,13 +252,28 @@ pub fn analyze_variables_in_model(
         })
         .collect();
 
-    // Sort variables by F-to-remove (ascending)
     let mut variables_in_analysis = results;
-    variables_in_analysis.sort_unstable_by(|a, b| {
-        a.f_to_remove
-            .partial_cmp(&b.f_to_remove)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
+
+    // Sort order is method-dependent:
+    // Rao's V: sort by wilks_lambda proxy DESCENDING = ascending Rao's V of reduced model
+    //          (lower reduced V = more indispensable, shown first — matches SPSS ordering)
+    // Others: sort by F-to-remove ascending (least stable variable first)
+    match method_type {
+        MethodType::Raos => {
+            variables_in_analysis.sort_unstable_by(|a, b| {
+                b.wilks_lambda
+                    .partial_cmp(&a.wilks_lambda)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+        }
+        _ => {
+            variables_in_analysis.sort_unstable_by(|a, b| {
+                a.f_to_remove
+                    .partial_cmp(&b.f_to_remove)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+        }
+    }
 
     variables_in_analysis
 }
@@ -269,18 +337,9 @@ pub fn find_best_variable_to_enter(
                 .cloned()
         }
         MethodType::Raos => {
-            // For Rao's V, also use max F-to-enter (same reasoning)
-            candidates
-                .iter()
-                .find(|c| c.f_to_enter >= config.method.v_enter)
-                .or_else(|| {
-                    candidates.iter().max_by(|a, b| {
-                        a.f_to_enter
-                            .partial_cmp(&b.f_to_enter)
-                            .unwrap_or(std::cmp::Ordering::Equal)
-                    })
-                })
-                .cloned()
+            // Candidates are already sorted descending by ΔV (min_d_squared).
+            // Return the first one — should_enter_variable applies both VIN and FIN gates.
+            candidates.first().cloned()
         }
         _ => {
             // For Wilks, Unexplained, F-ratio — use highest F-to-enter.

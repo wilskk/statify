@@ -39,6 +39,7 @@ export async function saveDiscriminantResult(rawResults: unknown) {
         { key: "stepwise_statistics", title: "Stepwise Statistics" },
         { key: "variables_in_analysis", title: "Variables in the Analysis" },
         { key: "variables_not_in_analysis", title: "Variables Not in the Analysis" },
+        { key: "stepwise_wilks_lambda", title: "Wilks' Lambda" },
         { key: "wilks_lambda_test", title: "Wilks' Lambda Test" },
         { key: "eigenvalues", title: "Eigenvalues" },
         { key: "casewise_statistics", title: "Casewise Statistics" },

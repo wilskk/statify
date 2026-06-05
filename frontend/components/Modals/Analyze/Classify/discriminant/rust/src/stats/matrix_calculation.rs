@@ -520,37 +520,64 @@ pub fn calculate_covariance_matrices(
     })
 }
 
-/// Calculate total unexplained variation between groups
+/// Calculate total unexplained variation between groups (SPSS "Residual Variance").
 ///
-/// This measures how well the discriminant functions separate the groups.
-/// Lower values indicate better separation.
+/// SPSS's Unexplained Variance (MINRESID) method minimizes the sum, over all pairs
+/// of groups, of the unexplained variation. The unexplained variation for a pair
+/// (i, j) is the 2-group Wilks' lambda computed with the pooled within-groups
+/// covariance and the current variable set:
+///
+///   U_ij = (N - g) / ((N - g) + T²_ij),   T²_ij = D²_ij · n_i·n_j / (n_i + n_j)
+///
+/// Residual Variance = Σ_{i<j} U_ij. Lower = better separation. Verified against
+/// SPSS output (e.g. {Fe2O3} → 1.137, decreasing as variables are added).
 pub fn calculate_total_unexplained_variation(
     dataset: &AnalyzedDataset,
     variables: &[String],
 ) -> f64 {
+    let num_pairs =
+        (dataset.group_labels.len() * dataset.group_labels.len().saturating_sub(1) / 2) as f64;
+
     if variables.is_empty() {
-        return 1.0; // Maximum unexplained variation
+        return num_pairs; // Each pair fully unexplained (U_ij = 1)
     }
 
-    // Use simpler approach for parallel computation
-    let mut unexplained_values = Vec::new();
+    let n = dataset.total_cases as f64;
+    let g = dataset.num_groups as f64;
+    let df_w = n - g;
+    if df_w <= 0.0 {
+        return num_pairs;
+    }
 
+    let mut sum = 0.0;
     for (i, group_i) in dataset.group_labels.iter().enumerate() {
         let values: Vec<f64> = dataset.group_labels[i + 1..]
             .par_iter()
             .map(|group_j| {
-                // Calculate Mahalanobis distance between these groups
                 let d2 = calculate_group_mahalanobis_distance(dataset, group_i, group_j, variables);
-
-                // Dixon's formula for unexplained variation
-                4.0 / (4.0 + d2)
+                let n_i = group_size(dataset, &variables[0], group_i);
+                let n_j = group_size(dataset, &variables[0], group_j);
+                if n_i > 0.0 && n_j > 0.0 {
+                    let t2 = d2 * (n_i * n_j) / (n_i + n_j);
+                    df_w / (df_w + t2)
+                } else {
+                    1.0
+                }
             })
             .collect();
-        unexplained_values.extend(values);
+        sum += values.iter().sum::<f64>();
     }
 
-    // Sum the pairwise values
-    unexplained_values.iter().sum()
+    sum
+}
+
+/// Helper: number of cases in a group for a given variable (as f64).
+fn group_size(dataset: &AnalyzedDataset, variable: &str, group: &str) -> f64 {
+    dataset
+        .group_data
+        .get(variable)
+        .and_then(|g| g.get(group))
+        .map_or(0.0, |v| v.len() as f64)
 }
 
 /// Result containing minimum Mahalanobis distance and the two closest groups
@@ -582,7 +609,7 @@ pub fn calculate_min_mahalanobis_distance(dataset: &AnalyzedDataset, variables: 
 /// which is needed for the Exact F calculation in the Mahalanobis method.
 pub fn calculate_min_mahalanobis_distance_with_groups(
     dataset: &AnalyzedDataset,
-    variables: &[String]
+    variables: &[String],
 ) -> MinMahalanobisResult {
     if variables.is_empty() || dataset.group_labels.len() < 2 {
         web_sys::console::log_1(&format!("[DEBUG] calculate_min_mahalanobis_distance_with_groups: early exit - vars={:?}, groups={}", variables.len(), dataset.group_labels.len()).into());
@@ -595,7 +622,13 @@ pub fn calculate_min_mahalanobis_distance_with_groups(
         };
     }
 
-    web_sys::console::log_1(&format!("[DEBUG] calculate_min_mahalanobis_distance_with_groups: vars={:?}, groups={:?}", variables, dataset.group_labels).into());
+    web_sys::console::log_1(
+        &format!(
+            "[DEBUG] calculate_min_mahalanobis_distance_with_groups: vars={:?}, groups={:?}",
+            variables, dataset.group_labels
+        )
+        .into(),
+    );
 
     let mut min_result = MinMahalanobisResult {
         min_d2: f64::MAX,
@@ -608,7 +641,9 @@ pub fn calculate_min_mahalanobis_distance_with_groups(
     for (i, group_i) in dataset.group_labels.iter().enumerate() {
         for group_j in &dataset.group_labels[i + 1..] {
             let d = calculate_group_mahalanobis_distance(dataset, group_i, group_j, variables);
-            web_sys::console::log_1(&format!("[DEBUG] D2({}, {}) = {}", group_i, group_j, d).into());
+            web_sys::console::log_1(
+                &format!("[DEBUG] D2({}, {}) = {}", group_i, group_j, d).into(),
+            );
 
             if d < min_result.min_d2 {
                 // Get group sizes
@@ -635,67 +670,89 @@ pub fn calculate_min_mahalanobis_distance_with_groups(
         }
     }
 
-    web_sys::console::log_1(&format!("[DEBUG] Min D2 = {} between groups {} ({}) and {} ({})", min_result.min_d2, min_result.group_i, min_result.n_i, min_result.group_j, min_result.n_j).into());
+    web_sys::console::log_1(
+        &format!(
+            "[DEBUG] Min D2 = {} between groups {} ({}) and {} ({})",
+            min_result.min_d2,
+            min_result.group_i,
+            min_result.n_i,
+            min_result.group_j,
+            min_result.n_j
+        )
+        .into(),
+    );
 
     min_result
 }
 
-/// Calculate minimum F ratio between any two groups
+/// Result of the smallest-F-ratio search: the minimum pairwise F and which pair.
+#[derive(Debug, Clone)]
+pub struct MinFRatioResult {
+    /// Minimum F ratio across all group pairs
+    pub min_f: f64,
+    /// First group of the pair achieving the minimum
+    pub group_i: String,
+    /// Second group of the pair achieving the minimum
+    pub group_j: String,
+}
+
+/// Calculate minimum F ratio between any two groups, tracking the pair.
 ///
-/// The F ratio is a statistical measure based on Mahalanobis distance
-/// that accounts for sample size and dimensionality.
-pub fn calculate_min_f_ratio(dataset: &AnalyzedDataset, variables: &[String]) -> f64 {
+/// Per-pair F: F_ij = D²_ij · (N-g-p+1) · n_i·n_j / (p · (N-g) · (n_i+n_j)),
+/// distributed as F(p, N-g-p+1). SPSS's Smallest F Ratio method reports the
+/// minimum of these and the "Between Groups" pair that achieves it.
+pub fn calculate_min_f_ratio_with_groups(
+    dataset: &AnalyzedDataset,
+    variables: &[String],
+) -> MinFRatioResult {
+    let empty = MinFRatioResult {
+        min_f: 0.0,
+        group_i: String::new(),
+        group_j: String::new(),
+    };
     if variables.is_empty() || dataset.group_labels.len() < 2 {
-        return 0.0;
+        return empty;
     }
 
-    // Use parallel processing for efficiency
-    let mut f_ratios = Vec::new();
+    let p = variables.len() as f64;
+    let n = dataset.total_cases as f64;
+    let g = dataset.num_groups as f64;
+
+    let mut best = MinFRatioResult {
+        min_f: f64::MAX,
+        group_i: String::new(),
+        group_j: String::new(),
+    };
 
     for (i, group_i) in dataset.group_labels.iter().enumerate() {
-        let group_f_ratios: Vec<f64> = dataset.group_labels[i + 1..]
-            .par_iter()
-            .map(|group_j| {
-                // Calculate Mahalanobis distance
-                let d2 = calculate_group_mahalanobis_distance(dataset, group_i, group_j, variables);
-
-                // Get group sizes
-                let n_i = dataset
-                    .group_data
-                    .get(&variables[0])
-                    .and_then(|g| g.get(group_i))
-                    .map_or(0, |v| v.len());
-
-                let n_j = dataset
-                    .group_data
-                    .get(&variables[0])
-                    .and_then(|g| g.get(group_j))
-                    .map_or(0, |v| v.len());
-
-                if n_i > 0 && n_j > 0 {
-                    let p = variables.len() as f64;
-                    let n = dataset.total_cases as f64;
-                    let g = dataset.num_groups as f64;
-
-                    // Convert to F ratio
-                    (d2 * (n - g - p + 1.0) * ((n_i * n_j) as f64))
-                        / (p * (n - g) * ((n_i + n_j) as f64))
-                } else {
-                    0.0
+        for group_j in &dataset.group_labels[i + 1..] {
+            let d2 = calculate_group_mahalanobis_distance(dataset, group_i, group_j, variables);
+            let n_i = group_size(dataset, &variables[0], group_i);
+            let n_j = group_size(dataset, &variables[0], group_j);
+            if n_i > 0.0 && n_j > 0.0 && p > 0.0 && (n - g) > 0.0 {
+                let f =
+                    (d2 * (n - g - p + 1.0) * (n_i * n_j)) / (p * (n - g) * (n_i + n_j));
+                if f < best.min_f {
+                    best = MinFRatioResult {
+                        min_f: f,
+                        group_i: group_i.clone(),
+                        group_j: group_j.clone(),
+                    };
                 }
-            })
-            .collect();
-        f_ratios.extend(group_f_ratios);
+            }
+        }
     }
 
-    // Find minimum F ratio
-    if f_ratios.is_empty() {
-        0.0
+    if best.min_f == f64::MAX {
+        empty
     } else {
-        f_ratios
-            .into_iter()
-            .fold(f64::MAX, |min_val, val| min_val.min(val))
+        best
     }
+}
+
+/// Calculate minimum F ratio between any two groups (value only).
+pub fn calculate_min_f_ratio(dataset: &AnalyzedDataset, variables: &[String]) -> f64 {
+    calculate_min_f_ratio_with_groups(dataset, variables).min_f
 }
 
 /// Calculate Mahalanobis distance between two groups
@@ -713,7 +770,13 @@ fn calculate_group_mahalanobis_distance(
         return 0.0;
     }
 
-    web_sys::console::log_1(&format!("[DEBUG] calc_group_mahal: groups={}, {}, vars={:?}", group_i, group_j, variables).into());
+    web_sys::console::log_1(
+        &format!(
+            "[DEBUG] calc_group_mahal: groups={}, {}, vars={:?}",
+            group_i, group_j, variables
+        )
+        .into(),
+    );
 
     // Extract means for both groups as vectors
     let mut mean_diff = DVector::zeros(variables.len());
@@ -733,12 +796,25 @@ fn calculate_group_mahalanobis_distance(
             .unwrap_or(0.0);
         let diff = mean_i - mean_j;
         mean_diff[idx] = diff;
-        web_sys::console::log_1(&format!("[DEBUG] mean_diff[{}] {} - {} = {}", idx, mean_i, mean_j, diff).into());
+        web_sys::console::log_1(
+            &format!(
+                "[DEBUG] mean_diff[{}] {} - {} = {}",
+                idx, mean_i, mean_j, diff
+            )
+            .into(),
+        );
     }
 
     // Use pooled within-groups covariance from ALL groups (matches SPSS)
     let pooled_cov = calculate_pooled_within_matrix_no_epsilon(dataset, variables);
-    web_sys::console::log_1(&format!("[DEBUG] pooled_cov shape: {}x{}", pooled_cov.nrows(), pooled_cov.ncols()).into());
+    web_sys::console::log_1(
+        &format!(
+            "[DEBUG] pooled_cov shape: {}x{}",
+            pooled_cov.nrows(),
+            pooled_cov.ncols()
+        )
+        .into(),
+    );
 
     // Add small regularization for numerical stability before inversion
     let mut reg_cov = pooled_cov.clone();
@@ -750,12 +826,24 @@ fn calculate_group_mahalanobis_distance(
     match reg_cov.try_inverse() {
         Some(inv_cov) => {
             let d2 = (mean_diff.transpose() * (&inv_cov * mean_diff))[0];
-            web_sys::console::log_1(&format!("[DEBUG] D2({} vs {}) = {} (fallback=false)", group_i, group_j, d2).into());
+            web_sys::console::log_1(
+                &format!(
+                    "[DEBUG] D2({} vs {}) = {} (fallback=false)",
+                    group_i, group_j, d2
+                )
+                .into(),
+            );
             d2
         }
         None => {
             let d2 = mean_diff.norm_squared();
-            web_sys::console::log_1(&format!("[DEBUG] D2({} vs {}) = {} (fallback=true)", group_i, group_j, d2).into());
+            web_sys::console::log_1(
+                &format!(
+                    "[DEBUG] D2({} vs {}) = {} (fallback=true)",
+                    group_i, group_j, d2
+                )
+                .into(),
+            );
             d2
         }
     }
@@ -774,14 +862,16 @@ pub fn calculate_raos_v(dataset: &AnalyzedDataset, variables: &[String]) -> f64 
     let (between_mat, within_mat) = calculate_between_within_matrices(dataset, variables);
 
     // Try to invert within-groups matrix
+    // within_mat = S_pooled = W_SS / (n-k), so w_inv = S_pooled^{-1}
+    // trace = tr(S_pooled^{-1} * B) = SPSS Rao's V directly
+    // Do NOT divide by (n-k) again — that would give V/(n-k), not V.
     match within_mat.clone().try_inverse() {
         Some(w_inv) => {
-            // Calculate Rao's V = trace(W^-1 * B)
             let product = w_inv * between_mat;
             (0..variables.len()).map(|i| product[(i, i)]).sum()
         }
         None => {
-            // If matrix is singular, use trace of between-groups matrix
+            // Fallback: singular matrix
             (0..variables.len()).map(|i| between_mat[(i, i)]).sum()
         }
     }
