@@ -180,7 +180,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
   const [resetKey, setResetKey] = useState(0);
 
   const [activeTab, setActiveTab] = useState("variables");
-  const showFieldHelp = false;
+  const [helperMode, setHelperMode] = useState(false);
 
   const { closeModal } = useModal();
 
@@ -426,7 +426,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
                   updateFormData("main", field, value)
                 }
                 externalErrors={validation.errors}
-                showFieldHelp={showFieldHelp}
+                showFieldHelp={helperMode}
               />
             </TabsContent>
 
@@ -442,7 +442,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
                 }
                 hasTarget={hasTarget}
                 targetType={targetType}
-                showFieldHelp={showFieldHelp}
+                showFieldHelp={helperMode}
               />
             </TabsContent>
 
@@ -457,7 +457,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
                   updateFormData("features", field, value)
                 }
                 hasTarget={hasTarget}
-                showFieldHelp={showFieldHelp}
+                showFieldHelp={helperMode}
               />
             </TabsContent>
 
@@ -474,7 +474,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
                 availableVariables={availableVariables}
                 isAutoK={isAutoK}
                 isFeatureSelectionActive={isFeatureSelectionActive}
-                showFieldHelp={showFieldHelp}
+                showFieldHelp={helperMode}
               />
             </TabsContent>
 
@@ -495,7 +495,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
                 featureCount={(formData.main.FeatureVar ?? []).length}
                 isUsingPartitionVariable={isUsingPartitionVariable}
                 isUsingFoldVariable={isUsingFoldVariable}
-                showFieldHelp={showFieldHelp}
+                showFieldHelp={false}
               />
             </TabsContent>
 
@@ -511,7 +511,7 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
                 }
                 isAutoK={isAutoK}
                 isFeatureSelectionActive={isFeatureSelectionActive}
-                showFieldHelp={showFieldHelp}
+                showFieldHelp={false}
               />
             </TabsContent>
 
@@ -523,8 +523,9 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
         <Button
           type="button"
           variant="outline"
-          disabled
-          aria-pressed={showFieldHelp}
+          aria-pressed={helperMode}
+          onClick={() => setHelperMode((value) => !value)}
+          className={helperMode ? "bg-accent" : undefined}
         >
           <CircleHelp className="mr-2 h-4 w-4" />
         </Button>
