@@ -141,12 +141,22 @@ export async function analyzeMultivariate({
             ph.Games || ph.Dunc
         );
 
-    const isSuppressibleContext = (ctx: string): boolean => {
+    // Plots are only "requested" when the user added at least one entry to
+    // PlotList via the Plots dialog. Without that, Rust still runs the plot
+    // generator and emits "No plots generated" — a benign warning we hide.
+    // In paired mode FixFactor is forced empty, so plots are never possible.
+    const plotList = configData.plots?.PlotList?.trim() ?? "";
+    const userRequestedPlots = !pairedActive && plotList.length > 0;
+
+    const isSuppressibleContext = (ctx: string, _userRequestedPlots: boolean): boolean => {
         const lower = ctx.toLowerCase();
-        return (
-            lower === "calculate_posthoc_tests" ||
-            lower === "calculate_homogeneous_subsets"
-        );
+        if (lower === "calculate_posthoc_tests" || lower === "calculate_homogeneous_subsets") {
+            return !userRequestedPosthoc;
+        }
+        if (lower === "generate_plots") {
+            return !_userRequestedPlots;
+        }
+        return false;
     };
 
     // Parse the Rust error string into context-grouped messages, drop
@@ -172,7 +182,7 @@ export async function analyzeMultivariate({
         });
 
         const filtered = groups.filter(
-            (g) => userRequestedPosthoc || !isSuppressibleContext(g.context)
+            (g) => !isSuppressibleContext(g.context, userRequestedPlots)
         );
 
         if (filtered.length === 0) {
@@ -189,6 +199,24 @@ export async function analyzeMultivariate({
         errors = [errorsString.trim()];
     }
 
+    // Build contrastInfo when the user selected a non-"none" method against
+    // a single Fixed Factor — drives the K-Matrix + Multivariate/Univariate
+    // contrast result tables.
+    const contrastMethodNormalized = (
+        configData.contrast?.ContrastMethod ?? "none"
+    ).toLowerCase();
+    const factorsForContrast = effectiveConfig.main.FixFactor ?? [];
+    const contrastInfo =
+        !pairedActive &&
+        contrastMethodNormalized !== "none" &&
+        factorsForContrast.length === 1
+            ? {
+                  factor: factorsForContrast[0],
+                  method: contrastMethodNormalized,
+                  first: Boolean(configData.contrast?.First),
+              }
+            : null;
+
     const formattedResults = transformMultivariateResult(results, errors, {
         testValues: effectiveConfig.main.TestValues,
         varianceMode: effectiveConfig.main.VarianceMode,
@@ -202,6 +230,7 @@ export async function analyzeMultivariate({
                   delta0: effectiveConfig.main.TestValues ?? [],
               }
             : null,
+        contrastInfo,
     });
 
     // SPSS only shows the "Contrast Coefficients" table when the user

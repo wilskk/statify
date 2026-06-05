@@ -13,7 +13,164 @@ export type MultivariateFormatterOptions = {
         pairs: [string, string][];
         delta0: number[];
     } | null;
+    /** When a non-"none" contrast method is selected, the formatter emits the
+     *  SPSS-style Custom Hypothesis Tests output: K-Matrix (Contrast Results),
+     *  Multivariate Test Results, and Univariate Test Results. */
+    contrastInfo?: {
+        factor: string;
+        method: string;
+        first: boolean;
+    } | null;
 };
+
+// ── Student-t helpers (self-contained — no jstat import needed) ───────────────
+function _lnGamma(x: number): number {
+    const c = [
+        76.18009172947146,
+        -86.50532032941677,
+        24.01409824083091,
+        -1.231739572450155,
+        0.1208650973866179e-2,
+        -0.5395239384953e-5,
+    ];
+    let y = x;
+    const t = x + 5.5 - (x + 0.5) * Math.log(x + 5.5);
+    let sum = 1.000000000190015;
+    for (let i = 0; i < 6; i++) sum += c[i] / ++y;
+    return -t + Math.log((2.5066282746310005 * sum) / x);
+}
+
+function _regIncBeta(x: number, a: number, b: number): number {
+    if (x <= 0) return 0;
+    if (x >= 1) return 1;
+    if (x > (a + 1) / (a + b + 2)) return 1 - _regIncBeta(1 - x, b, a);
+    const lbeta = _lnGamma(a) + _lnGamma(b) - _lnGamma(a + b);
+    const front = Math.exp(a * Math.log(x) + b * Math.log(1 - x) - lbeta) / a;
+    const EPS = 1e-15;
+    const FPMIN = 1e-300;
+    const qab = a + b;
+    const qap = a + 1;
+    const qam = a - 1;
+    let c = 1;
+    let d = 1 - (qab * x) / qap;
+    if (Math.abs(d) < FPMIN) d = FPMIN;
+    d = 1 / d;
+    let h = d;
+    for (let m = 1; m <= 200; m++) {
+        const m2 = 2 * m;
+        let aa = (m * (b - m) * x) / ((qam + m2) * (a + m2));
+        d = 1 + aa * d;
+        if (Math.abs(d) < FPMIN) d = FPMIN;
+        c = 1 + aa / c;
+        if (Math.abs(c) < FPMIN) c = FPMIN;
+        d = 1 / d;
+        h *= d * c;
+        aa = (-(a + m) * (qab + m) * x) / ((a + m2) * (qap + m2));
+        d = 1 + aa * d;
+        if (Math.abs(d) < FPMIN) d = FPMIN;
+        c = 1 + aa / c;
+        if (Math.abs(c) < FPMIN) c = FPMIN;
+        d = 1 / d;
+        const del = d * c;
+        h *= del;
+        if (Math.abs(del - 1) < EPS) break;
+    }
+    return front * h;
+}
+
+function studentTPValueTwoSided(t: number, df: number): number {
+    if (!Number.isFinite(t) || df <= 0) return NaN;
+    const absT = Math.abs(t);
+    const x = df / (df + absT * absT);
+    return _regIncBeta(x, df / 2, 0.5);
+}
+
+function studentTCriticalTwoSided(alpha: number, df: number): number {
+    if (df <= 0 || alpha <= 0 || alpha >= 1) return NaN;
+    let lo = 0;
+    let hi = 100;
+    for (let i = 0; i < 200; i++) {
+        const mid = (lo + hi) / 2;
+        const p = studentTPValueTwoSided(mid, df);
+        if (p < alpha) hi = mid;
+        else lo = mid;
+        if (hi - lo < 1e-10) break;
+    }
+    return (lo + hi) / 2;
+}
+
+// ── Contrast row generator ────────────────────────────────────────────────────
+type ContrastRow = { label: string; coefficients: number[] };
+
+/** Build the L-matrix rows (excluding the intercept column) for a given SPSS
+ *  contrast method. Returned coefficients are aligned with `levels`. */
+function generateContrastRows(
+    method: string,
+    levels: string[],
+    first: boolean
+): ContrastRow[] {
+    const k = levels.length;
+    if (k < 2) return [];
+    const rows: ContrastRow[] = [];
+    const m = method.toLowerCase();
+    if (m === "difference") {
+        for (let i = 1; i < k; i++) {
+            const c = new Array(k).fill(0);
+            for (let j = 0; j < i; j++) c[j] = -1 / i;
+            c[i] = 1;
+            const lbl =
+                i === 1
+                    ? `Level ${i + 1} vs. Level ${i}`
+                    : `Level ${i + 1} vs. Previous`;
+            rows.push({ label: lbl, coefficients: c });
+        }
+    } else if (m === "simple") {
+        const refIdx = first ? 0 : k - 1;
+        for (let i = 0; i < k; i++) {
+            if (i === refIdx) continue;
+            const c = new Array(k).fill(0);
+            c[refIdx] = -1;
+            c[i] = 1;
+            rows.push({
+                label: `Level ${i + 1} vs. Level ${refIdx + 1}`,
+                coefficients: c,
+            });
+        }
+    } else if (m === "repeated") {
+        for (let i = 0; i < k - 1; i++) {
+            const c = new Array(k).fill(0);
+            c[i] = 1;
+            c[i + 1] = -1;
+            rows.push({
+                label: `Level ${i + 1} vs. Level ${i + 2}`,
+                coefficients: c,
+            });
+        }
+    } else if (m === "deviation") {
+        const refIdx = first ? 0 : k - 1;
+        for (let i = 0; i < k; i++) {
+            if (i === refIdx) continue;
+            const c = new Array(k).fill(-1 / k);
+            c[i] = (k - 1) / k;
+            rows.push({
+                label: `Level ${i + 1} vs. Mean`,
+                coefficients: c,
+            });
+        }
+    } else if (m === "helmert") {
+        for (let i = 0; i < k - 1; i++) {
+            const c = new Array(k).fill(0);
+            c[i] = 1;
+            const w = -1 / (k - i - 1);
+            for (let j = i + 1; j < k; j++) c[j] = w;
+            rows.push({
+                label: `Level ${i + 1} vs. Subsequent`,
+                coefficients: c,
+            });
+        }
+    }
+    return rows;
+}
 
 // Maps a synthetic difference-column name (d_v1_minus_v2) back to its human
 // label ("v1 − v2"). Returns the original name when no pair matches.
@@ -62,6 +219,7 @@ export function transformMultivariateResult(
     formatResidualMatrix(data, resultJson);
     formatSSCPMatrix(data, resultJson);
     formatContrastCoefficients(data, resultJson);
+    formatCustomHypothesisTests(data, resultJson, options.contrastInfo ?? null);
     formatGeneralEstimableFunction(data, resultJson);
     formatPosthocTests(data, resultJson);
     formatHomogeneousSubsets(data, resultJson);
@@ -108,6 +266,9 @@ function formatBetweenSubjectsFactors(data: any, resultJson: ResultJson) {
         }
     );
 
+    // Suppress empty table — happens in paired mode (no FixFactor) or any
+    // analysis where Rust emits the factors container but has no entries.
+    if (table.rows.length === 0) return;
     resultJson.tables.push(table);
 }
 
@@ -449,8 +610,10 @@ function formatTestsBetweenSubjectsEffects(data: any, resultJson: ResultJson) {
     // Structure from Rust: effects: { [dvName]: { [sourceName]: entry } }
     const effects: Record<string, Record<string, any>> = tbs.effects || {};
 
-    // DV names are the outer keys (preserves insertion order).
-    const dvNames: string[] = Object.keys(effects);
+    // DV names are the outer keys — sort alphanumerically so order is deterministic
+    // (x1 < x2 < x3 …) regardless of Rust HashMap iteration order.
+    const dvNames: string[] = Object.keys(effects)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
 
     // Source names are the inner keys; collect across all DVs preserving order.
     const sourceNames: string[] = [];
@@ -769,6 +932,332 @@ function formatContrastCoefficients(data: any, resultJson: ResultJson) {
     });
 
     if (table.rows.length > 0) resultJson.tables.push(table);
+}
+
+// ── 12b. Custom Hypothesis Tests (K-Matrix, Multivariate, Univariate) ────────
+// `serde_wasm_bindgen` returns Rust HashMaps as either plain Objects or `Map`
+// instances depending on the serializer config (and on nested depth). The
+// existing test helper has to handle both — so do we, defensively.
+function getEntry(container: unknown, key: string): unknown {
+    if (container === null || container === undefined) return undefined;
+    if (container instanceof Map) return container.get(key);
+    return (container as Record<string, unknown>)[key];
+}
+function getKeys(container: unknown): string[] {
+    if (container === null || container === undefined) return [];
+    if (container instanceof Map) return Array.from(container.keys()).map(String);
+    return Object.keys(container as Record<string, unknown>);
+}
+
+// Collect the shared inputs once so the three tables stay numerically aligned.
+type ContrastInputs = {
+    factor: string;
+    method: string;
+    methodTitle: string;
+    levels: string[];
+    ns: number[];
+    dvNames: string[];
+    means: Record<string, number[]>; // means[dv][levelIdx]
+    msError: Record<string, number>;
+    errorDf: number;
+    rows: ContrastRow[];
+};
+
+function gatherContrastInputs(
+    data: any,
+    contrastInfo: NonNullable<MultivariateFormatterOptions["contrastInfo"]>
+): ContrastInputs | null {
+    const factorData = getEntry(data.between_subjects_factors, contrastInfo.factor);
+    if (!factorData) return null;
+    const valueCounts = (factorData as any).value_counts;
+    const levels = getKeys(valueCounts);
+    if (levels.length < 2) return null;
+    const ns = levels.map((l) => Number(getEntry(valueCounts, l)) || 0);
+
+    const desc = data.descriptive_statistics;
+    const dvNames = getKeys(desc).sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+    );
+    if (dvNames.length === 0) return null;
+
+    const means: Record<string, number[]> = {};
+    dvNames.forEach((dv) => {
+        const dvDesc = getEntry(desc, dv) as any;
+        const groups: any[] = Array.isArray(dvDesc?.groups) ? dvDesc.groups : [];
+        means[dv] = levels.map((lvl) => {
+            const g = groups.find((g) => String(g.factor_value) === String(lvl));
+            return g?.stats?.mean !== undefined ? Number(g.stats.mean) : NaN;
+        });
+    });
+
+    const tbsEffects = data.tests_of_between_subjects_effects?.effects;
+    const msError: Record<string, number> = {};
+    let errorDf = 0;
+    dvNames.forEach((dv) => {
+        const err = getEntry(getEntry(tbsEffects, dv), "Error") as any;
+        msError[dv] = err?.mean_square ?? NaN;
+        if (err?.df !== undefined && err?.df !== null) errorDf = Number(err.df);
+    });
+
+    const rows = generateContrastRows(
+        contrastInfo.method,
+        levels,
+        contrastInfo.first
+    );
+    if (rows.length === 0) return null;
+
+    const methodTitle =
+        contrastInfo.method.charAt(0).toUpperCase() +
+        contrastInfo.method.slice(1).toLowerCase();
+
+    return {
+        factor: contrastInfo.factor,
+        method: contrastInfo.method,
+        methodTitle,
+        levels,
+        ns,
+        dvNames,
+        means,
+        msError,
+        errorDf,
+        rows,
+    };
+}
+
+/** Contrast Results (K Matrix) — per-DV estimate, SE, Sig., 95% CI. */
+function formatContrastResultsKMatrix(
+    inputs: ContrastInputs,
+    resultJson: ResultJson
+) {
+    const { factor, methodTitle, dvNames, means, ns, msError, errorDf, rows } = inputs;
+    const tCrit = errorDf > 0 ? studentTCriticalTwoSided(0.05, errorDf) : NaN;
+
+    const table: Table = {
+        key: "contrast_results_k_matrix",
+        title: "Contrast Results (K Matrix)",
+        columnHeaders: [
+            { header: `${factor} ${methodTitle} Contrast`, key: "contrast_label" },
+            { header: "", key: "stat_label" },
+            {
+                header: "Dependent Variable",
+                children: dvNames.map((dv) => ({ header: dv, key: `dv_${dv}` })),
+            },
+        ],
+        rows: [],
+        interpretation:
+            "K-Matrix table: for each user-specified contrast row, shows the per-DV contrast estimate (linear combination of group means), hypothesised value (0), standard error using pooled MSE, two-sided p-value from the Student-t distribution, and 95% confidence interval.",
+    };
+
+    rows.forEach((cr) => {
+        const c = cr.coefficients;
+        const estimates = dvNames.map((dv) =>
+            c.reduce((s, ci, i) => s + ci * means[dv][i], 0)
+        );
+        const ses = dvNames.map((dv) => {
+            const factorTerm = c.reduce(
+                (s, ci, i) => s + (ci * ci) / (ns[i] || 1),
+                0
+            );
+            const v = msError[dv] * factorTerm;
+            return v > 0 ? Math.sqrt(v) : NaN;
+        });
+        const pVals = estimates.map((e, i) =>
+            ses[i] > 0 && Number.isFinite(e)
+                ? studentTPValueTwoSided(e / ses[i], errorDf)
+                : NaN
+        );
+        const ciLower = estimates.map((e, i) =>
+            Number.isFinite(tCrit) ? e - tCrit * ses[i] : NaN
+        );
+        const ciUpper = estimates.map((e, i) =>
+            Number.isFinite(tCrit) ? e + tCrit * ses[i] : NaN
+        );
+
+        const block: Array<{ label: string; values: number[]; sig?: boolean }> = [
+            { label: "Contrast Estimate", values: estimates },
+            { label: "Hypothesized Value", values: dvNames.map(() => 0) },
+            { label: "Difference (Estimate − Hypothesized)", values: estimates },
+            { label: "Std. Error", values: ses },
+            { label: "Sig.", values: pVals, sig: true },
+            { label: "95% Confidence Interval — Lower Bound", values: ciLower },
+            { label: "95% Confidence Interval — Upper Bound", values: ciUpper },
+        ];
+
+        block.forEach((b, bIdx) => {
+            const row: Row = {
+                rowHeader: [],
+                contrast_label: bIdx === 0 ? cr.label : "",
+                stat_label: b.label,
+            };
+            dvNames.forEach((dv, dvIdx) => {
+                row[`dv_${dv}`] = b.sig
+                    ? formatSig(b.values[dvIdx])
+                    : formatDisplayNumber(b.values[dvIdx]);
+            });
+            table.rows.push(row);
+        });
+    });
+
+    if (table.rows.length > 0) resultJson.tables.push(table);
+}
+
+/** Multivariate Test Results for the contrast — reuses the factor's
+ *  Pillai/Wilks/Hotelling/Roy entries since the joint test of all k−1 contrast
+ *  rows equals the factor's overall multivariate test. */
+function formatContrastMultivariateTests(
+    data: any,
+    inputs: ContrastInputs,
+    resultJson: ResultJson
+) {
+    const mt = data.multivariate_tests;
+    if (!mt) return;
+    const factorTests = getEntry(mt.effects, inputs.factor) as any;
+    if (!factorTests) return;
+
+    const table: Table = {
+        key: "contrast_multivariate_tests",
+        title: "Multivariate Test Results (Contrast)",
+        columnHeaders: [
+            { header: "", key: "test_name" },
+            { header: "Value", key: "value" },
+            { header: "F", key: "f" },
+            { header: "Hypothesis df", key: "hypothesis_df" },
+            { header: "Error df", key: "error_df" },
+            { header: "Sig.", key: "significance" },
+        ],
+        rows: [],
+        interpretation:
+            "Multivariate test of the joint null hypothesis defined by all contrast rows for this factor. Equivalent to the factor's main multivariate test for between-subjects effects.",
+    };
+
+    const order: [string, string][] = [
+        ["Pillai's Trace", "Pillai's trace"],
+        ["Wilks' Lambda", "Wilks' lambda"],
+        ["Hotelling's Trace", "Hotelling's trace"],
+        ["Roy's Largest Root", "Roy's largest root"],
+    ];
+    order.forEach(([key, label]) => {
+        const e = getEntry(factorTests, key) as any;
+        if (!e) return;
+        table.rows.push({
+            rowHeader: [],
+            test_name: label,
+            value: formatDisplayNumber(e.value),
+            f: formatDisplayNumber(e.f),
+            hypothesis_df: formatDisplayNumber(e.hypothesis_df),
+            error_df: formatDisplayNumber(e.error_df),
+            significance: formatSig(e.significance),
+        });
+    });
+
+    if (table.rows.length > 0) resultJson.tables.push(table);
+}
+
+/** Univariate Test Results for the contrast — per-DV SS_contrast, MS, F, Sig.
+ *  Computed from group means + n + MSE so it handles k>2 contrast rows
+ *  correctly (per-row SS adds up to SS_factor). */
+function formatContrastUnivariateTests(
+    data: any,
+    inputs: ContrastInputs,
+    resultJson: ResultJson
+) {
+    const { factor, dvNames, means, ns, msError, errorDf, rows } = inputs;
+
+    const tbsEffects = data.tests_of_between_subjects_effects?.effects;
+
+    const table: Table = {
+        key: "contrast_univariate_tests",
+        title: "Univariate Test Results (Contrast)",
+        columnHeaders: [
+            { header: "Source", key: "source" },
+            { header: "Dependent Variable", key: "dependent_variable" },
+            { header: "Sum of Squares", key: "sum_of_squares" },
+            { header: "df", key: "df" },
+            { header: "Mean Square", key: "mean_square" },
+            { header: "F", key: "f_value" },
+            { header: "Sig.", key: "significance" },
+        ],
+        rows: [],
+        interpretation:
+            "Per-dependent-variable univariate F-test for each contrast row, partitioning the contrast SSCP per DV against pooled error.",
+    };
+
+    // For 2-level (single contrast row), the contrast equals the factor effect
+    // and SS_contrast = SS_factor — reuse Rust's tbs values for exact agreement.
+    const isSingleRow = rows.length === 1;
+
+    rows.forEach((cr, rowIdx) => {
+        const c = cr.coefficients;
+        dvNames.forEach((dv, dvIdx) => {
+            let ss: number;
+            let f: number;
+            let p: number;
+            if (isSingleRow) {
+                const fac = getEntry(getEntry(tbsEffects, dv), factor) as any;
+                if (!fac) return;
+                ss = Number(fac.sum_of_squares);
+                f = Number(fac.f_value);
+                p = Number(fac.significance);
+            } else {
+                const estimate = c.reduce(
+                    (s, ci, i) => s + ci * means[dv][i],
+                    0
+                );
+                const denom = c.reduce(
+                    (s, ci, i) => s + (ci * ci) / (ns[i] || 1),
+                    0
+                );
+                ss = denom > 0 ? (estimate * estimate) / denom : NaN;
+                f = ss / msError[dv];
+                p = studentTPValueTwoSided(Math.sqrt(f), errorDf);
+            }
+            const ms = ss; // df_contrast = 1
+            table.rows.push({
+                rowHeader: [],
+                source: dvIdx === 0 ? (isSingleRow ? "Contrast" : cr.label) : "",
+                dependent_variable: dv,
+                sum_of_squares: formatDisplayNumber(ss),
+                df: "1",
+                mean_square: formatDisplayNumber(ms),
+                f_value: formatDisplayNumber(f),
+                significance: formatSig(p),
+            });
+        });
+        // Suppress unused row index warning.
+        void rowIdx;
+    });
+
+    // Error block (one row per DV)
+    dvNames.forEach((dv, dvIdx) => {
+        const err = getEntry(getEntry(tbsEffects, dv), "Error") as any;
+        if (!err) return;
+        table.rows.push({
+            rowHeader: [],
+            source: dvIdx === 0 ? "Error" : "",
+            dependent_variable: dv,
+            sum_of_squares: formatDisplayNumber(err.sum_of_squares),
+            df: String(err.df),
+            mean_square: formatDisplayNumber(err.mean_square),
+            f_value: "",
+            significance: "",
+        });
+    });
+
+    if (table.rows.length > 0) resultJson.tables.push(table);
+}
+
+function formatCustomHypothesisTests(
+    data: any,
+    resultJson: ResultJson,
+    contrastInfo: MultivariateFormatterOptions["contrastInfo"]
+) {
+    if (!contrastInfo) return;
+    if (!contrastInfo.method || contrastInfo.method.toLowerCase() === "none") return;
+    const inputs = gatherContrastInputs(data, contrastInfo);
+    if (!inputs) return;
+    formatContrastResultsKMatrix(inputs, resultJson);
+    formatContrastMultivariateTests(data, inputs, resultJson);
+    formatContrastUnivariateTests(data, inputs, resultJson);
 }
 
 // ── 14. General Estimable Function ───────────────────────────────────────────

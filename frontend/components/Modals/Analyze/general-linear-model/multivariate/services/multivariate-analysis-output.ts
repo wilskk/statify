@@ -209,6 +209,29 @@ export async function resultMultivariateAnalysis({
                 });
             }
 
+            // ── Custom Hypothesis Tests (SPSS-compatible) ─────────────────
+            //  Emitted by formatCustomHypothesisTests when the user picks any
+            //  non-"none" contrast method against a single Fixed Factor.
+            const customHypoKeys = [
+                "contrast_results_k_matrix",
+                "contrast_multivariate_tests",
+                "contrast_univariate_tests",
+            ];
+            for (const key of customHypoKeys) {
+                const table = findTable(key);
+                if (!table) continue;
+                const analyticId = await addAnalytic(logId, {
+                    title: table.title,
+                    note: table.note || "",
+                });
+                await addStatistic(analyticId, {
+                    title: table.title,
+                    description: table.interpretation || table.title,
+                    output_data: JSON.stringify({ tables: [table] }),
+                    components: table.title,
+                });
+            }
+
             // ── General Estimable Function ────────────────────────────────
             const gef = findTable("general_estimable_function");
             if (gef) {
