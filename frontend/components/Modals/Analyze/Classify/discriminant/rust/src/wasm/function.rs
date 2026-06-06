@@ -305,6 +305,26 @@ pub fn run_analysis(
         }
     }
 
+    // Pre-results assumption checks (multicollinearity, multivariate &
+    // univariate normality, outliers). Computed once from the filtered data;
+    // each table carries its own PASS/VIOLATED warning to the output.
+    let mut assumption_results = None;
+    let want_assumptions = config.assumptions.multicollinearity
+        || config.assumptions.multivariate_normality
+        || config.assumptions.univariate_normality
+        || config.assumptions.outliers;
+    if want_assumptions {
+        logger.add_log("calculate_assumptions");
+        match core::calculate_assumptions(&filtered_data, config) {
+            Ok(a) => {
+                assumption_results = Some(a);
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_assumptions", &e);
+            }
+        }
+    }
+
     let mut classification_results = None;
     if config.classify.leave {
         logger.add_log("calculate_classification_results");
@@ -341,6 +361,7 @@ pub fn run_analysis(
         discriminant_histograms: None,
         scatter_data,
         bootstrap_results,
+        assumption_results,
     };
 
     Ok(Some(result))

@@ -47,6 +47,123 @@ pub struct DiscriminantResult {
     /// when bootstrap.perform_boot_strapping is requested.
     #[serde(rename = "bootstrap_results")]
     pub bootstrap_results: Option<BootstrapResults>,
+    /// Pre-results assumption checks (multicollinearity, multivariate &
+    /// univariate normality, outliers). Populated only when at least one
+    /// assumption check is requested in the Assumptions dialog.
+    #[serde(rename = "assumption_results")]
+    pub assumption_results: Option<AssumptionResults>,
+}
+
+/// Bundle of all requested assumption checks plus an at-a-glance summary used to
+/// surface PASS/VIOLATED warnings at the top of the output.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AssumptionResults {
+    /// One row per checked assumption: name, test used, finding, and verdict.
+    pub summary: Vec<AssumptionSummaryRow>,
+    pub multicollinearity: Option<MulticollinearityResult>,
+    #[serde(rename = "multivariate_normality")]
+    pub multivariate_normality: Option<MardiaResult>,
+    #[serde(rename = "univariate_normality")]
+    pub univariate_normality: Option<UnivariateNormalityResult>,
+    pub outliers: Option<OutlierResult>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AssumptionSummaryRow {
+    pub assumption: String,
+    pub test: String,
+    pub finding: String,
+    /// "Met" | "Violated" | "Inconclusive"
+    pub status: String,
+    pub violated: bool,
+}
+
+/// Tolerance/VIF per predictor (from the inverse pooled within-groups
+/// correlation matrix) plus condition indices from its eigenvalues.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MulticollinearityResult {
+    pub variables: Vec<String>,
+    pub tolerance: Vec<f64>,
+    pub vif: Vec<f64>,
+    pub dimension: Vec<i32>,
+    pub eigenvalue: Vec<f64>,
+    #[serde(rename = "condition_index")]
+    pub condition_index: Vec<f64>,
+    #[serde(rename = "max_vif")]
+    pub max_vif: f64,
+    #[serde(rename = "max_condition_index")]
+    pub max_condition_index: f64,
+    #[serde(rename = "vif_threshold")]
+    pub vif_threshold: f64,
+    #[serde(rename = "condition_threshold")]
+    pub condition_threshold: f64,
+    pub violated: bool,
+    pub note: String,
+}
+
+/// Mardia's multivariate skewness & kurtosis tests, one row per group.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MardiaResult {
+    pub groups: Vec<String>,
+    pub n: Vec<i32>,
+    pub skewness: Vec<f64>,
+    #[serde(rename = "skew_stat")]
+    pub skew_stat: Vec<f64>,
+    #[serde(rename = "skew_df")]
+    pub skew_df: Vec<i32>,
+    #[serde(rename = "skew_p")]
+    pub skew_p: Vec<f64>,
+    pub kurtosis: Vec<f64>,
+    #[serde(rename = "kurt_z")]
+    pub kurt_z: Vec<f64>,
+    #[serde(rename = "kurt_p")]
+    pub kurt_p: Vec<f64>,
+    /// Per-group verdict: both skewness & kurtosis non-significant.
+    pub normal: Vec<bool>,
+    pub violated: bool,
+    pub note: String,
+}
+
+/// Per-(group, variable) univariate skewness & kurtosis z-tests.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UnivariateNormalityResult {
+    pub groups: Vec<String>,
+    pub variables: Vec<String>,
+    pub n: Vec<i32>,
+    pub skewness: Vec<f64>,
+    #[serde(rename = "skew_z")]
+    pub skew_z: Vec<f64>,
+    #[serde(rename = "skew_p")]
+    pub skew_p: Vec<f64>,
+    pub kurtosis: Vec<f64>,
+    #[serde(rename = "kurt_z")]
+    pub kurt_z: Vec<f64>,
+    #[serde(rename = "kurt_p")]
+    pub kurt_p: Vec<f64>,
+    pub normal: Vec<bool>,
+    pub violated: bool,
+    pub note: String,
+}
+
+/// Cases whose squared Mahalanobis distance from their group centroid exceeds
+/// the chi-square cutoff (df = number of predictors). Only flagged cases listed.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OutlierResult {
+    #[serde(rename = "case_number")]
+    pub case_number: Vec<i32>,
+    pub group: Vec<String>,
+    pub mahalanobis: Vec<f64>,
+    #[serde(rename = "p_value")]
+    pub p_value: Vec<f64>,
+    pub df: i32,
+    #[serde(rename = "threshold_p")]
+    pub threshold_p: f64,
+    #[serde(rename = "num_outliers")]
+    pub num_outliers: i32,
+    #[serde(rename = "total_cases")]
+    pub total_cases: i32,
+    pub violated: bool,
+    pub note: String,
 }
 
 /// Bootstrap results for the standardized canonical discriminant function

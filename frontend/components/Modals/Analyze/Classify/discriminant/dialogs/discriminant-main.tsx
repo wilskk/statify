@@ -17,7 +17,7 @@ import { useModalStore } from "@/stores/useModalStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 
-// Sub-dialogs
+// Tab panels & sub-dialogs
 import { DiscriminantStatistics } from "./statistics";
 import { DiscriminantMethod } from "./method";
 import { DiscriminantClassify } from "./classify";
@@ -25,22 +25,11 @@ import { DiscriminantSave } from "./save";
 import { DiscriminantBootstrap } from "./bootstrap";
 import { DiscriminantDefineRange } from "./define-range";
 import { DiscriminantSetValue } from "./set-value";
+import { DiscriminantAssumptions } from "./assumptions";
 
 // Types
 import type { Variable } from "@/types/Variable";
 import { useDiscriminantState } from "../hooks/useDiscriminantState";
-// import { ModalType } from "@/types/modalTypes";
-// import type {
-//   DiscriminantMainType,
-//   DiscriminantStatisticsType,
-//   DiscriminantMethodType,
-//   DiscriminantClassifyType,
-//   DiscriminantSaveType,
-//   DiscriminantBootstrapType,
-//   DiscriminantDefineRangeType,
-//   DiscriminantSetValueType,
-//   DiscriminantType,
-// } from "../types/discriminant";
 
 
 export const DiscriminantMain = () => {
@@ -60,18 +49,20 @@ export const DiscriminantMain = () => {
 
   const [activeTab, setActiveTab] = useState("variables");
 
-  // Sub-dialog open/close state
+  // Sub-dialog open/close state (Define Range / Value remain popups since they
+  // are contextual actions for the grouping / selection variable).
   const [isDefineRangeOpen, setIsDefineRangeOpen] = useState(false);
   const [isSetValueOpen, setIsSetValueOpen] = useState(false);
-  const [isStatisticsOpen, setIsStatisticsOpen] = useState(false);
-  const [isMethodOpen, setIsMethodOpen] = useState(false);
-  const [isClassifyOpen, setIsClassifyOpen] = useState(false);
-  const [isSaveOpen, setIsSaveOpen] = useState(false);
-  const [isBootstrapOpen, setIsBootstrapOpen] = useState(false);
 
   const variables = useVariableStore((state) => state.variables);
 
   const mainData = formData.main;
+
+  // Method applies only to the stepwise method; Bootstrap only to "enter
+  // independents together". They are mutually exclusive, so we show just the
+  // relevant one to keep the single tab row from getting crowded.
+  const showMethod = mainData.Stepwise;
+  const showBootstrap = !mainData.Stepwise;
 
   // --- VARIABLE SELECTION ---
   const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
@@ -87,6 +78,13 @@ export const DiscriminantMain = () => {
     );
     setAvailableVariables(filtered as Variable[]);
   }, [mainData.IndependentVariables, variablesFromStore]);
+
+  // If the active tab gets hidden (Method/Bootstrap toggling with the method
+  // choice), fall back to the Variables tab.
+  useEffect(() => {
+    if (activeTab === "method" && !showMethod) setActiveTab("variables");
+    if (activeTab === "bootstrap" && !showBootstrap) setActiveTab("variables");
+  }, [activeTab, showMethod, showBootstrap]);
 
   const handleDrop = (target: string, variable: Variable) => {
     if (target === "GroupingVariable") {
@@ -151,15 +149,31 @@ export const DiscriminantMain = () => {
           onValueChange={setActiveTab}
           className="w-full h-full flex flex-col"
         >
-          <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
+          <TabsList className="w-full justify-center gap-1 flex-shrink-0">
             <TabsTrigger value="variables" id="discriminant-variables-tab-trigger">
               Variables
             </TabsTrigger>
             <TabsTrigger value="statistics" id="discriminant-statistics-tab-trigger">
               Statistics
             </TabsTrigger>
+            {showMethod && (
+              <TabsTrigger value="method" id="discriminant-method-tab-trigger">
+                Method
+              </TabsTrigger>
+            )}
             <TabsTrigger value="classify" id="discriminant-classify-tab-trigger">
               Classify
+            </TabsTrigger>
+            <TabsTrigger value="save" id="discriminant-save-tab-trigger">
+              Save
+            </TabsTrigger>
+            {showBootstrap && (
+              <TabsTrigger value="bootstrap" id="discriminant-bootstrap-tab-trigger">
+                Bootstrap
+              </TabsTrigger>
+            )}
+            <TabsTrigger value="assumptions" id="discriminant-assumptions-tab-trigger">
+              Assumptions
             </TabsTrigger>
           </TabsList>
 
@@ -355,47 +369,6 @@ export const DiscriminantMain = () => {
                         </Button>
                       </div>
                     </div>
-
-                    {/* Toolbar Buttons */}
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={openSubDialog(setIsStatisticsOpen)}
-                      >
-                        Statistics...
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        disabled={mainData.Together}
-                        onClick={openSubDialog(setIsMethodOpen)}
-                      >
-                        Method...
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={openSubDialog(setIsClassifyOpen)}
-                      >
-                        Classify...
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={openSubDialog(setIsSaveOpen)}
-                      >
-                        Save...
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        disabled={mainData.Stepwise}
-                        onClick={openSubDialog(setIsBootstrapOpen)}
-                      >
-                        Bootstrap...
-                      </Button>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -403,55 +376,62 @@ export const DiscriminantMain = () => {
 
             {/* === Statistics Tab === */}
             <TabsContent value="statistics" className="h-full mt-0">
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-col gap-1">
-                  <Label className="font-semibold text-sm mb-2">Current Statistics Settings</Label>
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                    <div>Means: {formData.statistics.Means ? "Yes" : "No"}</div>
-                    <div>Univariate ANOVAs: {formData.statistics.ANOVA ? "Yes" : "No"}</div>
-                    <div>Box&apos;s M: {formData.statistics.BoxM ? "Yes" : "No"}</div>
-                    <div>Fisher&apos;s: {formData.statistics.Fisher ? "Yes" : "No"}</div>
-                    <div>Unstandardized: {formData.statistics.Unstandardized ? "Yes" : "No"}</div>
-                    <div>Within-groups Correlation: {formData.statistics.WGCorrelation ? "Yes" : "No"}</div>
-                    <div>Within-groups Covariance: {formData.statistics.WGCovariance ? "Yes" : "No"}</div>
-                    <div>Separate-groups Covariance: {formData.statistics.SGCovariance ? "Yes" : "No"}</div>
-                    <div>Total Covariance: {formData.statistics.TotalCovariance ? "Yes" : "No"}</div>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={openSubDialog(setIsStatisticsOpen)}
-                >
-                  Edit Statistics...
-                </Button>
-              </div>
+              <DiscriminantStatistics
+                updateFormData={(field, value) =>
+                  updateFormData("statistics", field, value)
+                }
+                data={formData.statistics}
+              />
+            </TabsContent>
+
+            {/* === Method Tab (stepwise only) === */}
+            <TabsContent value="method" className="h-full mt-0">
+              <DiscriminantMethod
+                updateFormData={(field, value) =>
+                  updateFormData("method", field, value)
+                }
+                data={formData.method}
+              />
             </TabsContent>
 
             {/* === Classify Tab === */}
             <TabsContent value="classify" className="h-full mt-0">
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-col gap-1">
-                  <Label className="font-semibold text-sm mb-2">Current Classification Settings</Label>
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                    <div>Prior Probabilities: {formData.classify.AllGroupEqual ? "All Groups Equal" : "Compute from Group Sizes"}</div>
-                    <div>Covariance Matrix: {formData.classify.WithinGroup ? "Within-groups" : "Separate-groups"}</div>
-                    <div>Casewise Results: {formData.classify.Case ? "Yes" : "No"}</div>
-                    <div>Limit Cases to First: {formData.classify.Limit && formData.classify.LimitValue ? formData.classify.LimitValue : "No"}</div>
-                    <div>Summary Table: {formData.classify.Summary ? "Yes" : "No"}</div>
-                    <div>Leave-one-out Classification: {formData.classify.Leave ? "Yes" : "No"}</div>
-                    <div>Combined-groups Plot: {formData.classify.Combine ? "Yes" : "No"}</div>
-                    <div>Separate-groups Plot: {formData.classify.SepGrp ? "Yes" : "No"}</div>
-                    <div>Territorial Map: {formData.classify.Terr ? "Yes" : "No"}</div>
-                    <div>Replace Missing Values: {formData.classify.Replace ? "Yes" : "No"}</div>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={openSubDialog(setIsClassifyOpen)}
-                >
-                  Edit Classify...
-                </Button>
-              </div>
+              <DiscriminantClassify
+                updateFormData={(field, value) =>
+                  updateFormData("classify", field, value)
+                }
+                data={formData.classify}
+              />
+            </TabsContent>
+
+            {/* === Save Tab === */}
+            <TabsContent value="save" className="h-full mt-0">
+              <DiscriminantSave
+                updateFormData={(field, value) =>
+                  updateFormData("save", field, value)
+                }
+                data={formData.save}
+              />
+            </TabsContent>
+
+            {/* === Bootstrap Tab (together only) === */}
+            <TabsContent value="bootstrap" className="h-full mt-0">
+              <DiscriminantBootstrap
+                updateFormData={(field, value) =>
+                  updateFormData("bootstrap", field, value)
+                }
+                data={formData.bootstrap}
+              />
+            </TabsContent>
+
+            {/* === Assumptions Tab === */}
+            <TabsContent value="assumptions" className="h-full mt-0">
+              <DiscriminantAssumptions
+                updateFormData={(field, value) =>
+                  updateFormData("assumptions", field, value)
+                }
+                data={formData.assumptions}
+              />
             </TabsContent>
           </div>
         </Tabs>
@@ -505,7 +485,7 @@ export const DiscriminantMain = () => {
         </div>
       </div>
 
-      {/* Sub-dialogs */}
+      {/* Contextual popups (grouping / selection variable) */}
       <DiscriminantDefineRange
         isDefineRangeOpen={isDefineRangeOpen}
         setIsDefineRangeOpen={setIsDefineRangeOpen}
@@ -522,51 +502,6 @@ export const DiscriminantMain = () => {
           updateFormData("setValue", field, value)
         }
         data={formData.setValue}
-      />
-
-      <DiscriminantStatistics
-        isStatisticsOpen={isStatisticsOpen}
-        setIsStatisticsOpen={setIsStatisticsOpen}
-        updateFormData={(field, value) =>
-          updateFormData("statistics", field, value)
-        }
-        data={formData.statistics}
-      />
-
-      <DiscriminantMethod
-        isMethodOpen={isMethodOpen}
-        setIsMethodOpen={setIsMethodOpen}
-        updateFormData={(field, value) =>
-          updateFormData("method", field, value)
-        }
-        data={formData.method}
-      />
-
-      <DiscriminantClassify
-        isClassifyOpen={isClassifyOpen}
-        setIsClassifyOpen={setIsClassifyOpen}
-        updateFormData={(field, value) =>
-          updateFormData("classify", field, value)
-        }
-        data={formData.classify}
-      />
-
-      <DiscriminantSave
-        isSaveOpen={isSaveOpen}
-        setIsSaveOpen={setIsSaveOpen}
-        updateFormData={(field, value) =>
-          updateFormData("save", field, value)
-        }
-        data={formData.save}
-      />
-
-      <DiscriminantBootstrap
-        isBootstrapOpen={isBootstrapOpen}
-        setIsBootstrapOpen={setIsBootstrapOpen}
-        updateFormData={(field, value) =>
-          updateFormData("bootstrap", field, value)
-        }
-        data={formData.bootstrap}
       />
     </div>
   );

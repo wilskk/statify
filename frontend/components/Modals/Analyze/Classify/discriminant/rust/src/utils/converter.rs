@@ -52,6 +52,8 @@ struct FormatResult {
     discriminant_histograms: Option<FormattedDiscriminantHistograms>,
     scatter_data: Option<FormattedScatterData>,
     bootstrap_results: Option<crate::models::result::BootstrapResults>,
+    // Already display-shaped (Vec-based), so passed straight through.
+    assumption_results: Option<crate::models::result::AssumptionResults>,
 }
 
 #[derive(Serialize)]
@@ -818,6 +820,7 @@ impl FormatResult {
             discriminant_histograms,
             scatter_data,
             bootstrap_results: result.bootstrap_results.clone(),
+            assumption_results: result.assumption_results.clone(),
         }
     }
 }

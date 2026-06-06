@@ -39,7 +39,12 @@ export const useDiscriminantState = (
                 const savedData = await getFormData("Discriminant");
                 if (savedData) {
                     const { id, ...formDataWithoutId } = savedData;
-                    setFormData(formDataWithoutId as DiscriminantType);
+                    // Merge with defaults so sections added after this data was
+                    // saved (e.g. `assumptions`) are always present.
+                    setFormData({
+                        ...DiscriminantDefault,
+                        ...(formDataWithoutId as DiscriminantType),
+                    });
                 } else {
                     setFormData({ ...DiscriminantDefault });
                 }

@@ -2208,5 +2208,221 @@ export function transformDiscriminantResult(data: any): ResultJson {
     resultJson.tables.push(table);
   }
 
+  // ── Assumption checks ───────────────────────────────────────────────────────
+  // Display order is controlled by store.ts sections[]; the keys are registered
+  // at the top there so these render before the main discriminant output.
+  const assumptions = data.assumption_results;
+  if (assumptions) {
+    // Overview with PASS/VIOLATED status per assumption.
+    if (Array.isArray(assumptions.summary) && assumptions.summary.length > 0) {
+      const table: Table = {
+        key: "assumption_summary",
+        title: "Assumption Checks Summary",
+        columnHeaders: [
+          { header: "Assumption", key: "assumption" },
+          { header: "Test", key: "test" },
+          { header: "Finding", key: "finding" },
+          { header: "Status", key: "status" },
+        ],
+        rows: [],
+      };
+      let anyViolated = false;
+      for (const r of assumptions.summary) {
+        if (r.violated) anyViolated = true;
+        table.rows.push({
+          rowHeader: [r.assumption],
+          test: r.test,
+          finding: r.finding,
+          status: r.violated ? "⚠ Violated" : "Met",
+        });
+      }
+      (table as Table & { footer?: string }).footer = anyViolated
+        ? "⚠ One or more assumptions are violated — interpret the discriminant results with caution. See the detail tables below."
+        : "All checked assumptions are met.";
+      resultJson.tables.push(table);
+    }
+
+    // Multicollinearity: Tolerance / VIF + condition diagnostics.
+    const mc = assumptions.multicollinearity;
+    if (mc && Array.isArray(mc.variables) && mc.variables.length > 0) {
+      const table: Table = {
+        key: "assumption_multicollinearity",
+        title: "Multicollinearity (Tolerance and VIF)",
+        columnHeaders: [
+          { header: "Variable", key: "variable" },
+          { header: "Tolerance", key: "tolerance" },
+          { header: "VIF", key: "vif" },
+        ],
+        rows: [],
+      };
+      for (let i = 0; i < mc.variables.length; i++) {
+        table.rows.push({
+          rowHeader: [mc.variables[i]],
+          tolerance: formatDisplayNumber(mc.tolerance[i]),
+          vif: formatDisplayNumber(mc.vif[i]),
+        });
+      }
+      (table as Table & { footer?: string }).footer = mc.note;
+      resultJson.tables.push(table);
+
+      if (Array.isArray(mc.dimension) && mc.dimension.length > 0) {
+        const diag: Table = {
+          key: "assumption_collinearity_diagnostics",
+          title: "Collinearity Diagnostics",
+          columnHeaders: [
+            { header: "Dimension", key: "dimension" },
+            { header: "Eigenvalue", key: "eigenvalue" },
+            { header: "Condition Index", key: "condition_index" },
+          ],
+          rows: [],
+        };
+        for (let i = 0; i < mc.dimension.length; i++) {
+          diag.rows.push({
+            rowHeader: [String(mc.dimension[i])],
+            eigenvalue: formatDisplayNumber(mc.eigenvalue[i]),
+            condition_index: formatDisplayNumber(mc.condition_index[i]),
+          });
+        }
+        (diag as Table & { footer?: string }).footer =
+          "Condition indices come from the eigenvalues of the pooled within-groups correlation matrix. A condition index ≥ 30 suggests multicollinearity.";
+        resultJson.tables.push(diag);
+      }
+    }
+
+    // Multivariate normality (Mardia's test), one row per group.
+    const mv = assumptions.multivariate_normality;
+    if (mv && Array.isArray(mv.groups) && mv.groups.length > 0) {
+      const table: Table = {
+        key: "assumption_multivariate_normality",
+        title: "Multivariate Normality (Mardia's Test)",
+        columnHeaders: [
+          { header: "Group", key: "group" },
+          { header: "N", key: "n" },
+          {
+            header: "Skewness",
+            key: "skew",
+            children: [
+              { header: "b₁,ₚ", key: "skewness" },
+              { header: "Statistic", key: "skew_stat" },
+              { header: "df", key: "skew_df" },
+              { header: "Sig.", key: "skew_p" },
+            ],
+          },
+          {
+            header: "Kurtosis",
+            key: "kurt",
+            children: [
+              { header: "b₂,ₚ", key: "kurtosis" },
+              { header: "z", key: "kurt_z" },
+              { header: "Sig.", key: "kurt_p" },
+            ],
+          },
+          { header: "Multivariate Normal?", key: "normal" },
+        ],
+        rows: [],
+      };
+      for (let i = 0; i < mv.groups.length; i++) {
+        table.rows.push({
+          rowHeader: [mv.groups[i]],
+          n: String(mv.n[i]),
+          skewness: formatDisplayNumber(mv.skewness[i]),
+          skew_stat: formatDisplayNumber(mv.skew_stat[i]),
+          skew_df: String(mv.skew_df[i]),
+          skew_p: formatDisplayNumber(mv.skew_p[i]),
+          kurtosis: formatDisplayNumber(mv.kurtosis[i]),
+          kurt_z: formatDisplayNumber(mv.kurt_z[i]),
+          kurt_p: formatDisplayNumber(mv.kurt_p[i]),
+          normal: mv.normal[i] ? "Yes" : "⚠ No",
+        });
+      }
+      (table as Table & { footer?: string }).footer = mv.note;
+      resultJson.tables.push(table);
+    }
+
+    // Univariate normality, one row per group × variable.
+    const uv = assumptions.univariate_normality;
+    if (uv && Array.isArray(uv.groups) && uv.groups.length > 0) {
+      const table: Table = {
+        key: "assumption_univariate_normality",
+        title: "Univariate Normality (Skewness & Kurtosis)",
+        columnHeaders: [
+          { header: "Group", key: "group" },
+          { header: "Variable", key: "variable" },
+          { header: "N", key: "n" },
+          {
+            header: "Skewness",
+            key: "skew",
+            children: [
+              { header: "Value", key: "skewness" },
+              { header: "z", key: "skew_z" },
+              { header: "Sig.", key: "skew_p" },
+            ],
+          },
+          {
+            header: "Kurtosis",
+            key: "kurt",
+            children: [
+              { header: "Value", key: "kurtosis" },
+              { header: "z", key: "kurt_z" },
+              { header: "Sig.", key: "kurt_p" },
+            ],
+          },
+          { header: "Normal?", key: "normal" },
+        ],
+        rows: [],
+      };
+      for (let i = 0; i < uv.groups.length; i++) {
+        table.rows.push({
+          rowHeader: [uv.groups[i], uv.variables[i]],
+          n: String(uv.n[i]),
+          skewness: formatDisplayNumber(uv.skewness[i]),
+          skew_z: formatDisplayNumber(uv.skew_z[i]),
+          skew_p: formatDisplayNumber(uv.skew_p[i]),
+          kurtosis: formatDisplayNumber(uv.kurtosis[i]),
+          kurt_z: formatDisplayNumber(uv.kurt_z[i]),
+          kurt_p: formatDisplayNumber(uv.kurt_p[i]),
+          normal: uv.normal[i] ? "Yes" : "⚠ No",
+        });
+      }
+      (table as Table & { footer?: string }).footer = uv.note;
+      resultJson.tables.push(table);
+    }
+
+    // Multivariate outliers (Mahalanobis distance vs χ²).
+    const out = assumptions.outliers;
+    if (out) {
+      const table: Table = {
+        key: "assumption_outliers",
+        title: "Multivariate Outliers (Mahalanobis Distance)",
+        columnHeaders: [
+          { header: "Case", key: "case" },
+          { header: "Group", key: "group" },
+          { header: "Mahalanobis D²", key: "d2" },
+          { header: "Sig.", key: "sig" },
+        ],
+        rows: [],
+      };
+      const count = Array.isArray(out.case_number) ? out.case_number.length : 0;
+      for (let i = 0; i < count; i++) {
+        table.rows.push({
+          rowHeader: [String(out.case_number[i])],
+          group: out.group[i],
+          d2: formatDisplayNumber(out.mahalanobis[i]),
+          sig: formatDisplayNumber(out.p_value[i]),
+        });
+      }
+      if (count === 0) {
+        table.rows.push({
+          rowHeader: ["—"],
+          group: "",
+          d2: "",
+          sig: "No outliers",
+        });
+      }
+      (table as Table & { footer?: string }).footer = out.note;
+      resultJson.tables.push(table);
+    }
+  }
+
   return resultJson;
 }

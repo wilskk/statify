@@ -1,3 +1,4 @@
+pub use crate::stats::assumptions::*;
 pub use crate::stats::basic_processing::*;
 pub use crate::stats::bootstrap::*;
 pub use crate::stats::box_m_test::*;

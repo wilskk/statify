@@ -1,4 +1,5 @@
 import type {
+    DiscriminantAssumptionsType,
     DiscriminantBootstrapType,
     DiscriminantClassifyType,
     DiscriminantDefineRangeType,
@@ -93,6 +94,13 @@ export const DiscriminantBootstrapDefault : DiscriminantBootstrapType = {
     StrataVariables: null,
 }
 
+export const DiscriminantAssumptionsDefault : DiscriminantAssumptionsType = {
+    Multicollinearity: false,
+    MultivariateNormality: false,
+    UnivariateNormality: false,
+    Outliers: false,
+}
+
 export const DiscriminantDefault : DiscriminantType = {
     main: DiscriminantMainDefault,
     defineRange: DiscriminantDefineRangeDefault,
@@ -102,4 +110,5 @@ export const DiscriminantDefault : DiscriminantType = {
     classify: DiscriminantClassifyDefault,
     save: DiscriminantSaveDefault,
     bootstrap: DiscriminantBootstrapDefault,
+    assumptions: DiscriminantAssumptionsDefault,
 }

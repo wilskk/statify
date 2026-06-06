@@ -12,6 +12,10 @@ pub struct DiscriminantConfig {
     pub classify: ClassifyConfig,
     pub save: SaveConfig,
     pub bootstrap: BootstrapConfig,
+    /// Optional so older saved configs (without an Assumptions section) still
+    /// deserialize; absent → all checks off.
+    #[serde(default)]
+    pub assumptions: AssumptionsConfig,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -136,6 +140,18 @@ pub struct SaveConfig {
     pub probabilities: bool,
     #[serde(rename = "XmlFile")]
     pub xml_file: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct AssumptionsConfig {
+    #[serde(rename = "Multicollinearity", default)]
+    pub multicollinearity: bool,
+    #[serde(rename = "MultivariateNormality", default)]
+    pub multivariate_normality: bool,
+    #[serde(rename = "UnivariateNormality", default)]
+    pub univariate_normality: bool,
+    #[serde(rename = "Outliers", default)]
+    pub outliers: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -1,4 +1,5 @@
 pub mod core;
+pub mod assumptions;
 pub mod basic_processing;
 pub mod bootstrap;
 pub mod box_m_test;

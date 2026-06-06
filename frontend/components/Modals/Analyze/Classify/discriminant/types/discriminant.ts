@@ -176,6 +176,23 @@ export type DiscriminantBootstrapProps = {
     data: DiscriminantBootstrapType;
 };
 
+export type DiscriminantAssumptionsType = {
+    Multicollinearity: boolean;
+    MultivariateNormality: boolean;
+    UnivariateNormality: boolean;
+    Outliers: boolean;
+};
+
+export type DiscriminantAssumptionsProps = {
+    isAssumptionsOpen: boolean;
+    setIsAssumptionsOpen: React.Dispatch<React.SetStateAction<boolean>>;
+    updateFormData: (
+        field: keyof DiscriminantAssumptionsType,
+        value: boolean
+    ) => void;
+    data: DiscriminantAssumptionsType;
+};
+
 export type DiscriminantType = {
     main: DiscriminantMainType;
     defineRange: DiscriminantDefineRangeType;
@@ -185,6 +202,7 @@ export type DiscriminantType = {
     classify: DiscriminantClassifyType;
     save: DiscriminantSaveType;
     bootstrap: DiscriminantBootstrapType;
+    assumptions: DiscriminantAssumptionsType;
 };
 
 export type DiscriminantContainerProps = {
