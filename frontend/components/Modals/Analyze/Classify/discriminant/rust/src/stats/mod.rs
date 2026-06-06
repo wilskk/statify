@@ -1,5 +1,6 @@
 pub mod core;
 pub mod basic_processing;
+pub mod bootstrap;
 pub mod box_m_test;
 pub mod canonical_function;
 pub mod casewise_statistics;

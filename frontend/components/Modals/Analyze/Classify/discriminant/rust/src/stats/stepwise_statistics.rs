@@ -40,6 +40,10 @@ struct StepData {
     min_d_squared: f64,       // method statistic of the model (Min D² / Min F / Residual Variance)
     between_groups: String,   // closest/min pair for Mahalanobis & Smallest F methods
     wilks_lambda: f64,
+    wilks_exact_f: f64,       // model's exact Wilks F (Rao approx) for the Wilks' Lambda table
+    wilks_exact_df1: i32,
+    wilks_exact_df2: i32,
+    wilks_exact_sig: f64,
     f_to_enter: f64,
     f_to_enter_df1: i32,
     f_to_enter_df2: i32,
@@ -262,13 +266,6 @@ fn perform_stepwise_analysis(
     Ok(steps_data)
 }
 
-/// Result of a single selection step
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct StepResult {
-    changes_made: bool,
-    step_data: Vec<StepData>,
-}
-
 fn should_enter_variable(
     var_opt: &Option<String>,
     stats: &VariableNotInAnalysis,
@@ -393,6 +390,10 @@ fn create_initial_step(
         min_d_squared: 0.0,
         between_groups: String::new(),
         wilks_lambda: 1.0,
+        wilks_exact_f: 0.0,
+        wilks_exact_df1: 0,
+        wilks_exact_df2: 0,
+        wilks_exact_sig: 1.0,
         f_to_enter: 0.0,
         f_to_enter_df1: 0,
         f_to_enter_df2: 0,
@@ -491,37 +492,12 @@ fn create_step_data(
         1.0
     };
 
-    // --- LOGIKA EXACT F UNTUK TABEL DISPLAY ---
-    let (exact_f, exact_df1, exact_df2) = if combined_vars.is_empty() {
+    // --- MODEL's exact Wilks F (Rao's approximation) — ALWAYS computed, for the
+    //     per-step "Wilks' Lambda" summary table regardless of selection method. ---
+    let (wilks_exact_f, wilks_exact_df1, wilks_exact_df2) = if combined_vars.is_empty() {
         (0.0, 0, (n - k) as i32)
-    } else if method_type == MethodType::FRatio {
-        // Smallest F Ratio: the entered/removed table shows the model's Min. F
-        // with df1 = p, df2 = N - g - p + 1, distributed as F(p, N-g-p+1).
-        let df1 = p;
-        let df2 = n - k - p + 1.0;
-        (min_d_squared, df1 as i32, df2 as i32)
-    } else if method_type == MethodType::Mahalanobis {
-        // MAHALANOBIS: Gunakan Exact F dari dua grup terdekat (between-groups)
-        let min_result = calculate_min_mahalanobis_distance_with_groups(dataset, &combined_vars);
-        let df1 = p; // p variables
-        let df2 = n - k - p;
-
-        let n_i = min_result.n_i as f64;
-        let n_j = min_result.n_j as f64;
-        let d2_min = min_result.min_d2;
-
-        let f_val = if df2 > 0.0 && p > 0.0 && (n - k) > 0.0 && (n_i + n_j) > 0.0 {
-            ((n - k - p) / (p * (n - k - 1.0))) * ((n_i * n_j) / (n_i + n_j)) * d2_min
-        } else {
-            0.0
-        };
-
-        (f_val, df1 as i32, df2 as i32)
     } else {
-        // 2. WILKS' LAMBDA (DAN LAINNYA): Gunakan Rao's Approximation
         let p_k1 = p * (k - 1.0);
-        let exact_df1_val = p_k1;
-
         let t = if p_k1 == 2.0 {
             1.0
         } else {
@@ -533,21 +509,42 @@ fn create_step_data(
                 1.0
             }
         };
-
         let w = n - 1.0 - (p + k) / 2.0;
-        let exact_df2_val = w * t - (p_k1 - 2.0) / 2.0;
+        let df2_val = w * t - (p_k1 - 2.0) / 2.0;
         let l_t = wilks_lambda.powf(1.0 / t);
-
         let f_val = if l_t > 0.0 && l_t <= 1.0 {
-            ((1.0 - l_t) / l_t) * (exact_df2_val / exact_df1_val)
+            ((1.0 - l_t) / l_t) * (df2_val / p_k1)
         } else {
             0.0
         };
+        (f_val, p_k1 as i32, df2_val as i32)
+    };
+    let wilks_exact_sig =
+        calculate_p_value_from_f(wilks_exact_f, wilks_exact_df1 as f64, wilks_exact_df2 as f64);
 
-        (f_val, exact_df1_val as i32, exact_df2_val as i32)
+    // --- Method-specific statistic for the "Variables Entered/Removed" table. ---
+    let (exact_f, exact_df1, exact_df2) = if combined_vars.is_empty() {
+        (0.0, 0, (n - k) as i32)
+    } else if method_type == MethodType::FRatio {
+        // Smallest F Ratio: shows the model's Min. F, distributed as F(p, N-g-p+1).
+        (min_d_squared, p as i32, (n - k - p + 1.0) as i32)
+    } else if method_type == MethodType::Mahalanobis {
+        // Mahalanobis: Exact F from the two closest groups.
+        let min_result = calculate_min_mahalanobis_distance_with_groups(dataset, &combined_vars);
+        let df2 = n - k - p;
+        let n_i = min_result.n_i as f64;
+        let n_j = min_result.n_j as f64;
+        let f_val = if df2 > 0.0 && p > 0.0 && (n - k) > 0.0 && (n_i + n_j) > 0.0 {
+            ((n - k - p) / (p * (n - k - 1.0))) * ((n_i * n_j) / (n_i + n_j)) * min_result.min_d2
+        } else {
+            0.0
+        };
+        (f_val, p as i32, df2 as i32)
+    } else {
+        // Wilks / Rao's V / Unexplained: model's exact Wilks F.
+        (wilks_exact_f, wilks_exact_df1, wilks_exact_df2)
     };
 
-    // Hitung Sig. (p-value) menggunakan kalkulasi Exact F yang baru saja didapat
     let significance = calculate_p_value_from_f(exact_f, exact_df1 as f64, exact_df2 as f64);
 
     StepData {
@@ -556,6 +553,10 @@ fn create_step_data(
         min_d_squared,
         between_groups: step_between_groups,
         wilks_lambda,
+        wilks_exact_f,
+        wilks_exact_df1,
+        wilks_exact_df2,
+        wilks_exact_sig,
         f_to_enter: exact_f,
         f_to_enter_df1: exact_df1,
         f_to_enter_df2: exact_df2,
@@ -596,6 +597,10 @@ fn convert_steps_to_output(
         f_to_enter_df1: Vec::new(),
         f_to_enter_df2: Vec::new(),
         significance: Vec::new(),
+        wilks_exact_f: Vec::new(),
+        wilks_exact_df1: Vec::new(),
+        wilks_exact_df2: Vec::new(),
+        wilks_exact_sig: Vec::new(),
         raos_v: Vec::new(),
         raos_v_sig: Vec::new(),
         change_in_v: Vec::new(),
@@ -642,6 +647,10 @@ fn convert_steps_to_output(
         result.f_to_enter_df1.push(step.f_to_enter_df1);
         result.f_to_enter_df2.push(step.f_to_enter_df2);
         result.significance.push(step.significance);
+        result.wilks_exact_f.push(step.wilks_exact_f);
+        result.wilks_exact_df1.push(step.wilks_exact_df1);
+        result.wilks_exact_df2.push(step.wilks_exact_df2);
+        result.wilks_exact_sig.push(step.wilks_exact_sig);
         result.raos_v.push(step.raos_v);
         result.raos_v_sig.push(raos_v_sig);
         result.change_in_v.push(step.change_in_v);

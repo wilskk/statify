@@ -2,10 +2,9 @@ use rayon::prelude::*;
 use std::collections::HashMap;
 
 use crate::models::{
-    data::DataValue,
     result::{
         CanonicalFunctions, CasewiseStatistics, CrossValidatedCasewiseStatistics,
-        HighestGroupStatistics,
+        HighestGroupStatistics, ScatterData,
     },
     AnalysisData, DiscriminantConfig,
 };
@@ -22,7 +21,6 @@ pub fn calculate_casewise_statistics(
     data: &AnalysisData,
     config: &DiscriminantConfig,
 ) -> Result<CasewiseStatistics, String> {
-    web_sys::console::log_1(&"Executing calculate_casewise_statistics".into());
 
     if !config.classify.case {
         return Err("Casewise statistics not requested in configuration".to_string());
@@ -264,7 +262,6 @@ fn calculate_cross_validated_casewise(
     variables_to_use: &[String],
     _num_functions: usize,
 ) -> Result<CrossValidatedCasewiseStatistics, String> {
-    web_sys::console::log_1(&"Executing cross-validated casewise statistics".into());
 
     // Guard against empty variables
     if variables_to_use.is_empty() {
@@ -567,6 +564,80 @@ struct CrossValidatedCaseResult {
     discriminant_scores: Option<Vec<f64>>,
     /// Original sequential index for correct sorting
     original_idx: usize,
+}
+
+/// Compute per-case discriminant scores for scatter plot rendering.
+/// Does NOT require config.classify.case — called when combine || sep_grp is true.
+pub fn calculate_scatter_data(
+    data: &AnalysisData,
+    config: &DiscriminantConfig,
+) -> Result<ScatterData, String> {
+    let dataset = extract_analyzed_dataset(data, config)?;
+    let grouping_var = &config.main.grouping_variable;
+
+    let variables_to_use: Vec<String> = if config.main.stepwise {
+        get_stepwise_selected_variables(data, config)?
+    } else {
+        config
+            .main
+            .independent_variables
+            .iter()
+            .filter(|v| *v != grouping_var)
+            .cloned()
+            .collect()
+    };
+
+    let canonical_functions = calculate_canonical_functions(data, config)?;
+    let eigen_stats = calculate_eigen_statistics(data, config)?;
+    let num_functions = eigen_stats.eigenvalue.len();
+
+    let mut actual_group: Vec<String> = Vec::new();
+    let mut discriminant_scores: HashMap<String, Vec<f64>> = (1..=num_functions)
+        .map(|i| (format!("Function {}", i), Vec::new()))
+        .collect();
+
+    for group_name in &dataset.group_labels {
+        let n = if variables_to_use.is_empty() {
+            0
+        } else {
+            dataset.group_data
+                .get(&variables_to_use[0])
+                .and_then(|g| g.get(group_name))
+                .map(|v| v.len())
+                .unwrap_or(0)
+        };
+
+        for i in 0..n {
+            actual_group.push(group_name.clone());
+
+            let case_values: Vec<f64> = variables_to_use
+                .iter()
+                .map(|var| {
+                    dataset.group_data
+                        .get(var)
+                        .and_then(|g| g.get(group_name))
+                        .map(|v| v[i])
+                        .unwrap_or(0.0)
+                })
+                .collect();
+
+            let scores = calculate_discriminant_scores(
+                &case_values,
+                &canonical_functions,
+                &variables_to_use,
+                num_functions,
+            );
+
+            for (func_idx, score) in scores.iter().enumerate() {
+                let key = format!("Function {}", func_idx + 1);
+                if let Some(sv) = discriminant_scores.get_mut(&key) {
+                    sv.push(if score.is_nan() { 0.0 } else { *score });
+                }
+            }
+        }
+    }
+
+    Ok(ScatterData { actual_group, discriminant_scores })
 }
 
 /// Calculate discriminant scores for a case

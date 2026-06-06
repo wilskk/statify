@@ -507,7 +507,7 @@ pub fn calculate_p_value_from_f(f_value: f64, df1: f64, df2: f64) -> f64 {
                 p_value.max(0.0).min(1.0)
             }
         }
-        Err(e) => { 1.0 }
+        Err(_) => 1.0,
     }
 }
 

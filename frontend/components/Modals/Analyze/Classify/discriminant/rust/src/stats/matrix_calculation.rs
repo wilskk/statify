@@ -19,29 +19,81 @@ use crate::{
 
 use super::core::extract_analyzed_dataset;
 
-/// Calculate between-groups and within-groups matrices
-///
-/// These are fundamental matrices for discriminant analysis:
-/// - Between-groups: represents variation between group means
-/// - Within-groups: represents pooled variation within groups
-///
-/// # Parameters
-/// * `dataset` - The analyzed dataset containing group data and means
-/// * `variables` - The variables to include in the matrices
-///
-/// # Returns
-/// A tuple containing (between-groups matrix, within-groups matrix)
-pub fn calculate_between_within_matrices(
-    dataset: &AnalyzedDataset,
-    variables: &[String],
-) -> (DMatrix<f64>, DMatrix<f64>) {
+/// Compute the within-groups SSCP matrix Σ(nᵢ-1)Sᵢ and the pooled degrees of
+/// freedom Σ(nᵢ-1). Single source of truth for every pooled/within covariance
+/// computation (pooled within matrix, between/within pair, Wilks, etc.).
+fn within_group_sscp(dataset: &AnalyzedDataset, variables: &[String]) -> (DMatrix<f64>, usize) {
     let p = variables.len();
 
-    // Initialize matrices
-    let mut between_matrix = DMatrix::zeros(p, p);
-    let mut within_matrix = DMatrix::zeros(p, p);
+    let group_contributions: Vec<(DMatrix<f64>, usize)> = dataset
+        .group_labels
+        .par_iter()
+        .filter_map(|group_label| {
+            let n = dataset
+                .group_data
+                .get(&variables[0])
+                .and_then(|g| g.get(group_label))
+                .map_or(0, |v| v.len());
 
-    // Calculate between-groups matrix
+            if n <= 1 {
+                return None;
+            }
+
+            let df = n - 1;
+            let mut group_within = DMatrix::zeros(p, p);
+
+            for (i, var_i) in variables.iter().enumerate() {
+                for (j, var_j) in variables.iter().enumerate() {
+                    if let (Some(values_i), Some(values_j)) = (
+                        dataset
+                            .group_data
+                            .get(var_i)
+                            .and_then(|g| g.get(group_label)),
+                        dataset
+                            .group_data
+                            .get(var_j)
+                            .and_then(|g| g.get(group_label)),
+                    ) {
+                        if values_i.len() > 1 && values_i.len() == values_j.len() {
+                            let mean_i = dataset.group_means[group_label][var_i];
+                            let mean_j = dataset.group_means[group_label][var_j];
+
+                            let cov = calculate_covariance(
+                                values_i,
+                                values_j,
+                                Some(mean_i),
+                                Some(mean_j),
+                            );
+
+                            group_within[(i, j)] = (df as f64) * cov;
+                        }
+                    }
+                }
+            }
+
+            Some((group_within, df))
+        })
+        .collect();
+
+    let mut sscp = DMatrix::zeros(p, p);
+    let mut total_df = 0;
+    for (group_within, df) in group_contributions {
+        sscp += &group_within;
+        total_df += df;
+    }
+
+    (sscp, total_df)
+}
+
+/// Compute the between-groups SSCP matrix: B_ij = Σ_g n_g·(x̄_gi - x̄_i)·(x̄_gj - x̄_j).
+/// Single source of truth shared by the between/within pair and canonical analysis.
+pub fn calculate_between_groups_sscp(
+    dataset: &AnalyzedDataset,
+    variables: &[String],
+) -> DMatrix<f64> {
+    let p = variables.len();
+    let mut between_matrix = DMatrix::zeros(p, p);
+
     for (i, var_i) in variables.iter().enumerate() {
         for (j, var_j) in variables.iter().enumerate() {
             let overall_mean_i = *dataset.overall_means.get(var_i).unwrap_or(&0.0);
@@ -75,74 +127,27 @@ pub fn calculate_between_within_matrices(
         }
     }
 
-    // Calculate within-groups matrix - parallel across group pairs
-    let mut total_df = 0;
+    between_matrix
+}
 
-    let group_contributions: Vec<(DMatrix<f64>, usize)> = dataset
-        .group_labels
-        .par_iter()
-        .filter_map(|group_label| {
-            // For each group, calculate contribution to within-groups matrix
-            let mut group_within = DMatrix::zeros(p, p);
-
-            // Check if group has data
-            let n = dataset
-                .group_data
-                .get(&variables[0])
-                .and_then(|g| g.get(group_label))
-                .map_or(0, |v| v.len());
-
-            if n <= 1 {
-                return None;
-            }
-
-            let df = n - 1;
-
-            // Calculate group covariance matrix
-            for (i, var_i) in variables.iter().enumerate() {
-                for (j, var_j) in variables.iter().enumerate() {
-                    if let (Some(values_i), Some(values_j)) = (
-                        dataset
-                            .group_data
-                            .get(var_i)
-                            .and_then(|g| g.get(group_label)),
-                        dataset
-                            .group_data
-                            .get(var_j)
-                            .and_then(|g| g.get(group_label)),
-                    ) {
-                        if values_i.len() > 1 && values_i.len() == values_j.len() {
-                            let mean_i = dataset.group_means[group_label][var_i];
-                            let mean_j = dataset.group_means[group_label][var_j];
-
-                            // Calculate covariance
-                            let cov = calculate_covariance(
-                                values_i,
-                                values_j,
-                                Some(mean_i),
-                                Some(mean_j),
-                            );
-
-                            group_within[(i, j)] = (df as f64) * cov;
-                        }
-                    }
-                }
-            }
-
-            Some((group_within, df))
-        })
-        .collect();
-
-    // Combine group contributions
-    for (group_within, df) in group_contributions {
-        within_matrix += &group_within;
-        total_df += df;
-    }
-
-    if total_df > 0 {
-        within_matrix /= total_df as f64;
-    }
-
+/// Calculate between-groups and within-groups matrices
+///
+/// These are fundamental matrices for discriminant analysis:
+/// - Between-groups: SSCP of group means (B)
+/// - Within-groups: pooled within-groups covariance (W_SSCP / (n-g)), no EPSILON
+///
+/// # Parameters
+/// * `dataset` - The analyzed dataset containing group data and means
+/// * `variables` - The variables to include in the matrices
+///
+/// # Returns
+/// A tuple containing (between-groups SSCP matrix, within-groups covariance matrix)
+pub fn calculate_between_within_matrices(
+    dataset: &AnalyzedDataset,
+    variables: &[String],
+) -> (DMatrix<f64>, DMatrix<f64>) {
+    let between_matrix = calculate_between_groups_sscp(dataset, variables);
+    let within_matrix = calculate_pooled_within_matrix_no_epsilon(dataset, variables);
     (between_matrix, within_matrix)
 }
 
@@ -164,79 +169,10 @@ pub fn calculate_pooled_within_matrix(
     dataset: &AnalyzedDataset,
     variables: &[String],
 ) -> DMatrix<f64> {
-    let num_vars = variables.len();
-    let mut pooled_within = DMatrix::zeros(num_vars, num_vars);
-    let mut total_df = 0;
-
-    // Process each group in parallel
-    let group_contributions: Vec<(DMatrix<f64>, usize)> = dataset
-        .group_labels
-        .par_iter()
-        .filter_map(|group_label| {
-            // For each group, calculate contribution to pooled within matrix
-            let mut group_within = DMatrix::zeros(num_vars, num_vars);
-
-            // Check if group has data
-            let n = dataset
-                .group_data
-                .get(&variables[0])
-                .and_then(|g| g.get(group_label))
-                .map_or(0, |v| v.len());
-
-            if n <= 1 {
-                return None;
-            }
-
-            let df = n - 1;
-
-            // Calculate group covariance matrix
-            for (i, var_i) in variables.iter().enumerate() {
-                for (j, var_j) in variables.iter().enumerate() {
-                    if let (Some(values_i), Some(values_j)) = (
-                        dataset
-                            .group_data
-                            .get(var_i)
-                            .and_then(|g| g.get(group_label)),
-                        dataset
-                            .group_data
-                            .get(var_j)
-                            .and_then(|g| g.get(group_label)),
-                    ) {
-                        if values_i.len() > 1 && values_i.len() == values_j.len() {
-                            let mean_i = dataset.group_means[group_label][var_i];
-                            let mean_j = dataset.group_means[group_label][var_j];
-
-                            // Calculate covariance
-                            let cov = calculate_covariance(
-                                values_i,
-                                values_j,
-                                Some(mean_i),
-                                Some(mean_j),
-                            );
-
-                            group_within[(i, j)] = (df as f64) * cov;
-                        }
-                    }
-                }
-            }
-
-            Some((group_within, df))
-        })
-        .collect();
-
-    // Combine group contributions
-    for (group_within, df) in group_contributions {
-        pooled_within += &group_within;
-        total_df += df;
-    }
-
-    // Normalize by total degrees of freedom
-    if total_df > 0 {
-        pooled_within /= total_df as f64;
-    }
+    let mut pooled_within = calculate_pooled_within_matrix_no_epsilon(dataset, variables);
 
     // Add small regularization for numerical stability
-    for i in 0..num_vars {
+    for i in 0..variables.len() {
         pooled_within[(i, i)] += EPSILON;
     }
 
@@ -263,66 +199,7 @@ pub fn calculate_pooled_within_matrix_no_epsilon(
     dataset: &AnalyzedDataset,
     variables: &[String],
 ) -> DMatrix<f64> {
-    let num_vars = variables.len();
-    let mut pooled_within = DMatrix::zeros(num_vars, num_vars);
-    let mut total_df = 0;
-
-    // Process each group in parallel
-    let group_contributions: Vec<(DMatrix<f64>, usize)> = dataset
-        .group_labels
-        .par_iter()
-        .filter_map(|group_label| {
-            let mut group_within = DMatrix::zeros(num_vars, num_vars);
-
-            let n = dataset
-                .group_data
-                .get(&variables[0])
-                .and_then(|g| g.get(group_label))
-                .map_or(0, |v| v.len());
-
-            if n <= 1 {
-                return None;
-            }
-
-            let df = n - 1;
-
-            for (i, var_i) in variables.iter().enumerate() {
-                for (j, var_j) in variables.iter().enumerate() {
-                    if let (Some(values_i), Some(values_j)) = (
-                        dataset
-                            .group_data
-                            .get(var_i)
-                            .and_then(|g| g.get(group_label)),
-                        dataset
-                            .group_data
-                            .get(var_j)
-                            .and_then(|g| g.get(group_label)),
-                    ) {
-                        if values_i.len() > 1 && values_i.len() == values_j.len() {
-                            let mean_i = dataset.group_means[group_label][var_i];
-                            let mean_j = dataset.group_means[group_label][var_j];
-
-                            let cov = calculate_covariance(
-                                values_i,
-                                values_j,
-                                Some(mean_i),
-                                Some(mean_j),
-                            );
-
-                            group_within[(i, j)] = (df as f64) * cov;
-                        }
-                    }
-                }
-            }
-
-            Some((group_within, df))
-        })
-        .collect();
-
-    for (group_within, df) in group_contributions {
-        pooled_within += &group_within;
-        total_df += df;
-    }
+    let (mut pooled_within, total_df) = within_group_sscp(dataset, variables);
 
     if total_df > 0 {
         pooled_within /= total_df as f64;
@@ -331,6 +208,53 @@ pub fn calculate_pooled_within_matrix_no_epsilon(
     // NO EPSILON added here — this is the key difference from calculate_pooled_within_matrix
 
     pooled_within
+}
+
+/// Calculate the total covariance matrix: covariance of all cases pooled
+/// together, ignoring group membership (SPSS "Total" covariance, df = N - 1).
+///
+/// Values for variables i and j are concatenated across groups in the same
+/// group order, so each case's (xᵢ, xⱼ) pair stays aligned. The deviations are
+/// taken from the overall means.
+pub fn calculate_total_covariance_matrix(
+    dataset: &AnalyzedDataset,
+    variables: &[String],
+) -> DMatrix<f64> {
+    let p = variables.len();
+    let mut total = DMatrix::zeros(p, p);
+    if p == 0 {
+        return total;
+    }
+
+    // Concatenate each variable's observations across all groups (case order).
+    let columns: Vec<Vec<f64>> = variables
+        .iter()
+        .map(|var| {
+            let mut all = Vec::new();
+            for group_label in &dataset.group_labels {
+                if let Some(vals) = dataset.group_data.get(var).and_then(|g| g.get(group_label)) {
+                    all.extend(vals.iter().copied());
+                }
+            }
+            all
+        })
+        .collect();
+
+    let n = columns[0].len();
+    if n <= 1 {
+        return total;
+    }
+
+    for i in 0..p {
+        let mean_i = *dataset.overall_means.get(&variables[i]).unwrap_or(&0.0);
+        for j in 0..p {
+            let mean_j = *dataset.overall_means.get(&variables[j]).unwrap_or(&0.0);
+            total[(i, j)] =
+                calculate_covariance(&columns[i], &columns[j], Some(mean_i), Some(mean_j));
+        }
+    }
+
+    total
 }
 
 /// Calculate pooled within-groups covariance and correlation matrices
@@ -348,8 +272,6 @@ pub fn calculate_pooled_matrices(
     data: &AnalysisData,
     config: &DiscriminantConfig,
 ) -> Result<PooledMatrices, String> {
-    web_sys::console::log_1(&"Executing calculate_pooled_matrices".into());
-
     // Extract analyzed dataset
     let dataset = extract_analyzed_dataset(data, config)?;
 
@@ -363,8 +285,9 @@ pub fn calculate_pooled_matrices(
         .cloned()
         .collect();
 
-    // Calculate pooled within-groups covariance matrix
-    let pooled_cov_matrix = calculate_pooled_within_matrix(&dataset, &variables);
+    // Calculate pooled within-groups covariance matrix (exact, no EPSILON on the
+    // diagonal so the displayed variances are the true pooled values).
+    let pooled_cov_matrix = calculate_pooled_within_matrix_no_epsilon(&dataset, &variables);
 
     // Convert covariance matrix to HashMap format
     let mut covariance = HashMap::new();
@@ -411,110 +334,125 @@ pub fn calculate_pooled_matrices(
     })
 }
 
-/// Calculate covariance matrices for each group
+/// Calculate covariance matrices for the "Covariance Matrices" table.
 ///
-/// This function computes the covariance matrix for each group separately
-/// in the discriminant analysis.
+/// Produces the separate-groups covariance matrices (one per group, df = nᵢ-1)
+/// when `sg_covariance` is requested, and a pooled "Total" covariance matrix
+/// (all cases, df = N-1) when `total_covariance` or `sg_covariance` is requested
+/// — matching SPSS, which appends a Total section to the separate-groups table.
 ///
 /// # Parameters
 /// * `data` - The analysis data
 /// * `config` - The discriminant analysis configuration
 ///
 /// # Returns
-/// A CovarianceMatrices object with covariance matrices for each group
+/// A CovarianceMatrices object keyed by group name (plus "Total" when applicable)
 pub fn calculate_covariance_matrices(
     data: &AnalysisData,
     config: &DiscriminantConfig,
 ) -> Result<CovarianceMatrices, String> {
-    web_sys::console::log_1(&"Executing calculate_covariance_matrices".into());
-
     // Extract analyzed dataset
     let dataset = extract_analyzed_dataset(data, config)?;
-    let variables = &config.main.independent_variables;
 
-    // Initialize collection for all matrices
-    let mut matrices = HashMap::new();
-
-    // Group degrees of freedom (not used for total covariance calculation)
-    let mut group_dfs = 0;
-
-    // Calculate covariance matrix for each group in parallel
-    let group_matrices: Vec<(String, HashMap<String, HashMap<String, f64>>, usize)> = dataset
-        .group_labels
-        .par_iter()
-        .filter_map(|group| {
-            // Check if this group has enough data
-            let group_size = dataset
-                .group_data
-                .get(&variables[0])
-                .and_then(|g| g.get(group))
-                .map_or(0, |v| v.len());
-
-            if group_size <= 1 {
-                return None; // Skip groups with insufficient data
-            }
-
-            // Calculate degrees of freedom for this group
-            let df = group_size - 1;
-
-            // Create covariance matrix for this group
-            let mut group_matrix = HashMap::new();
-
-            for (i, var_i) in variables.iter().enumerate() {
-                let mut row = HashMap::new();
-
-                for (j, var_j) in variables.iter().enumerate() {
-                    if let (Some(values_i), Some(values_j)) = (
-                        dataset.group_data.get(var_i).and_then(|g| g.get(group)),
-                        dataset.group_data.get(var_j).and_then(|g| g.get(group)),
-                    ) {
-                        if values_i.len() > 1 && values_i.len() == values_j.len() {
-                            let mean_i = dataset.group_means[group][var_i];
-                            let mean_j = dataset.group_means[group][var_j];
-
-                            let cov = calculate_covariance(
-                                values_i,
-                                values_j,
-                                Some(mean_i),
-                                Some(mean_j),
-                            );
-
-                            row.insert(var_j.clone(), cov);
-                        } else {
-                            row.insert(var_j.clone(), 0.0);
-                        }
-                    } else {
-                        row.insert(var_j.clone(), 0.0);
-                    }
-                }
-
-                group_matrix.insert(var_i.clone(), row);
-            }
-
-            Some((group.clone(), group_matrix, df))
-        })
+    // Exclude the grouping variable, consistent with the pooled matrices output.
+    let grouping_var = &config.main.grouping_variable;
+    let variables: Vec<String> = config
+        .main
+        .independent_variables
+        .iter()
+        .filter(|v| *v != grouping_var)
+        .cloned()
         .collect();
 
-    // Combine results
-    for (group, matrix, df) in group_matrices {
-        matrices.insert(group, matrix);
-        group_dfs += df;
+    if variables.is_empty() {
+        return Err("No independent variables found after filtering grouping variable.".into());
     }
 
-    // For total covariance matrix, df = total_cases - 1
-    // This is greater than the pooled df because we're using all the data
-    // without separating by groups
-    let df = dataset.total_cases - 1;
+    let want_separate = config.statistics.sg_covariance;
+    let want_total = config.statistics.total_covariance || want_separate;
 
-    // Create note for degrees of freedom
+    // Helper: convert a dense p×p matrix into the nested-HashMap row form.
+    let to_rows = |m: &DMatrix<f64>| -> HashMap<String, HashMap<String, f64>> {
+        let mut rows = HashMap::new();
+        for (i, var_i) in variables.iter().enumerate() {
+            let mut row = HashMap::new();
+            for (j, var_j) in variables.iter().enumerate() {
+                row.insert(var_j.clone(), m[(i, j)]);
+            }
+            rows.insert(var_i.clone(), row);
+        }
+        rows
+    };
+
+    let mut matrices: HashMap<String, HashMap<String, HashMap<String, f64>>> = HashMap::new();
+    let mut groups: Vec<String> = Vec::new();
+
+    // Separate-groups covariance matrices (one per group with ≥ 2 cases).
+    if want_separate {
+        let group_matrices: Vec<(String, HashMap<String, HashMap<String, f64>>)> = dataset
+            .group_labels
+            .par_iter()
+            .filter_map(|group| {
+                let group_size = dataset
+                    .group_data
+                    .get(&variables[0])
+                    .and_then(|g| g.get(group))
+                    .map_or(0, |v| v.len());
+
+                if group_size <= 1 {
+                    return None; // Skip groups with insufficient data
+                }
+
+                let mut group_matrix = HashMap::new();
+                for var_i in variables.iter() {
+                    let mut row = HashMap::new();
+                    for var_j in variables.iter() {
+                        let cov = match (
+                            dataset.group_data.get(var_i).and_then(|g| g.get(group)),
+                            dataset.group_data.get(var_j).and_then(|g| g.get(group)),
+                        ) {
+                            (Some(values_i), Some(values_j))
+                                if values_i.len() > 1 && values_i.len() == values_j.len() =>
+                            {
+                                let mean_i = dataset.group_means[group][var_i];
+                                let mean_j = dataset.group_means[group][var_j];
+                                calculate_covariance(values_i, values_j, Some(mean_i), Some(mean_j))
+                            }
+                            _ => 0.0,
+                        };
+                        row.insert(var_j.clone(), cov);
+                    }
+                    group_matrix.insert(var_i.clone(), row);
+                }
+                Some((group.clone(), group_matrix))
+            })
+            .collect();
+
+        for group in &dataset.group_labels {
+            if let Some((_, matrix)) = group_matrices.iter().find(|(g, _)| g == group) {
+                matrices.insert(group.clone(), matrix.clone());
+                groups.push(group.clone());
+            }
+        }
+    }
+
+    // Total covariance matrix (all cases pooled, ignoring group membership).
+    if want_total {
+        let total = calculate_total_covariance_matrix(&dataset, &variables);
+        matrices.insert("Total".to_string(), to_rows(&total));
+        groups.push("Total".to_string());
+    }
+
+    // Total covariance df = N - 1.
+    let df = dataset.total_cases.saturating_sub(1);
     let note_df = format!(
         "a. The total covariance matrix has {} degrees of freedom.",
         df
     );
 
     Ok(CovarianceMatrices {
-        groups: dataset.group_labels.clone(),
-        variables: variables.clone(),
+        groups,
+        variables,
         matrices,
         note_df,
     })
@@ -549,12 +487,16 @@ pub fn calculate_total_unexplained_variation(
         return num_pairs;
     }
 
+    // Pooled inverse depends only on `variables` — compute once for all pairs.
+    let inv = pooled_within_inverse(dataset, variables);
+
     let mut sum = 0.0;
     for (i, group_i) in dataset.group_labels.iter().enumerate() {
         let values: Vec<f64> = dataset.group_labels[i + 1..]
             .par_iter()
             .map(|group_j| {
-                let d2 = calculate_group_mahalanobis_distance(dataset, group_i, group_j, variables);
+                let d2 =
+                    group_mahalanobis_with_inv(dataset, group_i, group_j, variables, inv.as_ref());
                 let n_i = group_size(dataset, &variables[0], group_i);
                 let n_j = group_size(dataset, &variables[0], group_j);
                 if n_i > 0.0 && n_j > 0.0 {
@@ -612,7 +554,6 @@ pub fn calculate_min_mahalanobis_distance_with_groups(
     variables: &[String],
 ) -> MinMahalanobisResult {
     if variables.is_empty() || dataset.group_labels.len() < 2 {
-        web_sys::console::log_1(&format!("[DEBUG] calculate_min_mahalanobis_distance_with_groups: early exit - vars={:?}, groups={}", variables.len(), dataset.group_labels.len()).into());
         return MinMahalanobisResult {
             min_d2: 0.0,
             group_i: String::new(),
@@ -622,13 +563,8 @@ pub fn calculate_min_mahalanobis_distance_with_groups(
         };
     }
 
-    web_sys::console::log_1(
-        &format!(
-            "[DEBUG] calculate_min_mahalanobis_distance_with_groups: vars={:?}, groups={:?}",
-            variables, dataset.group_labels
-        )
-        .into(),
-    );
+    // Pooled inverse depends only on `variables` — compute once for all pairs.
+    let inv = pooled_within_inverse(dataset, variables);
 
     let mut min_result = MinMahalanobisResult {
         min_d2: f64::MAX,
@@ -640,10 +576,7 @@ pub fn calculate_min_mahalanobis_distance_with_groups(
 
     for (i, group_i) in dataset.group_labels.iter().enumerate() {
         for group_j in &dataset.group_labels[i + 1..] {
-            let d = calculate_group_mahalanobis_distance(dataset, group_i, group_j, variables);
-            web_sys::console::log_1(
-                &format!("[DEBUG] D2({}, {}) = {}", group_i, group_j, d).into(),
-            );
+            let d = group_mahalanobis_with_inv(dataset, group_i, group_j, variables, inv.as_ref());
 
             if d < min_result.min_d2 {
                 // Get group sizes
@@ -669,18 +602,6 @@ pub fn calculate_min_mahalanobis_distance_with_groups(
             }
         }
     }
-
-    web_sys::console::log_1(
-        &format!(
-            "[DEBUG] Min D2 = {} between groups {} ({}) and {} ({})",
-            min_result.min_d2,
-            min_result.group_i,
-            min_result.n_i,
-            min_result.group_j,
-            min_result.n_j
-        )
-        .into(),
-    );
 
     min_result
 }
@@ -718,6 +639,9 @@ pub fn calculate_min_f_ratio_with_groups(
     let n = dataset.total_cases as f64;
     let g = dataset.num_groups as f64;
 
+    // Pooled inverse depends only on `variables` — compute once for all pairs.
+    let inv = pooled_within_inverse(dataset, variables);
+
     let mut best = MinFRatioResult {
         min_f: f64::MAX,
         group_i: String::new(),
@@ -726,7 +650,7 @@ pub fn calculate_min_f_ratio_with_groups(
 
     for (i, group_i) in dataset.group_labels.iter().enumerate() {
         for group_j in &dataset.group_labels[i + 1..] {
-            let d2 = calculate_group_mahalanobis_distance(dataset, group_i, group_j, variables);
+            let d2 = group_mahalanobis_with_inv(dataset, group_i, group_j, variables, inv.as_ref());
             let n_i = group_size(dataset, &variables[0], group_i);
             let n_j = group_size(dataset, &variables[0], group_j);
             if n_i > 0.0 && n_j > 0.0 && p > 0.0 && (n - g) > 0.0 {
@@ -755,32 +679,31 @@ pub fn calculate_min_f_ratio(dataset: &AnalyzedDataset, variables: &[String]) ->
     calculate_min_f_ratio_with_groups(dataset, variables).min_f
 }
 
-/// Calculate Mahalanobis distance between two groups
+/// Pooled within-groups inverse S⁻¹ (EPSILON-regularized), computed ONCE per
+/// variable set. The inverse depends only on the variables, not on the group
+/// pair, so all pairwise D² loops share a single inversion via this helper.
 ///
-/// Uses the pooled within-groups covariance matrix from ALL groups in the dataset,
-/// matching SPSS's discriminant analysis implementation.
-fn calculate_group_mahalanobis_distance(
+/// Returns `None` if the regularized matrix is singular (callers fall back to
+/// the squared Euclidean distance of the mean difference).
+fn pooled_within_inverse(dataset: &AnalyzedDataset, variables: &[String]) -> Option<DMatrix<f64>> {
+    if variables.is_empty() {
+        return None;
+    }
+    let mut reg_cov = calculate_pooled_within_matrix_no_epsilon(dataset, variables);
+    for i in 0..variables.len() {
+        reg_cov[(i, i)] += EPSILON;
+    }
+    reg_cov.try_inverse()
+}
+
+/// Build the (group_i − group_j) mean-difference vector for the variable set.
+fn group_mean_diff(
     dataset: &AnalyzedDataset,
     group_i: &str,
     group_j: &str,
     variables: &[String],
-) -> f64 {
-    if variables.is_empty() {
-        web_sys::console::log_1(&format!("[DEBUG] calc_group_mahal: empty vars").into());
-        return 0.0;
-    }
-
-    web_sys::console::log_1(
-        &format!(
-            "[DEBUG] calc_group_mahal: groups={}, {}, vars={:?}",
-            group_i, group_j, variables
-        )
-        .into(),
-    );
-
-    // Extract means for both groups as vectors
+) -> DVector<f64> {
     let mut mean_diff = DVector::zeros(variables.len());
-
     for (idx, var) in variables.iter().enumerate() {
         let mean_i = dataset
             .group_means
@@ -794,58 +717,24 @@ fn calculate_group_mahalanobis_distance(
             .and_then(|m| m.get(var))
             .copied()
             .unwrap_or(0.0);
-        let diff = mean_i - mean_j;
-        mean_diff[idx] = diff;
-        web_sys::console::log_1(
-            &format!(
-                "[DEBUG] mean_diff[{}] {} - {} = {}",
-                idx, mean_i, mean_j, diff
-            )
-            .into(),
-        );
+        mean_diff[idx] = mean_i - mean_j;
     }
+    mean_diff
+}
 
-    // Use pooled within-groups covariance from ALL groups (matches SPSS)
-    let pooled_cov = calculate_pooled_within_matrix_no_epsilon(dataset, variables);
-    web_sys::console::log_1(
-        &format!(
-            "[DEBUG] pooled_cov shape: {}x{}",
-            pooled_cov.nrows(),
-            pooled_cov.ncols()
-        )
-        .into(),
-    );
-
-    // Add small regularization for numerical stability before inversion
-    let mut reg_cov = pooled_cov.clone();
-    for i in 0..variables.len() {
-        reg_cov[(i, i)] += EPSILON;
-    }
-
-    // Calculate Mahalanobis distance: D² = δ' * S⁻¹ * δ
-    match reg_cov.try_inverse() {
-        Some(inv_cov) => {
-            let d2 = (mean_diff.transpose() * (&inv_cov * mean_diff))[0];
-            web_sys::console::log_1(
-                &format!(
-                    "[DEBUG] D2({} vs {}) = {} (fallback=false)",
-                    group_i, group_j, d2
-                )
-                .into(),
-            );
-            d2
-        }
-        None => {
-            let d2 = mean_diff.norm_squared();
-            web_sys::console::log_1(
-                &format!(
-                    "[DEBUG] D2({} vs {}) = {} (fallback=true)",
-                    group_i, group_j, d2
-                )
-                .into(),
-            );
-            d2
-        }
+/// Squared Mahalanobis distance D² = δ'·S⁻¹·δ between two groups, given a
+/// precomputed pooled inverse. `None` → singular fallback (‖δ‖²).
+fn group_mahalanobis_with_inv(
+    dataset: &AnalyzedDataset,
+    group_i: &str,
+    group_j: &str,
+    variables: &[String],
+    inv: Option<&DMatrix<f64>>,
+) -> f64 {
+    let mean_diff = group_mean_diff(dataset, group_i, group_j, variables);
+    match inv {
+        Some(inv_cov) => (mean_diff.transpose() * (inv_cov * &mean_diff))[0],
+        None => mean_diff.norm_squared(),
     }
 }
 

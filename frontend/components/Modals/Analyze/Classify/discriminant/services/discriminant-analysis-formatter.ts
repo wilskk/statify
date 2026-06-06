@@ -1,6 +1,7 @@
 // discriminant-analysis-formatter.ts
 import { formatDisplayNumber } from "@/hooks/useFormatter";
 import type { ResultJson, Table } from "@/types/Table";
+import type { Chart } from "@/types/Chart";
 
 export function transformDiscriminantResult(data: any): ResultJson {
   const resultJson: ResultJson = {
@@ -326,9 +327,12 @@ export function transformDiscriminantResult(data: any): ResultJson {
       }
     }
 
-    // Add footnote based on actual degrees of freedom
+    // Add footnote based on actual degrees of freedom (from Rust note_df)
     table.rows.push({
-      rowHeader: ["a. The total covariance matrix has 9 degrees of freedom."],
+      rowHeader: [
+        data.covariance_matrices.note_df ??
+          "a. The total covariance matrix has N-1 degrees of freedom.",
+      ],
     });
 
     resultJson.tables.push(table);
@@ -1080,6 +1084,42 @@ export function transformDiscriminantResult(data: any): ResultJson {
           "e. F level, tolerance, or VIN insufficient for further computation.",
         ],
       });
+    } else if (isFRatio) {
+      table.rows.push({
+        rowHeader: [
+          "At each step, the variable that maximizes the smallest F ratio between pairs of groups is entered.",
+        ],
+      });
+      table.rows.push({ rowHeader: ["a. Maximum number of steps is 18."] });
+      table.rows.push({
+        rowHeader: ["b. Minimum partial F to enter is 3.84."],
+      });
+      table.rows.push({
+        rowHeader: ["c. Maximum partial F to remove is 2.71."],
+      });
+      table.rows.push({
+        rowHeader: [
+          "d. F level, tolerance, or VIN insufficient for further computation.",
+        ],
+      });
+    } else if (isUnexplained) {
+      table.rows.push({
+        rowHeader: [
+          "At each step, the variable that minimizes the sum of the unexplained variation for all pairs of groups is entered.",
+        ],
+      });
+      table.rows.push({ rowHeader: ["a. Maximum number of steps is 18."] });
+      table.rows.push({
+        rowHeader: ["b. Minimum partial F to enter is 3.84."],
+      });
+      table.rows.push({
+        rowHeader: ["c. Maximum partial F to remove is 2.71."],
+      });
+      table.rows.push({
+        rowHeader: [
+          "d. F level, tolerance, or VIN insufficient for further computation.",
+        ],
+      });
     } else if (isMahalanobis) {
       table.rows.push({
         rowHeader: [
@@ -1173,21 +1213,24 @@ export function transformDiscriminantResult(data: any): ResultJson {
       )
         ? data.stepwise_statistics.wilks_lambda
         : [];
-      const swF: number[] = Array.isArray(data.stepwise_statistics.f_to_enter)
-        ? data.stepwise_statistics.f_to_enter
+      // Use the model's exact Wilks F (Rao approx), which is correct for every
+      // method — NOT f_to_enter, which holds the method-specific statistic
+      // (Min F / closest-pair F) for Smallest-F and Mahalanobis.
+      const swF: number[] = Array.isArray(data.stepwise_statistics.wilks_exact_f)
+        ? data.stepwise_statistics.wilks_exact_f
         : [];
       const swFdf1: number[] = Array.isArray(
-        data.stepwise_statistics.f_to_enter_df1,
+        data.stepwise_statistics.wilks_exact_df1,
       )
-        ? data.stepwise_statistics.f_to_enter_df1
+        ? data.stepwise_statistics.wilks_exact_df1
         : [];
       const swFdf2: number[] = Array.isArray(
-        data.stepwise_statistics.f_to_enter_df2,
+        data.stepwise_statistics.wilks_exact_df2,
       )
-        ? data.stepwise_statistics.f_to_enter_df2
+        ? data.stepwise_statistics.wilks_exact_df2
         : [];
-      const swSig: number[] = Array.isArray(data.stepwise_statistics.significance)
-        ? data.stepwise_statistics.significance
+      const swSig: number[] = Array.isArray(data.stepwise_statistics.wilks_exact_sig)
+        ? data.stepwise_statistics.wilks_exact_sig
         : [];
       const swRemoved: any[] = Array.isArray(
         data.stepwise_statistics.variables_removed,
@@ -1232,6 +1275,23 @@ export function transformDiscriminantResult(data: any): ResultJson {
           { header: "F to Remove", key: "f_to_remove" },
           { header: "Rao's V", key: "raos_v" },
         ]
+      : isFRatio
+        ? [
+            { header: "Step", key: "step" },
+            { header: "", key: "var" },
+            { header: "Tolerance", key: "tolerance" },
+            { header: "F to Remove", key: "f_to_remove" },
+            { header: "Min. F", key: "min_f" },
+            { header: "Between Groups", key: "between_groups" },
+          ]
+      : isUnexplained
+        ? [
+            { header: "Step", key: "step" },
+            { header: "", key: "var" },
+            { header: "Tolerance", key: "tolerance" },
+            { header: "F to Remove", key: "f_to_remove" },
+            { header: "Residual Variance", key: "residual_variance" },
+          ]
       : isMahalanobis
         ? [
             { header: "Step", key: "step" },
@@ -1280,6 +1340,21 @@ export function transformDiscriminantResult(data: any): ResultJson {
               f_to_remove: formatDisplayNumber(variable.f_to_remove),
               raos_v: formatDisplayNumber(raosVFromProxy(variable.wilks_lambda)),
             });
+          } else if (isFRatio) {
+            table.rows.push({
+              rowHeader: [step, variable.variable],
+              tolerance: formatDisplayNumber(variable.tolerance),
+              f_to_remove: formatDisplayNumber(variable.f_to_remove),
+              min_f: formatDisplayNumber(variable.min_d_squared || 0),
+              between_groups: variable.between_groups || "",
+            });
+          } else if (isUnexplained) {
+            table.rows.push({
+              rowHeader: [step, variable.variable],
+              tolerance: formatDisplayNumber(variable.tolerance),
+              f_to_remove: formatDisplayNumber(variable.f_to_remove),
+              residual_variance: formatDisplayNumber(variable.min_d_squared || 0),
+            });
           } else if (isMahalanobis) {
             table.rows.push({
               rowHeader: [step, variable.variable],
@@ -1320,6 +1395,25 @@ export function transformDiscriminantResult(data: any): ResultJson {
           { header: "F to Enter", key: "f_to_enter" },
           { header: "Rao's V", key: "raos_v" },
         ]
+      : isFRatio
+        ? [
+            { header: "Step", key: "step" },
+            { header: "", key: "var" },
+            { header: "Tolerance", key: "tolerance" },
+            { header: "Min. Tolerance", key: "min_tolerance" },
+            { header: "F to Enter", key: "f_to_enter" },
+            { header: "Min. F", key: "min_f" },
+            { header: "Between Groups", key: "between_groups" },
+          ]
+      : isUnexplained
+        ? [
+            { header: "Step", key: "step" },
+            { header: "", key: "var" },
+            { header: "Tolerance", key: "tolerance" },
+            { header: "Min. Tolerance", key: "min_tolerance" },
+            { header: "F to Enter", key: "f_to_enter" },
+            { header: "Residual Variance", key: "residual_variance" },
+          ]
       : isMahalanobis
         ? [
             { header: "Step", key: "step" },
@@ -1367,6 +1461,27 @@ export function transformDiscriminantResult(data: any): ResultJson {
               ),
               f_to_enter: formatDisplayNumber(variable.f_to_enter),
               raos_v: formatDisplayNumber(raosVFromProxy(variable.wilks_lambda)),
+            });
+          } else if (isFRatio) {
+            table.rows.push({
+              rowHeader: [step, variable.variable],
+              tolerance: formatDisplayNumber(variable.tolerance),
+              min_tolerance: formatDisplayNumber(
+                variable.min_tolerance ?? variable.tolerance,
+              ),
+              f_to_enter: formatDisplayNumber(variable.f_to_enter),
+              min_f: formatDisplayNumber(variable.min_d_squared || 0),
+              between_groups: variable.between_groups || "",
+            });
+          } else if (isUnexplained) {
+            table.rows.push({
+              rowHeader: [step, variable.variable],
+              tolerance: formatDisplayNumber(variable.tolerance),
+              min_tolerance: formatDisplayNumber(
+                variable.min_tolerance ?? variable.tolerance,
+              ),
+              f_to_enter: formatDisplayNumber(variable.f_to_enter),
+              residual_variance: formatDisplayNumber(variable.min_d_squared || 0),
             });
           } else if (isMahalanobis) {
             table.rows.push({
@@ -1909,6 +2024,186 @@ export function transformDiscriminantResult(data: any): ResultJson {
         ],
       });
     }
+
+    resultJson.tables.push(table);
+  }
+
+  // ── Scatter plots (Combined-Groups + Separate-Groups) ──────────────────────
+  // scatter_data is populated when combine||sep_grp and case==false.
+  // casewise_statistics has the same fields when case==true.
+  const scatterSrc = data?.scatter_data ?? data?.casewise_statistics;
+  // discriminant_scores is Vec<ScoreValue> = [{function, values}], not a keyed object
+  const scoreArr: Array<{ function: string; values: number[] }> | undefined =
+    scatterSrc?.discriminant_scores;
+  const f1Scores: number[] | undefined = scoreArr?.find((s: any) => s.function === "Function 1")?.values;
+  const f2Scores: number[] | undefined = scoreArr?.find((s: any) => s.function === "Function 2")?.values;
+  const caseGroups: string[] | undefined = scatterSrc?.actual_group;
+  // function_at_centroids is Vec<GroupCentroid> = [{group, values}], not a keyed object
+  const centroidArr: Array<{ group: string; values: number[] }> | undefined =
+    data?.canonical_functions?.function_at_centroids;
+
+  const hasScatterData =
+    Array.isArray(f1Scores) &&
+    Array.isArray(f2Scores) &&
+    Array.isArray(caseGroups) &&
+    f1Scores.length > 0;
+
+  if (hasScatterData) {
+    const f1 = f1Scores as number[];
+    const f2 = f2Scores as number[];
+    const grps = caseGroups as string[];
+
+    // Case data points: { category: group, x: Function1, y: Function2 }
+    const casePoints = grps.map((g, i) => ({ category: g, x: f1[i], y: f2[i] }));
+
+    // Centroid data points: { category: "GroupName ★", x, y }
+    const centroidPoints: { category: string; x: number; y: number }[] = (
+      centroidArr ?? []
+    ).map(({ group, values }) => ({
+      category: group + " ★",
+      x: values[0] ?? 0,
+      y: values[1] ?? 0,
+    }));
+
+    // Linear decision boundaries (perpendicular bisectors of centroid pairs, equal-prior LDA).
+    // Each boundary is parameterised as a line segment extended far beyond the data range;
+    // the renderer clips it to the plot area.
+    const boundaryLines: Array<{ x1: number; y1: number; x2: number; y2: number; dashArray: string }> = [];
+    const centroids = centroidArr ?? [];
+    if (centroids.length >= 2) {
+      const allX = casePoints.map((p) => p.x);
+      const allY = casePoints.map((p) => p.y);
+      const xSpan = Math.max(...allX) - Math.min(...allX);
+      const ySpan = Math.max(...allY) - Math.min(...allY);
+      const T = Math.max(xSpan, ySpan, 1) * 4; // extend well beyond data
+
+      for (let i = 0; i < centroids.length; i++) {
+        for (let j = i + 1; j < centroids.length; j++) {
+          const c1x = centroids[i].values[0] ?? 0;
+          const c1y = centroids[i].values[1] ?? 0;
+          const c2x = centroids[j].values[0] ?? 0;
+          const c2y = centroids[j].values[1] ?? 0;
+
+          const mx = (c1x + c2x) / 2;
+          const my = (c1y + c2y) / 2;
+          const dx = c2x - c1x;
+          const dy = c2y - c1y;
+          const len = Math.sqrt(dx * dx + dy * dy);
+          if (len < 1e-10) continue;
+
+          // Perpendicular direction (normalised)
+          const perpX = -dy / len;
+          const perpY = dx / len;
+
+          boundaryLines.push({
+            x1: mx + T * perpX,
+            y1: my + T * perpY,
+            x2: mx - T * perpX,
+            y2: my - T * perpY,
+            dashArray: "6,3",
+          });
+        }
+      }
+    }
+
+    // Combined-Groups Plot
+    const combinedChart: Chart = {
+      chartType: "Grouped Scatter Plot",
+      chartData: [...casePoints, ...centroidPoints],
+      chartMetadata: {
+        axisInfo: { x: "Function 1", y: "Function 2", category: "Group" },
+        description: "Combined-Groups Plot",
+        title: "Combined-Groups Plot",
+        subtitle: "Canonical Discriminant Functions",
+        notes: "★ = Group Centroid  — — — = Decision Boundary",
+      },
+      chartConfig: {
+        width: 600,
+        height: 500,
+        useAxis: true,
+        useLegend: true,
+        axisLabels: { x: "Function 1", y: "Function 2" },
+        ...(boundaryLines.length > 0 && { boundaryLines }),
+      },
+    };
+
+    // Separate-Groups Plots (one per group)
+    const uniqueGroups = [...new Set(grps)];
+    const separateCharts: Chart[] = uniqueGroups.map((group) => {
+      const groupCases = casePoints.filter((p) => p.category === group);
+      const groupCentroid = centroidPoints.find((p) => p.category === group + " ★");
+      return {
+        chartType: "Grouped Scatter Plot",
+        chartData: groupCentroid ? [...groupCases, groupCentroid] : groupCases,
+        chartMetadata: {
+          axisInfo: { x: "Function 1", y: "Function 2", category: "Group" },
+          description: `Separate-Groups Plot: Group ${group}`,
+          title: "Separate-Groups Plot",
+          subtitle: `Group ${group}`,
+          notes: "★ = Group Centroid",
+        },
+        chartConfig: {
+          width: 600,
+          height: 500,
+          useAxis: true,
+          useLegend: true,
+          axisLabels: { x: "Function 1", y: "Function 2" },
+        },
+      };
+    });
+
+    resultJson.charts = [combinedChart, ...separateCharts];
+  }
+
+  // Bootstrap for Standardized Canonical Discriminant Function Coefficients
+  if (data.bootstrap_results?.standardized?.length) {
+    const b = data.bootstrap_results;
+    const ciLabel = `${b.level ?? 95}% ${b.ci_method ?? "Percentile"} Confidence Interval`;
+
+    const table: Table = {
+      key: "bootstrap_standardized_coefficients",
+      title:
+        "Bootstrap for Standardized Canonical Discriminant Function Coefficients",
+      columnHeaders: [
+        { header: "", key: "var" },
+        { header: "Function", key: "function" },
+        { header: "Coefficient", key: "coefficient" },
+        { header: "Bias", key: "bias" },
+        { header: "Std. Error", key: "std_error" },
+        {
+          header: ciLabel,
+          key: "ci",
+          children: [
+            { header: "Lower", key: "ci_lower" },
+            { header: "Upper", key: "ci_upper" },
+          ],
+        },
+      ],
+      rows: [],
+    };
+
+    const funcs: string[] = b.functions ?? [];
+    for (const entry of b.standardized) {
+      const numF = entry.original?.length ?? 0;
+      for (let f = 0; f < numF; f++) {
+        table.rows.push({
+          rowHeader: [entry.variable, funcs[f] ?? `Function ${f + 1}`],
+          coefficient: formatDisplayNumber(entry.original[f]),
+          bias: formatDisplayNumber(entry.bias[f]),
+          std_error: formatDisplayNumber(entry.std_error[f]),
+          ci_lower: formatDisplayNumber(entry.ci_lower[f]),
+          ci_upper: formatDisplayNumber(entry.ci_upper[f]),
+        });
+      }
+    }
+
+    table.rows.push({
+      rowHeader: [
+        `Bootstrap results are based on ${b.num_samples} ${(
+          b.sampling ?? "Simple"
+        ).toLowerCase()} bootstrap samples.`,
+      ],
+    });
 
     resultJson.tables.push(table);
   }

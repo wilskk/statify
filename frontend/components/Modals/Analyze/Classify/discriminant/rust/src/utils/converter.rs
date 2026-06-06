@@ -10,7 +10,6 @@ use crate::models::result::{
     EigenDescription,
     WilksLambdaTest,
     VariableInAnalysis,
-    VariableNotInAnalysis,
     PairwiseComparison,
     HighestGroupStatistics,
     GroupHistogram,
@@ -51,6 +50,14 @@ struct FormatResult {
     prior_probabilities: Option<FormattedPriorProbabilities>,
     classification_function_coefficients: Option<FormattedClassificationFunctionCoefficients>,
     discriminant_histograms: Option<FormattedDiscriminantHistograms>,
+    scatter_data: Option<FormattedScatterData>,
+    bootstrap_results: Option<crate::models::result::BootstrapResults>,
+}
+
+#[derive(Serialize)]
+struct FormattedScatterData {
+    actual_group: Vec<String>,
+    discriminant_scores: Vec<ScoreValue>,
 }
 
 #[derive(Serialize)]
@@ -138,6 +145,7 @@ struct FormattedCovarianceMatrices {
     groups: Vec<String>,
     variables: Vec<String>,
     matrices: Vec<GroupMatrixEntry>,
+    note_df: String,
 }
 
 #[derive(Serialize)]
@@ -153,11 +161,16 @@ struct FormattedStepwiseStatistics {
     variables_entered: Vec<String>,
     variables_removed: Vec<Option<String>>,
     min_d_squared: Vec<f64>,
+    between_groups: Vec<String>,
     wilks_lambda: Vec<f64>,
     f_to_enter: Vec<f64>,
     f_to_enter_df1: Vec<i32>,
     f_to_enter_df2: Vec<i32>,
     significance: Vec<f64>,
+    wilks_exact_f: Vec<f64>,
+    wilks_exact_df1: Vec<i32>,
+    wilks_exact_df2: Vec<i32>,
+    wilks_exact_sig: Vec<f64>,
     raos_v: Vec<f64>,
     raos_v_sig: Vec<f64>,
     change_in_v: Vec<f64>,
@@ -171,12 +184,6 @@ struct FormattedStepwiseStatistics {
 struct StepVariables {
     step: String,
     variables: Vec<VariableInAnalysis>,
-}
-
-#[derive(Serialize)]
-struct StepNotInVariables {
-    step: String,
-    variables: Vec<VariableNotInAnalysis>,
 }
 
 #[derive(Serialize)]
@@ -582,6 +589,7 @@ impl FormatResult {
                 groups: matrices.groups.clone(),
                 variables: matrices.variables.clone(),
                 matrices: matrices_entries,
+                note_df: matrices.note_df.clone(),
             }
         });
 
@@ -646,11 +654,16 @@ impl FormatResult {
                 variables_entered: stats.variables_entered.clone(),
                 variables_removed: stats.variables_removed.clone(),
                 min_d_squared: stats.min_d_squared.clone(),
+                between_groups: stats.between_groups.clone(),
                 wilks_lambda: stats.wilks_lambda.clone(),
                 f_to_enter: stats.f_to_enter.clone(),
                 f_to_enter_df1: stats.f_to_enter_df1.clone(),
                 f_to_enter_df2: stats.f_to_enter_df2.clone(),
                 significance: stats.significance.clone(),
+                wilks_exact_f: stats.wilks_exact_f.clone(),
+                wilks_exact_df1: stats.wilks_exact_df1.clone(),
+                wilks_exact_df2: stats.wilks_exact_df2.clone(),
+                wilks_exact_sig: stats.wilks_exact_sig.clone(),
                 raos_v: stats.raos_v.clone(),
                 raos_v_sig: stats.raos_v_sig.clone(),
                 change_in_v: stats.change_in_v.clone(),
@@ -770,6 +783,21 @@ impl FormatResult {
             }
         });
 
+        // Transform ScatterData
+        let scatter_data = result.scatter_data.as_ref().map(|sd| {
+            let discriminant_scores = sd.discriminant_scores
+                .iter()
+                .map(|(func, values)| ScoreValue {
+                    function: func.clone(),
+                    values: values.clone(),
+                })
+                .collect();
+            FormattedScatterData {
+                actual_group: sd.actual_group.clone(),
+                discriminant_scores,
+            }
+        });
+
         FormatResult {
             processing_summary: Some(result.processing_summary.clone()),
             group_statistics,
@@ -788,6 +816,8 @@ impl FormatResult {
             prior_probabilities,
             classification_function_coefficients,
             discriminant_histograms,
+            scatter_data,
+            bootstrap_results: result.bootstrap_results.clone(),
         }
     }
 }

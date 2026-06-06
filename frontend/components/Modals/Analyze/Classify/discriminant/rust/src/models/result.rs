@@ -37,6 +37,47 @@ pub struct DiscriminantResult {
     pub classification_function_coefficients: Option<ClassificationFunctionCoefficients>,
     #[serde(rename = "discriminant_histograms")]
     pub discriminant_histograms: Option<DiscriminantHistograms>,
+    /// Per-case discriminant scores for scatter plots (combine/sep_grp).
+    /// Populated only when combine || sep_grp and case == false.
+    /// When case == true, casewise_statistics already contains the scores.
+    #[serde(rename = "scatter_data")]
+    pub scatter_data: Option<ScatterData>,
+    /// Bootstrap results (bias, std. error, confidence intervals) for the
+    /// standardized canonical discriminant function coefficients. Populated only
+    /// when bootstrap.perform_boot_strapping is requested.
+    #[serde(rename = "bootstrap_results")]
+    pub bootstrap_results: Option<BootstrapResults>,
+}
+
+/// Bootstrap results for the standardized canonical discriminant function
+/// coefficients: for each predictor, per-function Original / Bias / Std. Error /
+/// CI bounds across `num_samples` resamples.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BootstrapResults {
+    #[serde(rename = "num_samples")]
+    pub num_samples: i32,
+    pub level: f64,
+    /// "Percentile" or "BCa"
+    #[serde(rename = "ci_method")]
+    pub ci_method: String,
+    /// "Simple" or "Stratified"
+    pub sampling: String,
+    pub functions: Vec<String>,
+    pub variables: Vec<String>,
+    pub standardized: Vec<BootstrapCoefficient>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BootstrapCoefficient {
+    pub variable: String,
+    pub original: Vec<f64>,
+    pub bias: Vec<f64>,
+    #[serde(rename = "std_error")]
+    pub std_error: Vec<f64>,
+    #[serde(rename = "ci_lower")]
+    pub ci_lower: Vec<f64>,
+    #[serde(rename = "ci_upper")]
+    pub ci_upper: Vec<f64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -218,6 +259,15 @@ pub struct StepwiseStatistics {
     pub f_to_enter_df2: Vec<i32>,
     #[serde(rename = "significance")]
     pub significance: Vec<f64>,
+    /// Model's exact Wilks F (Rao approx) per step — for the Wilks' Lambda summary table
+    #[serde(rename = "wilks_exact_f")]
+    pub wilks_exact_f: Vec<f64>,
+    #[serde(rename = "wilks_exact_df1")]
+    pub wilks_exact_df1: Vec<i32>,
+    #[serde(rename = "wilks_exact_df2")]
+    pub wilks_exact_df2: Vec<i32>,
+    #[serde(rename = "wilks_exact_sig")]
+    pub wilks_exact_sig: Vec<f64>,
     /// Rao's V cumulative statistic (for Rao's V method)
     #[serde(rename = "raos_v")]
     pub raos_v: Vec<f64>,
@@ -406,4 +456,12 @@ pub struct GroupHistogram {
     pub bin_frequencies: Vec<i32>,
     #[serde(rename = "bin_edges")]
     pub bin_edges: Vec<f64>,
+}
+
+/// Lightweight per-case scores for scatter plot rendering.
+/// Uses the same discriminant_scores key format as CasewiseStatistics.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ScatterData {
+    pub actual_group: Vec<String>,
+    pub discriminant_scores: HashMap<String, Vec<f64>>,
 }

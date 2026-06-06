@@ -3,12 +3,9 @@
 //! This module implements various statistical tests used in discriminant analysis,
 //! including univariate F tests, Wilks' Lambda, and tolerance calculations.
 
-use rayon::prelude::*;
-use nalgebra::{DMatrix, DVector};
-
 use crate::{
     models::{ result::WilksLambdaTest, AnalysisData, DiscriminantConfig },
-    stats::core::{ calculate_correlation, AnalyzedDataset, EPSILON },
+    stats::core::{ AnalyzedDataset, EPSILON },
 };
 
 use super::core::{
@@ -294,18 +291,6 @@ pub fn calculate_tolerance(
         }
         None => (0.0, 0.0), // Jika matriks gagal di-invers
     }
-}
-
-/// Collect all observation values for a variable across all groups.
-/// Returns a flat Vec<f64> of all observations.
-fn collect_variable_values(dataset: &AnalyzedDataset, variable: &str) -> Vec<f64> {
-    let mut values = Vec::new();
-    for group_label in &dataset.group_labels {
-        if let Some(vals) = dataset.group_data.get(variable).and_then(|g| g.get(group_label)) {
-            values.extend(vals.iter().copied());
-        }
-    }
-    values
 }
 
 /// Calculate Wilks' lambda test for discriminant functions

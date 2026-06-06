@@ -18,6 +18,10 @@ pub fn run_analysis(
 ) -> Result<Option<DiscriminantResult>, JsValue> {
     web_sys::console::log_1(&"Starting discriminant analysis".into());
 
+    // Reset the per-analysis stepwise-selection cache so this run never reuses a
+    // selection from a previous analysis in the same worker instance.
+    core::clear_selected_vars_cache();
+
     // Log configuration to track which methods will be executed
     web_sys::console::log_1(&format!("Config: {:?}", config).into());
 
@@ -151,6 +155,10 @@ pub fn run_analysis(
         logger.add_log("calculate_stepwise_statistics");
         match core::calculate_stepwise_statistics(&filtered_data, config) {
             Ok(statistics) => {
+                // Prime the cache from this single stepwise run so eigen/canonical/
+                // structure/wilks/casewise/classification reuse the selection instead
+                // of recomputing the whole procedure.
+                core::prime_selected_vars_cache(core::select_final_variables(&statistics, config));
                 stepwise_statistics = Some(statistics);
                 web_sys::console::log_1(
                     &format!("Stepwise Statistics: {:?}", stepwise_statistics).into()
@@ -267,6 +275,36 @@ pub fn run_analysis(
         };
     }
 
+    // Compute lightweight scatter data for plot rendering when case==false
+    // but the user wants scatter plots (combine or sep_grp checked).
+    let mut scatter_data = None;
+    if !config.classify.case && (config.classify.combine || config.classify.sep_grp) {
+        match core::calculate_scatter_data(&filtered_data, config) {
+            Ok(sd) => {
+                scatter_data = Some(sd);
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_scatter_data", &e);
+            }
+        }
+    }
+
+    // Bootstrap resampling. Holds the selected model fixed (reuses the cached
+    // selection) and refits the canonical coefficients directly on each resample,
+    // so it neither re-runs stepwise nor disturbs the cache.
+    let mut bootstrap_results = None;
+    if config.bootstrap.perform_boot_strapping {
+        logger.add_log("calculate_bootstrap");
+        match core::calculate_bootstrap(&filtered_data, config) {
+            Ok(b) => {
+                bootstrap_results = Some(b);
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_bootstrap", &e);
+            }
+        }
+    }
+
     let mut classification_results = None;
     if config.classify.leave {
         logger.add_log("calculate_classification_results");
@@ -301,6 +339,8 @@ pub fn run_analysis(
         prior_probabilities,
         classification_function_coefficients,
         discriminant_histograms: None,
+        scatter_data,
+        bootstrap_results,
     };
 
     Ok(Some(result))

@@ -24,8 +24,6 @@ pub fn calculate_classification_results(
     data: &AnalysisData,
     config: &DiscriminantConfig,
 ) -> Result<ClassificationResults, String> {
-    web_sys::console::log_1(&"Executing calculate_classification_results".into());
-
     let dataset = extract_analyzed_dataset(data, config)?;
     let grouping_var = &config.main.grouping_variable;
 
@@ -360,8 +358,6 @@ pub fn calculate_summary_classification(
     data: &AnalysisData,
     config: &DiscriminantConfig,
 ) -> Result<ClassificationFunctionCoefficients, String> {
-    web_sys::console::log_1(&"Executing calculate_classification_function_coefficients".into());
-
     let dataset = extract_analyzed_dataset(data, config)?;
     let grouping_var = &config.main.grouping_variable;
 

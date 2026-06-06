@@ -6,16 +6,74 @@
 
 use nalgebra::DMatrix;
 use rayon::prelude::*;
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 use crate::models::{
-    result::{CanonicalFunctions, EigenDescription},
+    result::{CanonicalFunctions, EigenDescription, StepwiseStatistics},
     AnalysisData, DiscriminantConfig,
 };
 
+thread_local! {
+    /// Per-analysis cache of the stepwise-selected variable list. The selection
+    /// depends only on (data, config), which are fixed within a single
+    /// `run_analysis`, so it is computed once and reused by every downstream
+    /// routine (eigen / canonical / structure / wilks / casewise / classification
+    /// / scatter / box_m / log_det). Cleared at the start of each analysis.
+    static SELECTED_VARS_CACHE: RefCell<Option<Vec<String>>> = RefCell::new(None);
+}
+
+/// Clear the cached stepwise selection. Call at the start of every analysis.
+pub fn clear_selected_vars_cache() {
+    SELECTED_VARS_CACHE.with(|c| *c.borrow_mut() = None);
+}
+
+/// Prime the cache with an already-computed selection (e.g. from the single
+/// stepwise run in `run_analysis`) so downstream routines never recompute it.
+pub fn prime_selected_vars_cache(vars: Vec<String>) {
+    SELECTED_VARS_CACHE.with(|c| *c.borrow_mut() = Some(vars));
+}
+
+/// Extract the final-step selected variables from a computed StepwiseStatistics,
+/// falling back to all (non-grouping) independent variables when the final step
+/// is missing or empty. Pure — shared by the cache primer and get_stepwise.
+pub fn select_final_variables(stats: &StepwiseStatistics, config: &DiscriminantConfig) -> Vec<String> {
+    let grouping_var = &config.main.grouping_variable;
+    let all_vars = || -> Vec<String> {
+        config
+            .main
+            .independent_variables
+            .iter()
+            .filter(|v| *v != grouping_var)
+            .cloned()
+            .collect()
+    };
+
+    let final_step = stats
+        .variables_in_analysis
+        .keys()
+        .filter_map(|k| k.parse::<i32>().ok())
+        .max()
+        .unwrap_or(0)
+        .to_string();
+
+    match stats.variables_in_analysis.get(&final_step) {
+        Some(vars_in_model) => {
+            let selected: Vec<String> =
+                vars_in_model.iter().map(|v| v.variable.clone()).collect();
+            if selected.is_empty() {
+                all_vars()
+            } else {
+                selected
+            }
+        }
+        None => all_vars(),
+    }
+}
+
 use super::core::{
-    calculate_pooled_within_matrix, calculate_stepwise_statistics, extract_analyzed_dataset,
-    AnalyzedDataset, EPSILON,
+    calculate_between_groups_sscp, calculate_pooled_within_matrix, calculate_stepwise_statistics,
+    extract_analyzed_dataset, AnalyzedDataset, EPSILON,
 };
 
 /// Calculate eigenvalues and eigenvectors for discriminant functions
@@ -33,8 +91,6 @@ pub fn calculate_eigen_statistics(
     data: &AnalysisData,
     config: &DiscriminantConfig,
 ) -> Result<EigenDescription, String> {
-    web_sys::console::log_1(&"Executing calculate_eigen_statistics".into());
-
     // Extract analyzed dataset
     let dataset = extract_analyzed_dataset(data, config)?;
 
@@ -54,8 +110,6 @@ pub fn calculate_eigen_statistics(
             .collect()
     };
 
-    web_sys::console::log_1(&format!("Eigen: using {} variables: {:?}", variables_to_use.len(), variables_to_use).into());
-
     // Calculate number of discriminant functions
     let num_functions = std::cmp::min(dataset.num_groups - 1, variables_to_use.len());
 
@@ -66,8 +120,8 @@ pub fn calculate_eigen_statistics(
     // Calculate pooled within-groups matrix
     let pooled_within = calculate_pooled_within_matrix(&dataset, &variables_to_use);
 
-    // Calculate between-groups matrix
-    let between_groups = calculate_between_groups_matrix(&dataset, &variables_to_use);
+    // Calculate between-groups matrix (shared SSCP helper)
+    let between_groups = calculate_between_groups_sscp(&dataset, &variables_to_use);
 
     // Ubah pooled_within jadi SSCP
     let df_within = dataset.total_cases - dataset.num_groups;
@@ -142,8 +196,6 @@ pub fn calculate_canonical_functions(
     data: &AnalysisData,
     config: &DiscriminantConfig,
 ) -> Result<CanonicalFunctions, String> {
-    web_sys::console::log_1(&"Executing calculate_canonical_functions".into());
-
     // First calculate the eigenvalues and eigenvectors
     let eigen_desc = calculate_eigen_statistics(data, config)?;
 
@@ -163,8 +215,6 @@ pub fn calculate_canonical_functions(
             .cloned()
             .collect()
     };
-
-    web_sys::console::log_1(&format!("Canonical: using {} variables: {:?}", variables_to_use.len(), variables_to_use).into());
 
     // Calculate number of discriminant functions
     let num_functions = std::cmp::min(dataset.num_groups - 1, variables_to_use.len());
@@ -290,57 +340,6 @@ pub fn solve_eigenvalue_problem(
     (eigenvalues, eigenvectors)
 }
 
-/// Calculate the between-groups covariance matrix
-///
-/// This matrix represents the variance and covariance between group means.
-///
-/// Note: This is the SSCP (Sum of Squares and Cross Products) matrix, not the covariance.
-/// To get the covariance matrix, divide by (n - g).
-///
-/// # Parameters
-/// * `dataset` - The analyzed dataset
-/// * `variables` - The variables to include in the matrix
-///
-/// # Returns
-/// The between-groups SSCP matrix
-fn calculate_between_groups_matrix(
-    dataset: &AnalyzedDataset,
-    variables: &[String],
-) -> DMatrix<f64> {
-    let num_vars = variables.len();
-    let mut between_groups = DMatrix::zeros(num_vars, num_vars);
-
-    // Compute the between-groups SSCP matrix
-    // Formula: B_ij = Σ n_g × (x̄_gi - x̄_i) × (x̄_gj - x̄_j)
-    // This is consistent with the formula in calculate_between_within_matrices
-
-    for (i, var_i) in variables.iter().enumerate() {
-        for (j, var_j) in variables.iter().enumerate() {
-            let mut sum = 0.0;
-
-            for group in &dataset.group_labels {
-                if let (Some(values), Some(group_mean_i), Some(group_mean_j)) = (
-                    dataset.group_data.get(var_i).and_then(|g| g.get(group)),
-                    dataset.group_means.get(group).and_then(|m| m.get(var_i)),
-                    dataset.group_means.get(group).and_then(|m| m.get(var_j)),
-                ) {
-                    let n = values.len() as f64;
-                    if n > 0.0 {
-                        let overall_mean_i = dataset.overall_means.get(var_i).unwrap_or(&0.0);
-                        let overall_mean_j = dataset.overall_means.get(var_j).unwrap_or(&0.0);
-                        sum +=
-                            n * (group_mean_i - overall_mean_i) * (group_mean_j - overall_mean_j);
-                    }
-                }
-            }
-
-            between_groups[(i, j)] = sum;
-        }
-    }
-
-    between_groups
-}
-
 /// Process discriminant coefficients
 ///
 /// This function calculates the unstandardized and standardized coefficients
@@ -463,94 +462,36 @@ pub fn get_stepwise_selected_variables(
 ) -> Result<Vec<String>, String> {
     let grouping_var = &config.main.grouping_variable;
 
-    web_sys::console::log_1(&format!(
-        "get_stepwise_selected_variables called, stepwise={}, independent_vars={:?}",
-        config.main.stepwise,
-        config.main.independent_variables
-    ).into());
-
+    // Non-stepwise: all independent variables (cheap, no caching needed).
     if !config.main.stepwise {
-        let result = config
+        return Ok(config
             .main
             .independent_variables
             .iter()
             .filter(|v| *v != grouping_var)
             .cloned()
-            .collect();
-        web_sys::console::log_1(&format!("[Enter] Returning all vars: {:?}", result).into());
-        return Ok(result);
+            .collect());
     }
 
-    match calculate_stepwise_statistics(data, config) {
-        Ok(stepwise_stats) => {
-            web_sys::console::log_1(&format!(
-                "Stepwise stats: vars_entered={:?}, vars_removed={:?}, num_steps={}",
-                stepwise_stats.variables_entered,
-                stepwise_stats.variables_removed,
-                stepwise_stats.variables_entered.len()
-            ).into());
-
-            web_sys::console::log_1(&format!(
-                "variables_in_analysis keys: {:?}",
-                stepwise_stats.variables_in_analysis.keys().collect::<Vec<_>>()
-            ).into());
-
-            // Find final step (highest step number)
-            let final_step = stepwise_stats
-                .variables_in_analysis
-                .keys()
-                .filter_map(|k| k.parse::<i32>().ok())
-                .max()
-                .unwrap_or(0)
-                .to_string();
-
-            web_sys::console::log_1(&format!("Final step key: '{}'", final_step).into());
-
-            if let Some(vars_in_model) = stepwise_stats.variables_in_analysis.get(&final_step) {
-                let selected_vars: Vec<String> =
-                    vars_in_model.iter().map(|v| v.variable.clone()).collect();
-                web_sys::console::log_1(&format!(
-                    "Variables in model at final step {}: {:?}",
-                    final_step, selected_vars
-                ).into());
-
-                if selected_vars.is_empty() {
-                    web_sys::console::log_1(&format!(
-                        "WARNING: vars_in_model at final step is EMPTY! Falling back to all vars."
-                    ).into());
-                    return Ok(config
-                        .main
-                        .independent_variables
-                        .iter()
-                        .filter(|v| *v != grouping_var)
-                        .cloned()
-                        .collect());
-                }
-                return Ok(selected_vars);
-            } else {
-                web_sys::console::log_1(&format!(
-                    "WARNING: No vars_in_model for final step ' Falling back."
-                ).into());
-                return Ok(config
-                    .main
-                    .independent_variables
-                    .iter()
-                    .filter(|v| *v != grouping_var)
-                    .cloned()
-                    .collect());
-            }
-        }
-        Err(e) => {
-            web_sys::console::log_1(&format!("ERROR in get_stepwise_selected_variables: {}", e).into());
-            return Ok(config
-                .main
-                .independent_variables
-                .iter()
-                .filter(|v| *v != grouping_var)
-                .cloned()
-                .collect());
-        }
+    // Reuse the per-analysis cached selection if available — this is what avoids
+    // re-running the entire stepwise procedure for every downstream routine.
+    if let Some(cached) = SELECTED_VARS_CACHE.with(|c| c.borrow().clone()) {
+        return Ok(cached);
     }
+
+    // Cache miss: compute the stepwise selection once, then store it.
+    let selected = match calculate_stepwise_statistics(data, config) {
+        Ok(stats) => select_final_variables(&stats, config),
+        Err(_) => config
+            .main
+            .independent_variables
+            .iter()
+            .filter(|v| *v != grouping_var)
+            .cloned()
+            .collect(),
+    };
+    prime_selected_vars_cache(selected.clone());
+    Ok(selected)
 }
 
 /// Calculate function values at group centroids

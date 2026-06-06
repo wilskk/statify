@@ -44,6 +44,10 @@ export async function saveDiscriminantResult(rawResults: unknown) {
         { key: "eigenvalues", title: "Eigenvalues" },
         { key: "casewise_statistics", title: "Casewise Statistics" },
         { key: "classification_results", title: "Classification Results" },
+        {
+            key: "bootstrap_standardized_coefficients",
+            title: "Bootstrap for Standardized Canonical Discriminant Function Coefficients",
+        },
     ];
 
     for (const section of sections) {
@@ -60,5 +64,40 @@ export async function saveDiscriminantResult(rawResults: unknown) {
                 components: section.title,
             });
         }
+    }
+
+    // ── Scatter plots (Combined-Groups + Separate-Groups) ──────────────────
+    const scatterCharts = formattedResult.charts ?? [];
+
+    const combinedChart = scatterCharts.find(
+        (c: any) => c.chartMetadata?.description === "Combined-Groups Plot"
+    );
+    if (combinedChart) {
+        const sectionId = await addAnalytic(logId, {
+            title: "Combined-Groups Plot",
+            note: "",
+        });
+        await addStatistic(sectionId, {
+            title: "Combined-Groups Plot",
+            description: "Combined-Groups Plot",
+            output_data: JSON.stringify({ charts: [combinedChart] }),
+            components: "Combined-Groups Plot",
+        });
+    }
+
+    const separateCharts = scatterCharts.filter(
+        (c: any) => (c.chartMetadata?.description as string)?.startsWith("Separate-Groups Plot:")
+    );
+    if (separateCharts.length > 0) {
+        const sectionId = await addAnalytic(logId, {
+            title: "Separate-Groups Plots",
+            note: "",
+        });
+        await addStatistic(sectionId, {
+            title: "Separate-Groups Plots",
+            description: "Separate-Groups Plots",
+            output_data: JSON.stringify({ charts: separateCharts }),
+            components: "Separate-Groups Plots",
+        });
     }
 }
