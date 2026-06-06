@@ -101,7 +101,6 @@ export const safeFixed = (
 /**
  * Format p-value / Significance
  * Jika < 0.001, tampilkan "< .001"
- * Format standar SPSS untuk p-values
  */
 export const fmtSig = (num: number | undefined | null, digits = 3): string => {
   if (num === undefined || num === null || isNaN(num)) return ".";
@@ -110,7 +109,6 @@ export const fmtSig = (num: number | undefined | null, digits = 3): string => {
 
 /**
  * Format persentase dengan 1 digit desimal
- * Cocok untuk variance explained, communalities, dll
  */
 export const fmtPct = (num: number | undefined | null): string => {
   if (num === undefined || num === null || isNaN(num)) return ".";
@@ -145,9 +143,7 @@ export const fmtEigenvalue = (val: number | undefined | null): string => {
 };
 
 /**
- * Parse formatted SPSS string value back to numeric value
  * Used to extract numeric values from already-formatted WASM output
- * Examples: ".458" -> 0.458, "<.001" -> 0.0001, "67.675" -> 67.675
  */
 export const parseFormattedValue = (value: string | number | undefined | null): number => {
   if (value === undefined || value === null) return 1; // Default fallback
@@ -195,7 +191,7 @@ export const generateKMODescription = (
  * Nilai rendah (< 0.5) mengindikasikan variabel tidak fit dengan good solution
  */
 /**
- * Menghasilkan deskripsi untuk Communalities (SPSS Style Footnote)
+ * Menghasilkan deskripsi untuk Communalities
  */
 export const generateCommunalitiesDescription = (
   extractionMethod: string = "Principal Component Analysis"
@@ -205,7 +201,7 @@ export const generateCommunalitiesDescription = (
 
 
 /**
- * Menghasilkan deskripsi baku SPSS untuk Total Variance Explained
+ * Menghasilkan deskripsi baku untuk Total Variance Explained
  * Menghilangkan narasi dan menggunakan format footnote vertikal.
  */
 export const generateTotalVarianceRefinedDescription = (
@@ -259,13 +255,10 @@ export const generateTotalVarianceDescription = (
 };
 
 /**
- * Menghasilkan deskripsi untuk Component Matrix (Unrotated)
- * 
- * Penjelasan singkat tentang apa yang ditampilkan di unrotated matrix
+ * deskripsi untuk Component Matrix (Unrotated)
  */
 /**
- * Menghasilkan deskripsi untuk Component Matrix (Unrotated)
- * Fokus pada penjelasan ringkas sesuai permintaan.
+ * deskripsi untuk Component Matrix (Unrotated)
  */
 export const generateComponentMatrixDescription = (
   numComponents: number,
@@ -277,18 +270,8 @@ export const generateComponentMatrixDescription = (
   return `The ${entity} matrix displays the loadings of each variable on the ${numComponents} extracted ${entityPlural}.`;
 };
 
-// export const generateComponentMatrixDescription = (
-//   numComponents: number,
-//   numVariables?: number
-// ): string => {
-//   const componentPlural = numComponents === 1 ? "component" : "components";
-//   const variableInfo = numVariables ? ` with ${numVariables} variables` : "";
-  
-//   return `The component matrix displays the loadings of each variable on the extracted ${componentPlural}${variableInfo}.`;
-// };
-
 /**
- * Menghasilkan deskripsi untuk kasus ekstraksi yang terhenti sebelum konvergen
+ *  deskripsi untuk kasus ekstraksi yang terhenti sebelum konvergen
  */
 export const generateExtractionTerminationDescription = (
   extractedFactors?: number,
@@ -306,7 +289,7 @@ export const generateExtractionTerminationDescription = (
 };
 
 /**
- * Menghasilkan deskripsi untuk Goodness-of-fit Test
+ *  deskripsi untuk Goodness-of-fit Test
  */
 export const generateGoodnessOfFitDescription = (
   chiSquare: number | string,
@@ -330,12 +313,6 @@ export const generateGoodnessOfFitDescription = (
 
 /**
  * Menghasilkan deskripsi untuk Rotated Component Matrix
- * 
- * Penjelasan tentang rotation method dan keuntaatannya
- */
-/**
- * Menghasilkan deskripsi yang identik dengan footnote SPSS untuk Rotated Matrix
- * Fokus pada format footnote baku tanpa narasi interpretasi tambahan.
  */
 export const generateRotatedMatrixDescription = (
   extractionMethod: string,
@@ -349,8 +326,6 @@ export const generateRotatedMatrixDescription = (
 
 /**
  * Menghasilkan deskripsi untuk Scree Plot Interpretation
- * 
- * Scree test menggunakan "elbow method" untuk menentukan berapa faktor diextract
  */
 export const generateScreePlotDescription = (
   numComponentsRetained: number,
@@ -366,7 +341,6 @@ export const generateScreePlotDescription = (
 
 /**
  * Menghasilkan deskripsi untuk Factor Scores Information
- * 
  * Penjelasan tentang factor scores dan metode saving
  */
 export const generateFactorScoresDescription = (
@@ -398,7 +372,6 @@ export const generateFactorScoresDescription = (
 
 /**
  * Menghasilkan deskripsi umum untuk interpretation section
- * Membantu user memahami apa saja yang harus diinterpretasikan
  */
 export const generateFactorAnalysisOverviewDescription = (
   extractionMethod?: string,
@@ -451,10 +424,8 @@ export const generateDescriptiveDescription = (
 };
 
 /**
- * Format notasi ilmiah dengan gaya SPSS
- * Mengganti decimal point dengan comma dan memastikan exponent 3-digit
- * Contoh: 4.53e-6 → 4,53E-006
- * Export: Dapat digunakan di berbagai tempat untuk formatting determinant dll
+ * Format notasi 
+ * Export: Dapat digunakan untuk formatting determinant dll
  */
 export const formatScientificNotationSPSSStyle = (num: number): string => {
   if (num === 0 || !isFinite(num)) return "0";
@@ -463,7 +434,7 @@ export const formatScientificNotationSPSSStyle = (num: number): string => {
   const exponent = Math.floor(Math.log10(Math.abs(num)));
   const mantissa = num / Math.pow(10, exponent);
   
-  // Format mantissa dengan 2 digit desimal (untuk presisi seperti SPSS)
+  // Format mantissa dengan 2 digit desimal (untuk presisi)
   const mantissaStr = mantissa.toFixed(2).replace(".", ",");
   
   // Format exponent dengan 3-digit (±XXX) - jangan lupakan minus sign untuk negative exponent
@@ -475,7 +446,6 @@ export const formatScientificNotationSPSSStyle = (num: number): string => {
 
 /**
  * Menghasilkan deskripsi untuk Correlation Matrix
- * Determinant hanya ditampilkan jika checkbox "Determinant" dicentang di tab Descriptives.
  */
 export const generateCorrelationMatrixDescription = (
   determinant?: number
@@ -485,7 +455,7 @@ export const generateCorrelationMatrixDescription = (
   // Tampilkan determinant info jika nilai tersedia
   if (determinant !== undefined) {
     console.log("[DESC] Correlation Matrix Determinant:", determinant);
-    // Format scientific notation jika angkanya sangat kecil dengan gaya SPSS
+    // Format scientific notation jika angkanya sangat kecil  
     const detStr = determinant < 0.001 
       ? formatScientificNotationSPSSStyle(determinant)
       : determinant.toFixed(5);
@@ -503,7 +473,6 @@ export const generateCorrelationMatrixDescription = (
 
 /**
  * Menghasilkan deskripsi untuk Covariance Matrix
- * Determinant hanya ditampilkan jika checkbox "Determinant" dicentang di tab Descriptives.
  */
 export const generateCovarianceMatrixDescription = (
   determinant?: number
@@ -543,48 +512,9 @@ return "a. Measures of Sampling Adequacy(MSA)";
 };
 
 /**
- * Menghasilkan deskripsi yang lebih tajam untuk Reproduced Correlations
+ * Menghasilkan deskripsi untuk Reproduced Correlations
  * Fokus pada residual count dan goodness of fit assessment
  */
-// export const generateReproducedRefinedDescription = (
-//   residualCount?: number,
-//   residualPct?: number
-// ): string => {
-//   let residualInfo = "";
-  
-//   if (residualCount !== undefined && residualPct !== undefined) {
-//     const isGoodFit = residualPct < 50;
-//     residualInfo = ` There are ${residualCount} (${residualPct.toFixed(0)}%) nonredundant residuals with absolute values greater than 0.05. ${
-//       isGoodFit 
-//         ? "Since this is less than 50%, the model is considered a good fit." 
-//         : "Since this is greater than 50%, the model may not be a good fit and additional factors might be needed."
-//     }`;
-//   }
-
-//   return `The reproduced matrix contains the correlation matrix based on the extracted factors. The lower part of the table shows the residuals, which are the differences between the observed and reproduced correlations.${residualInfo}`;
-// };
-/**
- * Menghasilkan deskripsi yang identik dengan footnote SPSS untuk Reproduced Correlations
- * Fokus pada format footnote baku tanpa narasi interpretasi tambahan.
- */
-// export const generateReproducedRefinedDescription = (
-//   residualCount?: number,
-//   residualPct?: number,
-//   extractionMethod: string = "Principal Component Analysis" 
-// ): string => {
-//   let bFootnote = "b. Residuals are computed between observed and reproduced correlations.";
-  
-//   if (residualCount !== undefined && residualPct !== undefined) {
-//     // SPSS menggunakan presisi 1 desimal untuk persentase (contoh: 13.0%)
-//     const pctFormatted = residualPct.toFixed(1);
-//     bFootnote += ` There are ${residualCount} (${pctFormatted}%) nonredundant residuals with absolute values greater than 0.05.`;
-//   }
-
-//   // Menggabungkan metode ekstraksi dan footnote (a dan b).
-//   // Menggunakan \n agar fungsi mergeNoteAndDescription Anda otomatis mengubahnya menjadi <br>
-//   return `Extraction Method: ${extractionMethod}.<br>a. Reproduced communalities.<br>${bFootnote}`;
-// };
-
 
 export const generateReproducedRefinedDescription = (
   residualCount?: number,
@@ -598,7 +528,7 @@ export const generateReproducedRefinedDescription = (
     return `Extraction Method: ${extractionMethod}.<br>a. Reproduced communalities.<br>b. Residual values reflect the differences between the observed and the reproduced covariances.`;
   }
 
-  // Format vertikal baku SPSS untuk Correlation (Tetap dipertahankan)
+  // Format vertikal 
   let bFootnote = "b. Residuals are computed between observed and reproduced correlations.";
   
   if (residualCount !== undefined && residualPct !== undefined) {
@@ -609,18 +539,9 @@ export const generateReproducedRefinedDescription = (
   return `Extraction Method: ${extractionMethod}.<br>a. Reproduced communalities<br>${bFootnote}`;
 };
 
-/**
- * Menghasilkan deskripsi untuk Component Transformation Matrix
- * Penjelasan tentang rotasi yang diterapkan
- */
-// export const generateComponentTransformationDescription = (
-//   rotationMethod: string = "Varimax"
-// ): string => {
-//   return `The component transformation matrix displays the specific mathematical rotation applied to the unrotated component matrix to achieve the final ${rotationMethod} solution. A symmetrical matrix typically indicates an orthogonal rotation, showing the correlations between the unrotated and rotated factors.`;
-// };
 
 /**
- * Menghasilkan deskripsi SPSS-style untuk Component Transformation Matrix
+ * Menghasilkan deskripsi untuk Component Transformation Matrix
  */
 export const generateComponentTransformationDescription = (
   extractionMethod: string,
@@ -634,7 +555,7 @@ export const generateComponentTransformationDescription = (
 };
 
 /**
- * Menghasilkan deskripsi SPSS-style untuk Component Score Coefficient / Covariance Matrix
+ * Menghasilkan deskripsi untuk Component Score Coefficient / Covariance Matrix
  */
 export const generateScoreMatrixDescription = (
   extractionMethod: string,

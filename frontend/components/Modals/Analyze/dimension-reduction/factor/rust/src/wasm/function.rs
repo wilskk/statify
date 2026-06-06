@@ -9,11 +9,6 @@ use crate::models::{
     data::AnalysisData,
     result::{FactorAnalysisResult, AnalysisStatus},
 };
-// use crate::models::{
-//     config::FactorAnalysisConfig,
-//     data::AnalysisData,
-//     result::{AnalysisStatus, FactorAnalysisResult},
-// };
 use crate::stats::core;
 use crate::utils::converter::format_result;
 use crate::utils::{ converter::string_to_js_error, error::ErrorCollector };
@@ -320,24 +315,7 @@ pub fn run_analysis(
         }
     }
 
-    // // Step 11: Calculate Rotated Component Matrix if not using 'None' rotation method
-    // let mut rotated_component_matrix = None;
-    // if can_rotate {
-    //     executed_functions.push("calculate_rotated_component_matrix".to_string());
-    //     match core::calculate_rotated_component_matrix(&filtered_data, config) {
-    //         Ok(matrix) => {
-    //             rotated_component_matrix = Some(matrix);
-    //         }
-    //         Err(e) => {
-    //             error_collector.add_error("calculate_rotated_component_matrix", &e);
-    //             // Continue execution despite errors for non-critical functions
-    //         }
-    //     }
-    // }
-
-
-
-
+  
     // Step 11: Calculate Rotated Component Matrix if not using 'None' rotation method
     let mut rotated_component_matrix = None;
     if can_rotate {
@@ -355,10 +333,6 @@ pub fn run_analysis(
         }
     }
 
-
-
-
-
     // Step 12: Calculate Component Transformation Matrix if rotation is performed
     let mut component_transformation_matrix = None;
     if can_rotate {
@@ -374,23 +348,6 @@ pub fn run_analysis(
         }
     }
 
-    // // Step 12a: Calculate Pattern Matrix if oblique rotation is performed
-    // let mut pattern_matrix = None;
-    // if can_rotate && (config.rotation.oblimin || config.rotation.promax) {
-    //     executed_functions.push("calculate_pattern_matrix".to_string());
-    //     match core::calculate_pattern_matrix(&filtered_data, config) {
-    //         Ok(matrix) => {
-    //             pattern_matrix = Some(matrix);
-    //         }
-    //         Err(e) => {
-    //             error_collector.add_error("calculate_pattern_matrix", &e);
-    //             // Continue execution despite errors for non-critical functions
-    //         }
-    //     }
-    // }
-
-
-
     // Step 12a: Calculate Pattern Matrix if oblique rotation is performed
     let mut pattern_matrix = None;
     if can_rotate && (config.rotation.oblimin || config.rotation.promax) {
@@ -398,7 +355,7 @@ pub fn run_analysis(
         match core::calculate_pattern_matrix(&filtered_data, config) {
             Ok(matrix) => {
                 if !matrix.is_converged {
-                    is_rotation_converged = false; // --- UPDATE STATUS KONVERGENSI ---
+                    is_rotation_converged = false; //  UPDATE STATUS KONVERGENSI 
                 }
                 pattern_matrix = Some(matrix);
             }
@@ -409,26 +366,6 @@ pub fn run_analysis(
     }
 
 
-
-
-
-    // // Step 12b: Calculate Structure Matrix if oblique rotation is performed
-    // let mut structure_matrix = None;
-    // if can_rotate && (config.rotation.oblimin || config.rotation.promax) {
-    //     executed_functions.push("calculate_structure_matrix".to_string());
-    //     match core::calculate_structure_matrix(&filtered_data, config) {
-    //         Ok(matrix) => {
-    //             structure_matrix = Some(matrix);
-    //         }
-    //         Err(e) => {
-    //             error_collector.add_error("calculate_structure_matrix", &e);
-    //             // Continue execution despite errors for non-critical functions
-    //         }
-    //     }
-    // }
-
-
-
     // Step 12b: Calculate Structure Matrix if oblique rotation is performed
     let mut structure_matrix = None;
     if can_rotate && (config.rotation.oblimin || config.rotation.promax) {
@@ -436,7 +373,7 @@ pub fn run_analysis(
         match core::calculate_structure_matrix(&filtered_data, config) {
             Ok(matrix) => {
                 if !matrix.is_converged {
-                    is_rotation_converged = false; // --- UPDATE STATUS KONVERGENSI ---
+                    is_rotation_converged = false; //  UPDATE STATUS KONVERGENSI 
                 }
                 structure_matrix = Some(matrix);
             }
@@ -445,10 +382,6 @@ pub fn run_analysis(
             }
         }
     }
-
-
-
-
 
     // Step 12c: Calculate Component Correlation Matrix if oblique rotation is performed
     let mut component_correlation_matrix = None;
@@ -465,65 +398,10 @@ pub fn run_analysis(
         }
     }
 
-    // let analysis_status = Some(AnalysisStatus {
-    //     is_converged,
-    //     extracted_factors,
-    //     terminated_early: !is_converged,
-    //     termination_reason: if is_converged {
-    //         None
-    //     } else {
-    //         Some("Extraction terminated before convergence or retained no factors.".to_string())
-    //     },
-    //     has_heywood_case,
-    // });
-
-
-    // --- TAMBAHKAN BLOK INI SEBELUM MEMBUAT analysis_status ---
-    // Ekstrak status langsung dari core engine untuk mendapatkan 7 state asli
-    // let mut actual_status = String::from("Success");
-    // let mut warning_msg = None;
-    
-    // // if let (Ok((data_matrix, var_names)), Ok(matrix_type)) = (
-    // //     core::extract_data_matrix(&filtered_data, config),
-    // //     Ok(if config.extraction.covariance { "covariance" } else { "correlation" })
-    // // ) {
-    // //     if let Ok(base_matrix) = core::calculate_matrix(&data_matrix, matrix_type) {
-    // //         if let Ok(ext_result) = core::extract_factors(&base_matrix, config, &var_names) {
-    // //             actual_status = format!("{:?}", ext_result.extraction_status); // Mengambil nama enum
-    // //             warning_msg = ext_result.warning_message;
-    // //         }
-    // //     }
-    // // }
-    
-
-
-    // if let Ok((data_matrix, var_names)) = core::extract_data_matrix(&filtered_data, config) {
-    //     let matrix_type = if config.extraction.covariance { "covariance" } else { "correlation" };
-        
-    //     if let Ok(base_matrix) = core::calculate_matrix(&data_matrix, matrix_type) {
-    //         if let Ok(ext_result) = core::extract_factors(&base_matrix, config, &var_names) {
-    //             actual_status = format!("{:?}", ext_result.extraction_status); // Mengambil nama enum
-    //             warning_msg = ext_result.warning_message;
-    //         }
-    //     }
-    // }
-
-
-    // let analysis_status = Some(AnalysisStatus {
-    //     is_converged,
-    //     extracted_factors,
-    //     terminated_early: !is_converged,
-    //     termination_reason: warning_msg, // Sekarang menggunakan pesan peringatan asli dari engine
-    //     has_heywood_case,
-    //     extraction_status: Some(actual_status), // Mengirimkan state ke frontend
-    // });
-
-
-
-    // --- EVALUASI DIAGNOSTIC ENGINE SEBELUM MEMBUAT STATUS ---
+    //  EVALUASI DIAGNOSTIC ENGINE SEBELUM MEMBUAT STATUS  
     let mut actual_status = String::from("Success");
     let mut warning_msg = None;
-    let mut is_converged = true; // Tambahkan penampung ini
+    let mut is_converged = true; 
     let mut has_heywood_case = false;
 
     if let Ok((data_matrix, var_names)) = core::extract_data_matrix(&filtered_data, config) {
@@ -560,9 +438,6 @@ pub fn run_analysis(
         extraction_status: Some(actual_status),
         data_quality_warnings: if data_quality_warnings.is_empty() { None } else { Some(data_quality_warnings) },
     });
-
-
-
 
     let goodness_of_fit_test = if is_converged {
         if matches!(
@@ -646,7 +521,6 @@ pub fn run_analysis(
             }
         }
     }
-
 
     let mut result = FactorAnalysisResult {
     descriptive_statistics,

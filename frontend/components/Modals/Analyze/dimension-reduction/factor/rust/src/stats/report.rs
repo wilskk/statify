@@ -58,8 +58,6 @@ pub fn calculate_communalities(
     // 2. Hitung Varians Murni (Raw Variances)
     let raw_variances = calculate_raw_variances(&data_matrix)?; 
 
-
-    // --- LOGIKA SUPPRESS (SPSS BEHAVIOR - DRIVEN BY DIAGNOSTIC ENGINE) ---
     // Sekarang report.rs murni mengikuti status dari 7 internal state, tanpa menebak manual.
     let suppress_extraction = matches!(
         extraction_result.extraction_status,
@@ -80,7 +78,6 @@ pub fn calculate_communalities(
     // Ini memastikan footnote tetap muncul di tabel Communalities meskipun ekstraksi dihentikan (NoLocalMinimum).
     let heywood_warning_flag = extraction_result.has_heywood_case;
 
-    // --- PERSIAPAN DATA INITIAL ---
     // Hitung SMC untuk Initial Value
     let corr_matrix = calculate_matrix(&data_matrix, "correlation")?;
     let smc_values: Vec<f64> = match corr_matrix.try_inverse() {
@@ -102,7 +99,7 @@ pub fn calculate_communalities(
 
     for (i, var_name) in var_names.iter().enumerate() {
         
-        // --- LOGIKA INITIAL VALUES ---
+        //  LOGIKA INITIAL VALUES 
         match config.extraction.method {
             ExtractionMethod::PrincipalComponents => {
                 rescaled_initial.insert(var_name.clone(), 1.0);
@@ -125,7 +122,7 @@ pub fn calculate_communalities(
             }
         }
 
-        // --- PENGISIAN EXTRACTION VALUES ---
+        //  PENGISIAN EXTRACTION VALUES 
         // Hanya isi jika suppress == false
         if !suppress_extraction {
             if i < extraction_result.communalities.len() {
@@ -212,7 +209,7 @@ pub fn calculate_total_variance_explained(
             } else {
                 let ext = create_components(extraction_eigenvalues, total_variance);
                 
-                // LOGIKA BARU: Pastikan n_factors > 1 agar rotasi tidak None
+                //  Pastikan n_factors > 1 agar rotasi tidak None
                 let rot = if n_factors > 1 {
                     rotation_eigenvalues.map(|values| create_components(values, total_variance))
                 } else {
@@ -244,14 +241,14 @@ pub fn calculate_total_variance_explained(
                 create_components(extraction_eigenvalues, total_variance)
             };
 
-            // LOGIKA BARU: Tambahkan kondisi n_factors <= 1
+            //  Tambahkan kondisi n_factors <= 1
             let raw_rotation = if suppress_extraction || rotation_eigenvalues.is_none() || n_factors <= 1 {
                 None
             } else {
                 Some(create_components(rotation_eigenvalues.unwrap(), total_variance))
             };
 
-            // SPSS logic: Initial selalu sama antara raw dan rescaled di Covariance
+            //  Initial selalu sama antara raw dan rescaled di Covariance
             let rescaled_initial = raw_initial.clone(); 
 
             // LOGIKA RESCALED: Total varians adalah p (jumlah variabel), bukan total raw varians
@@ -263,7 +260,7 @@ pub fn calculate_total_variance_explained(
                 create_components(rescaled_extraction_eigenvalues.unwrap(), p_variance)
             };
 
-            // LOGIKA BARU: Tambahkan kondisi n_factors <= 1
+            // Tambahkan kondisi n_factors <= 1
             let rescaled_rotation = if suppress_extraction || rescaled_rotation_eigenvalues.is_none() || n_factors <= 1 {
                 None
             } else {
@@ -344,7 +341,7 @@ pub fn calculate_total_variance_explained_from_data(
 
     let extraction_result = extraction_result.expect("extraction_result must exist");
 
-    // LOGIKA PERBAIKAN: Langsung adopsi status dari ExtractionResult (Diagnostic Engine)
+    // Langsung adopsi status dari ExtractionResult (Diagnostic Engine)
     let suppress_extraction = matches!(
         extraction_result.extraction_status,
         ExtractionStatus::NonConvergence |
@@ -374,45 +371,6 @@ pub fn calculate_total_variance_explained_from_data(
         }
         rescaled_ext_evals = Some(evals);
     }
-
-    // // STEP D: ROTATION EIGENVALUES (Disesuaikan agar sekaligus hitung Raw & Rescaled)
-    // let mut raw_rot_evals = None;
-    // let mut rescaled_rot_evals = None;
-
-    // if !suppress_extraction && !config.rotation.none && config.rotation.rotated_sol {
-    //     if let Ok(rot_res) = rotate_factors(&extraction_result, config) {
-    //         let rotated_loadings = &rot_res.rotated_loadings;
-    //         let n_cols = rotated_loadings.ncols();
-
-    //         let mut raw_ssl_list = Vec::with_capacity(n_cols);
-    //         let mut rescaled_ssl_list = Vec::with_capacity(n_cols);
-
-    //         for j in 0..n_cols {
-    //             let mut raw_ssl = 0.0;
-    //             let mut rescaled_ssl = 0.0;
-    //             for i in 0..n_variables {
-    //                 let l = rotated_loadings[(i, j)];
-    //                 raw_ssl += l.powi(2);
-                    
-    //                 if is_covariance && raw_variances[i] > 0.0 {
-    //                     rescaled_ssl += (l / raw_variances[i].sqrt()).powi(2);
-    //                 }
-    //             }
-    //             raw_ssl_list.push(raw_ssl);
-    //             if is_covariance {
-    //                 rescaled_ssl_list.push(rescaled_ssl);
-    //             }
-    //         }
-            
-    //         raw_ssl_list.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
-    //         raw_rot_evals = Some(raw_ssl_list);
-
-    //         if is_covariance {
-    //             rescaled_ssl_list.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
-    //             rescaled_rot_evals = Some(rescaled_ssl_list);
-    //         }
-    //     }
-    // }
 
     // STEP D: ROTATION EIGENVALUES (Disesuaikan agar sekaligus hitung Raw & Rescaled)
     let mut raw_rot_evals = None;
@@ -453,8 +411,7 @@ pub fn calculate_total_variance_explained_from_data(
                         rescaled_ssl_list.push(rescaled_ssl);
                     }
                 }
-                
-                // PERBAIKAN 2: Hapus sorting (.sort_by) karena SPSS mempertahankan 
+              
                 // urutan komponen aslinya pada blok Rotation Sums of Squared Loadings.
                 raw_rot_evals = Some(raw_ssl_list);
 
@@ -482,52 +439,6 @@ pub fn calculate_total_variance_explained_from_data(
 // // 3. FUNGSI LAINNYA (Original Code - Tidak Ada Perubahan)
 // // =========================================================================
 
-// pub fn calculate_component_matrix(
-//     data: &AnalysisData,
-//     config: &FactorAnalysisConfig
-// ) -> Result<ComponentMatrix, String> {
-
-//     let (data_matrix, var_names) = extract_data_matrix(data, config)?;
-
-//     let matrix_type = if config.extraction.covariance {
-//         "covariance"
-//     } else {
-//         "correlation"
-//     };
-
-//     let matrix = calculate_matrix(&data_matrix, matrix_type)?;
-//     let extraction_result = extract_factors(&matrix, config, &var_names)?;
-
-//     let mut loadings = extraction_result.loadings.clone();
-//     let (n_rows, n_cols) = loadings.shape();
-
-//     for col in 0..n_cols {
-//         let mut sum_cubes = 0.0;
-//         for row in 0..n_rows {
-//             sum_cubes += loadings[(row, col)].powi(3);
-//         }
-//         if sum_cubes < 0.0 {
-//             for row in 0..n_rows {
-//                 loadings[(row, col)] *= -1.0;
-//             }
-//         }
-//     }
-
-//     let mut components = HashMap::new();
-//     for (i, var_name) in var_names.iter().enumerate() {
-//         let mut row = Vec::with_capacity(n_cols);
-//         for j in 0..n_cols {
-//             row.push(loadings[(i, j)]);
-//         }
-//         components.insert(var_name.clone(), row);
-//     }
-
-//     Ok(ComponentMatrix {
-//         components,
-//         variable_order: var_names,
-//     })
-// }
-
 pub fn calculate_component_matrix(
     data: &AnalysisData,
     config: &FactorAnalysisConfig
@@ -548,15 +459,15 @@ pub fn calculate_component_matrix(
     let (n_rows, n_cols) = loadings.shape();
 
     // =========================================================
-    // PERBAIKAN: SPSS Sign Reflection untuk Unrotated Matrix
-    // SPSS menggunakan jumlah absolut kolom, bukan sum of cubes
+    // PERBAIKAN:  Sign Reflection untuk Unrotated Matrix
+    // menggunakan jumlah absolut kolom, bukan sum of cubes
     // =========================================================
     for col in 0..n_cols {
         let mut col_sum = 0.0;
         for row in 0..n_rows {
             col_sum += loadings[(row, col)];
         }
-        
+         
         // Jika total penjumlahan kolom negatif, balik seluruh tandanya
         if col_sum < 0.0 {
             for row in 0..n_rows {
@@ -715,12 +626,8 @@ pub fn calculate_reproduced_covariances(
 }
 
 
-
-
-
-
 // =========================================================================
-// 2b. Goodness-of-fit Test (GLS) - Dikembalikan ke Algoritma Asli Anda (SPSS Standard)
+// 2b. Goodness-of-fit Test (GLS) 
 // =========================================================================
 pub fn calculate_goodness_of_fit_test(
     data: &AnalysisData,
@@ -748,7 +655,7 @@ pub fn calculate_goodness_of_fit_test(
     let loadings = &extraction_result.loadings;
     let mut sigma = loadings * loadings.transpose();
 
-    // LOGIKA ASLI: Diagonal matriks model Sigma adalah (L * L^T) + Uniqueness
+    // Diagonal matriks model Sigma adalah (L * L^T) + Uniqueness
     for i in 0..p {
         let variance = if config.extraction.covariance {
             s_matrix[(i, i)]
@@ -772,13 +679,6 @@ pub fn calculate_goodness_of_fit_test(
     let a_matrix = residual * s_inv;
     let a_squared = &a_matrix * &a_matrix;
 
-    // let mut trace_val = 0.0;
-    // for i in 0..p {
-    //     trace_val += a_squared[(i, i)];
-    // }
-
-    // let f_gls = 0.5 * trace_val;
-
     let mut trace_val = 0.0;
     for i in 0..p {
         trace_val += a_squared[(i, i)];
@@ -786,7 +686,7 @@ pub fn calculate_goodness_of_fit_test(
 
     let f_gls = 0.5 * trace_val;
 
-    // --- PERBAIKAN: SPSS menggunakan Koreksi Bartlett untuk uji Goodness-of-Fit pada GLS ---
+    // menggunakan Koreksi Bartlett untuk uji Goodness-of-Fit pada GLS 
     // Rumus Multiplier = N - 1 - (2p + 5)/6 - 2k/3
     let p_f64 = p as f64;
     let k_f64 = k as f64;
@@ -911,141 +811,6 @@ pub fn compute_pseudoinverse(matrix: &DMatrix<f64>) -> Result<DMatrix<f64>, Stri
     Ok(v_t.transpose() * s_inv * u.transpose())
 }
 
-
-
-
-
-
-
-
-// // =========================================================================
-// // FUNGSI 1: Calculate Component Score Coefficient Matrix
-// // =========================================================================
-// pub fn calculate_component_score_coefficient_matrix(
-//     data: &AnalysisData,
-//     config: &FactorAnalysisConfig
-// ) -> Result<ComponentScoreCoefficientMatrix, String> {
-//     let (data_matrix, var_names) = extract_data_matrix(data, config)?;
-//     let matrix_type = if config.extraction.covariance { "covariance" } else { "correlation" };
-//     let base_matrix = calculate_matrix(&data_matrix, matrix_type)?;
-//     let extraction_result = extract_factors(&base_matrix, config, &var_names)?;
-//     let rotation_result = rotate_factors(&extraction_result, config)?;
-    
-//     let is_pca = matches!(config.extraction.method, ExtractionMethod::PrincipalComponents);
-
-//     let n_rows = extraction_result.loadings.nrows();
-//     let n_cols = extraction_result.loadings.ncols();
-//     let mut coefficients = DMatrix::zeros(n_rows, n_cols);
-
-//     // AMBIL RAW VARIANCES: Mutlak diperlukan untuk Rescaling pada mode Covariance
-//     let raw_variances = calculate_raw_variances(&data_matrix)?;
-
-//     if is_pca {
-//         // EXACT SPSS ALGORITHM FOR PCA: W = A * D^(-1) * (T^T)^(-1)
-//         let t_mat = &rotation_result.transformation_matrix;
-        
-//         // Proteksi inversi T yang lebih aman
-//         let t_inv_t = if config.rotation.none || !rotation_result.is_converged {
-//             DMatrix::identity(n_cols, n_cols)
-//         } else {
-//             t_mat.clone().try_inverse()
-//                 .unwrap_or_else(|| DMatrix::identity(n_cols, n_cols))
-//                 .transpose()
-//         };
-        
-//         for i in 0..n_rows {
-//             // CRITICAL: Ekstraksi Covariance memerlukan pengali Standar Deviasi
-//             let std_dev = if config.extraction.covariance && raw_variances[i] > 0.0 {
-//                 raw_variances[i].sqrt()
-//             } else {
-//                 1.0
-//             };
-
-//             for j in 0..n_cols {
-//                 let mut sum = 0.0;
-//                 for k in 0..n_cols {
-//                     let a_ik = extraction_result.loadings[(i, k)];
-//                     let d_k = extraction_result.eigenvalues[k];
-                    
-//                     // Proteksi division by zero presisi tinggi
-//                     let ad_ik = if d_k.abs() > 1e-12 { a_ik / d_k } else { 0.0 };
-//                     sum += ad_ik * t_inv_t[(k, j)];
-//                 }
-//                 // Kalikan dengan std_dev mereplikasi "standardized score coefficients" SPSS
-//                 coefficients[(i, j)] = sum * std_dev;
-//             }
-//         }
-//     } else {
-//         // REGRESSION METHOD FOR NON-PCA (PAF, ML, GLS)
-//         let r_matrix = calculate_matrix(&data_matrix, "correlation")?;
-//         let mut pattern_matrix = rotation_result.rotated_loadings.clone();
-        
-//         // CRITICAL: SPSS internal selalu menggunakan "Rescaled Pattern Matrix" untuk kalkulasi skor jika metode Covariance
-//         if config.extraction.covariance {
-//             for i in 0..n_rows {
-//                 let std_dev = if raw_variances[i] > 0.0 { raw_variances[i].sqrt() } else { 1.0 };
-//                 for j in 0..n_cols {
-//                     pattern_matrix[(i, j)] /= std_dev; 
-//                 }
-//             }
-//         }
-
-//         // Gunakan pseudoinverse sebagai fallback jika korelasi tidak bisa di-invers
-//         let r_inverse = match r_matrix.clone().try_inverse() {
-//             Some(inv) => inv,
-//             None => compute_pseudoinverse(&r_matrix).unwrap_or_else(|_| DMatrix::zeros(n_rows, n_rows))
-//         };
-        
-//         let structure_matrix = if let Some(phi) = &rotation_result.factor_correlations {
-//             &pattern_matrix * phi
-//         } else {
-//             pattern_matrix.clone()
-//         };
-        
-//         if config.scores.regression {
-//             coefficients = &r_inverse * &structure_matrix;
-//         } else if config.scores.bartlett {
-//             let mut u_inv_squared = DMatrix::zeros(n_rows, n_rows);
-//             for i in 0..n_rows {
-//                 let u2 = (1.0 - extraction_result.communalities[i]).max(1e-9);
-//                 u_inv_squared[(i, i)] = 1.0 / u2;
-//             }
-//             let p = &pattern_matrix;
-//             let term_inner = p.transpose() * &u_inv_squared * p;
-//             let term_inner_inv = term_inner.try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
-//             coefficients = &u_inv_squared * p * term_inner_inv;
-//         } else if config.scores.anderson {
-//             let b = &r_inverse * &structure_matrix;
-//             let g_matrix = b.transpose() * &r_matrix * &b;
-//             if let Some(g_sqrt) = symmetric_matrix_sqrt_robust(&g_matrix) {
-//                 let g_sqrt_inv = g_sqrt.try_inverse().unwrap_or_else(|| DMatrix::identity(n_cols, n_cols));
-//                 coefficients = b * g_sqrt_inv;
-//             } else {
-//                 coefficients = b;
-//             }
-//         }
-//     }
-
-//     let mut result = ComponentScoreCoefficientMatrix {
-//         components: std::collections::HashMap::new(),
-//         variable_order: var_names.clone(),
-//     };
-//     for (i, var_name) in var_names.iter().enumerate() {
-//         if i < coefficients.nrows() {
-//             let mut row = Vec::with_capacity(n_cols);
-//             for j in 0..n_cols {
-//                 row.push(coefficients[(i, j)]);
-//             }
-//             result.components.insert(var_name.clone(), row);
-//         }
-//     }
-//     Ok(result)
-// }
-
-
-
-
-
 // =========================================================================
 // FUNGSI 1: Calculate Component Score Coefficient Matrix
 // =========================================================================
@@ -1099,7 +864,7 @@ pub fn calculate_component_score_coefficient_matrix(
                     let ad_ik = if d_k.abs() > 1e-12 { a_ik / d_k } else { 0.0 };
                     sum += ad_ik * t_inv_t[(k, j)];
                 }
-                // Kalikan dengan std_dev mereplikasi "standardized score coefficients" SPSS
+                // Kalikan dengan std_dev mereplikasi "standardized score coefficients"
                 coefficients[(i, j)] = sum * std_dev;
             }
         }
@@ -1252,7 +1017,7 @@ pub fn calculate_component_score_covariance_matrix(
 
         let corr_matrix = calculate_matrix(&data_matrix, "correlation")?;
         
-        // --- ALGORITMA GAUSS-JORDAN SWEEP (SPSS BUG REPLICATION) ---
+        //  ALGORITMA GAUSS-JORDAN SWEEP 
         let n = corr_matrix.nrows();
         let mut a = corr_matrix.clone();
         let tol = 1e-4; // Batas toleransi IBM SPSS
@@ -1260,7 +1025,7 @@ pub fn calculate_component_score_covariance_matrix(
         for k in 0..n {
             let pivot = a[(k, k)];
             
-            // JIKA PIVOT SINGULAR (< 1e-4), SPSS MELEWATI VARIABEL INI!
+            // JIKA PIVOT SINGULAR (< 1e-4), dilewati  
             // Baris dan kolom matriks TIDAK dinolkan, meninggalkan sampah komputasi (garbage memory)
             if pivot.abs() >= tol {
                 // 1. Bagi baris k dengan pivot
@@ -1306,11 +1071,6 @@ pub fn calculate_component_score_covariance_matrix(
         })
     }
 }
-
-
-
-
-
 
 pub fn calculate_factor_scores(
     data: &AnalysisData,
@@ -1486,7 +1246,7 @@ pub fn create_component_correlation_matrix(
     ComponentCorrelationMatrix { correlations }
 }
 
-
+// ini cuma kode test aja
 #[cfg(test)]
 mod tests {
     use super::calculate_total_variance_explained;
@@ -1505,8 +1265,8 @@ mod tests {
             8,
             "correlation",
             false,
-            None, // UPDATE Parameter
-            None, // UPDATE Parameter
+            None, 
+            None, 
         );
 
         let block = &result.blocks[0];
@@ -1533,8 +1293,8 @@ mod tests {
             8,
             "correlation",
             false,
-            None, // UPDATE Parameter
-            None, // UPDATE Parameter
+            None,
+            None, 
         );
 
         assert!(result.blocks[0].rotation.is_none());

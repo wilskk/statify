@@ -7,27 +7,6 @@ use crate::models::{
 
 use crate::stats::extraction_rules::*;
 
-// Extract factors using specified method
-// pub fn extract_factors(
-//     matrix: &DMatrix<f64>,
-//     config: &FactorAnalysisConfig,
-//     var_names: &[String]
-// ) -> Result<ExtractionResult, String> {
-//     match config.extraction.method {
-//         ExtractionMethod::PrincipalComponents =>
-//             extract_principal_components(matrix, config, var_names),
-//         ExtractionMethod::UnweightedLeastSquares =>
-//             extract_unweighted_least_squares(matrix, config, var_names),
-//         ExtractionMethod::GeneralizedLeastSquares =>
-//             extract_generalized_least_squares(matrix, config, var_names),
-//         ExtractionMethod::MaximumLikelihood =>
-//             extract_maximum_likelihood(matrix, config, var_names),
-//         ExtractionMethod::PrincipalAxisFactoring =>
-//             extract_principal_axis_factoring(matrix, config, var_names),
-//         ExtractionMethod::AlphaFactoring => extract_alpha_factoring(matrix, config, var_names),
-//         ExtractionMethod::ImageFactoring => extract_image_factoring(matrix, config, var_names),
-//     }
-// }
 
 pub fn extract_factors(
     matrix: &DMatrix<f64>,
@@ -83,12 +62,12 @@ fn build_extraction_result(
         n_factors,
         var_names: var_names.to_vec(),
         has_heywood_case,
-        status: ExtractionStatus::Success, // Sesuai dengan definisi struct Anda
+        status: ExtractionStatus::Success, // Sesuai dengan definisi struct 
         extraction_status: ExtractionStatus::Success,
         warning_message: None,
     };
 
-    // Evaluasi 7 State Internal SPSS
+    // Evaluasi 7 State Internal   
     assign_extraction_status(
         &mut result,
         singular_matrix,
@@ -115,7 +94,7 @@ pub fn standardize_component_signs(loadings: &mut DMatrix<f64>) {
             }
         }
 
-        // SPSS Heuristic: Jika elemen absolut terbesar bernilai negatif,
+        //  Jika elemen absolut terbesar bernilai negatif,
         // balik (flip) tanda seluruh baris di kolom tersebut.
         if max_raw_val < 0.0 {
             let mut column = loadings.column_mut(col);
@@ -1132,7 +1111,7 @@ pub fn extract_maximum_likelihood(
         cumulative_variance[i] = cum_sum;
     }
 
-    // Ini adalah kunci agar diagnostic engine membaca improper_solution
+    // kunci agar diagnostic engine membaca improper_solution
     let improper_solution = communalities.iter().any(|&x| x.is_nan()) || extracted_eigenvalues.iter().any(|&x| x.is_nan());
 
     Ok(build_extraction_result(

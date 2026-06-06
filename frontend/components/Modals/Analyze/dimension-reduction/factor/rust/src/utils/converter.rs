@@ -91,7 +91,7 @@ struct CorrelationEntry {
 #[derive(Serialize)]
 struct VariableValue {
     variable: String,
-    value: serde_json::Value,  // Can be number or string ("." for diagonal sig values)
+    value: serde_json::Value,  
 }
 
 #[derive(Serialize)]
@@ -119,10 +119,10 @@ struct FormattedAntiImage {
 
 #[derive(Serialize)]
 struct FormattedKMOBartlettsTest {
-    kaiser_meyer_olkin: String,      // Formatted with 3 decimals, leading dot if < 1
-    bartletts_test_chi_square: String, // Formatted with 3 decimals
+    kaiser_meyer_olkin: String,       
+    bartletts_test_chi_square: String,
     df: usize,
-    significance: String,             // "<.001" if very small, else with 3 decimals
+    significance: String,        
 }
 
 #[derive(Serialize)]
@@ -215,7 +215,7 @@ struct FormattedComponentScoreCoefficient {
     components: Vec<ComponentEntry>,
 }
 
-// STRUCT BARU UNTUK FORMAT SKOR
+// STRUCT UNTUK FORMAT SKOR
 #[derive(Serialize)]
 struct ScoreColumn {
     variable_name: String, // misal: "FAC1_1"
@@ -313,7 +313,7 @@ impl FormatResult {
                                 matrix.variable_order
                                     .iter()
                                     .map(|other_var| {
-                                        // For diagonal elements (i == j), show empty (null) like SPSS does
+                                        // For diagonal elements (i == j), show empty (null) 
                                         let sig_value = if var_name == other_var {
                                             json!(null)
                                         } else {
@@ -516,7 +516,6 @@ impl FormatResult {
                 })
                 .collect();
 
-            // --- PERBAIKAN DI SINI ---
             // Jika comm.extraction kosong (karena suppress di report.rs atau Unrotated = false),
             // JANGAN lakukan mapping dengan unwrap_or(&0.0). Kembalikan Vec kosong.
             let extraction: Vec<VariableValue> = if comm.extraction.is_empty() {
@@ -625,7 +624,7 @@ impl FormatResult {
                             corr.variable_order
                                 .iter()
                                 .map(|other_var| {
-                                    // For diagonal elements (i == j), show empty (null) like SPSS does
+                                    // For diagonal elements (i == j), show empty (null)
                                     let residual_value = if var_name == other_var {
                                         json!(null)
                                     } else {
@@ -689,7 +688,7 @@ impl FormatResult {
                             cov.variable_order
                                 .iter()
                                 .map(|other_var| {
-                                    // For diagonal elements (i == j), show empty (null) like SPSS does
+                                    // For diagonal elements (i == j), show empty (null)
                                     let residual_value = if var_name == other_var {
                                         json!(null)
                                     } else {

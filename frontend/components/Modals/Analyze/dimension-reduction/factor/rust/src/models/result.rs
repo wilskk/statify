@@ -133,7 +133,7 @@ pub struct AnalysisStatus {
     pub has_heywood_case: bool,
     #[serde(rename = "extraction_status")]
     pub extraction_status: Option<String>,
-    // PERBAIKAN: Data quality warnings untuk near-constant atau extreme variance variables
+    //  Data quality warnings untuk near-constant atau extreme variance variables
     #[serde(rename = "data_quality_warnings")]
     pub data_quality_warnings: Option<Vec<String>>,
 }
@@ -276,7 +276,6 @@ pub struct ExtractionResult {
     pub var_names: Vec<String>,
     // pub has_heywood_case: bool,
     pub status: ExtractionStatus,
-    // SPSS diagnostics
     pub has_heywood_case: bool,
     pub extraction_status: ExtractionStatus,
     pub warning_message: Option<String>,
@@ -286,7 +285,6 @@ pub struct RotationResult {
     pub rotated_loadings: DMatrix<f64>,
     pub transformation_matrix: DMatrix<f64>,
     pub factor_correlations: Option<DMatrix<f64>>,
-    // --- TAMBAHAN BARU ---
     pub is_converged: bool,      
     pub iterations_required: u32,
     pub convergence_value: f64,
@@ -341,8 +339,6 @@ pub struct LoadingPoint {
     pub coordinates: Vec<f64>, 
 }
 
-
-
 impl ExtractionResult {
 
     pub fn failed(
@@ -358,7 +354,6 @@ impl ExtractionResult {
             cumulative_variance: vec![],
             n_factors: 0,
             var_names: vec![],
-
             has_heywood_case: false,
             status: status.clone(), 
             extraction_status: status,
