@@ -43,7 +43,7 @@ function formatScoreCoefficientValue(value: number | undefined | null): string {
     if (value === undefined || value === null || isNaN(value)) return ".";
     if (!isFinite(value)) return value > 0 ? "Infinity" : "-Infinity";
 
-    // SPSS membulatkan ke 3 desimal untuk matriks ini.
+    // membulatkan ke 4 desimal untuk matriks ini.
     // Jika nilai absolutnya di bawah 0.0005, kita paksa menjadi 0 mutlak 
     // untuk menghancurkan sisa presisi negatif (mencegah minus nol).
     let normalized = value;
@@ -51,7 +51,7 @@ function formatScoreCoefficientValue(value: number | undefined | null): string {
         normalized = 0;
     }
 
-    // Kunci ketat ke 3 desimal (sehingga 1 menjadi 1.000)
+    // Kunci ketat ke 4 desimal (sehingga 1 menjadi 1.000)
     const fixed = normalized.toFixed(4);
 
     // Hapus angka nol di depan desimal (contoh: "0.453" -> ".453", "0.000" -> ".000")
@@ -68,7 +68,7 @@ function formatScoreCoefficientValue(value: number | undefined | null): string {
     return fixed;
 }
 
-// SPSS-style communalities formatting: 3 decimals and no leading zero for |x| < 1
+//  communalities formatting: 4 decimals and no leading zero for |x| < 1
 function formatCommunalityValue(value: number | undefined | null): string {
     if (value === undefined || value === null || isNaN(value)) return ".";
     if (!isFinite(value)) return value > 0 ? "Infinity" : "-Infinity";
@@ -96,7 +96,7 @@ function formatScoreCovarianceMatrixValue(value: number | undefined | null): str
 
     const fixed = normalized.toFixed(4);
 
-    // SPSS style: no leading zero for values with |x| < 1
+    // style: no leading zero for values with |x| < 1
     if (Math.abs(normalized) < 1) {
         return fixed.replace(/^(-?)0\./, "$1.");
     }
@@ -209,48 +209,19 @@ function calculateDeterminantFromCorrelationMatrix(correlationData: any): number
         return resultJson;
     }
 
-    // const analysisStatus = data.analysis_status
-    //     ? {
-    //           isConverged: Boolean(data.analysis_status.is_converged),
-    //           extractedFactors: Number(data.analysis_status.extracted_factors ?? 0),
-    //           terminatedEarly: Boolean(data.analysis_status.terminated_early),
-    //           terminationReason: data.analysis_status.termination_reason ?? undefined,
-    //           hasHeywoodCase: Boolean(data.analysis_status.has_heywood_case ?? false),
-    //       }
-    //     : undefined;
+    const analysisStatus = data.analysis_status ? {
+        isConverged: Boolean(data.analysis_status.is_converged),
+        extractedFactors: Number(data.analysis_status.extracted_factors ?? 0),
+        terminatedEarly: Boolean(data.analysis_status.terminated_early),
+        terminationReason: data.analysis_status.termination_reason ?? undefined,
+        hasHeywoodCase: Boolean(data.analysis_status.has_heywood_case ?? false),
+    } : undefined;
 
-    // resultJson.analysisStatus = analysisStatus;
+    resultJson.analysisStatus = analysisStatus;
 
-    // const hasSuccessfulExtraction = Boolean(
-    //     analysisStatus?.isConverged && analysisStatus.extractedFactors > 0
-    // );
-
-
-    // GANTI BAGIAN INI:
-// const analysisStatus = data.analysis_status ? { ... } : undefined;
-// resultJson.analysisStatus = analysisStatus;
-// const hasSuccessfulExtraction = Boolean(analysisStatus?.isConverged && analysisStatus.extractedFactors > 0);
-
-// MENJADI SEPERTI INI:
-const analysisStatus = data.analysis_status ? {
-    isConverged: Boolean(data.analysis_status.is_converged),
-    extractedFactors: Number(data.analysis_status.extracted_factors ?? 0),
-    terminatedEarly: Boolean(data.analysis_status.terminated_early),
-    terminationReason: data.analysis_status.termination_reason ?? undefined,
-    hasHeywoodCase: Boolean(data.analysis_status.has_heywood_case ?? false),
-} : undefined;
-
-resultJson.analysisStatus = analysisStatus;
-
-// Deteksi cerdas dari backend: Jika backend meminta suppress, berarti ekstraksi gagal/diterminasi
-const suppressExtraction = data.communalities?.suppress_extraction ?? false;
-const hasSuccessfulExtraction = !suppressExtraction;
-
-
-
-
-
-
+    // Deteksi cerdas dari backend: Jika backend meminta suppress, berarti ekstraksi gagal/diterminasi
+    const suppressExtraction = data.communalities?.suppress_extraction ?? false;
+    const hasSuccessfulExtraction = !suppressExtraction;
     const shouldDisplayScoreMatrices = configData?.scores?.DisplayFactor ?? true;
 
     // 1. Descriptive Statistics
@@ -283,7 +254,7 @@ const hasSuccessfulExtraction = !suppressExtraction;
         resultJson.tables.push(table);
     }
 
-    // 2. Correlation Matrix - SPSS Style with grouped row headers
+    // 2. Correlation Matrix - grouped row headers
     if (data.correlation_matrix) {
         const variables = data.correlation_matrix.correlations.map(
             (entry: any) => entry.variable
@@ -426,20 +397,6 @@ const hasSuccessfulExtraction = !suppressExtraction;
                 table.rows.push(rowData);
             }
         );
-
-        // // Add determinant note with SPSS-style formatting
-        // const determinantValue = data.covariance_matrix.determinant;
-        // const determinantDisplay = determinantValue !== undefined 
-        //     ? (Math.abs(determinantValue) < 0.001 
-        //         ? formatScientificNotationSPSSStyle(determinantValue)
-        //         : formatDisplayNumber(determinantValue))
-        //     : "N/A";
-        
-        // table.rows.push({
-        //     rowHeader: [`a. Determinant = ${determinantDisplay}`],
-        // });
-        
-
         resultJson.tables.push(table);
     }
 
@@ -479,60 +436,6 @@ const hasSuccessfulExtraction = !suppressExtraction;
 
         resultJson.tables.push(table);
     }
-
-    // // 4. KMO and Bartlett's Test
-    // if (data.kmo_bartletts_test) {
-    //     const kmoValue = data.kmo_bartletts_test.kaiser_meyer_olkin || 0;
-    //     const bartlettSig = data.kmo_bartletts_test.significance || 1;
-    //     const bartlettChiSquare = data.kmo_bartletts_test.bartletts_test_chi_square;
-    //     const bartlettDf = data.kmo_bartletts_test.df;
-
-    //     // Generate description menggunakan formatter_utils
-    //     const kmoDescription = generateKMODescription(kmoValue, bartlettSig, bartlettChiSquare, bartlettDf);
-
-    //     const table: Table = {
-    //         key: "kmo_bartletts_test",
-    //         title: "KMO and Bartlett's Test",
-    //         columnHeaders: [
-    //             { header: "", key: "test" },
-    //             { header: "", key: "var" },
-    //             { header: "", key: "value" },
-    //         ],
-    //         rows: [
-    //             {
-    //                 rowHeader: [
-    //                     "Kaiser-Meyer-Olkin Measure of Sampling Adequacy",
-    //                 ],
-    //                 value: formatDisplayNumber(
-    //                     data.kmo_bartletts_test.kaiser_meyer_olkin
-    //                 ),
-    //             },
-    //             {
-    //                 rowHeader: [
-    //                     "Bartlett's Test of Sphericity",
-    //                     "Approx. Chi-Square",
-    //                 ],
-    //                 value: formatDisplayNumber(
-    //                     data.kmo_bartletts_test.bartletts_test_chi_square
-    //                 ),
-    //             },
-    //             {
-    //                 rowHeader: ["", "df"],
-    //                 value: formatDisplayNumber(data.kmo_bartletts_test.df),
-    //             },
-    //             {
-    //                 rowHeader: ["", "Sig."],
-    //                 value: formatDisplayNumber(
-    //                     data.kmo_bartletts_test.significance
-    //                 ),
-    //             },
-    //         ],
-    //         interpretation: kmoDescription, // ← ADD INTERPRETASI
-    //     };
-        
-
-    //     resultJson.tables.push(table);
-    // }
 
     // 4. KMO and Bartlett's Test
     if (data.kmo_bartletts_test) {
@@ -656,12 +559,13 @@ const hasSuccessfulExtraction = !suppressExtraction;
         const hasExtractionData = data.communalities.extraction && data.communalities.extraction.length > 0;
         
         // BACKEND FLAGS - Dari logika backend:
+        // heywood = state internal untuk metode analisis faktor  
         // heywood_warning_flag: true jika ada Heywood Case (communality >= 0.9999)
         // suppress_extraction: true jika ada fatal error (NaN/Infinite atau n_factors == 0)
         const heywoodWarningFlag = data.communalities.heywood_warning_flag ?? false;
         const suppressExtraction = data.communalities.suppress_extraction ?? false;
         
-        // SPSS RULE: Tampilkan kolom Extraction jika:
+        // Tampilkan kolom Extraction jika:
         // 1. Ada data extraction
         // 2. Tidak disuppress oleh backend karena fatal error
         // Catatan: Heywood Case hanya warning, bukan suppress.
@@ -793,475 +697,6 @@ const hasSuccessfulExtraction = !suppressExtraction;
         
         resultJson.tables.push(table);
     }
-
-    //     const methodDisplayNameComm = getExtractionMethodDisplayName(extractionMethod);
-    //     table.rows.push({ rowHeader: [`Extraction Method: ${methodDisplayNameComm}.`] });
-        
-    //     // Generate description untuk Communalities
-    //     const communalitiesData = variables.map((v: string) => ({
-    //         name: v,
-    //         value: extractionMap.get(v) || rescaledExtractionMap.get(v) || 0
-    //     })).filter(c => c.value > 0);
-        
-    //     const commDescription = generateCommunalitiesDescription(communalitiesData, methodDisplayNameComm);
-        
-    //     // HEYWOOD CASE WARNING: Jika ada Heywood Case (communality >= 1.0), tambahkan warning footnote
-    //     // Footnote ini ditampilkan di description/interpretation yang akan ditampilkan oleh UI
-    //     let finalDescription = commDescription;
-    //     if (heywoodWarningFlag) {
-    //         const heywoodWarning = "One or more communality estimates greater than 1 were encountered during iterations. The resulting solution should be interpreted with caution.";
-    //         finalDescription = commDescription + "\n\n" + heywoodWarning;
-    //     }
-        
-    //     table.interpretation = finalDescription;
-        
-    //     resultJson.tables.push(table);
-    // }
-
-    // // ==================================================================================
-    // // 7. TOTAL VARIANCE EXPLAINED (PERBAIKAN UTAMA)
-    // // ==================================================================================
-    // if (data.total_variance_explained) {
-    //     try {
-    //         const renderExtractionDetails = hasSuccessfulExtraction;
-    //         const varianceBlocks = Array.isArray(data.total_variance_explained)
-    //             ? data.total_variance_explained
-    //             : [["Total", data.total_variance_explained]];
-
-    //         const isCovariance = varianceBlocks.some((block: any) => {
-    //             const label = Array.isArray(block) ? block[0] : (block.matrix_type || "");
-    //             return label === "Raw" || label === "Rescaled";
-    //         });
-
-    //         if (isCovariance) {
-    //             const rowLabel = extractionMethod === "PrincipalComp" ? "Component" : "Factor";
-    //             const blockEntries: Array<{ blockLabel: string; blockData: any }> = varianceBlocks.map((block: any) => {
-    //                 const [blockLabel, blockData] = Array.isArray(block)
-    //                     ? block
-    //                     : [block.matrix_type || "Total", block];
-
-    //                 return { blockLabel, blockData };
-    //             });
-
-    //             const hasExtractionColumns = renderExtractionDetails && blockEntries.some(
-    //                 ({ blockData }: { blockData: any }) => blockData?.extraction?.rows?.length > 0
-    //             );
-
-    //             const table: Table = {
-    //                 key: "total_variance_explained",
-    //                 title: "Total Variance Explained",
-    //                 columnHeaders: [
-    //                     { header: "", key: "group_label" }, 
-    //                     { header: rowLabel, key: "component", width: "auto" },
-    //                     {
-    //                         header: "Initial Eigenvaluesᵃ",
-    //                         key: "initial_eigenvalues",
-    //                         children: [
-    //                             { header: "Total", key: "initial_total" },
-    //                             { header: "% of Variance", key: "initial_percent_var" },
-    //                             { header: "Cumulative %", key: "initial_cumulative_percent" },
-    //                         ],
-    //                     },
-    //                 ],
-    //                 rows: [],
-    //             };
-
-    //             if (hasExtractionColumns) {
-    //                 table.columnHeaders.push({
-    //                     header: "Extraction Sums of Squared Loadings",
-    //                     key: "extraction_sums",
-    //                     children: [
-    //                         { header: "Total", key: "extraction_total" },
-    //                         { header: "% of Variance", key: "extraction_percent_var" },
-    //                         { header: "Cumulative %", key: "extraction_cumulative_percent" },
-    //                     ],
-    //                 });
-    //             }
-
-    //             blockEntries.forEach(({ blockLabel, blockData }: { blockLabel: string; blockData: any }) => {
-    //                 if (!blockData?.initial?.rows) return;
-
-    //                 blockData.initial.rows.forEach((rowValues: number[], i: number) => {
-    //                     const rowData: any = {
-    //                         group_label: i === 0 ? blockLabel : "", 
-    //                         rowHeader: [], 
-    //                         component: (i + 1).toString(),
-    //                         initial_total: formatDisplayNumber(rowValues[0]),
-    //                         initial_percent_var: formatDisplayNumber(rowValues[1]),
-    //                         initial_cumulative_percent: formatDisplayNumber(rowValues[2]),
-    //                     };
-
-    //                     const extractionRow = blockData.extraction?.rows?.[i];
-    //                     if (hasExtractionColumns && extractionRow) {
-    //                         rowData.extraction_total = formatDisplayNumber(extractionRow[0]);
-    //                         rowData.extraction_percent_var = formatDisplayNumber(extractionRow[1]);
-    //                         rowData.extraction_cumulative_percent = formatDisplayNumber(extractionRow[2]);
-    //                     }
-
-    //                     table.rows.push(rowData);
-    //                 });
-    //             });
-                
-    //             // Generate description untuk Total Variance Explained
-    //             const firstBlock = blockEntries[0]?.blockData;
-    //             const lastRowValues = firstBlock?.initial?.rows?.[firstBlock?.initial?.rows?.length - 1];
-    //             const cumulativeVarExplained = lastRowValues?.[2] || 0; // cumulative percentage
-    //             const numComponentsExtr = firstBlock?.initial?.rows?.length || 0;
-    //             const methodDisplayNameVar = getExtractionMethodDisplayName(extractionMethod);
-    //             table.interpretation = hasSuccessfulExtraction
-    //                 ? generateTotalVarianceDescription(numComponentsExtr, cumulativeVarExplained / 100, methodDisplayNameVar)
-    //                 : generateExtractionTerminationDescription(
-    //                     analysisStatus?.extractedFactors,
-    //                     analysisStatus?.terminationReason
-    //                 );
-                
-    //             resultJson.tables.push(table);
-
-    //         } else {
-    //             // LOGIKA CORRELATION
-    //             const block = varianceBlocks[0];
-    //             const [blockLabel, blockData] = Array.isArray(block) ? block : [block.matrix_type || "Total", block];
-
-    //             const table: Table = {
-    //                 key: "total_variance_explained",
-    //                 title: "Total Variance Explained",
-    //                 columnHeaders: [
-    //                     { header: "Component", key: "component" },
-    //                     {
-    //                         header: "Initial Eigenvalues",
-    //                         key: "initial_eigenvalues",
-    //                         children: blockData.initial.headers.map((header: string, idx: number) => ({
-    //                             header,
-    //                             key: `initial_${idx}`,
-    //                         })),
-    //                     },
-    //                 ],
-    //                 rows: [],
-    //             };
-
-    //             // --- CEK: APAKAH ADA DATA EKSTRAKSI? ---
-    //             if (renderExtractionDetails && blockData.extraction?.rows?.length > 0) {
-    //                 table.columnHeaders.push({
-    //                     header: "Extraction Sums of Squared Loadings",
-    //                     key: "extraction_sums",
-    //                     children: blockData.extraction.headers.map((header: string, idx: number) => ({
-    //                         header,
-    //                         key: `extraction_${idx}`,
-    //                     })),
-    //                 });
-    //             }
-
-    //             // --- CEK: APAKAH ADA DATA ROTASI? ---
-    //             if (renderExtractionDetails && blockData.rotation?.rows?.length > 0) {
-    //                 table.columnHeaders.push({
-    //                     header: "Rotation Sums of Squared Loadings",
-    //                     key: "rotation_sums",
-    //                     children: blockData.rotation.headers.map((header: string, idx: number) => ({
-    //                         header,
-    //                         key: `rotation_${idx}`,
-    //                     })),
-    //                 });
-    //             }
-
-    //             const numComponents = blockData.initial.rows.length;
-    //             for (let i = 0; i < numComponents; i++) {
-    //                 const rowData: any = { rowHeader: [(i + 1).toString()] };
-
-    //                 // Initial Data (Selalu Ada)
-    //                 blockData.initial.rows[i].forEach((val: number, idx: number) => {
-    //                     rowData[`initial_${idx}`] = formatDisplayNumber(val);
-    //                 });
-
-    //                 // Extraction Data (Hanya jika ada)
-    //                 if (renderExtractionDetails && blockData.extraction?.rows[i]) {
-    //                     blockData.extraction.rows[i].forEach((val: number, idx: number) => {
-    //                         rowData[`extraction_${idx}`] = formatDisplayNumber(val);
-    //                     });
-    //                 }
-
-    //                 // Rotation Data (Hanya jika ada)
-    //                 if (renderExtractionDetails && blockData.rotation?.rows[i]) {
-    //                     blockData.rotation.rows[i].forEach((val: number, idx: number) => {
-    //                         rowData[`rotation_${idx}`] = formatDisplayNumber(val);
-    //                     });
-    //                 }
-
-    //                 table.rows.push(rowData);
-    //             }
-
-    //             // Footer dinamis berdasarkan metode ekstraksi
-    //             const methodDisplayName = getExtractionMethodDisplayName(extractionMethod);
-    //             table.rows.push({ rowHeader: [`Extraction Method: ${methodDisplayName}.`] });
-                
-    //             // Generate description untuk Total Variance Explained (Correlation case)
-    //             const lastInitialRow = blockData.initial.rows?.[blockData.initial.rows.length - 1];
-    //             const cumulativePctCorr = lastInitialRow?.[2] || 0;
-    //             const numComponentsCorr = blockData.initial.rows?.length || 0;
-    //             const varianceDescCorr = generateTotalVarianceDescription(numComponentsCorr, cumulativePctCorr / 100, methodDisplayName);
-    //             table.interpretation = hasSuccessfulExtraction
-    //                 ? varianceDescCorr
-    //                 : generateExtractionTerminationDescription(
-    //                     analysisStatus?.extractedFactors,
-    //                     analysisStatus?.terminationReason
-    //                 );
-                
-    //             resultJson.tables.push(table);
-    //         }
-    //     } catch (error) {
-    //         console.error("Error processing total_variance_explained:", error);
-    //     }
-    // }
-
-    // // ==================================================================================
-    // // 7. TOTAL VARIANCE EXPLAINED (PERBAIKAN UTAMA)
-    // // ==================================================================================
-    // if (data.total_variance_explained) {
-    //     try {
-    //         const renderExtractionDetails = hasSuccessfulExtraction;
-    //         // CEK APAKAH ROTASI MENGGUNAKAN METODE OBLIQUE
-    //         const isObliqueRotation = configData?.rotation?.Oblimin === true || configData?.rotation?.Promax === true;
-
-    //         const varianceBlocks = Array.isArray(data.total_variance_explained)
-    //             ? data.total_variance_explained
-    //             : [["Total", data.total_variance_explained]];
-
-    //         const isCovariance = varianceBlocks.some((block: any) => {
-    //             const label = Array.isArray(block) ? block[0] : (block.matrix_type || "");
-    //             return label === "Raw" || label === "Rescaled";
-    //         });
-
-    //         if (isCovariance) {
-    //             // ==========================================
-    //             // LOGIKA COVARIANCE
-    //             // ==========================================
-    //             const rowLabel = extractionMethod === "PrincipalComp" ? "Component" : "Factor";
-    //             const blockEntries: Array<{ blockLabel: string; blockData: any }> = varianceBlocks.map((block: any) => {
-    //                 const [blockLabel, blockData] = Array.isArray(block)
-    //                     ? block
-    //                     : [block.matrix_type || "Total", block];
-
-    //                 return { blockLabel, blockData };
-    //             });
-
-    //             const hasExtractionColumns = renderExtractionDetails && blockEntries.some(
-    //                 ({ blockData }: { blockData: any }) => blockData?.extraction?.rows?.length > 0
-    //             );
-    //             const hasRotationColumns = renderExtractionDetails && blockEntries.some(
-    //                 ({ blockData }: { blockData: any }) => blockData?.rotation?.rows?.length > 0
-    //             );
-
-    //             const table: Table = {
-    //                 key: "total_variance_explained",
-    //                 title: "Total Variance Explained",
-    //                 columnHeaders: [
-    //                     { header: "", key: "group_label" }, 
-    //                     { header: rowLabel, key: "component", width: "auto" },
-    //                     {
-    //                         header: "Initial Eigenvalues",
-    //                         key: "initial_eigenvalues",
-    //                         children: [
-    //                             { header: "Total", key: "initial_total" },
-    //                             { header: "% of Variance", key: "initial_percent_var" },
-    //                             { header: "Cumulative %", key: "initial_cumulative_percent" },
-    //                         ],
-    //                     },
-    //                 ],
-    //                 rows: [],
-    //             };
-
-    //             if (hasExtractionColumns) {
-    //                 table.columnHeaders.push({
-    //                     header: "Extraction Sums of Squared Loadings",
-    //                     key: "extraction_sums",
-    //                     children: [
-    //                         { header: "Total", key: "extraction_total" },
-    //                         { header: "% of Variance", key: "extraction_percent_var" },
-    //                         { header: "Cumulative %", key: "extraction_cumulative_percent" },
-    //                     ],
-    //                 });
-    //             }
-
-    //             // Tambahkan header Rotasi dengan kondisi Oblique
-    //             if (hasRotationColumns) {
-    //                 let rotationChildren: any[] = [
-    //                     { header: "Total", key: "rotation_total" },
-    //                 ];
-                    
-    //                 // Sembunyikan kolom Persentase jika Oblique
-    //                 if (!isObliqueRotation) {
-    //                     rotationChildren.push({ header: "% of Variance", key: "rotation_percent_var" });
-    //                     rotationChildren.push({ header: "Cumulative %", key: "rotation_cumulative_percent" });
-    //                 }
-
-    //                 table.columnHeaders.push({
-    //                     header: isObliqueRotation ? "Rotation Sums of Squared Loadingsᵃ" : "Rotation Sums of Squared Loadings",
-    //                     key: "rotation_sums",
-    //                     children: rotationChildren,
-    //                 });
-    //             }
-
-    //             blockEntries.forEach(({ blockLabel, blockData }: { blockLabel: string; blockData: any }) => {
-    //                 if (!blockData?.initial?.rows) return;
-
-    //                 blockData.initial.rows.forEach((rowValues: number[], i: number) => {
-    //                     const rowData: any = {
-    //                         group_label: i === 0 ? blockLabel : "", 
-    //                         rowHeader: [], 
-    //                         component: (i + 1).toString(),
-    //                         initial_total: formatDisplayNumber(rowValues[0]),
-    //                         initial_percent_var: formatDisplayNumber(rowValues[1]),
-    //                         initial_cumulative_percent: formatDisplayNumber(rowValues[2]),
-    //                     };
-
-    //                     const extractionRow = blockData.extraction?.rows?.[i];
-    //                     if (hasExtractionColumns && extractionRow) {
-    //                         rowData.extraction_total = formatDisplayNumber(extractionRow[0]);
-    //                         rowData.extraction_percent_var = formatDisplayNumber(extractionRow[1]);
-    //                         rowData.extraction_cumulative_percent = formatDisplayNumber(extractionRow[2]);
-    //                     }
-
-    //                     const rotationRow = blockData.rotation?.rows?.[i];
-    //                     if (hasRotationColumns && rotationRow) {
-    //                         rowData.rotation_total = formatDisplayNumber(rotationRow[0]);
-    //                         // Hanya isi baris Persentase jika TIDAK Oblique
-    //                         if (!isObliqueRotation) {
-    //                             rowData.rotation_percent_var = formatDisplayNumber(rotationRow[1]);
-    //                             rowData.rotation_cumulative_percent = formatDisplayNumber(rotationRow[2]);
-    //                         }
-    //                     }
-
-    //                     table.rows.push(rowData);
-    //                 });
-    //             });
-                
-    //             // Footer
-    //             const methodDisplayNameVar = getExtractionMethodDisplayName(extractionMethod);
-    //             table.rows.push({ rowHeader: [`Extraction Method: ${methodDisplayNameVar}.`] });
-                
-    //             // Tambahkan Footnote khusus Oblique
-    //             if (hasRotationColumns && isObliqueRotation) {
-    //                 table.rows.push({ rowHeader: ["a. When components are correlated, sums of squared loadings cannot be added to obtain a total variance."] });
-    //             }
-
-    //             const firstBlock = blockEntries[0]?.blockData;
-    //             const lastRowValues = firstBlock?.initial?.rows?.[firstBlock?.initial?.rows?.length - 1];
-    //             const cumulativeVarExplained = lastRowValues?.[2] || 0; 
-    //             const numComponentsExtr = firstBlock?.initial?.rows?.length || 0;
-    //             table.interpretation = hasSuccessfulExtraction
-    //                 ? generateTotalVarianceDescription(numComponentsExtr, cumulativeVarExplained / 100, methodDisplayNameVar)
-    //                 : generateExtractionTerminationDescription(analysisStatus?.extractedFactors, analysisStatus?.terminationReason);
-                
-    //             resultJson.tables.push(table);
-
-    //         } else {
-    //             // ==========================================
-    //             // LOGIKA CORRELATION
-    //             // ==========================================
-    //             const block = varianceBlocks[0];
-    //             const [blockLabel, blockData] = Array.isArray(block) ? block : [block.matrix_type || "Total", block];
-
-    //             const table: Table = {
-    //                 key: "total_variance_explained",
-    //                 title: "Total Variance Explained",
-    //                 columnHeaders: [
-    //                     { header: "Component", key: "component" },
-    //                     {
-    //                         header: "Initial Eigenvalues",
-    //                         key: "initial_eigenvalues",
-    //                         children: blockData.initial.headers.map((header: string, idx: number) => ({
-    //                             header,
-    //                             key: `initial_${idx}`,
-    //                         })),
-    //                     },
-    //                 ],
-    //                 rows: [],
-    //             };
-
-    //             // --- CEK: APAKAH ADA DATA EKSTRAKSI? ---
-    //             if (renderExtractionDetails && blockData.extraction?.rows?.length > 0) {
-    //                 table.columnHeaders.push({
-    //                     header: "Extraction Sums of Squared Loadings",
-    //                     key: "extraction_sums",
-    //                     children: blockData.extraction.headers.map((header: string, idx: number) => ({
-    //                         header,
-    //                         key: `extraction_${idx}`,
-    //                     })),
-    //                 });
-    //             }
-
-    //             // --- CEK: APAKAH ADA DATA ROTASI? ---
-    //             if (renderExtractionDetails && blockData.rotation?.rows?.length > 0) {
-    //                 let rotationHeaders = blockData.rotation.headers.map((header: string, idx: number) => ({
-    //                     header,
-    //                     key: `rotation_${idx}`,
-    //                 }));
-
-    //                 // Jika Oblique, hanya simpan kolom indeks ke-0 (Total)
-    //                 if (isObliqueRotation) {
-    //                     rotationHeaders = [rotationHeaders[0]]; 
-    //                 }
-
-    //                 table.columnHeaders.push({
-    //                     header: isObliqueRotation ? "Rotation Sums of Squared Loadingsᵃ" : "Rotation Sums of Squared Loadings",
-    //                     key: "rotation_sums",
-    //                     children: rotationHeaders,
-    //                 });
-    //             }
-
-    //             const numComponents = blockData.initial.rows.length;
-    //             for (let i = 0; i < numComponents; i++) {
-    //                 const rowData: any = { rowHeader: [(i + 1).toString()] };
-
-    //                 // Initial Data (Selalu Ada)
-    //                 blockData.initial.rows[i].forEach((val: number, idx: number) => {
-    //                     rowData[`initial_${idx}`] = formatDisplayNumber(val);
-    //                 });
-
-    //                 // Extraction Data (Hanya jika ada)
-    //                 if (renderExtractionDetails && blockData.extraction?.rows[i]) {
-    //                     blockData.extraction.rows[i].forEach((val: number, idx: number) => {
-    //                         rowData[`extraction_${idx}`] = formatDisplayNumber(val);
-    //                     });
-    //                 }
-
-    //                 // Rotation Data (Hanya jika ada)
-    //                 if (renderExtractionDetails && blockData.rotation?.rows[i]) {
-    //                     blockData.rotation.rows[i].forEach((val: number, idx: number) => {
-    //                         // Sembunyikan indeks [1] dan [2] untuk baris datanya jika Oblique
-    //                         if (isObliqueRotation && (idx === 1 || idx === 2)) return;
-                            
-    //                         rowData[`rotation_${idx}`] = formatDisplayNumber(val);
-    //                     });
-    //                 }
-
-    //                 table.rows.push(rowData);
-    //             }
-
-    //             // Footer
-    //             const methodDisplayName = getExtractionMethodDisplayName(extractionMethod);
-    //             table.rows.push({ rowHeader: [`Extraction Method: ${methodDisplayName}.`] });
-                
-    //             // Tambahkan Footnote khusus Oblique
-    //             if (renderExtractionDetails && blockData.rotation?.rows?.length > 0 && isObliqueRotation) {
-    //                 table.rows.push({ rowHeader: ["a. When components are correlated, sums of squared loadings cannot be added to obtain a total variance."] });
-    //             }
-                
-    //             const lastInitialRow = blockData.initial.rows?.[blockData.initial.rows.length - 1];
-    //             const cumulativePctCorr = lastInitialRow?.[2] || 0;
-    //             const numComponentsCorr = blockData.initial.rows?.length || 0;
-    //             table.interpretation = hasSuccessfulExtraction
-    //                 ? generateTotalVarianceDescription(numComponentsCorr, cumulativePctCorr / 100, methodDisplayName)
-    //                 : generateExtractionTerminationDescription(analysisStatus?.extractedFactors, analysisStatus?.terminationReason);
-                
-    //             resultJson.tables.push(table);
-    //         }
-    //     } catch (error) {
-    //         console.error("Error processing total_variance_explained:", error);
-    //     }
-    // }
-
-
-
 
     // ==================================================================================
     // 7. TOTAL VARIANCE EXPLAINED (PERBAIKAN UTAMA)
@@ -1482,9 +917,6 @@ const hasSuccessfulExtraction = !suppressExtraction;
         }
     }
 
-
-    
-
     // 7b. Goodness-of-fit Test (ML / GLS)
     const isGLSOrML = extractionMethod === "GeneralizedLeastSqr" || extractionMethod === "MaxLikelihood";
     if (hasSuccessfulExtraction && isGLSOrML && data.goodness_of_fit_test) {
@@ -1519,71 +951,6 @@ const hasSuccessfulExtraction = !suppressExtraction;
     }
 
 
-
-
-    // // 8. Component Matrix
-    // if (data.component_matrix) {
-    //     const extractedComponents =
-    //         data.component_matrix.components[0]?.values.length || 0;
-
-    //     const table: Table = {
-    //         key: "component_matrix",
-    //         title: "Component Matrix",
-    //         columnHeaders: [
-    //             { header: "", key: "var" },
-    //             {
-    //                 header: "Component",
-    //                 key: "component",
-    //                 children: Array.from(
-    //                     { length: extractedComponents },
-    //                     (_, i) => ({
-    //                         header: (i + 1).toString(),
-    //                         key: `component_${i + 1}`,
-    //                     })
-    //                 ),
-    //             },
-    //         ],
-    //         rows: [],
-    //     };
-
-    //     data.component_matrix.components.forEach((component: any) => {
-    //         const rowData: any = {
-    //             rowHeader: [component.variable],
-    //         };
-
-    //         // component.values.forEach((value: number, index: number) => {
-    //         //     rowData[`component_${index + 1}`] = formatDisplayNumber(value);
-    //         // });
-
-    //         component.values.forEach((value: number | null, index: number) => {
-    //             // REVISI: Cek apakah null (suppressed)
-    //             if (value === null || value === undefined) {
-    //                 rowData[`component_${index + 1}`] = ""; // Kosongkan sel
-    //             } else {
-    //                 rowData[`component_${index + 1}`] = formatDisplayNumber(value);
-    //             }
-    //         });
-
-    //         table.rows.push(rowData);
-    //     });
-
-    //     // Add footnote
-    //     table.rows.push({
-    //         rowHeader: [`Extraction Method: Principal Component Analysis.`],
-    //     });
-
-    //     if (extractedComponents > 0) {
-    //         table.rows.push({
-    //             rowHeader: [`a. ${extractedComponents} components extracted.`],
-    //         });
-    //     }
-
-    //     resultJson.tables.push(table);
-    // }
-
-
-
-
     // 8. Component Matrix / Factor Matrix
     if (data.component_matrix) {
         const extractedComponents = hasSuccessfulExtraction
@@ -1594,14 +961,13 @@ const hasSuccessfulExtraction = !suppressExtraction;
         // Cek metode ekstraksi untuk menentukan Label Judul & Header
         // Value dari frontend: "PrincipalComp", "UnweightLeastSqr", "MaxLikelihood", dll.
         const methodValue = extractionMethod;
-        // Jika metode BUKAN PCA, SPSS menggunakan istilah "Factor", jika PCA gunakan "Component"
+        // Jika metode BUKAN PCA, output menggunakan istilah "Factor", jika PCA gunakan "Component"
         const isPCA = methodValue === "PrincipalComp";
         
         // Mapping value ke nama tampilan untuk footer
         const methodDisplayName = getExtractionMethodDisplayName(methodValue);
         
         // 1. Tentukan Judul Tabel (Factor Matrix vs Component Matrix)
-        // Tambahkan superscript 'a' (ᵃ) jika bukan PCA, sesuai style SPSS
         const tableTitle = isPCA ? "Component Matrix" : "Factor Matrixᵃ";
         
         // 2. Tentukan Header Kolom (Factor vs Component)
@@ -1659,12 +1025,11 @@ const hasSuccessfulExtraction = !suppressExtraction;
 
         const table: Table = {
             key: "component_matrix",
-            title: tableTitle, // <--- Gunakan judul dinamis
+            title: tableTitle, // judul dinamis
             columnHeaders,
             rows: [],
         };
 
-        // ... (Bagian pengisian data baris tetap sama) ...
         data.component_matrix.components.forEach((component: any) => {
             const rowData: any = { rowHeader: [component.variable] };
             component.values.forEach((value: number | null, index: number) => {
@@ -1692,81 +1057,18 @@ const hasSuccessfulExtraction = !suppressExtraction;
             table.rows.push(rowData);
         });
 
-        // --- BAGIAN FOOTER (SESUAI GAMBAR SPSS) ---
         
         // Footer 1: Nama Metode
         table.rows.push({
             rowHeader: [`Extraction Method: ${methodDisplayName}.`],
         });
 
-        // // Footer 2: Keterangan 'a' (Iterasi)
-        // // Logic: Jika ada data iterasi (dari backend), tampilkan.
-        // // Jika tidak ada data iterasi tapi bukan PCA, tampilkan format standar tanpa angka iterasi.
-        // if (!hasSuccessfulExtraction) {
-        //     table.rows.push({
-        //         rowHeader: ["a. Extraction terminated before convergence or no factor solution was retained."],
-        //     });
-        // } else if (data.component_matrix.iterations_required) {
-        //     table.rows.push({
-        //         rowHeader: [`a. ${extractedComponents} factors extracted. ${data.component_matrix.iterations_required} iterations required.`],
-        //     });
-        // } else if (!isPCA) {
-        //     // Fallback jika backend belum kirim 'iterations_required' tapi metode adalah Factor Analysis
-        //     table.rows.push({
-        //         rowHeader: [`a. ${extractedComponents} factors extracted.`], 
-        //     });
-        // } else if (extractedComponents > 0 && isPCA) {
-        //      // Fallback untuk PCA
-        //      table.rows.push({
-        //         rowHeader: [`a. ${extractedComponents} components extracted.`],
-        //     });
-        // }
-
-        // // Footer 2: Keterangan 'a' (Iterasi / Terminasi SPSS Style)
-        // if (!hasSuccessfulExtraction) {
-        //     // Estimasi berapa faktor yang "dicoba" diekstrak berdasarkan Initial Eigenvalues
-        //     let attemptedFactors = configData?.extraction?.MaxFactors;
-        //     if (!attemptedFactors) {
-        //         const initialEvals = data.total_variance_explained && Array.isArray(data.total_variance_explained) 
-        //             ? data.total_variance_explained[0]?.initial?.rows 
-        //             : undefined;
-                
-        //         if (initialEvals) {
-        //             const threshold = configData?.extraction?.EigenVal || 1.0;
-        //             attemptedFactors = initialEvals.filter((r: any) => r[0] >= threshold).length || 1;
-        //         } else {
-        //             attemptedFactors = 1;
-        //         }
-        //     }
-
-        //     const maxIter = configData?.extraction?.MaxIter || 25;
-        //     let failureReason = "Extraction terminated before convergence or no factor solution was retained.";
-            
-        //     // Teks spesifik ala SPSS berdasarkan metode ekstraksi
-        //     if (extractionMethod === "MaxLikelihood" || extractionMethod === "GeneralizedLeastSqr" || extractionMethod === "UnweightLeastSqr") {
-        //         failureReason = `Attempted to extract ${attemptedFactors} factors. In iteration ${maxIter}, no local minimum was found. Extraction was terminated.`;
-        //     } else if (extractionMethod === "PrincipalAxisFactoring") {
-        //         failureReason = `Attempted to extract ${attemptedFactors} factors. More than ${maxIter} iterations required. (Extraction was terminated).`;
-        //     }
-
-        //     table.rows.push({
-        //         rowHeader: [`a. ${failureReason}`],
-        //     });
-        // } else if (data.component_matrix.iterations_required) {
-        //     table.rows.push({
-        //         rowHeader: [`a. ${extractedComponents} factors extracted. ${data.component_matrix.iterations_required} iterations required.`],
-        //     });
-        // } else if (!isPCA) {
-        //     table.rows.push({
-        //         rowHeader: [`a. ${extractedComponents} factors extracted.`], 
-        //     });
-
-        // Footer 2: Keterangan 'a' (Iterasi / Terminasi SPSS Style)
+        // Footer 2: Keterangan 'a' (Iterasi / Terminasi Style)
         if (!hasSuccessfulExtraction) {
             let attemptedFactors = configData?.extraction?.MaxFactors || 1;
             const maxIter = configData?.extraction?.MaxIter || 25;
             
-            // --- LOGIKA BARU: BACA STATUS DARI BACKEND ---
+            // LOGIKA BARU: BACA STATUS DARI BACKEND
             const backendStatus = data.analysis_status?.extraction_status;
             const backendWarning = data.analysis_status?.termination_reason;
             
@@ -1806,7 +1108,7 @@ const hasSuccessfulExtraction = !suppressExtraction;
         resultJson.tables.push(table);
     }
 
-    // 9. Reproduced Correlations - SPSS Style with grouped row headers
+    // 9. Reproduced Correlations - Style with grouped row headers
     if (hasSuccessfulExtraction && data.reproduced_correlations) {
         const variables =
             data.reproduced_correlations.reproduced_correlation.map(
@@ -1863,42 +1165,6 @@ const hasSuccessfulExtraction = !suppressExtraction;
             table.rows.push(rowData);
         });
 
-        // Add footnotes - Dinamis berdasarkan metode ekstraksi
-        // const methodValueRC = extractionMethod;
-        // const methodDisplayNameRC = getExtractionMethodDisplayName(methodValueRC);
-        // table.rows.push({
-        //     rowHeader: [`Extraction Method: ${methodDisplayNameRC}.`],
-        // });
-        // table.rows.push({
-        //     rowHeader: ["a. Reproduced communalities"],
-        // });
-        // table.rows.push({
-        //     rowHeader: [
-        //         "b. Residuals are computed between observed and reproduced correlations. There are X (X%) nonredundant residuals with absolute values greater than 0.05.",
-        //     ],
-        // });
-
-    //     // Calculate residual count and percentage
-    //     let residualCount = 0;
-    //     data.reproduced_correlations.residual.forEach((entry: any) => {
-    //         entry.values.forEach((val: any) => {
-    //             if (Math.abs(val.value) > 0.05) {
-    //                 residualCount++;
-    //             }
-    //         });
-    //     });
-    //     const totalNonredundant = variables.length * (variables.length - 1) / 2;
-    //     const residualPct = totalNonredundant > 0 ? (residualCount / totalNonredundant * 100) : 0;
-    //     table.interpretation = generateReproducedRefinedDescription(residualCount, residualPct);
-
-    //     resultJson.tables.push(table);
-    // }
-
-    // HAPUS bagian hardcode ini agar tidak duplikat dengan hasil generateReproducedRefinedDescription
-    // table.rows.push({ rowHeader: [`Extraction Method: ${methodDisplayNameRC}.`] });
-    // table.rows.push({ rowHeader: ["a. Reproduced communalities"] });
-    // table.rows.push({ rowHeader: ["b. Residuals are computed... There are X (X%)..."] });
-
     // Calculate residual count and percentage secara presisi (Hanya Nonredundant / Lower Triangle)
     let residualCount = 0;
     data.reproduced_correlations.residual.forEach((entry: any, rowIndex: number) => {
@@ -1930,99 +1196,7 @@ const hasSuccessfulExtraction = !suppressExtraction;
     resultJson.tables.push(table);
     }
 
-    // // 9b. Reproduced Covariances - SPSS Style with grouped row headers
-    // if (hasSuccessfulExtraction && data.reproduced_covariances) {
-    //     const variables =
-    //         data.reproduced_covariances.reproduced_covariance.map(
-    //             (entry: any) => entry.variable
-    //         );
-
-    //     const table: Table = {
-    //         key: "reproduced_covariances",
-    //         title: "Reproduced Covariances",
-    //         columnHeaders: [
-    //             { header: "", key: "var_level1" },
-    //             { header: "", key: "var_level2" },
-    //             ...variables.map((variable: string, index: number) => ({
-    //                 header: variable,
-    //                 key: `var_${index}`,
-    //             })),
-    //         ],
-    //         rows: [],
-    //     };
-
-    //     // Reproduced covariance values with 2-level row header: ["Reproduced Covariance", "VAR_NAME"]
-    //     data.reproduced_covariances.reproduced_covariance.forEach(
-    //         (entry: any) => {
-    //             const rowData: any = {
-    //                 rowHeader: ["Reproduced Covariance", entry.variable],
-    //             };
-
-    //             entry.values.forEach((val: any, colIndex: number) => {
-    //                 // Add 'a' superscript to diagonal elements
-    //                 if (entry.variable === val.variable) {
-    //                     rowData[`var_${colIndex}`] =
-    //                         formatDisplayNumber(val.value) + "ᵃ";
-    //                 } else {
-    //                     rowData[`var_${colIndex}`] = formatDisplayNumber(
-    //                         val.value
-    //                     );
-    //                 }
-    //             });
-
-    //             table.rows.push(rowData);
-    //         }
-    //     );
-
-    //     // Residual values with 2-level row header: ["Residualᵇ", "VAR_NAME"]
-    //     data.reproduced_covariances.residual.forEach((entry: any) => {
-    //         const rowData: any = {
-    //             rowHeader: ["Residualᵇ", entry.variable],
-    //         };
-
-    //         entry.values.forEach((val: any, colIndex: number) => {
-    //             rowData[`var_${colIndex}`] = formatDisplayNumber(val.value);
-    //         });
-
-    //         table.rows.push(rowData);
-    //     });
-
-    // //     // Add footnotes - Dinamis berdasarkan metode ekstraksi
-    // //     const methodValueRCov = extractionMethod;
-    // //     const methodDisplayNameRCov = getExtractionMethodDisplayName(methodValueRCov);
-    // //     table.rows.push({
-    // //         rowHeader: [`Extraction Method: ${methodDisplayNameRCov}.`],
-    // //     });
-    // //     table.rows.push({
-    // //         rowHeader: ["a. Reproduced communalities"],
-    // //     });
-    // //     table.rows.push({
-    // //         rowHeader: [
-    // //             "b. Residuals are computed between observed and reproduced covariances. There are X (X%) nonredundant residuals with absolute values greater than 0.05.",
-    // //         ],
-    // //     });
-
-    // //     resultJson.tables.push(table);
-    // // }
-
-    // // Add footnotes menggunakan formatter untuk mendapatkan format horizontal
-    //     const methodValueRCov = extractionMethod;
-    //     const methodDisplayNameRCov = getExtractionMethodDisplayName(methodValueRCov);
-        
-    //     // Memanggil fungsi utilitas yang sudah direvisi. 
-    //     // Argumen 1 dan 2 (count & persen) bisa diisi undefined karena tidak dipakai di Covariance.
-    //     // Argumen ke-4 diset 'true' agar fungsi merender kalimat mendatar (horizontal).
-    //     table.interpretation = generateReproducedRefinedDescription(
-    //         undefined, 
-    //         undefined, 
-    //         methodDisplayNameRCov, 
-    //         true 
-    //     );
-
-    //     resultJson.tables.push(table);
-    // }
-
-    // 9b. Reproduced Covariances - SPSS Style with grouped row headers
+    // 9b. Reproduced Covariances - Style with grouped row headers
     if (hasSuccessfulExtraction && data.reproduced_covariances) {
         const variables =
             data.reproduced_covariances.reproduced_covariance.map(
@@ -2090,170 +1264,6 @@ const hasSuccessfulExtraction = !suppressExtraction;
     }
 
 
-
-
-
-    // // 10. Rotated Component Matrix (Orthogonal rotations only)
-    // const rotationRequested = configData?.rotation
-    //     ? !configData.rotation.None && configData.rotation.RotatedSol !== false
-    //     : false;
-    // const extractedFactors = analysisStatus?.extractedFactors ?? 0;
-
-    // if (rotationRequested && extractedFactors <= 1) {
-    //     const isPCA = extractionMethod === "PrincipalComp";
-    //     const tableTitle = isPCA ? "Rotated Component Matrixᵃ" : "Rotated Factor Matrixᵃ";
-    //     const entityLabel = isPCA ? "component" : "factor";
-    //     const rotationNote = `Only one ${entityLabel} was extracted. The solution cannot be rotated.`;
-
-    //     const table: Table = {
-    //         key: "rotated_component_matrix",
-    //         title: tableTitle,
-    //         columnHeaders: [{ header: "", key: "var" }],
-    //         rows: [
-    //             {
-    //                 rowHeader: [rotationNote],
-    //             },
-    //         ],
-    //         interpretation: rotationNote,
-    //     };
-
-    //     resultJson.tables.push(table);
-    // } else if (hasSuccessfulExtraction && data.rotated_component_matrix && !data.pattern_matrix) {
-    //     const extractedComponents =
-    //         data.rotated_component_matrix.components[0]?.values.length || 0;
-
-    //     const methodValue = extractionMethod;
-    //     const isPCA = methodValue === "PrincipalComp";
-    //     const methodDisplayName = getExtractionMethodDisplayName(methodValue);
-    //     const tableTitle = isPCA ? "Rotated Component Matrixᵃ" : "Rotated Factor Matrixᵃ";
-    //     const columnGroupHeader = isPCA ? "Component" : "Factor";
-
-    //     // Check rotation convergence status early
-    //     const isRotationConverged = data.rotated_component_matrix?.is_converged ?? true;
-    //     const rotationIterations = data.rotated_component_matrix?.iterations_required ?? 0;
-    //     const rotationConvergenceValue = data.rotated_component_matrix?.convergence_value ?? 0;
-
-    //     const isCovarianceExtraction = configData?.extraction?.Covariance === true;
-    //     const covarianceStdDevs = isCovarianceExtraction
-    //         ? buildCovarianceStdDevMap(data.covariance_matrix)
-    //         : new Map<string, number>();
-    //     const showRescaledColumns = isCovarianceExtraction;
-
-    //     const columnHeaders: any[] = [{ header: "", key: "var" }];
-    //     if (showRescaledColumns) {
-    //         columnHeaders.push({
-    //             header: "Raw",
-    //             key: "raw_group",
-    //             children: [
-    //                 {
-    //                     header: columnGroupHeader,
-    //                     key: "raw_factor_group",
-    //                     children: Array.from({ length: extractedComponents }, (_, i) => ({
-    //                         header: (i + 1).toString(),
-    //                         key: `raw_component_${i + 1}`,
-    //                     })),
-    //                 },
-    //             ],
-    //         });
-    //         columnHeaders.push({
-    //             header: "Rescaled",
-    //             key: "rescaled_group",
-    //             children: [
-    //                 {
-    //                     header: columnGroupHeader,
-    //                     key: "rescaled_factor_group",
-    //                     children: Array.from({ length: extractedComponents }, (_, i) => ({
-    //                         header: (i + 1).toString(),
-    //                         key: `rescaled_component_${i + 1}`,
-    //                     })),
-    //                 },
-    //             ],
-    //         });
-    //     } else {
-    //         columnHeaders.push({
-    //             header: columnGroupHeader,
-    //             key: "component",
-    //             children: Array.from(
-    //                 { length: extractedComponents },
-    //                 (_, i) => ({
-    //                     header: (i + 1).toString(),
-    //                     key: `component_${i + 1}`,
-    //                 })
-    //             ),
-    //         });
-    //     }
-
-    //     const table: Table = {
-    //         key: "rotated_component_matrix",
-    //         title: tableTitle,
-    //         columnHeaders,
-    //         rows: [],
-    //     };
-
-    //     // Only populate data rows if rotation converged (matching SPSS behavior)
-    //     if (isRotationConverged) {
-    //         data.rotated_component_matrix.components.forEach((component: any) => {
-    //             const rowData: any = {
-    //                 rowHeader: [component.variable],
-    //             };
-
-    //             component.values.forEach((value: number | null, index: number) => {
-    //                 if (value === null || value === undefined) {
-    //                     if (showRescaledColumns) {
-    //                         rowData[`raw_component_${index + 1}`] = "";
-    //                         rowData[`rescaled_component_${index + 1}`] = "";
-    //                     } else {
-    //                         rowData[`component_${index + 1}`] = "";
-    //                     }
-    //                     return;
-    //                 }
-
-    //                 if (showRescaledColumns) {
-    //                     rowData[`raw_component_${index + 1}`] = formatDisplayNumber(value);
-    //                     const stdDev = covarianceStdDevs.get(component.variable);
-    //                     rowData[`rescaled_component_${index + 1}`] =
-    //                         stdDev && stdDev > 0
-    //                             ? formatDisplayNumber(value / stdDev)
-    //                             : "";
-    //                 } else {
-    //                     rowData[`component_${index + 1}`] = formatDisplayNumber(value);
-    //                 }
-    //             });
-
-    //             table.rows.push(rowData);
-    //         });
-
-    //         table.rows.push({
-    //             rowHeader: [`Extraction Method: ${methodDisplayName}.`],
-    //         });
-    //         table.rows.push({
-    //             rowHeader: ["Rotation Method: Varimax with Kaiser Normalization."],
-    //         });
-    //     }
-        
-    //     // Build rotation convergence note based on actual convergence status
-    //     let rotationNote = "a. Rotation converged in X iterations.";
-    //     if (isRotationConverged) {
-    //         rotationNote = `a. Rotation converged in ${rotationIterations} iterations.`;
-    //     } else {
-    //         // When rotation fails to converge, show similar to SPSS output
-    //         const convergenceStr = rotationConvergenceValue !== undefined && rotationConvergenceValue !== null 
-    //             ? rotationConvergenceValue.toFixed(3) 
-    //             : "N/A";
-    //         rotationNote = `Rotation failed to converge in ${rotationIterations} iterations. (Convergence = ${convergenceStr})`;
-    //     }
-        
-    //     table.rows.push({
-    //         rowHeader: [rotationNote],
-    //     });
-
-    //     const rotationMethod = "Varimax";
-    //     const rotatedMatrixDesc = generateRotatedMatrixDescription(rotationMethod, extractedComponents);
-    //     table.interpretation = rotatedMatrixDesc;
-
-    //     resultJson.tables.push(table);
-    // }
-
     // 10. Rotated Component Matrix (Orthogonal rotations only)
     const rotationRequested = configData?.rotation
         ? !configData.rotation.None && configData.rotation.RotatedSol !== false
@@ -2288,31 +1298,6 @@ const hasSuccessfulExtraction = !suppressExtraction;
         const isRotationConverged = data.rotated_component_matrix?.is_converged ?? true;
         const rotationIterations = data.rotated_component_matrix?.iterations_required ?? 0;
         const rotationConvergenceValue = data.rotated_component_matrix?.convergence_value ?? 0;
-
-        // if (!isRotationConverged) {
-        //     // ========================================================
-        //     // JIKA ROTASI GAGAL KONVERGEN (Struktur tanpa kolom)
-        //     // ========================================================
-        //     const convergenceStr = rotationConvergenceValue !== undefined && rotationConvergenceValue !== null 
-        //         ? rotationConvergenceValue.toFixed(3) 
-        //         : "N/A";
-        //     const rotationNote = `Rotation failed to converge in ${rotationIterations} iterations. (Convergence = ${convergenceStr}).`;
-
-        //     const table: Table = {
-        //         key: "rotated_component_matrix",
-        //         title: tableTitle,
-        //         columnHeaders: [{ header: "", key: "var" }], // Tanpa pembuatan header 
-        //         rows: [
-        //             {
-        //                 rowHeader: [rotationNote], // Tampilkan tulisan di dalam kotak tabel
-        //             },
-        //         ],
-        //         interpretation: rotationNote, // Ubah Description di UI menjadi warning
-        //     };
-
-        //     resultJson.tables.push(table);
-            
-        // } else {
 
         if (!isRotationConverged) {
             // ========================================================
@@ -2459,10 +1444,10 @@ const hasSuccessfulExtraction = !suppressExtraction;
 
             // Pengaman (fallback) jika ternyata masuk ke blok ini namun data rotasi kosong
             if (rotationMethodStr === "") {
-                rotationMethodStr = "None"; // Atau Anda bisa membiarkannya kosong
+                rotationMethodStr = "None"; // Atau bisa membiarkannya kosong
             }
 
-            // Generate footnote menggunakan formatter yang sudah kita sesuaikan dengan <br>
+            // Generate footnote menggunakan formatter yang sudah disesuaikan dengan <br>
             table.interpretation = generateRotatedMatrixDescription(
                 methodDisplayName,
                 rotationMethodStr,
@@ -2512,20 +1497,6 @@ const hasSuccessfulExtraction = !suppressExtraction;
             table.rows.push(rowData);
         }
 
-        // table.rows.push({
-        //     rowHeader: [`Extraction Method: ${methodDisplayName}.`],
-        // });
-        // table.rows.push({
-        //     rowHeader: ["Rotation Method: Varimax with Kaiser Normalization."],
-        // });
-
-        // ... (KODE LOOPING BARIS TABEL TETAP SAMA) ...
-
-        // HAPUS BARIS INI:
-        // table.rows.push({ rowHeader: [`Extraction Method: ${methodDisplayName}.`] });
-        // table.rows.push({ rowHeader: ["Rotation Method: Varimax with Kaiser Normalization."] });
-
-        // GANTI MENJADI INI:
         let rotationMethodStr = "";
         if (configData?.rotation) {
             if (configData.rotation.Varimax) rotationMethodStr = "Varimax";
@@ -2544,126 +1515,6 @@ const hasSuccessfulExtraction = !suppressExtraction;
         resultJson.tables.push(table);
     }
 
-    // // 11a. Pattern Matrix (Oblique rotations only)
-    // const isRotationConvergedForPattern = data.pattern_matrix?.is_converged ?? true;
-    
-    // if (hasSuccessfulExtraction && extractedFactors > 1 && data.pattern_matrix) {
-    //     const extractedComponents =
-    //         data.pattern_matrix.components[0]?.values.length || 0;
-
-    //     const methodValue = extractionMethod;
-    //     const isPCA = methodValue === "PrincipalComp";
-    //     const methodDisplayName = getExtractionMethodDisplayName(methodValue);
-    //     const columnGroupHeader = isPCA ? "Component" : "Factor";
-
-    //     // --- TAMBAHAN LOGIKA COVARIANCE ---
-    //     const isCovarianceExtraction = configData?.extraction?.Covariance === true;
-    //     const covarianceStdDevs = isCovarianceExtraction
-    //         ? buildCovarianceStdDevMap(data.covariance_matrix)
-    //         : new Map<string, number>();
-    //     const showRescaledColumns = isCovarianceExtraction;
-
-    //     const columnHeaders: any[] = [{ header: "", key: "var" }];
-    //     if (showRescaledColumns) {
-    //         columnHeaders.push({
-    //             header: "Raw",
-    //             key: "raw_group",
-    //             children: [
-    //                 {
-    //                     header: columnGroupHeader,
-    //                     key: "raw_factor_group",
-    //                     children: Array.from({ length: extractedComponents }, (_, i) => ({
-    //                         header: (i + 1).toString(),
-    //                         key: `raw_component_${i + 1}`,
-    //                     })),
-    //                 },
-    //             ],
-    //         });
-    //         columnHeaders.push({
-    //             header: "Rescaled",
-    //             key: "rescaled_group",
-    //             children: [
-    //                 {
-    //                     header: columnGroupHeader,
-    //                     key: "rescaled_factor_group",
-    //                     children: Array.from({ length: extractedComponents }, (_, i) => ({
-    //                         header: (i + 1).toString(),
-    //                         key: `rescaled_component_${i + 1}`,
-    //                     })),
-    //                 },
-    //             ],
-    //         });
-    //     } else {
-    //         columnHeaders.push({
-    //             header: columnGroupHeader,
-    //             key: "component",
-    //             children: Array.from(
-    //                 { length: extractedComponents },
-    //                 (_, i) => ({
-    //                     header: (i + 1).toString(),
-    //                     key: `component_${i + 1}`,
-    //                 })
-    //             ),
-    //         });
-    //     }
-
-    //     const table: Table = {
-    //         key: "pattern_matrix",
-    //         title: "Pattern Matrixᵃ",
-    //         columnHeaders,
-    //         rows: [],
-    //     };
-
-    //     data.pattern_matrix.components.forEach((component: any) => {
-    //         const rowData: any = {
-    //             rowHeader: [component.variable],
-    //         };
-
-    //         component.values.forEach((value: number | null, index: number) => {
-    //             if (value === null || value === undefined) {
-    //                 if (showRescaledColumns) {
-    //                     rowData[`raw_component_${index + 1}`] = "";
-    //                     rowData[`rescaled_component_${index + 1}`] = "";
-    //                 } else {
-    //                     rowData[`component_${index + 1}`] = "";
-    //                 }
-    //                 return;
-    //             }
-
-    //             if (showRescaledColumns) {
-    //                 rowData[`raw_component_${index + 1}`] = formatDisplayNumber(value);
-    //                 const stdDev = covarianceStdDevs.get(component.variable);
-    //                 rowData[`rescaled_component_${index + 1}`] =
-    //                     stdDev && stdDev > 0
-    //                         ? formatDisplayNumber(value / stdDev)
-    //                         : "";
-    //             } else {
-    //                 rowData[`component_${index + 1}`] = formatDisplayNumber(value);
-    //             }
-    //         });
-
-    //         table.rows.push(rowData);
-    //     });
-
-    //     let rotationMethodStr = "Oblique"; 
-    //     if (configData?.rotation) {
-    //         if (configData.rotation.Oblimin) rotationMethodStr = "Oblimin";
-    //         else if (configData.rotation.Promax) rotationMethodStr = "Promax";
-    //     }
-
-    //     const rotationIterations = data.pattern_matrix.iterations_required || 0;
-
-    //     // Gunakan helper yang sudah ada (identik dengan Rotated Component Matrix)
-    //     table.interpretation = generateRotatedMatrixDescription(
-    //         methodDisplayName,
-    //         rotationMethodStr,
-    //         rotationIterations
-    //     );
-
-    //     resultJson.tables.push(table);
-    // }
-
-
     // 11a. Pattern Matrix (Oblique rotations only)
     const isRotationConvergedForPattern = data.pattern_matrix?.is_converged ?? true;
     
@@ -2672,35 +1523,6 @@ const hasSuccessfulExtraction = !suppressExtraction;
         const isPCA = methodValue === "PrincipalComp";
         const methodDisplayName = getExtractionMethodDisplayName(methodValue);
         const columnGroupHeader = isPCA ? "Component" : "Factor";
-
-        // if (!isRotationConvergedForPattern) {
-        //     // ========================================================
-        //     // JIKA ROTASI GAGAL KONVERGEN (Tampilkan Warning ala SPSS)
-        //     // ========================================================
-        //     const rotationIterations = data.pattern_matrix?.iterations_required ?? 0;
-        //     const rotationConvergenceValue = data.pattern_matrix?.convergence_value ?? 0;
-            
-        //     const convergenceStr = rotationConvergenceValue !== undefined && rotationConvergenceValue !== null 
-        //         ? rotationConvergenceValue.toFixed(3) 
-        //         : "N/A";
-                
-        //     const rotationNote = `Rotation failed to converge in ${rotationIterations} iterations. (Convergence = ${convergenceStr}).`;
-
-        //     const table: Table = {
-        //         key: "pattern_matrix",
-        //         title: "Pattern Matrix",
-        //         columnHeaders: [{ header: "", key: "var" }],
-        //         rows: [
-        //             {
-        //                 rowHeader: [`a. ${rotationNote}`], // Tampilkan tulisan di dalam kotak tabel
-        //             },
-        //         ],
-        //         interpretation: `a. ${rotationNote}`,
-        //     };
-
-        //     resultJson.tables.push(table);
-            
-        // } else {
 
         if (!isRotationConvergedForPattern) {
             // ========================================================
@@ -2713,7 +1535,7 @@ const hasSuccessfulExtraction = !suppressExtraction;
                 ? rotationConvergenceValue.toFixed(3) 
                 : "N/A";
             
-            // Menghilangkan leading zero di depan desimal sesuai standar SPSS (.003)
+            // Menghilangkan leading zero di depan desimal sesuai standar (.003)
             if (rotationConvergenceValue !== undefined && rotationConvergenceValue !== null && Math.abs(rotationConvergenceValue) < 1) {
                 convergenceStr = convergenceStr.replace(/^(-?)0\./, "$1.");
             }
@@ -2751,14 +1573,12 @@ const hasSuccessfulExtraction = !suppressExtraction;
             resultJson.tables.push(table);
             
         } else {
-        
-        
+               
             // ========================================================
             // JIKA ROTASI KONVERGEN (Render Kolom Normal)
             // ========================================================
             const extractedComponents = data.pattern_matrix.components[0]?.values.length || 0;
 
-            // --- TAMBAHAN LOGIKA COVARIANCE ---
             const isCovarianceExtraction = configData?.extraction?.Covariance === true;
             const covarianceStdDevs = isCovarianceExtraction
                 ? buildCovarianceStdDevMap(data.covariance_matrix)
@@ -2866,13 +1686,7 @@ const hasSuccessfulExtraction = !suppressExtraction;
     }
 
     // 11b. Structure Matrix (Oblique rotations only)
-    // const isRotationConvergedForStructure = data.structure_matrix?.is_converged ?? true;
-    
-    // if (hasSuccessfulExtraction && extractedFactors > 1 && data.structure_matrix) {
-    //     const extractedComponents =
-    //         data.structure_matrix.components[0]?.values.length || 0;
-
-   
+  
     const isRotationConvergedForStructure = data.pattern_matrix?.is_converged ?? true;
     if (hasSuccessfulExtraction && extractedFactors > 1 && data.structure_matrix && isRotationConvergedForStructure) {
         const extractedComponents =
@@ -2883,7 +1697,7 @@ const hasSuccessfulExtraction = !suppressExtraction;
         const methodDisplayName = getExtractionMethodDisplayName(methodValue);
         const columnGroupHeader = isPCA ? "Component" : "Factor";
 
-        // --- TAMBAHAN LOGIKA COVARIANCE ---
+        // TAMBAHAN LOGIKA COVARIANCE
         const isCovarianceExtraction = configData?.extraction?.Covariance === true;
         const covarianceStdDevs = isCovarianceExtraction
             ? buildCovarianceStdDevMap(data.covariance_matrix)
@@ -2987,11 +1801,6 @@ const hasSuccessfulExtraction = !suppressExtraction;
     }
 
     // 11c. Component Correlation Matrix (Oblique rotations only - only if rotation converged)
-    // const isRotationConvergedForCorr = data.component_correlation_matrix?.is_converged ?? true;
-    // if (hasSuccessfulExtraction && extractedFactors > 1 && data.component_correlation_matrix && isRotationConvergedForCorr) {
-    //     const components =
-    //         data.component_correlation_matrix.correlations.length;
-
     const isRotationConvergedForCorr = data.pattern_matrix?.is_converged ?? true;
     
     if (hasSuccessfulExtraction && extractedFactors > 1 && data.component_correlation_matrix && isRotationConvergedForCorr) {
@@ -3028,7 +1837,7 @@ const hasSuccessfulExtraction = !suppressExtraction;
                 // Ubah menjadi 4 digit desimal
                 let formattedVal = Number(val).toFixed(4);
                 
-                // Hilangkan angka 0 di depan koma HANYA jika nilainya di antara -1 dan 1 (gaya SPSS)
+                // Hilangkan angka 0 di depan koma HANYA jika nilainya di antara -1 dan 1
                 // Contoh: -0.0100 menjadi -.0100, tapi 1.0000 tetap 1.0000
                 if (Math.abs(Number(val)) < 1) {
                     formattedVal = formattedVal.replace(/^(-?)0\./, "$1.");
@@ -3041,392 +1850,6 @@ const hasSuccessfulExtraction = !suppressExtraction;
         }
             resultJson.tables.push(table);
     }
-
-    //     for (let i = 0; i < components; i++) {
-    //         const rowData: any = {
-    //             rowHeader: [(i + 1).toString()],
-    //         };
-
-    //         for (let j = 0; j < components; j++) {
-    //             rowData[`component_${j + 1}`] = formatDisplayNumber(
-    //                 data.component_correlation_matrix.correlations[i][j]
-    //             );
-    //         }
-
-    //         table.rows.push(rowData);
-    //     }
-
-    //     resultJson.tables.push(table);
-    // }
-
-    // // 12-13. Score matrices are displayed only when user selects DisplayFactor
-    // // 12. Component Score Coefficient Matrix
-    // if (hasSuccessfulExtraction && shouldDisplayScoreMatrices && data.component_score_coefficient_matrix) {
-    //     const extractedComponents =
-    //         data.component_score_coefficient_matrix.components[0]?.values.length || 0;
-
-    //     const methodValue = extractionMethod;
-    //     const isPCA = methodValue === "PrincipalComp";
-    //     const methodDisplayName = getExtractionMethodDisplayName(methodValue);
-    //     const tableTitle = isPCA ? "Component Score Coefficient Matrix" : "Factor Score Coefficient Matrix";
-    //     const columnGroupHeader = isPCA ? "Component" : "Factor";
-
-    //     const table: Table = {
-    //         key: "component_score_coefficient_matrix",
-    //         title: tableTitle,
-    //         interpretation: "This matrix displays the coefficient weights used to calculate the standardized factor scores for each observation.",
-    //         columnHeaders: [
-    //             { header: "", key: "var" },
-    //             {
-    //                 header: columnGroupHeader,
-    //                 key: "component",
-    //                 children: Array.from(
-    //                     { length: extractedComponents },
-    //                     (_, i) => ({
-    //                         header: (i + 1).toString(),
-    //                         key: `component_${i + 1}`,
-    //                     })
-    //                 ),
-    //             },
-    //         ],
-    //         rows: [],
-    //     };
-
-    //     data.component_score_coefficient_matrix.components.forEach(
-    //         (component: any) => {
-    //             const rowData: any = {
-    //                 rowHeader: [component.variable],
-    //             };
-
-    //             component.values.forEach((value: number, index: number) => {
-    //                 rowData[`component_${index + 1}`] = formatDisplayNumber(value);
-    //             });
-
-    //             table.rows.push(rowData);
-    //         }
-    //     );
-
-    //     table.rows.push({
-    //         rowHeader: [`Extraction Method: ${methodDisplayName}.`],
-    //     });
-    //     table.rows.push({
-    //         rowHeader: ["Rotation Method: Varimax with Kaiser Normalization."],
-    //     });
-
-    //     resultJson.tables.push(table);
-    // }
-
-
-    // // 12. Component Score Coefficient Matrix
-    // if (hasSuccessfulExtraction && shouldDisplayScoreMatrices && data.component_score_coefficient_matrix) {
-    //     const extractedComponents =
-    //         data.component_score_coefficient_matrix.components[0]?.values.length || 0;
-
-    //     const methodValue = extractionMethod;
-    //     const isPCA = methodValue === "PrincipalComp";
-    //     const methodDisplayName = getExtractionMethodDisplayName(methodValue);
-    //     const columnGroupHeader = isPCA ? "Component" : "Factor";
-        
-    //     // SPSS Style Covariance flag
-    //     const isCovariance = configData?.extraction?.Covariance === true;
-        
-    //     let tableTitle = isPCA ? "Component Score Coefficient Matrix" : "Factor Score Coefficient Matrix";
-    //     if (isCovariance) {
-    //         tableTitle += "ᵃ"; // Tambahkan superscript jika Covariance
-    //     }
-
-    //     const table: Table = {
-    //         key: "component_score_coefficient_matrix",
-    //         title: tableTitle,
-    //         interpretation: "This matrix displays the coefficient weights used to calculate the standardized factor scores for each observation.",
-    //         columnHeaders: [
-    //             { header: "", key: "var" },
-    //             {
-    //                 header: columnGroupHeader,
-    //                 key: "component",
-    //                 children: Array.from(
-    //                     { length: extractedComponents },
-    //                     (_, i) => ({
-    //                         header: (i + 1).toString(),
-    //                         key: `component_${i + 1}`,
-    //                     })
-    //                 ),
-    //             },
-    //         ],
-    //         rows: [],
-    //     };
-
-    //     data.component_score_coefficient_matrix.components.forEach(
-    //         (component: any) => {
-    //             const rowData: any = {
-    //                 rowHeader: [component.variable],
-    //             };
-
-    //             component.values.forEach((value: number, index: number) => {
-    //                 // MENGGUNAKAN FORMATTER BARU
-    //                 rowData[`component_${index + 1}`] = formatScoreCoefficientValue(value);
-    //             });
-
-    //             table.rows.push(rowData);
-    //         }
-    //     );
-
-    //     table.rows.push({
-    //         rowHeader: [`Extraction Method: ${methodDisplayName}.`],
-    //     });
-        
-    //     // Cek label rotasi
-    //     let rotationMethodStr = "";
-    //     if (configData?.rotation?.Varimax) rotationMethodStr = "Varimax";
-    //     else if (configData?.rotation?.Quartimax) rotationMethodStr = "Quartimax";
-    //     else if (configData?.rotation?.Equimax) rotationMethodStr = "Equimax";
-        
-    //     if (rotationMethodStr) {
-    //         table.rows.push({
-    //             rowHeader: [`Rotation Method: ${rotationMethodStr} with Kaiser Normalization.`],
-    //         });
-    //     }
-
-    //     // Tambahkan footnote standar baku SPSS untuk mode Covariance
-    //     if (isCovariance) {
-    //         table.rows.push({
-    //             rowHeader: ["a. Coefficients are standardized."],
-    //         });
-    //     }
-
-    //     resultJson.tables.push(table);
-    // }
-
-
-
-
-    // // 13. Component Score Covariance Matrix
-    // if (hasSuccessfulExtraction && shouldDisplayScoreMatrices && data.component_score_covariance_matrix) {
-    //     const components =
-    //         data.component_score_covariance_matrix.components.length;
-
-    //     const methodValue = extractionMethod;
-    //     const isPCA = methodValue === "PrincipalComp";
-    //     const methodDisplayName = getExtractionMethodDisplayName(methodValue);
-    //     const tableTitle = isPCA ? "Component Score Covariance Matrix" : "Factor Score Covariance Matrix";
-    //     const columnRowHeader = isPCA ? "Component" : "Factor";
-
-    //     const table: Table = {
-    //         key: "component_score_covariance_matrix",
-    //         title: tableTitle,
-    //         interpretation: "For orthogonal rotation, the components must be uncorrelated, indicated by an off-diagonal value of 0, or close to 0, and an on-diagonal value of 1.",
-    //         columnHeaders: [
-    //             { header: columnRowHeader, key: "component" },
-    //             ...Array.from({ length: components }, (_, i) => ({
-    //                 header: (i + 1).toString(),
-    //                 key: `component_${i + 1}`,
-    //             })),
-    //         ],
-    //         rows: [],
-    //     };
-
-    //     for (let i = 0; i < components; i++) {
-    //         const rowData: any = {
-    //             rowHeader: [(i + 1).toString()],
-    //         };
-
-    //         for (let j = 0; j < components; j++) {
-    //             rowData[`component_${j + 1}`] = formatScoreCovarianceMatrixValue(
-    //                 data.component_score_covariance_matrix.components[i][j]
-    //             );
-    //         }
-
-    //         table.rows.push(rowData);
-    //     }
-
-    //     table.rows.push({
-    //         rowHeader: [`Extraction Method: ${methodDisplayName}.`],
-    //     });
-    //     table.rows.push({
-    //         rowHeader: ["Rotation Method: Varimax with Kaiser Normalization."],
-    //     });
-
-    //     resultJson.tables.push(table);
-    // }
-
-
-
-
-
-
-
-    // // =====================================================================
-    // // 12. Component Score Coefficient Matrix
-    // // =====================================================================
-    // const extractedFactorsForScores = analysisStatus?.extractedFactors ?? 0;
-    
-    // // SPSS RULE: Jika komponen = 1, kita override/paksa kalkulasi dari frontend 
-    // // karena kalkulasi matrix di backend sering tidak stabil (garbage values) pada matriks singular
-    // const forceSingleComponentMath = extractedFactorsForScores === 1;
-    // const hasScoreMatrixData = !!data.component_score_coefficient_matrix;
-    // const shouldUseBackendData = hasScoreMatrixData && !forceSingleComponentMath;
-
-    // if (hasSuccessfulExtraction && shouldDisplayScoreMatrices && (shouldUseBackendData || forceSingleComponentMath)) {
-    //     const extractedComponents = shouldUseBackendData 
-    //         ? data.component_score_coefficient_matrix.components[0]?.values.length 
-    //         : 1;
-
-    //     const methodValue = extractionMethod;
-    //     const isPCA = methodValue === "PrincipalComp";
-    //     const methodDisplayName = getExtractionMethodDisplayName(methodValue);
-    //     const columnGroupHeader = isPCA ? "Component" : "Factor";
-        
-    //     const isCovariance = configData?.extraction?.Covariance === true;
-    //     let tableTitle = isPCA ? "Component Score Coefficient Matrix" : "Factor Score Coefficient Matrix";
-    //     if (isCovariance) {
-    //         tableTitle += "ᵃ"; 
-    //     }
-
-    //     const table: Table = {
-    //         key: "component_score_coefficient_matrix",
-    //         title: tableTitle,
-    //         interpretation: "This matrix displays the coefficient weights used to calculate the standardized factor scores for each observation.",
-    //         columnHeaders: [
-    //             { header: "", key: "var" },
-    //             {
-    //                 header: columnGroupHeader,
-    //                 key: "component",
-    //                 children: Array.from(
-    //                     { length: extractedComponents },
-    //                     (_, i) => ({
-    //                         header: (i + 1).toString(),
-    //                         key: `component_${i + 1}`,
-    //                     })
-    //                 ),
-    //             },
-    //         ],
-    //         rows: [],
-    //     };
-
-    //     if (shouldUseBackendData) {
-    //         // Gunakan data asli dari backend jika komponen > 1 dan normal
-    //         data.component_score_coefficient_matrix.components.forEach((component: any) => {
-    //             const rowData: any = { rowHeader: [component.variable] };
-    //             component.values.forEach((value: number, index: number) => {
-    //                 rowData[`component_${index + 1}`] = formatScoreCoefficientValue(value);
-    //             });
-    //             table.rows.push(rowData);
-    //         });
-    //     } else if (forceSingleComponentMath && data.component_matrix) {
-    //         // FALLBACK UI: Hitung manual yang sangat stabil untuk 1 komponen
-    //         // Eigenvalue komponen 1 = Jumlah dari kuadrat unrotated loadings
-    //         let firstEigenvalue = 0;
-    //         data.component_matrix.components.forEach((component: any) => {
-    //             const loading = component.values[0] || 0;
-    //             firstEigenvalue += (loading * loading);
-    //         });
-            
-    //         // Cegah pembagian dengan nol
-    //         if (firstEigenvalue === 0) firstEigenvalue = 1;
-
-    //         data.component_matrix.components.forEach((component: any) => {
-    //             const rowData: any = { rowHeader: [component.variable] };
-    //             const loading = component.values[0] || 0;
-                
-    //             // Rumus PCA score coefficient: Loading / Eigenvalue
-    //             const scoreValue = isPCA ? (loading / firstEigenvalue) : loading; 
-                
-    //             rowData[`component_1`] = formatScoreCoefficientValue(scoreValue);
-    //             table.rows.push(rowData);
-    //         });
-    //     }
-
-    //     table.rows.push({
-    //         rowHeader: [`Extraction Method: ${methodDisplayName}.`],
-    //     });
-        
-    //     let rotationMethodStr = "";
-    //     if (configData?.rotation?.Varimax) rotationMethodStr = "Varimax";
-    //     else if (configData?.rotation?.Quartimax) rotationMethodStr = "Quartimax";
-    //     else if (configData?.rotation?.Equimax) rotationMethodStr = "Equimax";
-        
-    //     if (rotationMethodStr) {
-    //         table.rows.push({
-    //             rowHeader: [`Rotation Method: ${rotationMethodStr} with Kaiser Normalization.`],
-    //         });
-    //     }
-
-    //     if (isCovariance) {
-    //         table.rows.push({
-    //             rowHeader: ["a. Coefficients are standardized."],
-    //         });
-    //     }
-
-    //     resultJson.tables.push(table);
-    // }
-
-    // // =====================================================================
-    // // 13. Component Score Covariance Matrix
-    // // =====================================================================
-    // const hasCovarianceMatrixData = !!data.component_score_covariance_matrix;
-    // const shouldUseBackendCovData = hasCovarianceMatrixData && !forceSingleComponentMath;
-    
-    // if (hasSuccessfulExtraction && shouldDisplayScoreMatrices && (shouldUseBackendCovData || forceSingleComponentMath)) {
-    //     const components = shouldUseBackendCovData 
-    //         ? data.component_score_covariance_matrix.components.length 
-    //         : 1;
-
-    //     const methodValue = extractionMethod;
-    //     const isPCA = methodValue === "PrincipalComp";
-    //     const methodDisplayName = getExtractionMethodDisplayName(methodValue);
-    //     const tableTitle = isPCA ? "Component Score Covariance Matrix" : "Factor Score Covariance Matrix";
-    //     const columnRowHeader = isPCA ? "Component" : "Factor";
-
-    //     const table: Table = {
-    //         key: "component_score_covariance_matrix",
-    //         title: tableTitle,
-    //         interpretation: "For orthogonal rotation, the components must be uncorrelated, indicated by an off-diagonal value of 0, or close to 0, and an on-diagonal value of 1.",
-    //         columnHeaders: [
-    //             { header: columnRowHeader, key: "component" },
-    //             ...Array.from({ length: components }, (_, i) => ({
-    //                 header: (i + 1).toString(),
-    //                 key: `component_${i + 1}`,
-    //             })),
-    //         ],
-    //         rows: [],
-    //     };
-
-    //     if (shouldUseBackendCovData) {
-    //         for (let i = 0; i < components; i++) {
-    //             const rowData: any = { rowHeader: [(i + 1).toString()] };
-    //             for (let j = 0; j < components; j++) {
-    //                 rowData[`component_${j + 1}`] = formatScoreCovarianceMatrixValue(
-    //                     data.component_score_covariance_matrix.components[i][j]
-    //                 );
-    //             }
-    //             table.rows.push(rowData);
-    //         }
-    //     } else if (forceSingleComponentMath) {
-    //         // FALLBACK UI: Abaikan kovariansi backend, paksa nilai ke 1.000 untuk 1 komponen
-    //         table.rows.push({
-    //             rowHeader: ["1"],
-    //             component_1: formatScoreCovarianceMatrixValue(1.0)
-    //         });
-    //     }
-
-    //     table.rows.push({
-    //         rowHeader: [`Extraction Method: ${methodDisplayName}.`],
-    //     });
-        
-    //     let rotationMethodStr = "";
-    //     if (configData?.rotation?.Varimax) rotationMethodStr = "Varimax";
-    //     else if (configData?.rotation?.Quartimax) rotationMethodStr = "Quartimax";
-    //     else if (configData?.rotation?.Equimax) rotationMethodStr = "Equimax";
-
-    //     if (rotationMethodStr) {
-    //          table.rows.push({
-    //              rowHeader: [`Rotation Method: ${rotationMethodStr} with Kaiser Normalization.`],
-    //          });
-    //     }
-
-    //     resultJson.tables.push(table);
-    // }
-
 
     // =====================================================================
     // 12. Component Score Coefficient Matrix
@@ -3517,24 +1940,7 @@ const hasSuccessfulExtraction = !suppressExtraction;
         table.rows.push({
             rowHeader: [`Extraction Method: ${methodDisplayName}.`],
         });
-        
-        // let rotationMethodStr = "";
-        // if (configData?.rotation?.Varimax) rotationMethodStr = "Varimax";
-        // else if (configData?.rotation?.Quartimax) rotationMethodStr = "Quartimax";
-        // else if (configData?.rotation?.Equimax) rotationMethodStr = "Equimax";
-        
-        // if (rotationMethodStr) {
-        //     table.rows.push({
-        //         rowHeader: [`Rotation Method: ${rotationMethodStr} with Kaiser Normalization.`],
-        //     });
-        // }
-
-        // if (isCovariance) {
-        //     table.rows.push({
-        //         rowHeader: ["a. Coefficients are standardized."],
-        //     });
-        // }
-
+ 
         // resultJson.tables.push(table);
         let rotationMethodStr = "";
         if (configData?.rotation) {
@@ -3555,76 +1961,7 @@ const hasSuccessfulExtraction = !suppressExtraction;
         resultJson.tables.push(table);
     }
 
-    // // =====================================================================
-    // // 13. Component Score Covariance Matrix
-    // // =====================================================================
-    // const hasCovarianceMatrixData = !!data.component_score_covariance_matrix;
-    // const shouldUseBackendCovData = hasCovarianceMatrixData && !forceSingleComponentMath;
-    
-    // if (hasSuccessfulExtraction && shouldDisplayScoreMatrices && (shouldUseBackendCovData || forceSingleComponentMath)) {
-    //     const components = shouldUseBackendCovData 
-    //         ? data.component_score_covariance_matrix.components.length 
-    //         : 1;
-
-    //     const methodValue = extractionMethod;
-    //     const isPCA = methodValue === "PrincipalComp";
-    //     const methodDisplayName = getExtractionMethodDisplayName(methodValue);
-    //     const tableTitle = isPCA ? "Component Score Covariance Matrix" : "Factor Score Covariance Matrix";
-    //     const columnRowHeader = isPCA ? "Component" : "Factor";
-
-    //     const table: Table = {
-    //         key: "component_score_covariance_matrix",
-    //         title: tableTitle,
-    //         interpretation: "For orthogonal rotation, the components must be uncorrelated, indicated by an off-diagonal value of 0, or close to 0, and an on-diagonal value of 1.",
-    //         columnHeaders: [
-    //             { header: columnRowHeader, key: "component" },
-    //             ...Array.from({ length: components }, (_, i) => ({
-    //                 header: (i + 1).toString(),
-    //                 key: `component_${i + 1}`,
-    //             })),
-    //         ],
-    //         rows: [],
-    //     };
-
-    //     if (shouldUseBackendCovData) {
-    //         for (let i = 0; i < components; i++) {
-    //             const rowData: any = { rowHeader: [(i + 1).toString()] };
-    //             for (let j = 0; j < components; j++) {
-    //                 rowData[`component_${j + 1}`] = formatScoreCovarianceMatrixValue(
-    //                     data.component_score_covariance_matrix.components[i][j]
-    //                 );
-    //             }
-    //             table.rows.push(rowData);
-    //         }
-    //     } else if (forceSingleComponentMath) {
-    //         // FALLBACK UI: Jika hanya 1 komponen, cov matriks selalu 1.000 persis seperti SPSS
-    //         table.rows.push({
-    //             rowHeader: ["1"],
-    //             component_1: formatScoreCovarianceMatrixValue(1.0)
-    //         });
-    //     }
-
-    //     table.rows.push({
-    //         rowHeader: [`Extraction Method: ${methodDisplayName}.`],
-    //     });
-        
-    //     let rotationMethodStr = "";
-    //     if (configData?.rotation?.Varimax) rotationMethodStr = "Varimax";
-    //     else if (configData?.rotation?.Quartimax) rotationMethodStr = "Quartimax";
-    //     else if (configData?.rotation?.Equimax) rotationMethodStr = "Equimax";
-
-    //     if (rotationMethodStr) {
-    //          table.rows.push({
-    //              rowHeader: [`Rotation Method: ${rotationMethodStr} with Kaiser Normalization.`],
-    //          });
-    //     }
-
-    //     resultJson.tables.push(table);
-    // }
-
-
-
-
+ 
     // 14. Scree Plot Data (Tabel & Chart)
     if (data.scree_plot) {
         // A. Format sebagai Tabel (Kode Lama - Tetap dipertahankan)
@@ -3646,8 +1983,8 @@ const hasSuccessfulExtraction = !suppressExtraction;
         }
         resultJson.tables.push(table);
 
-        // B. Format sebagai Chart Data (KODE BARU DITAMBAHKAN DISINI)
-        // Kita meneruskan raw object dari Rust langsung karena strukturnya sudah cocok
+        // B. Format sebagai Chart Data 
+        //  meneruskan raw object dari Rust langsung karena strukturnya sudah cocok
         // dengan props yang diharapkan oleh komponen ScreePlot ({component_numbers, eigenvalues})
         resultJson.screePlotChart = data.scree_plot;
     }
@@ -3782,148 +2119,7 @@ const hasSuccessfulExtraction = !suppressExtraction;
         }
     }
 
-    // // ==================================================================================
-    // // POST-PROCESSING KHUSUS: Penanganan Matriks Singular (Not Positive Definite)
-    // // ==================================================================================
-    // let isSingular = false;
-
-    // // 1. Deteksi dari nilai KMO yang gagal (0, .000, atau NaN)
-    // const kmoTableIndexCheck = resultJson.tables.findIndex((table: Table) => table.key === "kmo_bartletts_test");
-    // if (kmoTableIndexCheck !== -1) {
-    //     const kmoTable = resultJson.tables[kmoTableIndexCheck];
-    //     const hasZeroKmo = kmoTable.rows.some(row => 
-    //         row.rowHeader[0] === "Kaiser-Meyer-Olkin Measure of Sampling Adequacy" && 
-    //         (row.value === 0 || row.value === "0" || row.value === ".000" || row.value === "0.000" || String(row.value).toLowerCase().includes("nan"))
-    //     );
-    //     if (hasZeroKmo) isSingular = true;
-    // }
-
-    // // 2. Deteksi dari nilai determinan yang mendekati nol mutlak (jika belum terdeteksi)
-    // if (!isSingular && data.correlation_matrix) {
-    //     const detValue = calculateDeterminantFromCorrelationMatrix(data.correlation_matrix);
-    //     if (detValue !== undefined && Math.abs(detValue) <= 1e-7) {
-    //         isSingular = true;
-    //     }
-    // }
-
-    // // // Eksekusi pembersihan jika matriks terbukti singular
-    // // if (isSingular) {
-    // //     console.log("[FA Formatter] Matrix is singular (Not Positive Definite). Cleaning up tables...");
-
-    // //     // A. Hapus tabel-tabel yang kalkulasinya rusak akibat matriks tidak bisa di-invers
-    // //     const tablesToRemove = ["kmo_bartletts_test", "inverse_correlation_matrix", "anti_image_matrices"];
-    // //     resultJson.tables = resultJson.tables.filter((table: Table) => !tablesToRemove.includes(table.key));
-
-    // //     // B. Sisipkan footnote peringatan pada Correlation Matrix (Persis seperti SPSS)
-    // //     const corrTable = resultJson.tables.find((table: Table) => table.key === "correlation_matrix");
-    // //     if (corrTable) {
-    // //         // Pastikan tidak duplikat jika footnote sudah ada
-    // //         const hasFootnote = corrTable.rows.some(r => r.rowHeader[0] && r.rowHeader[0].includes("Determinant = .000"));
-    // //         if (!hasFootnote) {
-    // //             corrTable.rows.push({ rowHeader: ["a. Determinant = .000"] });
-    // //             corrTable.rows.push({ rowHeader: ["b. This matrix is not positive definite."] });
-    // //         }
-    // //     }
-    // // }
-
-    // // Eksekusi pembersihan jika matriks terbukti singular
-    // if (isSingular) {
-    //     console.log("[FA Formatter] Matrix is singular (Not Positive Definite). Cleaning up tables...");
-
-    //     // A. Hapus tabel-tabel yang kalkulasinya rusak akibat matriks tidak bisa di-invers
-    //     const tablesToRemove = ["kmo_bartletts_test", "inverse_correlation_matrix", "anti_image_matrices"];
-    //     resultJson.tables = resultJson.tables.filter((table: Table) => !tablesToRemove.includes(table.key));
-
-    //     // B. Timpa footnote peringatan pada Correlation Matrix (Format vertikal SPSS)
-    //     const corrTable = resultJson.tables.find((table: Table) => table.key === "correlation_matrix");
-    //     if (corrTable) {
-    //         // 1. Bersihkan baris hardcode/dummy dari dalam tabel jika terlanjur ter-push sebelumnya
-    //         corrTable.rows = corrTable.rows.filter(r => 
-    //             !r.rowHeader[0]?.includes("Determinant = .000") &&
-    //             !r.rowHeader[0]?.includes("not positive definite")
-    //         );
-    //         // 2. Timpa deskripsi normal menjadi pesan peringatan Singular
-    //         corrTable.interpretation = "a. Determinant = .000<br>b. This matrix is not positive definite.";
-    //     }
-
-    //     // C. Lakukan hal yang sama untuk Covariance Matrix (Jika pengguna menggunakan mode Covariance)
-    //     const covTable = resultJson.tables.find((table: Table) => table.key === "covariance_matrix");
-    //     if (covTable) {
-    //         covTable.rows = covTable.rows.filter(r => 
-    //             !r.rowHeader[0]?.includes("Determinant = .000") &&
-    //             !r.rowHeader[0]?.includes("not positive definite")
-    //         );
-    //         // covTable.interpretation = "a. Determinant = .000<br>b. This matrix is not positive definite.";
-    //         covTable.interpretation = "Determinant = .000. This matrix is not positive definite.";
-    //     }
-    // }
-  
-    // return resultJson;
-
-
-    //     // ==================================================================================
-    // // POST-PROCESSING KHUSUS: Penanganan Matriks Singular (Not Positive Definite)
-    // // ==================================================================================
-    // let isSingular = false;
-
-    // // 1. Deteksi dari nilai KMO yang gagal (0, .000, atau NaN)
-    // const kmoTableIndexCheck = resultJson.tables.findIndex((table: Table) => table.key === "kmo_bartletts_test");
-    // if (kmoTableIndexCheck !== -1) {
-    //     const kmoTable = resultJson.tables[kmoTableIndexCheck];
-    //     const hasZeroKmo = kmoTable.rows.some(row => 
-    //         row.rowHeader[0] === "Kaiser-Meyer-Olkin Measure of Sampling Adequacy" && 
-    //         (row.value === 0 || row.value === "0" || row.value === ".000" || row.value === "0.000" || String(row.value).toLowerCase().includes("nan"))
-    //     );
-    //     if (hasZeroKmo) isSingular = true;
-    // }
-
-    // // 2a. Deteksi dari nilai determinan correlation matrix
-    // if (!isSingular && data.correlation_matrix) {
-    //     const detValue = calculateDeterminantFromCorrelationMatrix(data.correlation_matrix);
-    //     if (detValue !== undefined && Math.abs(detValue) <= 1e-7) {
-    //         isSingular = true;
-    //     }
-    // }
-
-    // // 2b. TAMBAHKAN INI: Deteksi dari nilai determinan covariance matrix jika dianalisis
-    // if (!isSingular && data.covariance_matrix) {
-    //     const detValue = data.covariance_matrix.determinant;
-    //     if (detValue !== undefined && Math.abs(detValue) <= 1e-7) {
-    //         isSingular = true;
-    //     }
-    // }
-
-    // // Eksekusi pembersihan jika salah satu matriks terbukti singular
-    // if (isSingular) {
-    //     console.log("[FA Formatter] Matrix is singular (Not Positive Definite). Cleaning up tables...");
-
-    //     // A. Hapus tabel-tabel yang kalkulasinya rusak akibat matriks tidak bisa di-invers
-    //     const tablesToRemove = ["kmo_bartletts_test", "inverse_correlation_matrix", "anti_image_matrices"];
-    //     resultJson.tables = resultJson.tables.filter((table: Table) => !tablesToRemove.includes(table.key));
-
-    //     // B. Timpa footnote peringatan pada Correlation Matrix 
-    //     const corrTable = resultJson.tables.find((table: Table) => table.key === "correlation_matrix");
-    //     if (corrTable) {
-    //         corrTable.rows = corrTable.rows.filter(r => 
-    //             !r.rowHeader[0]?.includes("Determinant = .000") &&
-    //             !r.rowHeader[0]?.includes("not positive definite")
-    //         );
-    //         corrTable.interpretation = "Determinant = .000. This matrix is not positive definite.";
-    //     }
-
-    //     // C. SEKARANG BERPERILAKU SAMA: Timpa footnote peringatan pada Covariance Matrix
-    //     const covTable = resultJson.tables.find((table: Table) => table.key === "covariance_matrix");
-    //     if (covTable) {
-    //         covTable.rows = covTable.rows.filter(r => 
-    //             !r.rowHeader[0]?.includes("Determinant = .000") &&
-    //             !r.rowHeader[0]?.includes("not positive definite")
-    //         );
-    //         covTable.interpretation = "Determinant = .000. This matrix is not positive definite.";
-    //     }
-    // }
-
-
-
+ 
 
     // ==================================================================================
     // POST-PROCESSING KHUSUS: Penanganan Matriks Singular (Not Positive Definite)
@@ -3941,7 +2137,7 @@ const hasSuccessfulExtraction = !suppressExtraction;
         if (hasZeroKmo) isSingular = true;
     }
 
-    // 2. Deteksi Singularitas Berdasarkan Eigenvalue Terkecil (Pendekatan Akurat SPSS)
+    // 2. Deteksi Singularitas Berdasarkan Eigenvalue Terkecil   
     if (!isSingular && data.total_variance_explained) {
         let initialEigenvalues: number[] = [];
         const varianceBlocks = Array.isArray(data.total_variance_explained)
@@ -3961,8 +2157,8 @@ const hasSuccessfulExtraction = !suppressExtraction;
             const minEigenvalue = Math.min(...initialEigenvalues);
             console.log("[FA Formatter] Minimum initial eigenvalue:", minEigenvalue);
             
-            // Batas toleransi batas bawah (machine tolerance) SPSS untuk menyatakan matriks NPD 
-            // umumnya berada pada ambang batas <= 1e-12 hingga 1e-14
+            // Batas toleransi batas bawah (machine tolerance) untuk menyatakan matriks NPD 
+            //  ambang batas <= 1e-12 hingga 1e-14
             if (minEigenvalue <= 1e-12) {
                 isSingular = true;
             }
@@ -3977,27 +2173,7 @@ const hasSuccessfulExtraction = !suppressExtraction;
         const tablesToRemove = ["kmo_bartletts_test", "inverse_correlation_matrix", "anti_image_matrices"];
         resultJson.tables = resultJson.tables.filter((table: Table) => !tablesToRemove.includes(table.key));
 
-        // // B. Timpa footnote peringatan pada Correlation Matrix 
-        // const corrTable = resultJson.tables.find((table: Table) => table.key === "correlation_matrix");
-        // if (corrTable) {
-        //     corrTable.rows = corrTable.rows.filter(r => 
-        //         !r.rowHeader[0]?.includes("Determinant = .000") &&
-        //         !r.rowHeader[0]?.includes("not positive definite")
-        //     );
-        //     corrTable.interpretation = "Determinant = .000. This matrix is not positive definite.";
-        // }
-
-        // // C. Timpa footnote peringatan pada Covariance Matrix jika dianalisis
-        // const covTable = resultJson.tables.find((table: Table) => table.key === "covariance_matrix");
-        // if (covTable) {
-        //     covTable.rows = covTable.rows.filter(r => 
-        //         !r.rowHeader[0]?.includes("Determinant = .000") &&
-        //         !r.rowHeader[0]?.includes("not positive definite")
-        //     );
-        //     covTable.interpretation = "Determinant = .000. This matrix is not positive definite.";
-        // }
-
-        // B. Format ulang Correlation Matrix ala SPSS
+        // B. Format ulang Correlation Matrix 
         const corrTable = resultJson.tables.find((table: Table) => table.key === "correlation_matrix");
         if (corrTable) {
             // Hapus sisa footnote dari dalam baris (jika ada)

@@ -300,7 +300,7 @@ export async function analyzeFactor({
     const formattedResults = transformFactorAnalysisResult(results, configData);
 
     /*
-     * 🎉 Final Result Process 🎯
+     * Final Result Process 
      * */
     await resultFactorAnalysis({
         formattedResult: formattedResults ?? [],

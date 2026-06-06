@@ -139,27 +139,6 @@ pub fn extract_data_matrix(
         let mut row = Vec::new();
         let mut has_missing = false;
 
-        // for var_name in &var_names {
-        //     match record.values.get(var_name) {
-        //         Some(DataValue::Number(value)) => row.push(*value),
-        //         _ => {
-        //             has_missing = true;
-        //             if config.options.replace_mean {
-        //                 row.push(f64::NAN); // Will replace with mean later
-        //             } else {
-        //                 break; // Skip this record
-        //             }
-        //         }
-        //     }
-        // }
-
-        // if !has_missing || (has_missing && !config.options.exclude_list_wise) {
-        //     if row.len() == var_names.len() {
-        //         valid_records.push(row);
-        //     }
-        // }
-
-
         // mulai perbaikan 21.1.2026
         for var_name in &var_names {
             match record.values.get(var_name) {
@@ -169,7 +148,7 @@ pub fn extract_data_matrix(
                     if config.options.replace_mean {
                         row.push(f64::NAN); // Nanti diganti mean
                     } else if config.options.exclude_pair_wise {
-                        // UPDATE PENTING:
+                        
                         // Jika Pair-wise, kita JANGAN break. Kita masukkan NaN.
                         // Nanti perhitungan matriks Korelasi harus pintar mengabaikan NaN ini.
                         row.push(f64::NAN); 
@@ -188,9 +167,6 @@ pub fn extract_data_matrix(
                 valid_records.push(row);
             }
         }
-        // akhir perbaikan 21.1.2026
-
-        
     }
 
     if valid_records.is_empty() {
@@ -266,7 +242,6 @@ pub fn filter_valid_cases(
         value_target_data: data.value_target_data.clone(),
         target_data_defs: data.target_data_defs.clone(),
         value_target_data_defs: data.value_target_data_defs.clone(),
-        // ===== TAMBAHAN (untuk total_variance_explained) =====
         eigenvalues: None,
         total_variance: None,
         n_variables: 0,

@@ -1,6 +1,6 @@
 //  perbaikan bisa (9/1/2026)
 //  REVISI: Mengelompokkan semua output dalam satu blok "Factor Analysis" (28/1/2026)
-//  REVISI: Menambahkan SPSS-style syntax log untuk Factor Analysis (29/1/2026)
+//  REVISI: Menambahkan style syntax log untuk Factor Analysis (29/1/2026)
 
 import {FactorFinalResultType} from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor-worker";
 import {Table} from "@/types/Table";
@@ -94,7 +94,7 @@ export async function resultFactorAnalysis({
             /*
              *  Create Log and Single Analytic Group for Factor Analysis
              *  Semua output akan dikelompokkan dalam satu blok "Factor Analysis"
-             *  Generate SPSS-style syntax log berdasarkan konfigurasi yang dipilih user
+             *  Generate style syntax log berdasarkan konfigurasi yang dipilih user
              * */
             const extractionMethod = configData.extraction.Method;
             const showScreePlot = configData.extraction.Scree === true;
@@ -252,7 +252,7 @@ export async function resultFactorAnalysis({
             }
 
             /*
-             * 📉 Scree Plot Chart 📉
+             * Scree Plot Chart
              * Menampilkan Diagram Scree Plot
              * */
             const chartData = (formattedResult as any).screePlotChart;
@@ -268,7 +268,7 @@ export async function resultFactorAnalysis({
 
 
             /*
-             * 🧩 Component Matrix Result 🧩
+             * Component Matrix Result 
              * */
             const componentMatrix = findTable("component_matrix");
             const componentMatrixRaw = findRawTable("component_matrix");
@@ -283,7 +283,7 @@ export async function resultFactorAnalysis({
             }
 
             /*
-             * 🔄 Reproduced Correlations Result 🔄
+             * Reproduced Correlations Result 
              * */
             const reproducedCorrelations = findTable("reproduced_correlations");
             if (reproducedCorrelations && hasSuccessfulExtraction) {
@@ -296,7 +296,7 @@ export async function resultFactorAnalysis({
             }
 
             /*
-             * 🔄 Reproduced Covariances Result 🔄
+             * Reproduced Covariances Result 
              * */
             const reproducedCovariances = findTable("reproduced_covariances");
             if (reproducedCovariances && hasSuccessfulExtraction && configData.extraction.Covariance === true) {
@@ -310,7 +310,7 @@ export async function resultFactorAnalysis({
             }
 
             /*
-             * 🔄 Rotated Component Matrix Result 🔄
+             * Rotated Component Matrix Result
              * */
             const rotatedComponentMatrix = findTable(
                 "rotated_component_matrix"
@@ -329,7 +329,7 @@ export async function resultFactorAnalysis({
             }
 
             /*
-             * 🔄 Component Transformation Matrix Result 🔄
+             * Component Transformation Matrix Result
              * */
             const componentTransformationMatrix = findTable(
                 "component_transformation_matrix"
@@ -348,7 +348,7 @@ export async function resultFactorAnalysis({
             }
 
             /*
-             * 🔄 Pattern Matrix Result 🔄
+             * Pattern Matrix Result
              * */
             const patternMatrix = findTable("pattern_matrix");
             if (patternMatrix && hasSuccessfulExtraction) {
@@ -362,7 +362,7 @@ export async function resultFactorAnalysis({
             }
 
             /*
-             * 🔄 Structure Matrix Result 🔄
+             * Structure Matrix Result
              * */
             const structureMatrix = findTable("structure_matrix");
             if (structureMatrix && hasSuccessfulExtraction) {
@@ -376,7 +376,7 @@ export async function resultFactorAnalysis({
             }
 
             /*
-             * 🔄 Component Correlation Matrix Result 🔄
+             * Component Correlation Matrix Result
              * */
             const componentCorrelationMatrix = findTable(
                 "component_correlation_matrix"
@@ -396,7 +396,7 @@ export async function resultFactorAnalysis({
 
             if (configData.scores.DisplayFactor) {
                 /*
-                 * 📊 Component Score Coefficient Matrix Result 📊
+                 * Component Score Coefficient Matrix Result 
                  * */
                 const componentScoreCoefficientMatrix = findTable(
                     "component_score_coefficient_matrix"
@@ -417,7 +417,7 @@ export async function resultFactorAnalysis({
                 }
 
                 /*
-                 * 📈 Component Score Covariance Matrix Result 📈
+                 * Component Score Covariance Matrix Result 
                  * */
                 const componentScoreCovarianceMatrix = findTable(
                     "component_score_covariance_matrix"
@@ -437,40 +437,8 @@ export async function resultFactorAnalysis({
                 }
             }
 
-
-            // /*
-            //  * 📉 Scree Plot Chart 📉
-            //  * Menampilkan Diagram Scree Plot
-            //  * */
-            // // Mengakses properti tambahan yang kita buat di formatter
-            // const chartData = (formattedResult as any).screePlotChart;
-            
-            // if (chartData) {
-            //     await addStatistic(analyticId, {
-            //         title: `Scree Plot`,
-            //         description: `Eigenvalues vs Component Number`,
-            //         output_data: JSON.stringify(chartData),
-            //         components: "ScreePlot", 
-            //     });
-            // }
-
-
-            // /*
-            //  * 📋 Scree Plot Data Table📋
-            //  * Menampilkan data tabel di bawah chart
-            //  * */
-            // const screePlotTable = findTable("scree_plot");
-            // if (screePlotTable) {
-            //     await addStatistic(analyticId, {
-            //         title: `Scree Plot Data`,
-            //         description: `Table of Eigenvalues`,
-            //         output_data: screePlotTable,
-            //         components: `Scree Plot Data`, // Menggunakan renderer Tabel default
-            //     });
-            // }
-
               /*
-             * 📐 Loading Plot Logic 📐
+             * Loading Plot  
              */
             // Ambil data dari Rust (sesuai struct baru)
             const loadingPlotDataRaw = (formattedResult as any).loadingPlotChart;
@@ -495,7 +463,7 @@ export async function resultFactorAnalysis({
         await factorAnalysisResult();
 
         /*
-         * 📊 Save Factor Scores as Variables (Save as Variables Logic) 📊
+         * Save Factor Scores as Variables (Save as Variables Logic) 
          * */
         if (hasSuccessfulExtraction && configData.scores.SaveVar && formattedResult.factorScores && formattedResult.factorScores.length > 0) {
             try {
@@ -503,7 +471,7 @@ export async function resultFactorAnalysis({
                 const dataStore = useDataStore.getState();
                 const variableStore = useVariableStore.getState();
 
-                // Step 0: Generate unique factor variable names following SPSS convention (FAC1_1, FAC2_1, FAC1_2, etc)
+                // Step 0: Generate unique factor variable names (FAC1_1, FAC2_1, FAC1_2, etc)
                 const existingVariableNames = variableStore.variables.map(v => v.name);
                 const uniqueFactorNames = generateUniqueFactorNames(existingVariableNames, formattedResult.factorScores);
 
