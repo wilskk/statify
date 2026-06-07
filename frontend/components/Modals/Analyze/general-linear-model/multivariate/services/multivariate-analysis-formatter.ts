@@ -573,7 +573,7 @@ function formatMultivariateTests(
         interpretation =
             "Hotelling T² Berpasangan menguji H₀: δ = δ₀ pada vektor selisih d = M1 − M2. T² = n · (d̄ − δ₀)ᵀ Sd⁻¹ (d̄ − δ₀), dan F = ((n − p) / (p(n − 1))) · T² ~ F(p, n − p). Tolak H₀ jika Sig. < α.";
     } else if (welchMode) {
-        interpretation = `Hotelling T² Dua Populasi dengan asumsi Σ₁ ≠ Σ₂ (Welch-Satterthwaite). T² = dᵀV⁻¹d dengan V = S₁/n₁ + S₂/n₂; F = ((ν − p + 1)/(pν))·T² ~ F(p, ν − p + 1) dengan ν = derajat kebebasan Krishnamoorthy-Yu. Tolak H₀: μ₁ = μ₂ jika Sig. < α.`;
+        interpretation = `Two-Sample Hotelling's T² under unequal covariances Σ₁ ≠ Σ₂ (Welch-Satterthwaite). T² = dᵀV⁻¹d with V = S₁/n₁ + S₂/n₂; F = ((ν − p + 1)/(pν))·T² ~ F(p, ν − p + 1) where ν is the Krishnamoorthy-Yu degrees of freedom. Reject H₀: μ₁ = μ₂ when Sig. < α.`;
     } else if (hotellingT2Mode) {
         interpretation =
             "One-Sample Hotelling's T² tests H₀: μ = μ₀. For the intercept-only model (no between-subjects factors), T² = (n − 1) × Hotelling's Trace, and F = ((n − p) / (p(n − 1))) · T² ~ F(p, n − p). Reject H₀ when Sig. < α.";

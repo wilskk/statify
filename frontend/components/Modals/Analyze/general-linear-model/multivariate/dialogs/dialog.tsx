@@ -317,7 +317,7 @@ export const MultivariateDialog = ({
                         />
                     )}
             </AnimatePresence>
-            <div className="p-4 flex-grow">
+            <div className="p-4 flex-grow min-h-0 overflow-y-auto">
                 <ResizablePanelGroup
                     direction="horizontal"
                     className="min-h-[400px] rounded-lg border md:min-w-[200px]"
