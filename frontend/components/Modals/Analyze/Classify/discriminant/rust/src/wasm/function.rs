@@ -367,6 +367,7 @@ pub fn run_analysis(
         scatter_data,
         bootstrap_results,
         assumption_results,
+        territorial_map: config.classify.terr,
     };
 
     Ok(Some(result))

@@ -196,18 +196,16 @@ fn compute_multicollinearity(
     let violated = singular || max_vif >= VIF_THRESHOLD || max_condition_index >= CONDITION_THRESHOLD;
 
     let note = if singular {
-        "Asumsi tidak terpenuhi: setidaknya satu variabel bebas merupakan kombinasi linear hampir sempurna dari variabel lain (matriks korelasi dalam-kelompok bersifat singular). Pertimbangkan untuk menghapus variabel yang redundan.".to_string()
+        "Not met: a predictor is a near-perfect linear combination of others (the within-groups correlation matrix is singular). Remove redundant predictors.".to_string()
     } else if violated {
         format!(
-            "Asumsi tidak terpenuhi: terdapat multikolinearitas. Nilai VIF ≥ {:.0} (tolerance ≤ {:.1}) menandakan variabel-variabel bebas saling berkorelasi sangat kuat. Pertimbangkan untuk menghapus atau menggabungkan variabel bebas.",
-            VIF_THRESHOLD,
-            1.0 / VIF_THRESHOLD
+            "Not met: VIF ≥ {:.0} indicates predictors are strongly inter-correlated. Consider removing or combining predictors.",
+            VIF_THRESHOLD
         )
     } else {
         format!(
-            "Asumsi terpenuhi: tidak ada masalah multikolinearitas. Seluruh nilai VIF < {:.0} (tolerance > {:.1}), sehingga antar variabel bebas tidak saling berkorelasi terlalu kuat.",
-            VIF_THRESHOLD,
-            1.0 / VIF_THRESHOLD
+            "Met: all VIF < {:.0}, so there is no severe multicollinearity among predictors.",
+            VIF_THRESHOLD
         )
     };
 
@@ -345,9 +343,9 @@ fn compute_henze_zirkler(dataset: &AnalyzedDataset, variables: &[String]) -> Hen
         Some(hz) => {
             let is_normal = hz.p_value > NORMALITY_ALPHA;
             let note = if is_normal {
-                "Asumsi terpenuhi: data memenuhi normalitas multivariat (uji Henze–Zirkler tidak signifikan pada α = 0,05, nilai-p > 0,05). Statistik HZ dihitung dari kovariansi MLE dan berdistribusi mendekati lognormal di bawah normalitas multivariat; nilai-p merupakan peluang ekor atasnya.".to_string()
+                "Met: the data are multivariate normal (Henze–Zirkler not significant, p > 0.05).".to_string()
             } else {
-                "Asumsi tidak terpenuhi: normalitas multivariat dilanggar (uji Henze–Zirkler signifikan pada α = 0,05, nilai-p ≤ 0,05). Statistik HZ dihitung dari kovariansi MLE dan berdistribusi mendekati lognormal di bawah normalitas multivariat; nilai-p merupakan peluang ekor atasnya.".to_string()
+                "Not met: multivariate normality is rejected (Henze–Zirkler significant, p ≤ 0.05).".to_string()
             };
             HenzeZirklerResult {
                 n: n as i32,
@@ -364,7 +362,7 @@ fn compute_henze_zirkler(dataset: &AnalyzedDataset, variables: &[String]) -> Hen
             p_value: 1.0,
             normal: true,
             violated: false,
-            note: "Uji tidak dapat dievaluasi: jumlah kasus terlalu sedikit dibandingkan banyaknya variabel bebas untuk menghitung kovariansi non-singular.".to_string(),
+            note: "Could not be tested: too few cases relative to the number of predictors to compute a non-singular covariance.".to_string(),
         },
     }
 }
@@ -461,11 +459,11 @@ fn compute_univariate_normality(
     }
 
     let note = if counted == 0 {
-        "Uji tidak dapat dievaluasi: tidak ada variabel bebas dengan jumlah kasus cukup (n ≥ 8) untuk uji Anderson–Darling.".to_string()
+        "Could not be tested: no predictor has enough cases (n ≥ 8) for the Anderson–Darling test.".to_string()
     } else if any_violation {
-        "Asumsi tidak terpenuhi: normalitas univariat dilanggar untuk satu atau lebih variabel bebas (uji Anderson–Darling signifikan pada α = 0,05, nilai-p ≤ 0,05). Periksa variabel yang ditandai 'NO' pada kolom Normality.".to_string()
+        "Not met: one or more predictors are not normal (Anderson–Darling significant, p ≤ 0.05). Check the predictors marked NO.".to_string()
     } else {
-        "Asumsi terpenuhi: seluruh variabel bebas memenuhi normalitas univariat (uji Anderson–Darling tidak signifikan pada α = 0,05, nilai-p > 0,05).".to_string()
+        "Met: all predictors are univariate normal (Anderson–Darling, p > 0.05).".to_string()
     };
 
     UnivariateNormalityResult {
@@ -485,12 +483,7 @@ fn status_row(assumption: &str, test: &str, finding: String, violated: bool) -> 
         assumption: assumption.to_string(),
         test: test.to_string(),
         finding,
-        status: if violated {
-            "Tidak terpenuhi"
-        } else {
-            "Terpenuhi"
-        }
-        .to_string(),
+        status: if violated { "Violated" } else { "Met" }.to_string(),
         violated,
     }
 }
@@ -504,15 +497,15 @@ fn build_summary(
 
     if let Some(m) = mc {
         rows.push(status_row(
-            "Multikolinearitas",
+            "Multicollinearity",
             "Tolerance / VIF",
-            format!("VIF maks = {:.2}", m.max_vif),
+            format!("Max VIF = {:.2}", m.max_vif),
             m.violated,
         ));
     }
     if let Some(m) = mv {
         rows.push(status_row(
-            "Normalitas multivariat",
+            "Multivariate normality",
             "Henze–Zirkler",
             format!("HZ = {:.3}, p = {:.3}", m.hz, m.p_value),
             m.violated,
@@ -521,9 +514,9 @@ fn build_summary(
     if let Some(u) = uv {
         let bad = u.normal.iter().filter(|&&ok| !ok).count();
         rows.push(status_row(
-            "Normalitas univariat",
+            "Univariate normality",
             "Anderson–Darling",
-            format!("{} dari {} variabel tidak normal", bad, u.normal.len()),
+            format!("{} of {} predictors non-normal", bad, u.normal.len()),
             u.violated,
         ));
     }

@@ -4,7 +4,7 @@ import type { DiscriminantAnalysisType } from "@/components/Modals/Analyze/Class
 import type { DiscriminantType, DiscriminantMainType } from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant";
 import { DiscriminantDefault } from "@/components/Modals/Analyze/Classify/discriminant/constants/discriminant-default";
 import { clearFormData, getFormData, saveFormData } from "@/hooks/useIndexedDB";
-import { saveDiscriminantResult } from "@/components/Modals/Analyze/Classify/discriminant/services/store";
+import { saveDiscriminantResult, saveDiscriminantAssumptions } from "@/components/Modals/Analyze/Classify/discriminant/services/store";
 import { Variable } from "@/types/Variable";
 
 export type DiscriminantValueUnion = string | number | boolean | string[] | null;
@@ -17,6 +17,8 @@ export interface UseDiscriminantStateResult {
         value: DiscriminantType[T][keyof DiscriminantType[T]] | DiscriminantValueUnion
     ) => void;
     executeAnalysis: (mainData: DiscriminantMainType) => Promise<void>;
+    /** Run only the assumption checks and push their output immediately. */
+    runAssumptions: (mainData: DiscriminantMainType) => Promise<void>;
     resetFormData: () => Promise<void>;
     isLoading: boolean;
     error: string | null;
@@ -214,10 +216,86 @@ export const useDiscriminantState = (
         [formData, dataVariables, variables]
     );
 
+    // Run ONLY the assumption checks and push their output to the result store,
+    // without running (or saving) the full discriminant analysis. Resolves when
+    // the worker finishes so the caller can drive its own loading/success state.
+    const runAssumptions = useCallback(
+        async (mainData: DiscriminantMainType) => {
+            if (!mainData.GroupingVariable) {
+                throw new Error("Please select a Grouping Variable first.");
+            }
+            if (!mainData.IndependentVariables || mainData.IndependentVariables.length === 0) {
+                throw new Error("Please select at least one Independent Variable first.");
+            }
+
+            // Lightweight config: force all three assumption checks on and skip
+            // the heavy/method-specific work (stepwise, bootstrap). Assumptions
+            // are method-independent, so this is safe and fast.
+            const configData: DiscriminantType = {
+                ...formData,
+                main: { ...mainData, Together: true, Stepwise: false },
+                bootstrap: { ...formData.bootstrap, PerformBootStrapping: false },
+                assumptions: {
+                    Multicollinearity: true,
+                    MultivariateNormality: true,
+                    UnivariateNormality: true,
+                },
+            };
+
+            const GroupingVariable = [mainData.GroupingVariable];
+            const IndependentVariables = mainData.IndependentVariables || [];
+            const SelectionVariable = mainData.SelectionVariable ? [mainData.SelectionVariable] : [];
+
+            const slicedDataForGrouping = getSlicedData({ dataVariables, variables, selectedVariables: GroupingVariable });
+            const slicedDataForIndependent = getSlicedData({ dataVariables, variables, selectedVariables: IndependentVariables });
+            const slicedDataForSelection = getSlicedData({ dataVariables, variables, selectedVariables: SelectionVariable });
+            const varDefsForGrouping = getVarDefs(variables, GroupingVariable);
+            const varDefsForIndependent = getVarDefs(variables, IndependentVariables);
+            const varDefsForSelection = getVarDefs(variables, SelectionVariable);
+
+            await new Promise<void>((resolve, reject) => {
+                const worker = new Worker('/workers/Classify/Discriminant/discriminant.worker.js', { type: 'module' });
+                worker.postMessage({
+                    group_data: slicedDataForGrouping,
+                    independent_data: slicedDataForIndependent,
+                    selection_data: slicedDataForSelection,
+                    group_data_defs: varDefsForGrouping,
+                    independent_data_defs: varDefsForIndependent,
+                    selection_data_defs: varDefsForSelection,
+                    config_data: configData,
+                });
+
+                worker.onmessage = async (e) => {
+                    const { type, payload, error: workerError } = e.data;
+                    if (type === "SUCCESS") {
+                        try {
+                            await saveDiscriminantAssumptions(payload.formattedResults);
+                            resolve();
+                        } catch (err) {
+                            reject(err instanceof Error ? err : new Error(String(err)));
+                        } finally {
+                            worker.terminate();
+                        }
+                    } else {
+                        worker.terminate();
+                        reject(new Error(workerError || "Unknown worker error"));
+                    }
+                };
+
+                worker.onerror = (err) => {
+                    worker.terminate();
+                    reject(new Error(err.message || "Worker error"));
+                };
+            });
+        },
+        [formData, dataVariables, variables]
+    );
+
     return {
         formData,
         updateFormData,
         executeAnalysis,
+        runAssumptions,
         resetFormData,
         isLoading,
         error,

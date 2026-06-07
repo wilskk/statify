@@ -41,6 +41,7 @@ export const DiscriminantMain = () => {
     formData,
     updateFormData,
     executeAnalysis,
+    runAssumptions,
     resetFormData,
     isLoading,
     error,
@@ -522,10 +523,9 @@ export const DiscriminantMain = () => {
             {/* === Assumptions Tab === */}
             <TabsContent value="assumptions" className="mt-0">
               <DiscriminantAssumptions
-                updateFormData={(field, value) =>
-                  updateFormData("assumptions", field, value)
-                }
-                data={formData.assumptions}
+                onRunAssumptions={() => runAssumptions(mainData)}
+                hasGrouping={!!mainData.GroupingVariable}
+                independentCount={mainData.IndependentVariables?.length ?? 0}
               />
             </TabsContent>
           </div>

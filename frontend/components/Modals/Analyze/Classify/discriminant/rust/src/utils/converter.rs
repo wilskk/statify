@@ -54,6 +54,7 @@ struct FormatResult {
     bootstrap_results: Option<crate::models::result::BootstrapResults>,
     // Already display-shaped (Vec-based), so passed straight through.
     assumption_results: Option<crate::models::result::AssumptionResults>,
+    territorial_map: bool,
 }
 
 #[derive(Serialize)]
@@ -821,6 +822,7 @@ impl FormatResult {
             scatter_data,
             bootstrap_results: result.bootstrap_results.clone(),
             assumption_results: result.assumption_results.clone(),
+            territorial_map: result.territorial_map,
         }
     }
 }

@@ -414,19 +414,19 @@ export function transformDiscriminantResult(data: any): ResultJson {
         },
         {
           rowHeader: [
-            "Menguji hipotesis nol bahwa matriks kovariansi populasi antar kelompok adalah sama.",
+            "Tests null hypothesis of equal population covariance matrices.",
           ],
         },
       ],
     };
 
-    // Indonesian interpretation (homogeneity-of-covariance assumption), surfaced
-    // as the section Description by store.ts.
+    // Interpretation (homogeneity-of-covariance assumption), surfaced as the
+    // section Description by store.ts.
     const boxMp = data.box_m_test.p_value;
     (table as Table & { footer?: string }).footer =
       typeof boxMp === "number" && boxMp < 0.05
-        ? "Asumsi tidak terpenuhi: uji Box's M signifikan (p < 0,05), sehingga matriks kovariansi antar kelompok tidak homogen. Pertimbangkan menggunakan klasifikasi dengan matriks kovariansi terpisah (quadratic discriminant)."
-        : "Asumsi terpenuhi: uji Box's M tidak signifikan (p ≥ 0,05), sehingga matriks kovariansi antar kelompok dapat dianggap homogen — sesuai dengan syarat analisis diskriminan linear.";
+        ? "Not met: Box's M is significant (p < 0.05), so the group covariance matrices are not equal. Consider separate-covariance (quadratic) classification."
+        : "Met: Box's M is not significant (p ≥ 0.05), so equal group covariance matrices can be assumed.";
 
     resultJson.tables.push(table);
   }
@@ -2189,6 +2189,102 @@ export function transformDiscriminantResult(data: any): ResultJson {
     resultJson.charts = [combinedChart, ...separateCharts];
   }
 
+  // ── Territorial Map (Classify → Plots → Territorial Map) ───────────────────
+  // Partitions the discriminant space (Function 1 × Function 2) into the LDA
+  // classification regions (nearest centroid, prior-adjusted) and shades each
+  // region by group. Built from the centroids alone, so it works even when no
+  // scatter/casewise data is present. Needs ≥ 2 discriminant functions.
+  if (data?.territorial_map) {
+    const cents = (centroidArr ?? []).filter(
+      (c) => Array.isArray(c.values) && c.values.length >= 2,
+    );
+
+    if (cents.length >= 2) {
+      // Prior probability per group (log), defaulting to equal priors.
+      const priorLog: Record<string, number> = {};
+      const pp = data?.prior_probabilities;
+      if (pp && Array.isArray(pp.groups) && Array.isArray(pp.prior_probabilities)) {
+        for (let i = 0; i < pp.groups.length; i++) {
+          const v = pp.prior_probabilities[i];
+          priorLog[String(pp.groups[i])] =
+            typeof v === "number" && v > 0 ? Math.log(v) : 0;
+        }
+      }
+      const lnPrior = (g: string) => priorLog[String(g)] ?? 0;
+
+      // Plot range: cover the centroids (and case scores when available), padded.
+      const xs = cents.map((c) => c.values[0]);
+      const ys = cents.map((c) => c.values[1]);
+      if (Array.isArray(f1Scores)) xs.push(...(f1Scores as number[]));
+      if (Array.isArray(f2Scores)) ys.push(...(f2Scores as number[]));
+      let xMin = Math.min(...xs);
+      let xMax = Math.max(...xs);
+      let yMin = Math.min(...ys);
+      let yMax = Math.max(...ys);
+      const padX = (xMax - xMin) * 0.25 || 1;
+      const padY = (yMax - yMin) * 0.25 || 1;
+      xMin -= padX;
+      xMax += padX;
+      yMin -= padY;
+      yMax += padY;
+
+      // Grid resolution (~2200 cells, kept roughly square).
+      const aspect = (xMax - xMin) / (yMax - yMin || 1);
+      const NY = Math.min(90, Math.max(34, Math.round(Math.sqrt(2200 / (aspect || 1)))));
+      const NX = Math.min(90, Math.max(34, Math.round((2200 / NY) || 50)));
+
+      // Classify each grid cell to the highest-scoring centroid.
+      const regionPoints: { category: string; x: number; y: number }[] = [];
+      for (let i = 0; i < NX; i++) {
+        const gx = xMin + ((xMax - xMin) * i) / (NX - 1);
+        for (let j = 0; j < NY; j++) {
+          const gy = yMin + ((yMax - yMin) * j) / (NY - 1);
+          let bestGroup = cents[0].group;
+          let bestScore = -Infinity;
+          for (const c of cents) {
+            const dx = gx - c.values[0];
+            const dy = gy - c.values[1];
+            const score = -0.5 * (dx * dx + dy * dy) + lnPrior(c.group);
+            if (score > bestScore) {
+              bestScore = score;
+              bestGroup = c.group;
+            }
+          }
+          regionPoints.push({ category: bestGroup, x: gx, y: gy });
+        }
+      }
+
+      // Centroids drawn last (on top), in their own category so they stand out.
+      const centroidMarks = cents.map((c) => ({
+        category: "Centroid ★",
+        x: c.values[0],
+        y: c.values[1],
+      }));
+
+      const territorialChart: Chart = {
+        chartType: "Grouped Scatter Plot",
+        chartData: [...regionPoints, ...centroidMarks],
+        chartMetadata: {
+          axisInfo: { x: "Function 1", y: "Function 2", category: "Group" },
+          description: "Territorial Map",
+          title: "Territorial Map",
+          subtitle: "Classification regions in discriminant space",
+          notes:
+            "Each region is colored by the group a case there would be classified into (nearest centroid). ★ = group centroid.",
+        },
+        chartConfig: {
+          width: 640,
+          height: 520,
+          useAxis: true,
+          useLegend: true,
+          axisLabels: { x: "Function 1", y: "Function 2" },
+        },
+      };
+
+      resultJson.charts = [...(resultJson.charts ?? []), territorialChart];
+    }
+  }
+
   // Bootstrap for Standardized Canonical Discriminant Function Coefficients
   if (data.bootstrap_results?.standardized?.length) {
     const b = data.bootstrap_results;
@@ -2253,9 +2349,9 @@ export function transformDiscriminantResult(data: any): ResultJson {
         key: "assumption_summary",
         title: "Assumption Checks Summary",
         columnHeaders: [
-          { header: "Asumsi", key: "assumption" },
-          { header: "Uji", key: "test" },
-          { header: "Temuan", key: "finding" },
+          { header: "Assumption", key: "assumption" },
+          { header: "Test", key: "test" },
+          { header: "Finding", key: "finding" },
           { header: "Status", key: "status" },
         ],
         rows: [],
@@ -2267,12 +2363,12 @@ export function transformDiscriminantResult(data: any): ResultJson {
           rowHeader: [r.assumption],
           test: r.test,
           finding: r.finding,
-          status: r.violated ? "⚠ Tidak terpenuhi" : "Terpenuhi",
+          status: r.violated ? "⚠ Violated" : "Met",
         });
       }
       (table as Table & { footer?: string }).footer = anyViolated
-        ? "⚠ Satu atau lebih asumsi tidak terpenuhi — tafsirkan hasil analisis diskriminan dengan hati-hati. Lihat tabel rinci di bawah untuk tiap asumsi."
-        : "Seluruh asumsi yang diperiksa terpenuhi.";
+        ? "⚠ One or more assumptions are not met — interpret the results with caution. See the detail tables below."
+        : "All checked assumptions are met.";
       resultJson.tables.push(table);
     }
 

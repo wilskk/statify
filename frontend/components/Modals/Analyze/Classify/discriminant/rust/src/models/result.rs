@@ -52,6 +52,10 @@ pub struct DiscriminantResult {
     /// assumption check is requested in the Assumptions dialog.
     #[serde(rename = "assumption_results")]
     pub assumption_results: Option<AssumptionResults>,
+    /// True when the Territorial Map plot was requested (Classify → Plots).
+    /// The map itself is built on the frontend from the group centroids.
+    #[serde(rename = "territorial_map")]
+    pub territorial_map: bool,
 }
 
 /// Bundle of all requested assumption checks plus an at-a-glance summary used to
