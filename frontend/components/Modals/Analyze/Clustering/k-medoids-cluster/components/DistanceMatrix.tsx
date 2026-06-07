@@ -1,6 +1,6 @@
 /**
- * Distance Matrix Heatmap Component
- * Visualizes distances between cluster medoids
+ * Komponen Heatmap Matriks Jarak
+ * Memvisualisasikan jarak antar medoid klaster
  */
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -13,15 +13,15 @@ interface DistanceMatrixProps {
 }
 
 export const DistanceMatrixHeatmap: React.FC<DistanceMatrixProps> = ({ matrix, actions }) => {
-    // Find min and max values for color scaling
+    // Cari nilai min dan maks untuk skala warna
     const flatDistances = matrix.distances
         .flat()
-        .filter(d => d != null && isFinite(d) && d > 0);
+        .filter(d => d !== null && isFinite(d) && d > 0);
     
     const minDist = flatDistances.length > 0 ? flatDistances.reduce((a, b) => a < b ? a : b) : 0;
     const maxDist = flatDistances.length > 0 ? flatDistances.reduce((a, b) => a > b ? a : b) : 0;
 
-    // Color scale function
+    // Fungsi skala warna
     const getColor = (value: number): string => {
         if (value === 0) return "bg-gray-200 dark:bg-gray-800";
         
@@ -72,7 +72,7 @@ export const DistanceMatrixHeatmap: React.FC<DistanceMatrixProps> = ({ matrix, a
                                     </td>
                                     {matrix.clusterLabels.map((colLabel, j) => {
                                         const distance = matrix.distances[i]?.[j];
-                                        const safeDistance = distance != null && isFinite(distance) ? distance : 0;
+                                        const safeDistance = distance !== null && isFinite(distance) ? distance : 0;
                                         
                                         return (
                                             <td
@@ -130,7 +130,7 @@ export const FullDistanceMatrixHeatmap: React.FC<FullDistanceMatrixProps> = ({ m
             const row = matrix.distances[i] || [];
             for (let j = 0; j < n; j += strideValue) {
                 const value = row[j];
-                if (value == null || !isFinite(value)) continue;
+                if (value === null || !isFinite(value)) continue;
                 if (value < minValue) minValue = value;
                 if (value > maxValue) maxValue = value;
             }
@@ -160,14 +160,14 @@ export const FullDistanceMatrixHeatmap: React.FC<FullDistanceMatrixProps> = ({ m
         const imageData = ctx.createImageData(sampledSize, sampledSize);
         const range = maxDist - minDist;
 
-        const start = { r: 44, g: 123, b: 229 }; // blue
+        const start = { r: 44, g: 123, b: 229 }; // biru
         const end = { r: 251, g: 140, b: 0 }; // amber
 
         for (let i = 0; i < sampledSize; i++) {
             const sourceRow = matrix.distances[i * stride] || [];
             for (let j = 0; j < sampledSize; j++) {
                 const value = sourceRow[j * stride];
-                const safeValue = value != null && isFinite(value) ? value : minDist;
+                const safeValue = value !== null && isFinite(value) ? value : minDist;
                 const normalized = Math.min(1, Math.max(0, (safeValue - minDist) / range));
                 const r = Math.round(start.r + (end.r - start.r) * normalized);
                 const g = Math.round(start.g + (end.g - start.g) * normalized);
@@ -316,7 +316,7 @@ export const DistanceMatrixTable: React.FC<DistanceMatrixTableProps> = ({
                                         const value = row[colIdx];
                                         return (
                                             <td key={colIdx} className="border border-border p-2 text-right">
-                                                {value != null && isFinite(value) ? value.toFixed(4) : "N/A"}
+                                                {value !== null && isFinite(value) ? value.toFixed(4) : "N/A"}
                                             </td>
                                         );
                                     })}

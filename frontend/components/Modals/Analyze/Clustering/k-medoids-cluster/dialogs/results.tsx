@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import type {
     KMedoidsClusterResultsProps,
     KMedoidsClusterResultsType,
@@ -9,13 +8,6 @@ import type {
 import { Checkbox } from "@/components/ui/checkbox";
 import type { CheckedState } from "@radix-ui/react-checkbox";
 import { Label } from "@/components/ui/label";
-import { HelpCircle } from "lucide-react";
-import {
-    TooltipProvider,
-    Tooltip,
-    TooltipTrigger,
-    TooltipContent,
-} from "@/components/ui/tooltip";
 
 /**
  * ========================================
@@ -52,7 +44,7 @@ export const KMedoidsClusterResults = ({
                 [field]: normalizedValue,
             };
 
-            // Convergence view always includes iteration history details.
+            // Tampilan konvergensi selalu menyertakan detail histori iterasi.
             if (field === "ShowConvergenceAlgorithm" && normalizedValue) {
                 nextState.ShowIterationHistory = true;
             }
@@ -78,7 +70,7 @@ export const KMedoidsClusterResults = ({
                     </p>
                 </div>
 
-                {/* ========== CORE OUTPUTS (WAJIB) ========== */}
+                {/* ========== OUTPUT UTAMA (WAJIB) ========== */}
                 <div className="flex flex-col gap-3 w-full border-b pb-4">
                     <Label className="font-semibold">Core Outputs (Recommended)</Label>
 
@@ -146,7 +138,7 @@ export const KMedoidsClusterResults = ({
                     </div>
                 </div>
 
-                {/* ========== ADDITIONAL OUTPUTS ========== */}
+                {/* ========== OUTPUT TAMBAHAN ========== */}
                 <div className="flex flex-col gap-3 w-full">
                     <Label className="font-semibold">Additional Information (Optional)</Label>
 

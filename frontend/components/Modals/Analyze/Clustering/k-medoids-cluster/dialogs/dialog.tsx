@@ -23,7 +23,10 @@ import {
 import type { TargetListConfig } from "@/components/Common/VariableListManager";
 import VariableListManager from "@/components/Common/VariableListManager";
 import type { Variable } from "@/types/Variable";
-import { getKMedoidsVariableIcon } from "@/components/Modals/Analyze/Clustering/k-medoids-cluster/utils/iconHelper";
+import {
+    getKMedoidsVariableIcon,
+    getKMedoidsVariableIconByType,
+} from "@/components/Modals/Analyze/Clustering/k-medoids-cluster/utils/iconHelper";
 import { HelpCircle } from "lucide-react";
 import {
     TooltipProvider,
@@ -32,6 +35,7 @@ import {
     TooltipContent,
 } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import { useDataStore } from "@/stores/useDataStore";
 
 export const KMedoidsClusterDialog = ({
     updateFormData,
@@ -41,6 +45,7 @@ export const KMedoidsClusterDialog = ({
     const [mainState, setMainState] = useState<KMedoidsClusterMainType>({
         ...data,
     });
+    const dataVariables = useDataStore((state) => state.data);
     const [availableVars, setAvailableVars] = useState<Variable[]>([]);
     const [targetVars, setTargetVars] = useState<Variable[]>([]);
     const [caseVars, setCaseVars] = useState<Variable[]>([]);
@@ -49,7 +54,7 @@ export const KMedoidsClusterDialog = ({
         source: string;
     } | null>(null);
 
-    // Use ref to avoid re-creating callbacks when updateFormData changes
+    // Gunakan ref agar callback tidak dibuat ulang saat updateFormData berubah
     const updateFormDataRef = useRef(updateFormData);
     useEffect(() => {
         updateFormDataRef.current = updateFormData;
@@ -67,22 +72,85 @@ export const KMedoidsClusterDialog = ({
         [setAvailableVars, setTargetVars, setCaseVars]
     );
 
+    const numericSampleByName = useMemo(() => {
+        const stats = new Map<string, { numeric: number; total: number }>();
+        const allVars = globalVariables ?? [];
+
+        for (const variable of allVars) {
+            stats.set(variable.name, { numeric: 0, total: 0 });
+        }
+
+        if (!dataVariables || dataVariables.length === 0 || allVars.length === 0) {
+            return stats;
+        }
+
+        const maxRows = Math.min(dataVariables.length, 200);
+
+        for (let i = 0; i < maxRows; i++) {
+            const row = dataVariables[i];
+            for (const variable of allVars) {
+                const rawValue = row[variable.columnIndex as number];
+                if (rawValue === null || rawValue === undefined || rawValue === "") {
+                    continue;
+                }
+                const parsed = typeof rawValue === "number" ? rawValue : parseFloat(String(rawValue));
+                const stat = stats.get(variable.name);
+                if (!stat) continue;
+                stat.total += 1;
+                if (Number.isFinite(parsed)) {
+                    stat.numeric += 1;
+                }
+            }
+        }
+
+        return stats;
+    }, [dataVariables, globalVariables]);
+
     const isNumericVariable = useCallback((variable: Variable) => {
-        return variable.type !== "STRING";
-    }, []);
+        const numericTypes: Array<Variable["type"]> = [
+            "NUMERIC",
+            "COMMA",
+            "DOT",
+            "SCIENTIFIC",
+            "DOLLAR",
+            "CCA",
+            "CCB",
+            "CCC",
+            "CCD",
+            "CCE",
+            "RESTRICTED_NUMERIC",
+        ];
+        const variableType = variable.type ?? "STRING";
+        const typeIsNumeric = numericTypes.includes(variableType);
+        const sampleStats = numericSampleByName.get(variable.name);
+
+        if (sampleStats && sampleStats.total > 0 && sampleStats.numeric === 0) {
+            return false;
+        }
+
+        return typeIsNumeric;
+    }, [numericSampleByName]);
+
+    const getVariableIconWithData = useCallback((variable: Variable) => {
+        const sampleStats = numericSampleByName.get(variable.name);
+        if (sampleStats && sampleStats.total > 0 && sampleStats.numeric === 0) {
+            return getKMedoidsVariableIconByType(false);
+        }
+        return getKMedoidsVariableIcon(variable);
+    }, [numericSampleByName]);
 
     useEffect(() => {
         setMainState({ ...data });
         const allVariables: Variable[] = globalVariables;
 
         const initialUsedNames = new Set(
-            [...(data.TargetVar || []), data.CaseTarget].filter(Boolean)
+            [...(data.TargetVar ?? []), data.CaseTarget].filter(Boolean)
         );
 
         const varsMap = new Map(allVariables.map((v) => [v.name, v]));
 
         setTargetVars(
-            (data.TargetVar || [])
+            (data.TargetVar ?? [])
                 .map((name) => varsMap.get(name))
                 .filter(Boolean) as Variable[]
         );
@@ -137,7 +205,7 @@ export const KMedoidsClusterDialog = ({
             let shouldUpdateTargetVars = false;
             let shouldUpdateCaseTarget = false;
 
-            // Remove from source list
+            // Hapus dari daftar sumber
             if (fromSetter) {
                 if (fromListId === "TargetVar") {
                     fromSetter((prev) => {
@@ -157,7 +225,7 @@ export const KMedoidsClusterDialog = ({
                 }
             }
 
-            // Add to destination list
+            // Tambahkan ke daftar tujuan
             if (toSetter) {
                 if (toListConfig?.maxItems === 1) {
                     toSetter((prev) => {
@@ -188,7 +256,7 @@ export const KMedoidsClusterDialog = ({
                 }
             }
 
-            // Update parent after all state updates are queued
+            // Perbarui induk setelah semua pembaruan state diantrikan
             queueMicrotask(() => {
                 if (shouldUpdateTargetVars && updatedTargetVars !== null) {
                     updateFormDataRef.current("TargetVar", updatedTargetVars.map(v => v.name));
@@ -206,7 +274,7 @@ export const KMedoidsClusterDialog = ({
             const setter = listStateSetters[listId];
             if (setter) {
                 setter(newVariables);
-                // Update parent after state update is queued
+                // Perbarui induk setelah pembaruan state diantrikan
                 if (listId === "TargetVar") {
                     queueMicrotask(() => {
                         updateFormDataRef.current("TargetVar", newVariables.map(v => v.name));
@@ -225,18 +293,18 @@ export const KMedoidsClusterDialog = ({
             ...prevState,
             [field]: value,
         }));
-        // Update parent synchronously (not via queueMicrotask) so that
-        // formData.main is always up-to-date before the OK button reads it.
-        // Using queueMicrotask here caused a race: the parent's setFormData
-        // was scheduled as a macro-task render, which could fire AFTER the
-        // user clicked OK — resulting in stale k being sent to the worker.
+        // Perbarui induk secara sinkron (bukan via queueMicrotask) agar
+        // formData.main selalu mutakhir sebelum tombol OK membacanya.
+        // Penggunaan queueMicrotask di sini menyebabkan race condition: setFormData
+        // induk dijadwalkan sebagai macro-task render yang bisa dieksekusi SETELAH
+        // pengguna klik OK — sehingga k yang basi dikirim ke worker.
         updateFormDataRef.current(field, value);
     }, []);
 
     return (
         <div className="h-full overflow-y-auto p-6">
             <div className="space-y-6">
-                {/* Data Type Legend */}
+                {/* Legenda Tipe Data */}
                 <div className="bg-muted/40 border rounded-md p-3">
                     <div className="flex items-center gap-4 text-xs">
                         <span className="font-semibold text-muted-foreground">Data Type Icons:</span>
@@ -260,7 +328,7 @@ export const KMedoidsClusterDialog = ({
                         setHighlightedVariable={setHighlightedVariable}
                         onMoveVariable={handleMoveVariable}
                         onReorderVariable={handleReorderVariable}
-                        getVariableIcon={getKMedoidsVariableIcon}
+                        getVariableIcon={getVariableIconWithData}
                         showArrowButtons={true}
                         availableListHeight="350px"
                     />
@@ -272,7 +340,7 @@ export const KMedoidsClusterDialog = ({
                     </div>
                     <div className="space-y-4 p-4">
 
-                        {/* ===== MODE SELECTOR ===== */}
+                        {/* ===== PEMILIH MODE ===== */}
                         <div className="space-y-2">
                             <Label className="font-semibold text-sm">Number of Clusters (k)</Label>
                             <RadioGroup
@@ -308,7 +376,7 @@ export const KMedoidsClusterDialog = ({
                                     </div>
                                 )}
 
-                                {/* --- AUTOMATIC --- */}
+                                {/* --- OTOMATIS --- */}
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value={ClusterMode.Automatic} id="mode-auto" />
                                     <Label htmlFor="mode-auto" className="cursor-pointer font-normal">
@@ -318,7 +386,7 @@ export const KMedoidsClusterDialog = ({
 
                                 {mainState.ClusterMode === ClusterMode.Automatic && (
                                     <div className="space-y-3 ml-6 border-l-2 border-muted pl-4">
-                                        {/* Range */}
+                                        {/* Rentang k */}
                                         <div className="flex items-center gap-3">
                                             <Label className="text-sm text-muted-foreground w-20">k range:</Label>
                                             <Input
@@ -346,7 +414,7 @@ export const KMedoidsClusterDialog = ({
                                                 className="w-20"
                                             />
                                         </div>
-                                        {/* Method */}
+                                        {/* Metode */}
                                         <div className="flex items-center gap-3">
                                             <Label className="text-sm text-muted-foreground w-20">Method:</Label>
                                             <Select
@@ -377,7 +445,7 @@ export const KMedoidsClusterDialog = ({
                             </RadioGroup>
                         </div>
 
-                        {/* ===== DISTANCE METRIC ===== */}
+                        {/* ===== UKURAN JARAK ===== */}
                         <div className="space-y-2 border-t pt-4">
                             <div className="flex items-center gap-2">
                                 <Label className="font-semibold text-sm">Distance Measure</Label>

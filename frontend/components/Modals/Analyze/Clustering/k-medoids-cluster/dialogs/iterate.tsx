@@ -1,17 +1,16 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import type {
     KMedoidsClusterIterateProps,
     KMedoidsClusterIterateType,
 } from "@/components/Modals/Analyze/Clustering/k-medoids-cluster/types/k-medoids-cluster";
 import {
     KMedoidsMethod,
+    type SeedMode,
 } from "@/components/Modals/Analyze/Clustering/k-medoids-cluster/types/k-medoids-cluster";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { 
     Select,
     SelectContent,
@@ -19,9 +18,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { toast } from "sonner";
-import { HelpCircle, AlertTriangle } from "lucide-react";
+import { HelpCircle, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import {
     TooltipProvider,
     Tooltip,
@@ -29,6 +26,81 @@ import {
     TooltipContent,
 } from "@/components/ui/tooltip";
 import { useDataStore } from "@/stores/useDataStore";
+
+// Fungsi pembantu untuk mendapatkan rekomendasi berdasarkan metode dan ukuran dataset
+const getMethodAdvisory = (method: KMedoidsMethod, n: number) => {
+    switch (method) {
+        case KMedoidsMethod.PAM:
+            if (n < 200) {
+                return {
+                    status: "optimal",
+                    badgeText: "Sangat Cocok",
+                    badgeClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+                    complexity: "Waktu: O(k(n-k)²), Memori: O(n²)",
+                    details: "PAM menghitung matriks dissimilarity penuh. Sangat akurat dan optimal untuk dataset kecil Anda.",
+                    recommendation: "Gunakan parameter default (n_init = 10) untuk hasil terbaik."
+                };
+            } else if (n <= 1000) {
+                return {
+                    status: "warning",
+                    badgeText: "Dapat Diterima",
+                    badgeClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+                    complexity: "Waktu: O(k(n-k)²), Memori: O(n²)",
+                    details: `Untuk ${n} data, PAM akan menghitung sekitar ${(n * n / 1000).toFixed(0)} ribu pasang jarak. Masih sangat presisi, namun eksekusi mulai terasa melambat.`,
+                    recommendation: "Pertimbangkan mengurangi Number of Initializations menjadi 3-5."
+                };
+            } else {
+                return {
+                    status: "critical",
+                    badgeText: "Kurang Direkomendasikan",
+                    badgeClass: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+                    complexity: "Waktu: O(k(n-k)²), Memori: O(n²)",
+                    details: `Dataset cukup besar (${n} data). Matriks jarak PAM memerlukan ${((n * n) / 1000000).toFixed(2)} juta kalkulasi, yang dapat membebani browser thread.`,
+                    recommendation: "Sangat disarankan beralih ke CLARA (Large Datasets) atau CLARANS."
+                };
+            }
+        case KMedoidsMethod.CLARA:
+            if (n < 200) {
+                return {
+                    status: "warning",
+                    badgeText: "Kurang Optimal",
+                    badgeClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+                    complexity: "Waktu: O(k·s² + k(n-s)), Memori: O(s² + n)",
+                    details: `CLARA dirancang untuk data besar menggunakan sampling (default sample size: 40 + 2k). Untuk data kecil (${n} objek), sampling dapat menghilangkan representasi variasi data.`,
+                    recommendation: "Disarankan menggunakan PAM untuk akurasi maksimal pada data kecil."
+                };
+            } else {
+                return {
+                    status: "optimal",
+                    badgeText: "Sangat Cocok",
+                    badgeClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+                    complexity: "Waktu: O(k·s² + k(n-s)), Memori: O(s² + n)",
+                    details: `Sangat efisien untuk dataset besar (${n} data). CLARA menarik sub-sampel kecil dan melakukan pengklasteran PAM di sub-sampel tersebut secara berulang.`,
+                    recommendation: "Parameter default (5 sample runs) sudah sangat optimal."
+                };
+            }
+        case KMedoidsMethod.CLARANS:
+            if (n < 100) {
+                return {
+                    status: "warning",
+                    badgeText: "Dapat Diterima",
+                    badgeClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+                    complexity: "Waktu: O(n²) worst-case, Memori: O(n)",
+                    details: "CLARANS melakukan pencarian acak pada grafik medoid. Untuk data sangat kecil, PAM lebih presisi dan memiliki performa kecepatan yang sama.",
+                    recommendation: "Gunakan PAM jika ingin presisi mutlak pada dataset sangat kecil."
+                };
+            } else {
+                return {
+                    status: "optimal",
+                    badgeText: "Sangat Cocok",
+                    badgeClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+                    complexity: "Waktu: O(n²) worst-case, Memori: O(n)",
+                    details: `Keseimbangan terbaik antara kualitas klaster dan kecepatan untuk data ukuran menengah-besar (${n} data). CLARANS tidak dibatasi oleh sub-sampel statis seperti CLARA.`,
+                    recommendation: "Gunakan parameter auto untuk Max Neighbors guna efisiensi terbaik."
+                };
+            }
+    }
+};
 
 /**
  * ========================================
@@ -46,26 +118,27 @@ export const KMedoidsClusterIterate = ({
 }: KMedoidsClusterIterateProps) => {
     const [iterateState, setIterateState] = useState<KMedoidsClusterIterateType>({
         ...data,
+        SeedMode: data.SeedMode ?? (data.RandomSeed === null ? "default" : "custom"),
     });
     
     const dataCount = useDataStore((state) => state.data.length);
-    
-    // Performance warning logic
-    const n_init = iterateState.NumberOfInitializations || 10;
-    const showPerformanceWarning = 
-        (dataCount > 500 && n_init > 5) || 
-        (dataCount > 1000 && n_init > 3) ||
-        (dataCount > 2000);
+    const normalizedMethod = String(iterateState.Method ?? "").trim().toUpperCase();
+    const isPam = normalizedMethod === "PAM";
+    const isClara = normalizedMethod === "CLARA";
+    const isClarans = normalizedMethod === "CLARANS";
 
-    // Calculate maximum k possible based on clustering mode
+    // Hitung nilai maksimum k berdasarkan mode clustering
     const maxK = mainData.ClusterMode === "automatic" 
         ? (mainData.AutoKMax ?? 10) 
         : (mainData.Cluster ?? 2);
-    // CLARA requires sample_size > k.
+    // CLARA mengharuskan sample_size > k.
     const minSampleSize = maxK + 1;
 
     useEffect(() => {
-        setIterateState({ ...data });
+        setIterateState({
+            ...data,
+            SeedMode: data.SeedMode ?? (data.RandomSeed === null ? "default" : "custom"),
+        });
     }, [data]);
 
     const handleChange = (
@@ -76,32 +149,28 @@ export const KMedoidsClusterIterate = ({
             ...prevState,
             [field]: value,
         }));
-        // Keep parent form state in sync so Execute uses the latest iterate config.
+        // Sinkronkan state form induk agar Execute menggunakan konfigurasi iterate terbaru.
         updateFormData(field, value);
+    };
+
+    const handleSeedModeChange = (value: SeedMode) => {
+        setIterateState((prevState) => {
+            const nextSeed = value === "custom" ? prevState.RandomSeed : null;
+            return {
+                ...prevState,
+                SeedMode: value,
+                RandomSeed: nextSeed,
+            };
+        });
+
+        updateFormData("SeedMode", value);
+        updateFormData("RandomSeed", value === "custom" ? iterateState.RandomSeed : null);
     };
 
     return (
         <div className="h-full overflow-y-auto p-6">
             <div className="space-y-6">
-                {/* ========== PERFORMANCE WARNING ========== */}
-                {showPerformanceWarning && (
-                    <Alert variant="default" className="border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20">
-                        <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
-                        <AlertDescription className="text-sm text-yellow-800 dark:text-yellow-300">
-                            <strong>Performance Notice:</strong> Large dataset detected ({dataCount} cases).
-                            {dataCount > 1000 && n_init > 3 ? (
-                                <span> Consider reducing <strong>Number of Initializations</strong> to 1-3 for faster execution.</span>
-                            ) : (
-                                <span> Clustering may take several seconds. Algorithm runs in background (UI stays responsive).</span>
-                            )}
-                            {iterateState.Method === KMedoidsMethod.PAM && dataCount > 1000 && (
-                                <span> For n &gt; 1000, consider using <strong>CLARA</strong> method instead.</span>
-                            )}
-                        </AlertDescription>
-                    </Alert>
-                )}
-                
-                {/* ========== K-MEDOIDS METHOD ========== */}
+                {/* ========== METODE K-MEDOIDS ========== */}
                 <div className="flex flex-col gap-2 border-b pb-4">
                     <div className="flex items-center gap-2">
                         <Label className="font-bold">K-Medoids Method</Label>
@@ -141,9 +210,43 @@ export const KMedoidsClusterIterate = ({
                             </SelectItem>
                         </SelectContent>
                     </Select>
+
+                    {/* KARTU REKOMENDASI DINAMIS */}
+                    {(() => {
+                        const advice = getMethodAdvisory(iterateState.Method, dataCount);
+                        const isOptimal = advice.status === "optimal";
+                        const isWarning = advice.status === "warning";
+                        
+                        return (
+                            <div className="mt-3 rounded-lg border bg-muted/40 p-4 transition-all duration-300 animate-in slide-in-from-top-2 duration-300">
+                                <div className="flex items-start gap-3">
+                                    {isOptimal ? (
+                                        <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                    ) : isWarning ? (
+                                        <Info className="mt-0.5 h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+                                    ) : (
+                                        <AlertTriangle className="mt-0.5 h-5 w-5 text-rose-600 dark:text-rose-400 shrink-0" />
+                                    )}
+                                    <div className="space-y-1.5 flex-1">
+                                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                                            <span className="text-sm font-semibold">
+                                                Analisis Kelayakan Algoritma
+                                            </span>
+                                            <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${advice.badgeClass}`}>
+                                                {advice.badgeText}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground leading-relaxed">
+                                            {advice.details}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </div>
 
-                {/* ========== GENERAL ITERATION PARAMETERS ========== */}
+                {/* ========== PARAMETER ITERASI UMUM ========== */}
                 <div className="flex flex-col gap-3 border-b pb-4">
                     <div className="flex items-center gap-2">
                         <Label className="font-bold">Iteration Parameters</Label>
@@ -166,7 +269,7 @@ export const KMedoidsClusterIterate = ({
                             <Label>Maximum Iterations:</Label>
                             <Input
                                 type="number"
-                                value={iterateState.MaximumIterations || ""}
+                                value={iterateState.MaximumIterations ?? ""}
                                 min={1}
                                 placeholder="300"
                                 onChange={(e) =>
@@ -178,58 +281,82 @@ export const KMedoidsClusterIterate = ({
                             </p>
                         </div>
 
+                        {isPam && (
+                            <div className="flex flex-col gap-2">
+                                <Label>Convergence Tolerance:</Label>
+                                <Input
+                                    type="number"
+                                    value={iterateState.ConvergenceCriterion ?? ""}
+                                    min={0}
+                                    step={0.0001}
+                                    placeholder="0"
+                                    onChange={(e) =>
+                                        handleChange("ConvergenceCriterion", Number(e.target.value))
+                                    }
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Stop if cost change &lt; threshold (default: 0)
+                                </p>
+                            </div>
+                        )}
+
                         <div className="flex flex-col gap-2">
-                            <Label>Convergence Tolerance:</Label>
-                            <Input
-                                type="number"
-                                value={iterateState.ConvergenceCriterion ?? ""}
-                                min={0}
-                                step={0.0001}
-                                placeholder="0"
-                                onChange={(e) =>
-                                    handleChange("ConvergenceCriterion", Number(e.target.value))
-                                }
-                            />
+                            <Label>Seed Mode:</Label>
+                            <Select
+                                value={iterateState.SeedMode}
+                                onValueChange={(value) => handleSeedModeChange(value as SeedMode)}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Default" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="default">Default</SelectItem>
+                                    <SelectItem value="random">Random</SelectItem>
+                                    <SelectItem value="custom">Custom</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            {iterateState.SeedMode === "custom" && (
+                                <Input
+                                    type="number"
+                                    value={iterateState.RandomSeed ?? ""}
+                                    placeholder="Default"
+                                    onChange={(e) => {
+                                        const nextValue = e.target.value === "" ? null : Number(e.target.value);
+                                        if (nextValue === null) {
+                                            handleSeedModeChange("default");
+                                            return;
+                                        }
+                                        handleChange("RandomSeed", nextValue);
+                                    }}
+                                />
+                            )}
                             <p className="text-xs text-muted-foreground">
-                                Stop if cost change &lt; threshold (default: 0)
+                                Default: gunakan BUILD phase (deterministik). Random: inisialisasi acak setiap run. Custom: gunakan seed agar hasil konsisten.
                             </p>
                         </div>
 
-                        <div className="flex flex-col gap-2">
-                            <Label>Random Seed:</Label>
-                            <Input
-                                type="number"
-                                value={iterateState.RandomSeed ?? ""}
-                                placeholder="Random"
-                                onChange={(e) =>
-                                    handleChange("RandomSeed", e.target.value === "" ? null : Number(e.target.value))
-                                }
-                            />
-                            <p className="text-xs text-muted-foreground">
-                                For reproducibility (leave empty for random)
-                            </p>
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                            <Label>Number of Initializations:</Label>
-                            <Input
-                                type="number"
-                                value={iterateState.NumberOfInitializations || ""}
-                                min={1}
-                                placeholder="10"
-                                onChange={(e) =>
-                                    handleChange("NumberOfInitializations", Number(e.target.value))
-                                }
-                            />
-                            <p className="text-xs text-muted-foreground">
-                                Run multiple times, keep best result (default: 10). Higher values = better results but slower. Use 1-3 for large datasets.
-                            </p>
-                        </div>
+                        {isPam && (
+                            <div className="flex flex-col gap-2">
+                                <Label>Number of Initializations:</Label>
+                                <Input
+                                    type="number"
+                                    value={iterateState.NumberOfInitializations ?? ""}
+                                    min={1}
+                                    placeholder="10"
+                                    onChange={(e) =>
+                                        handleChange("NumberOfInitializations", Number(e.target.value))
+                                    }
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Run multiple times, keep best result (default: 10). Higher values = better results but slower. Use 1-3 for large datasets.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* ========== CLARA-SPECIFIC PARAMETERS ========== */}
-                {iterateState.Method === KMedoidsMethod.CLARA && (
+                {/* ========== PARAMETER KHUSUS CLARA ========== */}
+                {isClara && (
                     <div className="flex flex-col gap-3 border-b pb-4 bg-muted/30 p-3 rounded">
                         <Label className="font-bold">CLARA Parameters</Label>
                         
@@ -237,7 +364,7 @@ export const KMedoidsClusterIterate = ({
                             <Label>Sample Size:</Label>
                             <Input
                                 type="number"
-                                value={iterateState.SampleSize || ""}
+                                value={iterateState.SampleSize ?? ""}
                                 min={minSampleSize}
                                 placeholder={`Auto: 40 + 2k`}
                                 onChange={(e) => {
@@ -263,7 +390,7 @@ export const KMedoidsClusterIterate = ({
                             <Label>Number of Samples:</Label>
                             <Input
                                 type="number"
-                                value={iterateState.NumSamples || ""}
+                                value={iterateState.NumSamples ?? ""}
                                 min={1}
                                 max={20}
                                 onChange={(e) =>
@@ -277,8 +404,8 @@ export const KMedoidsClusterIterate = ({
                     </div>
                 )}
 
-                {/* ========== CLARANS-SPECIFIC PARAMETERS ========== */}
-                {iterateState.Method === KMedoidsMethod.CLARANS && (
+                {/* ========== PARAMETER KHUSUS CLARANS ========== */}
+                {isClarans && (
                     <div className="flex flex-col gap-3 border-b pb-4 bg-muted/30 p-3 rounded">
                         <div className="flex items-center gap-2">
                             <Label className="font-bold">CLARANS Parameters</Label>
@@ -301,7 +428,7 @@ export const KMedoidsClusterIterate = ({
                             <Label>Number of Local Minima:</Label>
                             <Input
                                 type="number"
-                                value={iterateState.NumLocal || ""}
+                                value={iterateState.NumLocal ?? ""}
                                 min={1}
                                 placeholder="2"
                                 onChange={(e) =>

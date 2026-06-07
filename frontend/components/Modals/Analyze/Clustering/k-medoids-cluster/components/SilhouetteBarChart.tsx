@@ -144,7 +144,10 @@ export const SilhouetteBarChart: React.FC<SilhouetteBarChartProps> = ({
             });
 
         // --- Tooltip ---
-        const tooltip = d3.select(svgRef.current.parentElement!)
+        const parent = svgRef.current.parentElement;
+        if (!parent) return;
+
+        const tooltip = d3.select(parent)
             .selectAll<HTMLDivElement, unknown>(".sbc-tooltip")
             .data([null])
             .join("div")
@@ -170,12 +173,12 @@ export const SilhouetteBarChart: React.FC<SilhouetteBarChartProps> = ({
         ];
 
         perCluster.forEach((d, i) => {
-            const outerY = yOuter(`Cluster ${d.clusterLabel}`)!;
+            const outerY = yOuter(`Cluster ${d.clusterLabel}`) ?? 0;
             const color = clusterColor(i, perCluster.length);
 
             subBarMeta.forEach(({ key, label, getter, opacity }) => {
                 const score = getter(d);
-                const barY = outerY + yInner(key)!;
+                const barY = outerY + (yInner(key) ?? 0);
                 const barH = yInner.bandwidth();
                 const x0 = xScale(Math.min(0, score));
                 const barW = Math.abs(xScale(score) - xScale(0));
@@ -189,7 +192,7 @@ export const SilhouetteBarChart: React.FC<SilhouetteBarChartProps> = ({
                     .attr("fill", color)
                     .attr("opacity", opacity)
                     .style("cursor", "pointer")
-                    .on("mouseover", function (event) {
+                    .on("mouseover", function () {
                         d3.select(this).attr("opacity", Math.min(1, opacity + 0.25));
                         tooltip
                             .style("opacity", "1")
@@ -201,7 +204,9 @@ export const SilhouetteBarChart: React.FC<SilhouetteBarChartProps> = ({
                             );
                     })
                     .on("mousemove", function (event) {
-                        const [mx, my] = d3.pointer(event, svgRef.current!.parentElement!);
+                        const parent = svgRef.current.parentElement;
+                        if (!parent) return;
+                        const [mx, my] = d3.pointer(event, parent);
                         tooltip
                             .style("left", `${mx + 14}px`)
                             .style("top", `${my - 10}px`);
