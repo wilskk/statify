@@ -34,30 +34,57 @@ fn calculate_median(values: &[f64]) -> f64 {
     }
 }
 
-/// Calculate trimmed mean (removing 5% from both extremes)
+/// Interpolated 5% trimmed mean for Levene's "Based on trimmed mean"
+/// variant — matches SPSS / R `mean(x, trim=0.05)` semantics.
+///
+/// For a sample of size `n`, the algorithm "removes" `n·p` observations
+/// from each tail. When `n·p` is not an integer (e.g. n=4, p=0.05 ⇒
+/// trim = 0.2), the boundary observations are PARTIALLY trimmed:
+///
+///   trimmed_mean = [(1−f)·x_{(k)} + Σ x_{(k+1..n−k−2)} + (1−f)·x_{(n−k−1)}]
+///                  / [n · (1 − 2p)]
+///
+/// where k = floor(n·p) and f = n·p − k.
+///
+/// The previous implementation used integer `floor(n·p)`, which for
+/// n ≤ 19 collapses to 0 and silently reverts to the regular mean —
+/// producing a "Based on trimmed mean" row identical to "Based on Mean".
+/// The Posten 2×4 design (n=4 per cell) tripped exactly that path, so
+/// Statify reported 1.638 instead of SPSS's 1.493.
 fn calculate_trimmed_mean(values: &[f64]) -> f64 {
+    const TRIM_FRACTION: f64 = 0.05;
     if values.is_empty() {
         return 0.0;
     }
 
-    let mut sorted_values = values.to_vec();
-    sorted_values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let mut sorted = values.to_vec();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
-    let n = sorted_values.len();
+    let n = sorted.len();
+    let np = (n as f64) * TRIM_FRACTION;
+    let k = np.floor() as usize;
+    let f = np - (k as f64);
 
-    // Calculate how many elements to trim (5% from each end)
-    let trim_count = ((n as f64) * 0.05).floor() as usize;
-
-    // If too few elements for trimming, return regular mean
-    if trim_count == 0 || n <= trim_count * 2 {
+    // Guard against degenerate sizes where there's nothing left after
+    // trimming. The interpolated formula needs at least the two boundary
+    // observations and a non-zero effective denominator.
+    if n <= 2 * k + 1 || (1.0 - 2.0 * TRIM_FRACTION) <= 0.0 {
         return calculate_mean(values);
     }
 
-    // Calculate mean of the remaining elements
-    let sum: f64 = sorted_values[trim_count..n - trim_count].iter().sum();
-    let count = n - trim_count * 2;
+    let lower_boundary = sorted[k];
+    let upper_boundary = sorted[n - k - 1];
+    let mut sum = (1.0 - f) * (lower_boundary + upper_boundary);
 
-    sum / (count as f64)
+    // Indices [k+1 .. n-k-2] are fully retained.
+    if k + 1 <= n - k - 2 {
+        for v in &sorted[k + 1..=n - k - 2] {
+            sum += v;
+        }
+    }
+
+    let denom = (n as f64) * (1.0 - 2.0 * TRIM_FRACTION);
+    sum / denom
 }
 
 /// Calculate Levene's Test for homogeneity of variances

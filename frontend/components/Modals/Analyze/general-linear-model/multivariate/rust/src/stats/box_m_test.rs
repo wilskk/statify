@@ -117,19 +117,34 @@ pub fn calculate_box_test(
 
     let chi_square = ((1.0 - c) * box_m).max(0.0);
 
-    // F approximation following Box (1949).
-    // Second correction factor c₂ = (p−1)(p+2) / [6(p+1)(g−1)] × Σ(1/νᵢ² − 1/ν²).
+    // F approximation following Box (1949). Standard form, e.g. Rencher
+    // (2002) "Methods of Multivariate Analysis" §7.3.2, Anderson (2003)
+    // §10.5.3, or the original Box paper:
+    //
+    //   ρ₂ = (p−1)(p+2) / [6(k−1)]  ·  Σ(1/νᵢ² − 1/N'²)
+    //
+    // NOT (p+1) in the denominator. The previous (p+1) term shrank ρ₂ by
+    // a factor of 1/(p+1), pushed ρ₂ − ρ₁² negative for designs as small
+    // as Posten 2×4, and forced the χ² fallback branch — yielding the
+    // implausibly large df2 ≈ 10688 the user saw instead of the
+    // SPSS-matching df2 ≈ 2064.
     let mut sum_sq_reciprocal = 0.0_f64;
     for (_, _, n) in &group_covariance_matrices {
         let df = (n - 1) as f64;
         sum_sq_reciprocal += 1.0 / df.powi(2);
     }
     let c2 = ((p as f64 - 1.0) * (p as f64 + 2.0) /
-              (6.0 * (p as f64 + 1.0) * (g as f64 - 1.0))) *
+              (6.0 * (g as f64 - 1.0))) *
              (sum_sq_reciprocal - 1.0 / (total_df as f64).powi(2));
 
     let df1_f = df1 as f64;
-    let b = (df1_f * (df1_f + 2.0)) / (c2 - c * c).abs().max(1e-10);
+    // f₂ = (f₁ + 2) / |ρ₂ − ρ₁²|  per Box (1949) / Rencher (2002) §7.3.2.
+    // Previously this had an extra f₁ multiplier that inflated df₂ by an
+    // order of magnitude (Posten 2×4 gave 43125 instead of 2064.6) and
+    // slightly biased F upwards (1.187 vs SPSS 1.171). The F formula on
+    // the next line is written in terms of (1 − ρ₁ − f₁/f₂) · M / f₁, so
+    // the f₁ factor belongs only inside that ratio — not inside `b` itself.
+    let b = (df1_f + 2.0) / (c2 - c * c).abs().max(1e-10);
 
     let (f_statistic, df2, significance) = if c2 > c * c {
         // Full F approximation: finite df₂.
