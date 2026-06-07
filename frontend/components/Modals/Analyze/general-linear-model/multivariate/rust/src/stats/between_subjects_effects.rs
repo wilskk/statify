@@ -16,6 +16,7 @@ use super::core::{
     generate_interaction_terms,
     get_factor_levels,
     merge_records,
+    parse_interaction_term,
     to_dmatrix,
     to_dvector,
 };
@@ -407,26 +408,50 @@ pub fn calculate_type_i_ss(
     _data: &AnalysisData,
     _config: &MultivariateConfig
 ) -> Result<f64, String> {
-    // Type I SS (sequential) calculation
-    // Simplified implementation - compute SS by fitting models with and without the factor
-    let full_model_ss = fit_model_and_get_ss(&x_matrix, &y_vector)?;
-
-    // Create reduced model without the factor columns
-    let mut reduced_x = Vec::new();
-    for row in x_matrix {
-        let mut new_row = Vec::new();
-        for (j, val) in row.iter().enumerate() {
-            if !factor_cols.contains(&j) {
-                new_row.push(*val);
-            }
-        }
-        reduced_x.push(new_row);
+    // True Type I SS — sequential / hierarchical decomposition:
+    //   SS(effect | preceding effects) = SSR(model with cols [0..min_col])
+    //                                  − SSR(model with cols [0..=max_col])
+    //
+    // build_design_matrix places columns in canonical SPSS order:
+    //   [intercept] [factor_1 dummies] [factor_2 dummies] … [interactions]
+    // so the column index naturally encodes the "order of entry" and the
+    // sequential Type I formula reduces to: fit two models that differ by
+    // the contiguous block of columns belonging to this effect.
+    //
+    // The previous implementation removed `factor_cols` while keeping
+    // every other column (including later interactions). That is the
+    // Type III "drop this factor from the full model" formula, which
+    // gives different values from Type I whenever the dummy-coded design
+    // is non-orthogonal — e.g. dummy-coded main effects vs. their
+    // cross-product interaction in a balanced Two-Way design.
+    if factor_cols.is_empty() {
+        return Ok(0.0);
     }
+    let min_col = *factor_cols.iter().min().unwrap();
+    let max_col = *factor_cols.iter().max().unwrap();
 
-    let reduced_model_ss = fit_model_and_get_ss(&reduced_x, &y_vector)?;
+    // Reduced model: every column with index < min_col.
+    let reduced_x: Vec<Vec<f64>> = x_matrix
+        .iter()
+        .map(|row| row[..min_col].to_vec())
+        .collect();
+    // Extended model: every column with index ≤ max_col.
+    let extended_x: Vec<Vec<f64>> = x_matrix
+        .iter()
+        .map(|row| row[..=max_col].to_vec())
+        .collect();
 
-    // Type I SS is the difference between full and reduced model SS
-    Ok(reduced_model_ss - full_model_ss)
+    // When the reduced model has no columns (very first effect entering
+    // before the intercept), fall back to SST.
+    let reduced_ssr = if reduced_x.first().map_or(0, |r| r.len()) == 0 {
+        let mean_y = y_vector.iter().sum::<f64>() / (y_vector.len() as f64);
+        y_vector.iter().map(|y| (y - mean_y).powi(2)).sum::<f64>()
+    } else {
+        fit_model_and_get_ss(&reduced_x, y_vector)?
+    };
+    let extended_ssr = fit_model_and_get_ss(&extended_x, y_vector)?;
+
+    Ok(reduced_ssr - extended_ssr)
 }
 
 pub fn calculate_type_ii_ss(
@@ -610,16 +635,34 @@ pub fn get_interaction_columns(
     }
 
     // Interaction columns are appended in the same order as generate_interaction_terms.
+    // Each interaction term occupies (a-1)·(b-1)·... columns (Cartesian product
+    // of factor dummies), NOT a single column. The previous code only returned
+    // one column index per term, collapsing the interaction df to 1.
     if let Some(factors) = &config.main.fix_factor {
         if factors.len() > 1 {
             let interaction_terms = generate_interaction_terms(factors);
-            let pos = interaction_terms.iter().position(|t| t == interaction_term);
-
-            if let Some(idx) = pos {
-                let interaction_col = col_start + idx;
-                if interaction_col < x_matrix[0].len() {
-                    interaction_cols.push(interaction_col);
+            let mut offset = 0usize;
+            for term in &interaction_terms {
+                let term_factors = parse_interaction_term(term);
+                let mut term_width = 1usize;
+                for f in &term_factors {
+                    if let Ok(levels) = get_factor_levels(data, f) {
+                        term_width *= levels.len().saturating_sub(1);
+                    }
                 }
+                if term_width == 0 {
+                    continue;
+                }
+                if term == interaction_term {
+                    for k in 0..term_width {
+                        let c = col_start + offset + k;
+                        if c < x_matrix[0].len() {
+                            interaction_cols.push(c);
+                        }
+                    }
+                    return Ok(interaction_cols);
+                }
+                offset += term_width;
             }
         }
     }

@@ -589,27 +589,23 @@ fn calculate_hypothesis_error_matrices(
             }
         }
 
-        // E = sum_{rows in level k} (y_i - mean_k_i)(y_j - mean_k_j)
-        for i in 0..p {
-            for j in 0..p {
-                let mut e_sum = 0.0;
-                for row_idx in 0..n_obs {
-                    if let Some(Some(level_idx)) = record_level_idx.get(row_idx).copied() {
-                        if row_idx < all_values[i].len() && row_idx < all_values[j].len() {
-                            let r_i = all_values[i][row_idx] - level_means[level_idx][i];
-                            let r_j = all_values[j][row_idx] - level_means[level_idx][j];
-                            e_sum += r_i * r_j;
-                        }
-                    }
-                }
-                e_matrix[i][j] = e_sum;
-            }
-        }
+        // E for Multivariate Tests of a main effect must be the FULL-model
+        // residual SSCP (residuals around cell means using ALL fixed factors),
+        // not residuals around this factor's own level means. SPSS uses one
+        // pooled E for every effect — Intercept, main effects, and
+        // interactions — so the dfs and F approximations line up across
+        // effects in multi-factor designs. Previously this branch shadowed
+        // the pooled E with a one-way residual, giving inflated
+        // error_df (n_obs - levels_of_this_factor) and incorrect F values
+        // for faktorA, faktorB, ... in Two-Way MANOVA.
+        let all_factors = config.main.fix_factor.as_ref().map_or(Vec::new(), |f| f.clone());
+        let (e_full, error_df) = compute_full_model_residual_sscp(
+            data, &all_factors, &all_values, n_obs, p,
+        );
 
         let hypothesis_df = (level_count - 1) as f64;
-        let error_df = (n_obs - level_count) as f64;
 
-        return Ok((h_matrix, e_matrix, hypothesis_df, error_df));
+        return Ok((h_matrix, e_full, hypothesis_df, error_df));
     } else {
         // Interaction effect
         let interaction_factors = factors_in_effect.unwrap();
@@ -1050,4 +1046,104 @@ fn calculate_multivariate_test_statistics(
     });
 
     Ok(test_results)
+}
+
+/// Compute the full-model residual SSCP (the pooled E matrix) and the
+/// associated error degrees of freedom (n_obs − n_cells) using cell means
+/// formed by ALL fixed factors. This matches what SPSS uses as the common
+/// error term for every effect in a GLM Multivariate run, regardless of
+/// whether that effect is the Intercept, a main effect, or an interaction.
+fn compute_full_model_residual_sscp(
+    data: &AnalysisData,
+    factors: &[String],
+    all_values: &[Vec<f64>],
+    n_obs: usize,
+    p: usize,
+) -> (Vec<Vec<f64>>, f64) {
+    let merged = super::common::merge_records(data);
+
+    // Map each row to a cell key formed by concatenating its factor values.
+    let mut row_cell: Vec<Option<String>> = Vec::with_capacity(n_obs);
+    for record in &merged {
+        if factors.is_empty() {
+            // No factors → a single cell containing every row.
+            row_cell.push(Some(String::new()));
+        } else {
+            let mut key_parts: Vec<String> = Vec::with_capacity(factors.len());
+            let mut all_present = true;
+            for factor in factors {
+                match record.values.get(factor) {
+                    Some(v) => key_parts.push(data_value_to_string(v)),
+                    None => {
+                        all_present = false;
+                        break;
+                    }
+                }
+            }
+            row_cell.push(if all_present { Some(key_parts.join("|")) } else { None });
+        }
+    }
+
+    // Per-cell means + counts.
+    let mut cell_keys: Vec<String> = Vec::new();
+    let mut cell_idx_by_key: HashMap<String, usize> = HashMap::new();
+    let mut cell_values: Vec<Vec<Vec<f64>>> = Vec::new();
+    for row_idx in 0..n_obs {
+        if let Some(Some(key)) = row_cell.get(row_idx).cloned() {
+            let idx = match cell_idx_by_key.get(&key) {
+                Some(&i) => i,
+                None => {
+                    let i = cell_keys.len();
+                    cell_keys.push(key.clone());
+                    cell_idx_by_key.insert(key, i);
+                    cell_values.push(vec![Vec::new(); p]);
+                    i
+                }
+            };
+            for dv_i in 0..p {
+                if row_idx < all_values[dv_i].len() {
+                    cell_values[idx][dv_i].push(all_values[dv_i][row_idx]);
+                }
+            }
+        }
+    }
+
+    let mut cell_means: Vec<Vec<f64>> = Vec::with_capacity(cell_keys.len());
+    for c_idx in 0..cell_keys.len() {
+        let mut means = Vec::with_capacity(p);
+        for dv_i in 0..p {
+            let vals = &cell_values[c_idx][dv_i];
+            let m = if !vals.is_empty() {
+                vals.iter().sum::<f64>() / (vals.len() as f64)
+            } else {
+                0.0
+            };
+            means.push(m);
+        }
+        cell_means.push(means);
+    }
+
+    // E[i][j] = Σ_rows (y_ir − ȳ_cell_i)(y_jr − ȳ_cell_j)
+    let mut e_matrix = vec![vec![0.0; p]; p];
+    for i in 0..p {
+        for j in 0..p {
+            let mut e_sum = 0.0;
+            for row_idx in 0..n_obs {
+                if let Some(Some(key)) = row_cell.get(row_idx) {
+                    if let Some(&c_idx) = cell_idx_by_key.get(key) {
+                        if row_idx < all_values[i].len() && row_idx < all_values[j].len() {
+                            let r_i = all_values[i][row_idx] - cell_means[c_idx][i];
+                            let r_j = all_values[j][row_idx] - cell_means[c_idx][j];
+                            e_sum += r_i * r_j;
+                        }
+                    }
+                }
+            }
+            e_matrix[i][j] = e_sum;
+        }
+    }
+
+    let n_cells = cell_keys.len().max(1);
+    let error_df = (n_obs - n_cells) as f64;
+    (e_matrix, error_df)
 }

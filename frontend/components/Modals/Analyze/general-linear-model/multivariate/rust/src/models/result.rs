@@ -26,6 +26,11 @@ pub struct MultivariateResult {
     pub homogeneous_subsets: Option<HashMap<String, HashMap<String, HomogeneousSubsets>>>,
     pub scatter_plot_matrices: Option<HashMap<String, ScatterPlotMatrix>>,
     pub profile_plots: Option<HashMap<String, PlotData>>,
+    /// Per-DV residual diagnostic plot data (Observed / Predicted / Std.
+    /// Residual triples per row). The frontend turns each entry into the
+    /// 3 scatter plots SPSS shows under "Observed * Predicted * Std.
+    /// Residual Plots" in the GLM Multivariate Options dialog.
+    pub residual_plots: Option<HashMap<String, ResidualPlotData>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -204,6 +209,20 @@ pub struct ScatterPlotMatrix {
     pub plot_type: String,
     pub model: String,
     pub matrix_dimensions: Vec<String>,
+}
+
+/// Per-row residual diagnostic data for a single Dependent Variable.
+/// Used to draw SPSS's "Observed * Predicted * Std. Residual" panel —
+/// the frontend renders three scatter plots from these three arrays.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ResidualPlotData {
+    pub dependent_variable: String,
+    /// Model specification line printed below SPSS's plot:
+    /// "Model: Intercept + faktorA + faktorB + faktorA * faktorB".
+    pub model: String,
+    pub observed: Vec<f64>,
+    pub predicted: Vec<f64>,
+    pub std_residual: Vec<f64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

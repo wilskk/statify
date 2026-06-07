@@ -128,20 +128,23 @@ export async function resultMultivariateAnalysis({
                 });
             }
 
-            // ── Parameter Estimates (one per DV) ─────────────────────────
-            const peTables = formattedResult.tables.filter((t: Table) =>
-                t.key.startsWith("parameter_estimates_")
-            );
-            for (const table of peTables) {
+            // ── Parameter Estimates ───────────────────────────────────────
+            // Formatter emits ONE combined table (key
+            // "parameter_estimates_combined") with a Dependent Variable
+            // column at position 0, so a single flat navbar entry is
+            // enough — per-DV subnavbar would just re-render the same
+            // table repeatedly.
+            const peCombined = findTable("parameter_estimates_combined");
+            if (peCombined) {
                 const analyticId = await addAnalytic(logId, {
-                    title: table.title,
-                    note: table.note || "",
+                    title: peCombined.title,
+                    note: peCombined.note || "",
                 });
                 await addStatistic(analyticId, {
-                    title: table.title,
-                    description: table.interpretation || table.title,
-                    output_data: JSON.stringify({ tables: [table] }),
-                    components: table.title,
+                    title: peCombined.title,
+                    description: peCombined.interpretation || peCombined.title,
+                    output_data: JSON.stringify({ tables: [peCombined] }),
+                    components: peCombined.title,
                 });
             }
 
@@ -248,20 +251,43 @@ export async function resultMultivariateAnalysis({
             }
 
             // ── Post Hoc Tests ────────────────────────────────────────────
+            // Group every per-factor Multiple Comparisons table under ONE
+            // navbar entry so the sidebar reads
+            //   Multiple Comparisons (Bonferroni)
+            //     ├ faktorA
+            //     └ faktorB
+            // instead of a separate top-level entry per factor.
             const posthocTables = formattedResult.tables.filter((t: Table) =>
                 t.key.startsWith("posthoc_tests_")
             );
-            for (const table of posthocTables) {
-                const analyticId = await addAnalytic(logId, {
-                    title: table.title,
-                    note: table.note || "",
+            if (posthocTables.length > 0) {
+                // Title format from the formatter:
+                //   "Multiple Comparisons — {factor}( ({method}))?"
+                // The trailing "(method)" is present only when every row in
+                // that factor's table shares the same test_type (the common
+                // case). Use the first table's method as the group label.
+                const titlePattern = /^Multiple Comparisons — (.+?)(?: \((.+?)\))?$/;
+                const firstMatch = posthocTables[0].title.match(titlePattern);
+                const testMethod = firstMatch?.[2] || null;
+                const parentTitle = testMethod
+                    ? `Multiple Comparisons (${testMethod})`
+                    : "Multiple Comparisons";
+
+                const parentAnalyticId = await addAnalytic(logId, {
+                    title: parentTitle,
+                    note: posthocTables[0].note || "",
                 });
-                await addStatistic(analyticId, {
-                    title: table.title,
-                    description: table.interpretation || table.title,
-                    output_data: JSON.stringify({ tables: [table] }),
-                    components: table.title,
-                });
+
+                for (const table of posthocTables) {
+                    const m = table.title.match(titlePattern);
+                    const factorLabel = m?.[1]?.trim() || table.title;
+                    await addStatistic(parentAnalyticId, {
+                        title: factorLabel,
+                        description: table.interpretation || table.title,
+                        output_data: JSON.stringify({ tables: [table] }),
+                        components: factorLabel,
+                    });
+                }
             }
 
             // ── Homogeneous Subsets ───────────────────────────────────────
@@ -313,6 +339,51 @@ export async function resultMultivariateAnalysis({
                     output_data: JSON.stringify({ tables: [table] }),
                     components: table.title,
                 });
+            }
+
+            // ── Observed × Predicted × Std. Residual Plot Matrix ──────────
+            // Emitted by formatResidualPlots when the user ticks
+            // "Residual plot" in the Options dialog. One Chart per DV,
+            // chartType "Scatter Plot Matrix" — a 3×3 SPLOM rendered by
+            // GeneralChartContainer via scatterMatrixUtils.
+            //
+            // Group every per-DV matrix under a single navbar entry so the
+            // sidebar reads
+            //   Observed × Predicted × Std. Residual Plots
+            //     ├ ultimate torque
+            //     └ ultimate strain
+            // instead of one separate entry per DV.
+            const residualCharts = (formattedResult.charts ?? []).filter(
+                (c: any) =>
+                    c?.chartType === "Scatter Plot Matrix" &&
+                    typeof c?.chartMetadata?.title === "string" &&
+                    c.chartMetadata.title.startsWith(
+                        "Observed × Predicted × Std. Residual"
+                    )
+            );
+            if (residualCharts.length > 0) {
+                const parentAnalyticId = await addAnalytic(logId, {
+                    title: "Observed × Predicted × Std. Residual Plots",
+                    note: residualCharts[0]?.chartMetadata?.notes || "",
+                });
+
+                // Title format from the formatter:
+                //   "Observed × Predicted × Std. Residual — {dvLabel}"
+                const titlePattern = /— (.+)$/;
+                for (const chart of residualCharts) {
+                    const m = (chart.chartMetadata.title as string).match(
+                        titlePattern
+                    );
+                    const dvLabel = m?.[1]?.trim() || chart.chartMetadata.title;
+                    await addStatistic(parentAnalyticId, {
+                        title: dvLabel,
+                        description:
+                            chart.chartMetadata.description ||
+                            chart.chartMetadata.title,
+                        output_data: JSON.stringify({ charts: [chart] }),
+                        components: chart.chartType,
+                    });
+                }
             }
 
             // ── Error Table ───────────────────────────────────────────────

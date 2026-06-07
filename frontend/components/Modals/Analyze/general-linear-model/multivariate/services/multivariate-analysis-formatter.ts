@@ -322,7 +322,16 @@ function formatBetweenSubjectsFactors(data: any, resultJson: ResultJson) {
             "This table displays the levels of each between-subjects factor and the number of cases (N) at each level. It provides a summary of the categorical structure of the data used in the analysis.",
     };
 
-    Object.entries(data.between_subjects_factors).forEach(
+    // Sort factor entries alphabetically with numeric awareness so the
+    // display order is deterministic (faktorA before faktorB), not whatever
+    // the Rust HashMap iteration happened to yield (the screenshots showed
+    // faktorB-first which confused users comparing side-by-side with SPSS).
+    const sortedFactorEntries = Object.entries(
+        data.between_subjects_factors
+    ).sort(([a], [b]) =>
+        a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+    );
+    sortedFactorEntries.forEach(
         ([factorName, factorData]: [string, any]) => {
             const valueCounts: Record<string, number> = factorData.value_counts || {};
             const valueLabels: Record<string, string> = factorData.value_labels || {};
@@ -615,7 +624,31 @@ function formatMultivariateTests(
         "Roy's Largest Root",
     ];
 
-    Object.entries(effects).forEach(([effectName, testMap]: [string, any]) => {
+    // Order effects to match SPSS Multivariate Tests layout:
+    //   Intercept → main effects (alphabetical) → 2-way interactions →
+    //   3-way interactions → … (alphabetical within the same order).
+    // Without this sort the iteration order is whatever the Rust HashMap
+    // yields, which can look random (faktorA → faktorA*faktorB → faktorB →
+    // Intercept on the Posten dataset) and confuses users when comparing
+    // side-by-side with SPSS output.
+    const effectOrderRank = (name: string): number => {
+        if (name === "Intercept") return 0;
+        const parts = name.split("*").map((p) => p.trim()).filter(Boolean);
+        // Main effect = 1 part, 2-way = 2 parts, …
+        return 10 + (parts.length - 1) * 1000;
+    };
+    const orderedEffectEntries = Object.entries(effects).sort(
+        ([a], [b]) => {
+            const oa = effectOrderRank(a);
+            const ob = effectOrderRank(b);
+            if (oa !== ob) return oa - ob;
+            return a.localeCompare(b, undefined, {
+                numeric: true,
+                sensitivity: "base",
+            });
+        }
+    );
+    orderedEffectEntries.forEach(([effectName, testMap]: [string, any]) => {
         const isWelchEffect = welchMode && effectName === welchFactor;
 
         let displayedEffectName: string;
@@ -720,18 +753,39 @@ function formatTestsBetweenSubjectsEffects(
         });
     });
 
-    // Order sources to match SPSS: Corrected Model, Intercept, [factors/covariates],
-    // Error, Total, Corrected Total.
+    // Order sources to match SPSS canonical layout:
+    //   Corrected Model → Intercept → [main effects in entry order] →
+    //   [interactions by ascending order: 2-way before 3-way, alphabetical
+    //   within the same order] → Error → Total → Corrected Total.
+    //
+    // The previous comparator collapsed every factor + interaction into a
+    // single bucket (return 2), so the within-bucket order was whatever
+    // Rust HashMap iteration happened to yield. For Posten 2×4 that
+    // produced faktorB → faktorA*faktorB → faktorA, which doesn't match
+    // SPSS's faktorA → faktorB → faktorA*faktorB.
     const sourceOrder = (name: string): number => {
         const n = name.toLowerCase();
         if (n === "corrected model") return 0;
         if (n === "intercept") return 1;
-        if (n === "error") return 3;
-        if (n === "total") return 4;
-        if (n === "corrected total") return 5;
-        return 2;
+        if (n === "error") return 1_000_000;
+        if (n === "total") return 1_000_001;
+        if (n === "corrected total") return 1_000_002;
+        // Interaction terms: "*" separator counts the order (k-way).
+        // Sort all 2-way after every main effect, all 3-way after every 2-way, etc.
+        const parts = name.split("*").map((p) => p.trim()).filter(Boolean);
+        return 10 + (parts.length - 1) * 1000;
     };
-    sourceNames.sort((a, b) => sourceOrder(a) - sourceOrder(b));
+    sourceNames.sort((a, b) => {
+        const oa = sourceOrder(a);
+        const ob = sourceOrder(b);
+        if (oa !== ob) return oa - ob;
+        // Within the same order bucket (main effects together, 2-way
+        // interactions together, …) sort lexicographically. For users
+        // who entered faktorA before faktorB in the dialog, "faktorA" <
+        // "faktorB" by string comparison, so this also reproduces the
+        // SPSS dialog-entry order in practice.
+        return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+    });
 
     // Synthesize "Total" source (uncorrected): SS_total = SS_intercept + SS_corrected_total,
     // df_total = df_corrected_total + 1. Rust currently doesn't compute it.
@@ -780,7 +834,7 @@ function formatTestsBetweenSubjectsEffects(
         columnHeaders: [
             { header: "Source", key: "source" },
             { header: "Dependent Variable", key: "dependent_variable" },
-            { header: "Type III Sum of Squares", key: "sum_of_squares" },
+            { header: sumOfSquaresLabel(sumOfSquareMethod), key: "sum_of_squares" },
             { header: "df", key: "df" },
             { header: "Mean Square", key: "mean_square" },
             { header: "F", key: "f_value" },
@@ -1412,20 +1466,93 @@ function formatGeneralEstimableFunction(data: any, resultJson: ResultJson) {
 }
 
 // ── 15. Post Hoc Tests ────────────────────────────────────────────────────────
-function formatPosthocTests(data: any, resultJson: ResultJson) {
+function formatPosthocTests(
+    data: any,
+    resultJson: ResultJson,
+    relabelDv: (name: string) => string = (n) => n
+) {
     if (!data.posthoc_tests) return;
 
+    // Rust delivers post-hoc rows keyed by Dependent Variable:
+    //   data.posthoc_tests: { [dvName]: PostHocEntry[] }
+    // Each PostHocEntry carries the factor it belongs to plus its (i, j)
+    // level pair. SPSS prints one block per FACTOR (not per DV), with the
+    // Dependent Variable as a column inside that block and the chosen
+    // test method (Bonferroni / Sidak / …) noted in the title.
+    //
+    // We mirror that layout: collect every entry, group by factor first
+    // and DV second, then emit one table per factor.
     const posthoc: Record<string, any[]> = data.posthoc_tests;
 
-    Object.entries(posthoc).forEach(([dvName, tests]: [string, any[]]) => {
+    // factor → DV → entries (ordered by insertion).
+    const byFactor: Record<string, Record<string, any[]>> = {};
+    const dvOrder: string[] = Object.keys(posthoc).sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+    );
+
+    dvOrder.forEach((dvName) => {
+        (posthoc[dvName] || []).forEach((entry: any) => {
+            const factor: string = entry.factor_name ?? "";
+            if (!factor) return;
+            if (!byFactor[factor]) byFactor[factor] = {};
+            if (!byFactor[factor][dvName]) byFactor[factor][dvName] = [];
+            byFactor[factor][dvName].push(entry);
+        });
+    });
+
+    const factorOrder = Object.keys(byFactor).sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+    );
+
+    factorOrder.forEach((factor) => {
+        const dvMap = byFactor[factor];
+
+        // Determine which test method label(s) are present in this block.
+        // For a single method (the common case in SPSS) we surface it in the
+        // title; for mixed methods we keep a column so users can tell rows
+        // apart.
+        const testTypeSet = new Set<string>();
+        Object.values(dvMap).forEach((rows) =>
+            rows.forEach((e: any) => testTypeSet.add(String(e.test_type ?? "")))
+        );
+        const singleTestType =
+            testTypeSet.size === 1 ? Array.from(testTypeSet)[0] : null;
+
+        // Count unique levels of this factor by scanning (I, J) values
+        // from any DV's entries (they share the same level set per factor).
+        const levelSet = new Set<string>();
+        Object.values(dvMap).forEach((rows) =>
+            rows.forEach((e: any) => {
+                if (e.i_level !== undefined && e.i_level !== null)
+                    levelSet.add(String(e.i_level));
+                if (e.j_level !== undefined && e.j_level !== null)
+                    levelSet.add(String(e.j_level));
+            })
+        );
+        const levelCount = levelSet.size;
+        // SPSS-style guidance for k=2 factors. We keep the table (the 95%
+        // CI for the mean difference is the unique information not
+        // available in Tests of Between-Subjects Effects) but warn the
+        // user that the multiple comparison adjustment is essentially a
+        // no-op here.
+        const twoLevelNote =
+            levelCount < 3
+                ? `Note: with only ${levelCount} levels of ${factor} there is a single pairwise comparison (c = 1). Multiple comparison adjustments (Bonferroni, Sidak, Scheffé, …) produce the same p-value as the uncorrected LSD, and the p-value matches the main effect F-test in Tests of Between-Subjects Effects. The 95% Confidence Interval for the mean difference is the additional information that justifies keeping this table.`
+                : null;
+
+        const titleSuffix = singleTestType
+            ? ` (${singleTestType})`
+            : "";
         const table: Table = {
-            key: `posthoc_tests_${dvName}`,
-            title: `Multiple Comparisons — Dependent Variable: ${dvName}`,
+            key: `posthoc_tests_${factor}`,
+            title: `Multiple Comparisons — ${factor}${titleSuffix}`,
             columnHeaders: [
-                { header: "Test", key: "test_type" },
-                { header: "Factor", key: "factor_name" },
-                { header: "(I)", key: "i_level" },
-                { header: "(J)", key: "j_level" },
+                { header: "Dependent Variable", key: "dependent_variable" },
+                ...(singleTestType
+                    ? []
+                    : [{ header: "Test", key: "test_type" }]),
+                { header: `(I) ${factor}`, key: "i_level" },
+                { header: `(J) ${factor}`, key: "j_level" },
                 { header: "Mean Difference (I-J)", key: "mean_difference" },
                 { header: "Std. Error", key: "std_error" },
                 { header: "Sig.", key: "significance" },
@@ -1438,22 +1565,41 @@ function formatPosthocTests(data: any, resultJson: ResultJson) {
                 },
             ],
             rows: [],
+            note: [
+                singleTestType
+                    ? `Based on observed means. ${singleTestType} adjustment.`
+                    : null,
+                twoLevelNote,
+            ]
+                .filter(Boolean)
+                .join("\n") || undefined,
             interpretation:
                 "Pairwise comparisons of factor level means with adjusted significance values and confidence intervals. A significant Sig. (< .05) indicates a statistically significant difference between the two means after correcting for multiple comparisons.",
         };
 
-        tests.forEach((entry: any) => {
-            table.rows.push({
-                rowHeader: [],
-                test_type: entry.test_type,
-                factor_name: entry.factor_name,
-                i_level: entry.i_level,
-                j_level: entry.j_level,
-                mean_difference: formatDisplayNumber(entry.mean_difference),
-                std_error: formatDisplayNumber(entry.std_error),
-                significance: formatSig(entry.significance),
-                ci_lower: formatDisplayNumber(entry.confidence_interval?.lower_bound),
-                ci_upper: formatDisplayNumber(entry.confidence_interval?.upper_bound),
+        dvOrder.forEach((dvName) => {
+            const rows = dvMap[dvName];
+            if (!rows || rows.length === 0) return;
+            rows.forEach((entry: any, rowIdx: number) => {
+                const row: Row = {
+                    rowHeader: [],
+                    // SPSS prints the DV label only on the first row of its
+                    // group (merged cell). Mirror that for readability.
+                    dependent_variable: rowIdx === 0 ? relabelDv(dvName) : "",
+                    i_level: entry.i_level,
+                    j_level: entry.j_level,
+                    mean_difference: formatDisplayNumber(entry.mean_difference),
+                    std_error: formatDisplayNumber(entry.std_error),
+                    significance: formatSig(entry.significance),
+                    ci_lower: formatDisplayNumber(
+                        entry.confidence_interval?.lower_bound
+                    ),
+                    ci_upper: formatDisplayNumber(
+                        entry.confidence_interval?.upper_bound
+                    ),
+                };
+                if (!singleTestType) row.test_type = entry.test_type;
+                table.rows.push(row);
             });
         });
 
@@ -1462,7 +1608,11 @@ function formatPosthocTests(data: any, resultJson: ResultJson) {
 }
 
 // ── 16. Homogeneous Subsets ───────────────────────────────────────────────────
-function formatHomogeneousSubsets(data: any, resultJson: ResultJson) {
+function formatHomogeneousSubsets(
+    data: any,
+    resultJson: ResultJson,
+    relabelDv: (name: string) => string = (n) => n
+) {
     if (!data.homogeneous_subsets) return;
 
     const hs: Record<string, Record<string, any>> = data.homogeneous_subsets;
@@ -1478,7 +1628,7 @@ function formatHomogeneousSubsets(data: any, resultJson: ResultJson) {
 
             const table: Table = {
                 key: `homogeneous_subsets_${dvName}_${testName}`,
-                title: `${testName} — Dependent Variable: ${dvName}`,
+                title: `${testName} — Dependent Variable: ${relabelDv(dvName)}`,
                 columnHeaders: [
                     { header: subsets.test_name || testName, key: "factor_value" },
                     { header: "N", key: "n" },
@@ -1514,7 +1664,11 @@ function formatHomogeneousSubsets(data: any, resultJson: ResultJson) {
 }
 
 // ── 17. Estimated Marginal Means ──────────────────────────────────────────────
-function formatEmmeans(data: any, resultJson: ResultJson) {
+function formatEmmeans(
+    data: any,
+    resultJson: ResultJson,
+    relabelDv: (name: string) => string = (n) => n
+) {
     if (!data.emmeans) return;
 
     const emmeans: Record<string, any[]> = data.emmeans;
@@ -1544,7 +1698,7 @@ function formatEmmeans(data: any, resultJson: ResultJson) {
         entries.forEach((entry: any) => {
             table.rows.push({
                 rowHeader: [],
-                dependent_variable: entry.dependent_variable,
+                dependent_variable: relabelDv(entry.dependent_variable),
                 factor_value: entry.factor_value,
                 mean: formatDisplayNumber(entry.mean),
                 std_error: formatDisplayNumber(entry.std_error),
@@ -1586,6 +1740,112 @@ function formatSpreadVsLevel(data: any, resultJson: ResultJson) {
         });
 
         if (table.rows.length > 0) resultJson.tables.push(table);
+    });
+}
+
+// ── 18b. Residual Diagnostic Plot Matrix ──────────────────────────────────────
+// SPSS's GLM Multivariate "Observed * Predicted * Std. Residual Plots" panel
+// renders a 3×3 SPLOM per Dependent Variable: the diagonal carries variable
+// labels, and the six off-diagonal cells show scatter plots with shared
+// per-dimension axes. The lower and upper triangles are visually the same
+// pair with axes swapped — pure ergonomic redundancy, no extra statistical
+// information.
+//
+// We pack one Chart entry per DV using the custom chartType
+// "Scatter Plot Matrix" (defined in scatterMatrixUtils.ts and registered
+// in GeneralChartContainer). Each row of chartData carries the three
+// values for a single observation; the matrix renderer consumes
+// chartConfig.matrixDimensions to know which keys to pair off.
+function formatResidualPlots(
+    data: any,
+    resultJson: ResultJson,
+    relabelDv: (name: string) => string = (n) => n
+) {
+    if (!data.residual_plots) return;
+    // Tolerate both Map and Object shapes from serde_wasm_bindgen.
+    const entries: Array<[string, any]> = (() => {
+        if (data.residual_plots instanceof Map) {
+            return Array.from(data.residual_plots.entries()) as Array<
+                [string, any]
+            >;
+        }
+        return Object.entries(data.residual_plots);
+    })();
+    if (entries.length === 0) return;
+
+    if (!resultJson.charts) resultJson.charts = [];
+
+    const sortedEntries = entries.sort(([a], [b]) =>
+        a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+    );
+
+    sortedEntries.forEach(([dvName, plotRaw]) => {
+        const plot = plotRaw as {
+            observed: number[];
+            predicted: number[];
+            std_residual: number[];
+            model?: string;
+            dependent_variable?: string;
+        };
+        const displayName = relabelDv(dvName);
+        const modelNote = plot.model ?? "";
+
+        const n = Math.min(
+            plot.observed?.length ?? 0,
+            plot.predicted?.length ?? 0,
+            plot.std_residual?.length ?? 0
+        );
+        if (n === 0) return;
+
+        // One row per observation, three numeric columns. The matrix
+        // renderer picks pairs based on the `matrixDimensions` order.
+        const chartData: Array<{
+            observed: number;
+            predicted: number;
+            std_residual: number;
+        }> = [];
+        for (let i = 0; i < n; i++) {
+            const o = plot.observed[i];
+            const p = plot.predicted[i];
+            const r = plot.std_residual[i];
+            if (
+                Number.isFinite(o) &&
+                Number.isFinite(p) &&
+                Number.isFinite(r)
+            ) {
+                chartData.push({ observed: o, predicted: p, std_residual: r });
+            }
+        }
+        if (chartData.length === 0) return;
+
+        const matrixDimensions = [
+            { key: "observed", label: "Observed" },
+            { key: "predicted", label: "Predicted" },
+            { key: "std_residual", label: "Std. Residual" },
+        ];
+
+        resultJson.charts!.push({
+            chartType: "Scatter Plot Matrix",
+            chartMetadata: {
+                axisInfo: { x: "", y: "", category: "" },
+                description:
+                    "Scatter plot matrix of Observed, Predicted, and Standardised Residual for the dependent variable. Diagonals are blank with axis labels; off-diagonal cells show each pair with shared axes. The lower and upper triangles are the same pairs with axes swapped — pure visual convention, no added statistical information. Use the Predicted × Std. Residual cell to check homoscedasticity, the Observed × Predicted cell to check fit/linearity, and the Observed × Std. Residual cell to spot outliers.",
+                notes: modelNote,
+                title: `Observed × Predicted × Std. Residual — ${displayName}`,
+                subtitle: modelNote,
+            },
+            chartData,
+            chartConfig: {
+                width: 600,
+                height: 600,
+                useAxis: false,
+                useLegend: false,
+                // Used by the matrix renderer.
+                matrixDimensions,
+                // Required by ChartConfig interface but unused for this chart.
+                axisLabels: { x: "", y: "" },
+            } as any,
+        });
     });
 }
 

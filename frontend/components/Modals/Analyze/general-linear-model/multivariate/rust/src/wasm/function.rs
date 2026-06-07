@@ -316,10 +316,13 @@ pub fn run_analysis(
     }
 
     // Step 19: Calculate residual plots if requested
+    let mut residual_plots = None;
     if config.options.res_plot {
         logger.add_log("calculate_residual_plots");
         match core::calculate_residual_plots(data, config) {
-            Ok(_) => {}
+            Ok(plots) => {
+                residual_plots = Some(plots);
+            }
             Err(e) => {
                 error_collector.add_error("calculate_residual_plots", &e);
                 // Continue execution despite errors
@@ -352,6 +355,7 @@ pub fn run_analysis(
         homogeneous_subsets,
         scatter_plot_matrices: None,
         profile_plots: None,
+        residual_plots,
     };
 
     Ok(Some(result))

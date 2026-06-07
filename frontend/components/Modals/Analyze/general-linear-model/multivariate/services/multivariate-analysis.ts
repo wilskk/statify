@@ -141,6 +141,21 @@ export async function analyzeMultivariate({
             ph.Games || ph.Dunc
         );
 
+    // Homogeneous Subsets are only produced by a specific subset of post-hoc
+    // methods (see homogeneous_subsets.rs:87-207). Pairwise methods like
+    // Bonferroni, LSD, Sidak, Scheffé, Dunnett, etc. do NOT produce subsets,
+    // so the homogeneous_subsets module fails with "Failed to calculate
+    // homogeneous subsets for any variable-factor combination". That failure
+    // is benign — it just means no subset-producing method was selected —
+    // and SPSS itself never shows a warning in this case (it simply omits
+    // the table). Suppress the message in exactly that scenario.
+    const userRequestedHomogeneousSubsets =
+        (ph.FixFactorVars?.length ?? 0) > 0 &&
+        Boolean(
+            ph.Tu || ph.Snk || ph.Dun || ph.Regwf || ph.Regwq || ph.Tub ||
+            ph.Waller
+        );
+
     // Plots are only "requested" when the user added at least one entry to
     // PlotList via the Plots dialog. Without that, Rust still runs the plot
     // generator and emits "No plots generated" — a benign warning we hide.
@@ -150,8 +165,13 @@ export async function analyzeMultivariate({
 
     const isSuppressibleContext = (ctx: string, _userRequestedPlots: boolean): boolean => {
         const lower = ctx.toLowerCase();
-        if (lower === "calculate_posthoc_tests" || lower === "calculate_homogeneous_subsets") {
+        if (lower === "calculate_posthoc_tests") {
             return !userRequestedPosthoc;
+        }
+        if (lower === "calculate_homogeneous_subsets") {
+            // Suppress when no subset-producing method was selected, even if
+            // the user did pick a pairwise method like Bonferroni.
+            return !userRequestedHomogeneousSubsets;
         }
         if (lower === "generate_plots") {
             return !_userRequestedPlots;

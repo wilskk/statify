@@ -554,16 +554,21 @@ pub fn get_level_values(
     level: &str,
     dep_var_name: &str
 ) -> Result<Vec<f64>, String> {
+    // Dependent records only carry DV columns; factor columns live in
+    // fix_factor_data. Merge them by row so each record holds both the DV
+    // value and its factor level. Without this, the lookup
+    // `record.values.get(factor)` always returns None and the loop emits an
+    // empty vector — which made post-hoc, homogeneous-subsets, and plots
+    // silently produce no results.
+    let merged = merge_records(data);
     let mut values = Vec::new();
 
-    for records in &data.dependent_data {
-        for record in records {
-            let factor_level = record.values.get(factor).map(data_value_to_string);
+    for record in &merged {
+        let factor_level = record.values.get(factor).map(data_value_to_string);
 
-            if factor_level.as_deref() == Some(level) {
-                if let Some(value) = extract_dependent_value(record, dep_var_name) {
-                    values.push(value);
-                }
+        if factor_level.as_deref() == Some(level) {
+            if let Some(value) = extract_dependent_value(record, dep_var_name) {
+                values.push(value);
             }
         }
     }
@@ -856,51 +861,91 @@ pub fn build_design_matrix_and_response(
                     }
                 }
 
-                // Add interaction terms
+                // Add interaction terms.
+                //
+                // Proper dummy-coded encoding: for an interaction A×B with
+                // (a-1) and (b-1) main-effect dummies, the interaction is
+                // encoded with (a-1)·(b-1) cross-product dummies (Cartesian
+                // product of factor dummy vectors). The previous code pushed
+                // a SINGLE column per interaction term, which collapsed
+                // interaction df from (a-1)(b-1) down to 1 — causing the
+                // wrong error df (n − k) and wrong SS distribution for every
+                // effect in multi-level Two-Way (and higher) designs.
                 if let Some(factors) = &config.main.fix_factor {
                     if factors.len() > 1 {
                         let interaction_terms = generate_interaction_terms(factors);
                         for term in &interaction_terms {
-                            let factor_levels = parse_interaction_term(term);
-                            let mut interaction_value = 1.0;
-                            let mut valid = true;
+                            let term_factors = parse_interaction_term(term);
 
-                            for factor in &factor_levels {
-                                if let Some(factor_value) = record.values.get(factor) {
-                                    // For simplicity, we use the product of factor dummy variables
-                                    // This needs to be refined based on the actual coding scheme
-                                    if let Ok(levels) = get_factor_levels(data, factor) {
-                                        let level_value = data_value_to_string(factor_value);
-                                        let level_index = levels
-                                            .iter()
-                                            .position(|l| l == &level_value);
-
-                                        if let Some(idx) = level_index {
-                                            // The interaction term encodes as 1 only if all factors match
-                                            // specific levels, otherwise 0
-                                            if idx != levels.len() - 1 {
-                                                // Not the reference level
-                                                interaction_value *= 1.0;
-                                            } else {
-                                                // Reference level
-                                                valid = false;
-                                                break;
-                                            }
-                                        } else {
-                                            valid = false;
-                                            break;
-                                        }
+                            // Per-factor dummy vector for this row (length = levels-1
+                            // for each factor in the interaction).
+                            let mut per_factor_dummies: Vec<Vec<f64>> =
+                                Vec::with_capacity(term_factors.len());
+                            let mut all_present = true;
+                            for factor in &term_factors {
+                                let levels = match get_factor_levels(data, factor) {
+                                    Ok(l) => l,
+                                    Err(_) => {
+                                        all_present = false;
+                                        break;
                                     }
-                                } else {
-                                    valid = false;
-                                    break;
+                                };
+                                let n_dummies = levels.len().saturating_sub(1);
+                                if n_dummies == 0 {
+                                    per_factor_dummies.push(Vec::new());
+                                    continue;
                                 }
+                                let factor_value = match record.values.get(factor) {
+                                    Some(v) => data_value_to_string(v),
+                                    None => {
+                                        all_present = false;
+                                        break;
+                                    }
+                                };
+                                let mut dummies = vec![0.0; n_dummies];
+                                for (i, level) in levels[..n_dummies].iter().enumerate() {
+                                    if &factor_value == level {
+                                        dummies[i] = 1.0;
+                                        break;
+                                    }
+                                }
+                                per_factor_dummies.push(dummies);
                             }
 
-                            if valid {
-                                x_row.push(interaction_value);
-                            } else {
-                                x_row.push(0.0);
+                            // Number of interaction columns = product of dummy counts.
+                            let total_cols: usize = per_factor_dummies
+                                .iter()
+                                .map(|v| v.len())
+                                .product();
+                            if total_cols == 0 {
+                                continue;
+                            }
+
+                            if !all_present {
+                                for _ in 0..total_cols {
+                                    x_row.push(0.0);
+                                }
+                                continue;
+                            }
+
+                            // Row-major Cartesian product: column `c` corresponds
+                            // to indices (i_0, i_1, ..., i_{n-1}) where
+                            //   i_k = (c / stride_k) % dim_k
+                            //   stride_{n-1} = 1
+                            //   stride_k = dim_{k+1} * stride_{k+1}
+                            let dims: Vec<usize> =
+                                per_factor_dummies.iter().map(|v| v.len()).collect();
+                            let mut strides = vec![1usize; dims.len()];
+                            for k in (0..dims.len().saturating_sub(1)).rev() {
+                                strides[k] = strides[k + 1] * dims[k + 1];
+                            }
+                            for c in 0..total_cols {
+                                let mut value = 1.0;
+                                for f_idx in 0..dims.len() {
+                                    let i = (c / strides[f_idx]) % dims[f_idx];
+                                    value *= per_factor_dummies[f_idx][i];
+                                }
+                                x_row.push(value);
                             }
                         }
                     }
