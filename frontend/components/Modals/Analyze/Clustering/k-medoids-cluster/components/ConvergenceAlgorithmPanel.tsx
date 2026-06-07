@@ -1,8 +1,8 @@
 /**
  * ConvergenceAlgorithmPanel
- * Combined iteration table (Iterasi | Medoid Aktif | Total Cost | Status)
- * followed by a simple D3 Total-Cost line chart — matches the "Proses Iterasi
- * K-Medoids (PAM)" design with Init row, Berubah / Konvergen status badges.
+ * Tabel iterasi gabungan (Iterasi | Medoid Aktif | Total Cost | Status)
+ * diikuti line chart Total-Cost sederhana berbasis D3 — sesuai desain "Proses Iterasi
+ * K-Medoids (PAM)" dengan baris Init dan badge status Berubah / Konvergen.
  */
 
 import React, { useEffect, useRef } from "react";
@@ -15,7 +15,7 @@ interface ConvergenceAlgorithmPanelProps {
     converged?: boolean;
 }
 
-// ── helpers ─────────────────────────────────────────────────────────────────
+// ── fungsi pembantu ──────────────────────────────────────────────────────────
 
 function fmtCost(n: number): string {
     if (!isFinite(n)) return "—";
@@ -29,45 +29,37 @@ function medoidLabel(m: MedoidInfo): string {
     return `ID_${String(m.objectId).padStart(3, "0")}`;
 }
 
-// ── component ────────────────────────────────────────────────────────────────
+// ── komponen ─────────────────────────────────────────────────────────────────
 
 export const ConvergenceAlgorithmPanel: React.FC<ConvergenceAlgorithmPanelProps> = ({
-    data,
-    medoids,
+    data = [],
+    medoids = [],
     converged = false,
 }) => {
     const svgRef = useRef<SVGSVGElement>(null);
 
-    if (!data || data.length === 0) {
-        return (
-            <div className="flex items-center justify-center h-20 text-sm text-muted-foreground">
-                Data iterasi tidak tersedia
-            </div>
-        );
-    }
-
-    // Row 0 = Init state (improvement always 0 from builder), rows 1+ = iterations
+    // Baris 0 = state Init (improvement selalu 0 dari builder), baris 1+ = iterasi
     const initEntry  = data[0];
     const iterEntries = data.slice(1);
     const numIterations = iterEntries.length;
 
-    // Helper: turn a medoid index array into a readable "Case X, Case Y" string.
-    // Prefers per-iteration snapshot (row.medoids) over the final medoid list.
+    // Pembantu: ubah array indeks medoid menjadi string "Case X, Case Y" yang mudah dibaca.
+    // Prioritaskan snapshot per-iterasi (row.medoids) daripada daftar medoid akhir.
     const medoidStr = (indices?: number[]): string => {
         if (indices && indices.length > 0) {
             return indices.map(idx => `Case ${idx + 1}`).join(", ");
         }
-        // Fallback to final medoids info (for non-PAM paths without history)
+        // Fallback ke info medoid akhir (untuk jalur non-PAM tanpa histori)
         return medoids.length > 0 ? medoids.map(medoidLabel).join(", ") : "—";
     };
 
-    // Chart data: Init + each iteration
+    // Data chart: Init + setiap iterasi
     const chartData = data.map((d, i) => ({
         label: i === 0 ? "Init" : `Iter ${i}`,
         cost: d.totalCost,
     }));
 
-    // ── D3 chart ─────────────────────────────────────────────────────────────
+    // ── Chart D3 ─────────────────────────────────────────────────────────────
     const chartW = 580;
     const chartH = 200;
 
@@ -106,7 +98,7 @@ export const ConvergenceAlgorithmPanel: React.FC<ConvergenceAlgorithmPanelProps>
 
         const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-        // Horizontal grid
+        // Grid horizontal
         g.append("g")
             .call(d3.axisLeft(yScale).ticks(4).tickSize(-innerW).tickFormat(() => ""))
             .call(s => s.select(".domain").remove())
@@ -114,51 +106,51 @@ export const ConvergenceAlgorithmPanel: React.FC<ConvergenceAlgorithmPanelProps>
                 .attr("stroke", borderColor)
                 .attr("stroke-opacity", 0.55));
 
-        // Area fill
+        // Pengisian area
         g.append("path")
             .datum(chartData)
             .attr("fill", "#10b981")
             .attr("fill-opacity", 0.12)
             .attr("d", d3.area<typeof chartData[0]>()
-                .x(d => xScale(d.label)!)
+                .x(d => xScale(d.label) ?? 0)
                 .y0(innerH)
                 .y1(d => yScale(d.cost))
                 .curve(d3.curveMonotoneX));
 
-        // Line
+        // Garis
         g.append("path")
             .datum(chartData)
             .attr("fill", "none")
             .attr("stroke", "#10b981")
             .attr("stroke-width", 2.5)
             .attr("d", d3.line<typeof chartData[0]>()
-                .x(d => xScale(d.label)!)
+                .x(d => xScale(d.label) ?? 0)
                 .y(d => yScale(d.cost))
                 .curve(d3.curveMonotoneX));
 
-        // Dots
+        // Titik
         g.selectAll(".dot")
             .data(chartData)
             .enter().append("circle")
-            .attr("cx", d => xScale(d.label)!)
+            .attr("cx", d => xScale(d.label) ?? 0)
             .attr("cy", d => yScale(d.cost))
             .attr("r", 5)
             .attr("fill", "#10b981")
             .attr("stroke", "#fff")
             .attr("stroke-width", 1.5);
 
-        // Cost labels above dots
+        // Label cost di atas titik
         g.selectAll(".cost-lbl")
             .data(chartData)
             .enter().append("text")
-            .attr("x", d => xScale(d.label)!)
+            .attr("x", d => xScale(d.label) ?? 0)
             .attr("y", d => yScale(d.cost) - 9)
             .attr("text-anchor", "middle")
             .attr("font-size", "10px")
             .attr("fill", mutedColor)
             .text(d => fmtCost(d.cost));
 
-        // X axis
+        // Sumbu X
         g.append("g")
             .attr("transform", `translate(0,${innerH})`)
             .call(d3.axisBottom(xScale).tickSize(0))
@@ -168,7 +160,7 @@ export const ConvergenceAlgorithmPanel: React.FC<ConvergenceAlgorithmPanelProps>
                 .attr("font-size", "11px")
                 .attr("dy", "1.3em"));
 
-        // Y axis
+        // Sumbu Y
         g.append("g")
             .call(d3.axisLeft(yScale).ticks(4).tickFormat(v => fmtCost(v as number)))
             .call(s => s.select(".domain").remove())
@@ -180,9 +172,17 @@ export const ConvergenceAlgorithmPanel: React.FC<ConvergenceAlgorithmPanelProps>
     }, [chartData, chartW, chartH]);
 
     // ── render ───────────────────────────────────────────────────────────────
+    if (data.length === 0) {
+        return (
+            <div className="flex items-center justify-center h-20 text-sm text-muted-foreground">
+                Data iterasi tidak tersedia
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-4">
-            {/* Header */}
+            {/* Header (judul panel) */}
             <div className="flex items-center gap-3">
                 <span className="text-base font-semibold">Konvergensi Algoritma</span>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-muted text-muted-foreground border">
@@ -190,7 +190,7 @@ export const ConvergenceAlgorithmPanel: React.FC<ConvergenceAlgorithmPanelProps>
                 </span>
             </div>
 
-            {/* Table */}
+            {/* Tabel */}
             <div className="rounded-md border overflow-hidden text-sm">
                 <table className="w-full">
                     <thead className="bg-muted/60">
@@ -210,7 +210,7 @@ export const ConvergenceAlgorithmPanel: React.FC<ConvergenceAlgorithmPanelProps>
                         </tr>
                     </thead>
                     <tbody>
-                        {/* Init row */}
+                        {/* Baris Init */}
                         <tr className="border-b">
                             <td className="px-4 py-2.5 font-mono font-semibold text-amber-500 dark:text-amber-400">
                                 Init
@@ -235,7 +235,7 @@ export const ConvergenceAlgorithmPanel: React.FC<ConvergenceAlgorithmPanelProps>
                             </td>
                         </tr>
 
-                        {/* Iteration rows */}
+                        {/* Baris iterasi */}
                         {iterEntries.map((row, i) => {
                             const isLast    = i === iterEntries.length - 1;
                             const isKonvergen = isLast && converged;
@@ -284,7 +284,7 @@ export const ConvergenceAlgorithmPanel: React.FC<ConvergenceAlgorithmPanelProps>
                 </table>
             </div>
 
-            {/* Line chart */}
+            {/* Line chart konvergensi */}
             <div className="w-full flex justify-center pt-2">
                 <svg
                     ref={svgRef}

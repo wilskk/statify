@@ -7,7 +7,16 @@ import type { Variable } from "@/types/Variable";
 
 import VariableListManager from "@/components/Common/VariableListManager";
 import type { TargetListConfig } from "@/components/Common/VariableListManager";
-import { FieldHelp } from "./field-help";
+import { HelperIcon } from "./helper-icon";
+
+const helperText = {
+  target: "Select the variable that the KNN model will predict.",
+  features: "Select the predictor variables used to find the nearest neighbors.",
+  focalCaseIdentifier:
+    "Optional variable used to mark specific cases of interest. Cases with positive values will be treated as focal cases.",
+  caseLabel:
+    "Optional variable used as a readable label for identifying cases in tables and charts.",
+};
 
 export const KNNDialog = ({
   updateFormData,
@@ -130,6 +139,7 @@ export const KNNDialog = ({
       {
         id: "TargetVar",
         title: "Target:",
+        titleAction: showFieldHelp ? <HelperIcon text={helperText.target} /> : null,
         variables: mapToVariables(targetVar),
         maxItems: 1,
         height: "80px",
@@ -137,12 +147,16 @@ export const KNNDialog = ({
       {
         id: "FeatureVar",
         title: "Features:",
+        titleAction: showFieldHelp ? <HelperIcon text={helperText.features} /> : null,
         variables: mapToVariables(featureVars),
         height: "200px",
       },
       {
         id: "FocalCaseIdenVar",
         title: "Focal Case Identifier (Optional):",
+        titleAction: showFieldHelp ? (
+          <HelperIcon text={helperText.focalCaseIdentifier} />
+        ) : null,
         variables: mapToVariables(focalVars),
         maxItems: 1,
         height: "80px",
@@ -158,59 +172,19 @@ export const KNNDialog = ({
       {
         id: "CaseIdenVar",
         title: "Case Label (Optional):",
+        titleAction: showFieldHelp ? <HelperIcon text={helperText.caseLabel} /> : null,
         variables: mapToVariables(caseLabelVars),
         maxItems: 1,
         height: "80px",
       },
       ];
     },
-    [targetVar, featureVars, focalVars, caseLabelVars, variableMap],
+    [targetVar, featureVars, focalVars, caseLabelVars, variableMap, showFieldHelp],
   );
 
   return (
     <div className="flex flex-col h-full min-h-0 w-full">
       <div className="flex flex-col flex-1 min-h-0 w-full p-4 space-y-3">
-
-        {showFieldHelp && (
-          <div className="grid gap-2 rounded-md border p-3 text-sm sm:grid-cols-2">
-            <div className="flex items-center gap-2">
-              <span className="font-medium">Target</span>
-              <FieldHelp
-                show={showFieldHelp}
-                text="Variabel target yang akan diprediksi atau diklasifikasikan oleh KNN."
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium">Features</span>
-              <FieldHelp
-                show={showFieldHelp}
-                text="Variabel prediktor yang dipakai untuk menghitung jarak antar kasus."
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium">Focal Case Identifier</span>
-              <FieldHelp
-                show={showFieldHelp}
-                text="Variabel opsional untuk menandai kasus fokus yang ingin dilihat detail tetangganya."
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium">Case Label</span>
-              <FieldHelp
-                show={showFieldHelp}
-                text="Variabel opsional yang dipakai sebagai label kasus pada output."
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium">Normalize scale features</span>
-              <FieldHelp
-                show={showFieldHelp}
-                text="Menormalkan fitur scale agar perbedaan satuan tidak mendominasi perhitungan jarak."
-              />
-            </div>
-          </div>
-        )}
-
         <ResizablePanelGroup
           direction="horizontal"
           className="flex-1 min-h-0 w-full max-w-2xl rounded-lg border"
@@ -244,10 +218,6 @@ export const KNNDialog = ({
                         <label htmlFor="normalize" className="text-sm">
                           Normalize scale features
                         </label>
-                        <FieldHelp
-                          show={showFieldHelp}
-                          text="Menormalkan fitur scale agar semua fitur memiliki kontribusi jarak yang lebih seimbang."
-                        />
                       </div>
                     </div>
                   );

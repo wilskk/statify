@@ -6,24 +6,52 @@ type VariableType = {
     selectedVariables: string[] | string | null;
 };
 
+function normalizeSelectedVariables(
+    selectedVariables: string[] | string | null
+): string[] {
+    if (!selectedVariables) return [];
+    return Array.isArray(selectedVariables)
+        ? selectedVariables
+        : [selectedVariables];
+}
+
+function buildColumnIndexMap(variables: Variable[]): Map<string, number> {
+    return new Map(variables.map((variable) => [variable.name, variable.columnIndex]));
+}
+
+function parseCellValue(rawValue: unknown): string | number | null {
+    if (rawValue === null || rawValue === undefined || rawValue === "") {
+        return null;
+    }
+
+    const stringValue = String(rawValue);
+    const normalizedValue = stringValue.replace(",", ".");
+    const parsedValue = Number.parseFloat(normalizedValue);
+
+    return Number.isNaN(parsedValue) ? stringValue : parsedValue;
+}
+
 export function getMaxIndex({
     dataVariables,
     variables,
     selectedVariables,
 }: VariableType) {
-    if (!selectedVariables) return 0;
+    const names = normalizeSelectedVariables(selectedVariables);
+    if (names.length === 0 || dataVariables.length === 0) return 0;
+
+    const columnIndexMap = buildColumnIndexMap(variables);
     let maxIndex = -1;
 
     dataVariables.forEach((row, rowIndex) => {
+        if (!row) return;
+
         let hasData = false;
 
-        for (const varName of Array.isArray(selectedVariables)
-            ? selectedVariables
-            : [selectedVariables]) {
-            const varDef = variables.find((v) => v.name === varName);
-            if (!varDef) continue;
+        for (const varName of names) {
+            const columnIndex = columnIndexMap.get(varName);
+            if (columnIndex === undefined || columnIndex < 0) continue;
 
-            const rawValue = row[varDef.columnIndex];
+            const rawValue = row[columnIndex];
 
             if (
                 rawValue !== undefined &&
@@ -47,48 +75,38 @@ export function getSlicedData({
     variables,
     selectedVariables,
 }: VariableType) {
-    if (!selectedVariables) return [];
+    const names = normalizeSelectedVariables(selectedVariables);
+    if (names.length === 0 || dataVariables.length === 0) return [];
 
-    const names = Array.isArray(selectedVariables)
-        ? selectedVariables
-        : [selectedVariables];
+    const columnIndexMap = buildColumnIndexMap(variables);
+    const warnedMissingVariables = new Set<string>();
+
     const maxIndex = getMaxIndex({
         dataVariables,
         variables,
         selectedVariables: names,
     });
-    
-    // Debug logging
-    console.log("[getSlicedData] Input - dataVariables rows:", dataVariables?.length);
-    console.log("[getSlicedData] Input - variables:", variables?.map(v => ({ name: v.name, columnIndex: v.columnIndex })));
-    console.log("[getSlicedData] Input - selectedVariables:", names);
-    console.log("[getSlicedData] Calculated maxIndex:", maxIndex);
-    
+
     const newSlicedData: Record<string, string | number | null>[][] = [];
 
     names.forEach((varName) => {
         const slicedDataForVar: Record<string, string | number | null>[] = [];
+        const columnIndex = columnIndexMap.get(varName);
+
+        if (columnIndex === undefined && !warnedMissingVariables.has(varName)) {
+            console.warn(
+                `[getSlicedData] Variable "${varName}" not found in variables array!`
+            );
+            warnedMissingVariables.add(varName);
+        }
 
         for (let i = 0; i <= maxIndex; i++) {
             const row = dataVariables[i];
             const rowObj: Record<string, string | number | null> = {};
 
-            const varDef = variables.find((v) => v.name === varName);
-            if (varDef) {
-                const rawValue = row[varDef.columnIndex];
-                const stringValue =
-                    rawValue === null || rawValue === undefined
-                        ? ""
-                        : String(rawValue);
-                const num = parseFloat(stringValue.replace(",", "."));
-                rowObj[varName] = isNaN(num)
-                    ? stringValue === ""
-                        ? null
-                        : stringValue
-                    : num;
-            } else {
-                console.warn(`[getSlicedData] Variable "${varName}" not found in variables array!`);
-            }
+            const rawValue =
+                columnIndex === undefined || !row ? null : row[columnIndex];
+            rowObj[varName] = parseCellValue(rawValue);
 
             slicedDataForVar.push(rowObj);
         }
@@ -96,7 +114,6 @@ export function getSlicedData({
         newSlicedData.push(slicedDataForVar);
     });
 
-    console.log("[getSlicedData] Output - newSlicedData:", newSlicedData);
     return newSlicedData;
 }
 

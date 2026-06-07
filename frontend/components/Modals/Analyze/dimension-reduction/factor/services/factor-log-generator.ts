@@ -1,22 +1,17 @@
 /**
  * Factor Analysis SPSS-Style Log Generator
- * 
- * Generates SPSS syntax-like log messages for Factor Analysis operations.
- * Similar to Linear Regression log format for consistency.
- * 
- * Created: 29/1/2026
- * Updated: 29/1/2026 - Fixed extraction method mapping to match actual values
+ dibuat: 29/1/2026
  */
 
 import { FactorType } from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor";
 
 /**
- * Maps extraction method internal value to SPSS syntax method name
+ * Maps extraction method internal value to syntax method name
  * Values must match those defined in constants/factor-method.ts
  */
 function getExtractionMethodSyntax(method: string | null): string {
     const methodMap: Record<string, string> = {
-        // Values from constants/factor-method.ts -> SPSS syntax
+        // Values from constants/factor-method.ts  
         "PrincipalComp": "PC",
         "PrincipalAxisFactoring": "PAF",
         "UnweightLeastSqr": "ULS",
@@ -81,6 +76,19 @@ function getExtractionCriteriaSyntax(extractionConfig: FactorType["extraction"])
 }
 
 /**
+ * Gets the rotation criteria syntax
+ */
+function getRotationCriteriaSyntax(rotationConfig: FactorType["rotation"]): string[] {
+    const criteria: string[] = [];
+
+    if (rotationConfig.MaxIter !== null) {
+        criteria.push(`ITERATE(${rotationConfig.MaxIter})`);
+    }
+
+    return criteria;
+}
+
+/**
  * Gets the print options based on descriptives config
  */
 function getPrintOptionsSyntax(descriptivesConfig: FactorType["descriptives"]): string[] {
@@ -123,9 +131,7 @@ function getScoreMethodSyntax(scoresConfig: FactorType["scores"]): string | null
 }
 
 /**
- * Generates SPSS-style syntax log for Factor Analysis
- * 
- * Example output:
+ * contoh:
  * FACTOR /VARIABLES VAR1 VAR2 VAR3
  *   /MISSING LISTWISE
  *   /ANALYSIS VAR1 VAR2 VAR3
@@ -184,7 +190,13 @@ export function generateFactorAnalysisLog(configData: FactorType): string {
     // Extraction method
     const extractionMethod = getExtractionMethodSyntax(configData.extraction.Method);
     logParts.push(`  /EXTRACTION ${extractionMethod}`);
-    
+
+    // Rotation criteria (separate line, when rotation is enabled)
+    const rotationCriteria = getRotationCriteriaSyntax(configData.rotation);
+    if (rotationCriteria.length > 0 && !configData.rotation.None) {
+        logParts.push(`  /CRITERIA ${rotationCriteria.join(" ")}`);
+    }
+
     // Rotation method
     const rotationMethod = getRotationMethodSyntax(configData.rotation);
     logParts.push(`  /ROTATION ${rotationMethod}`);
@@ -213,11 +225,13 @@ export function generateFactorAnalysisLogCompact(configData: FactorType): string
     const missingMethod = getMissingValueSyntax(configData.options);
     const analysisMatrix = getAnalysisMatrixSyntax(configData.extraction);
     
-    const criteriaStr = configData.extraction.Eigen && configData.extraction.EigenVal !== null
-        ? `MINEIGEN(${configData.extraction.EigenVal})`
-        : configData.extraction.Factor && configData.extraction.MaxFactors !== null
-            ? `FACTORS(${configData.extraction.MaxFactors})`
-            : "";
-    
-    return `FACTOR /VARIABLES ${variablesList} /MISSING ${missingMethod} /EXTRACTION ${extractionMethod} /CRITERIA ${criteriaStr} /ROTATION ${rotationMethod} /METHOD=${analysisMatrix}.`;
+    const extractionCriteria = getExtractionCriteriaSyntax(configData.extraction).join(" ");
+    const rotationCriteria = getRotationCriteriaSyntax(configData.rotation).join(" ");
+
+    const extractionCriteriaPart = extractionCriteria ? ` /CRITERIA ${extractionCriteria}` : "";
+    const rotationCriteriaPart = rotationCriteria && !configData.rotation.None
+        ? ` /CRITERIA ${rotationCriteria}`
+        : "";
+
+    return `FACTOR /VARIABLES ${variablesList} /MISSING ${missingMethod}${extractionCriteriaPart} /EXTRACTION ${extractionMethod}${rotationCriteriaPart} /ROTATION ${rotationMethod} /METHOD=${analysisMatrix}.`;
 }

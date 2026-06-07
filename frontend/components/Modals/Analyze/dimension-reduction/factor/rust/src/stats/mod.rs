@@ -8,3 +8,4 @@ pub mod matrix;
 pub mod prepare_data;
 pub mod report;
 pub mod rotation;
+pub mod extraction_rules;

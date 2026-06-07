@@ -14,7 +14,16 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { FieldHelp } from "./field-help";
+import { HelperIcon } from "./helper-icon";
+
+const helperText = {
+  trainingAndHoldoutPartition:
+    "Split the data into training and holdout sets for model building and evaluation.",
+  crossValidationFolds:
+    "V-fold cross-validations is performed if you choose automatic k selection but do not choose feature selection.",
+  setSeedForMersenneTwister:
+    "Use a fixed Mersenne Twister seed to produce repeatable random results.",
+};
 
 const partitionFields: (keyof KNNPartitionType)[] = [
   "PartitioningVariable",
@@ -261,24 +270,19 @@ export const KNNPartition = ({
                     onValueChange={handlePartitionGrp}
                   >
                     <div className="flex flex-col gap-2 p-2">
-                      <div className="flex items-center gap-2">
+                      <div className="flex w-full items-center gap-2">
                         <Label className="font-bold">
                           Training and Holdout Partition
                         </Label>
-                        <FieldHelp
-                          show={showFieldHelp}
-                          text="Mengatur pembagian data untuk pelatihan model dan pengujian holdout."
-                        />
+                        {showFieldHelp ? (
+                          <HelperIcon text={helperText.trainingAndHoldoutPartition} />
+                        ) : null}
                       </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="UseRandomly" id="UseRandomly" />
                         <Label htmlFor="UseRandomly">
                           Randomly assign cases to partition
                         </Label>
-                        <FieldHelp
-                          show={showFieldHelp}
-                          text="Membagi kasus secara acak ke partisi training dan holdout."
-                        />
                       </div>
                       <div
                         className={`flex flex-row gap-1 pl-6 ${
@@ -289,10 +293,6 @@ export const KNNPartition = ({
                       >
                         <div className="flex flex-col gap-2">
                           <Label htmlFor="TrainingNumber">Training %:</Label>
-                          <FieldHelp
-                            show={showFieldHelp}
-                            text="Persentase kasus yang dipakai untuk melatih model."
-                          />
                           <Input
                             id="TrainingNumber"
                             type="number"
@@ -310,10 +310,6 @@ export const KNNPartition = ({
                         </div>
                         <div className="flex flex-col gap-2">
                           <Label htmlFor="TrainingNumber">Holdout %:</Label>
-                          <FieldHelp
-                            show={showFieldHelp}
-                            text="Persentase kasus yang disisihkan untuk evaluasi holdout."
-                          />
                           <Input
                             id="HoldoutNumber"
                             type="number"
@@ -326,10 +322,6 @@ export const KNNPartition = ({
                         </div>
                         <div className="flex flex-col gap-2">
                           <Label htmlFor="TotalNumber">Total %:</Label>
-                          <FieldHelp
-                            show={showFieldHelp}
-                            text="Total pembagian training dan holdout; nilainya selalu 100%."
-                          />
                           <Input
                             id="TotalNumber"
                             type="number"
@@ -346,20 +338,12 @@ export const KNNPartition = ({
                         <Label htmlFor="UseVariable">
                           Use variable to assign cases
                         </Label>
-                        <FieldHelp
-                          show={showFieldHelp}
-                          text="Gunakan sebuah variabel untuk menentukan partisi tiap kasus."
-                        />
                       </div>
                       <div className="flex flex-row gap-1 pl-6">
                         <div className="flex flex-col gap-2 w-full">
                           <Label htmlFor="PartitioningVariable">
                             Partition Variable:
                           </Label>
-                          <FieldHelp
-                            show={showFieldHelp}
-                            text="Variabel yang berisi penanda partisi training atau holdout."
-                          />
                           <div className="flex w-full min-w-0 items-center space-x-2">
                             <div
                               className={`w-full min-w-0 min-h-[40px] p-2 border rounded ${
@@ -416,14 +400,13 @@ export const KNNPartition = ({
                           : ""
                       }`}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex w-full items-center gap-2">
                         <Label className="font-bold">
                           Cross Validation Folds
                         </Label>
-                        <FieldHelp
-                          show={showFieldHelp}
-                          text="Mengatur lipatan validasi silang untuk memilih atau mengevaluasi model."
-                        />
+                        {showFieldHelp ? (
+                          <HelperIcon text={helperText.crossValidationFolds} />
+                        ) : null}
                       </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem
@@ -433,17 +416,9 @@ export const KNNPartition = ({
                         <Label htmlFor="VFoldUseRandomly">
                           Randomly assign cases to folds
                         </Label>
-                        <FieldHelp
-                          show={showFieldHelp}
-                          text="Membagi kasus ke fold validasi silang secara acak."
-                        />
                       </div>
                       <div className="flex flex-row pl-6 gap-2">
                         <Label htmlFor="TrainingNumber">Number of Folds:</Label>
-                        <FieldHelp
-                          show={showFieldHelp}
-                          text="Jumlah fold yang digunakan dalam validasi silang."
-                        />
                         <Input
                           id="NumPartition"
                           type="text"
@@ -467,19 +442,11 @@ export const KNNPartition = ({
                         <Label htmlFor="VFoldUsePartitioningVar">
                           Use variable to assign cases
                         </Label>
-                        <FieldHelp
-                          show={showFieldHelp}
-                          text="Gunakan variabel untuk menentukan fold setiap kasus."
-                        />
                       </div>
                       <div className="flex flex-col gap-2 pl-6 w-full">
                         <Label htmlFor="VFoldPartitioningVariable">
                           Fold Variable:
                         </Label>
-                        <FieldHelp
-                          show={showFieldHelp}
-                          text="Variabel yang berisi nomor atau label fold untuk validasi silang."
-                        />
                         <div className="flex w-full min-w-0 items-center space-x-2">
                           <div
                             className={`w-full min-w-0 min-h-[40px] p-2 border rounded ${
@@ -533,37 +500,30 @@ export const KNNPartition = ({
                   <div className="flex flex-col gap-2 p-2">
                     <div className="flex items-center gap-2">
                       <Label className="font-bold">Random Number Seed</Label>
-                      <FieldHelp
-                        show={showFieldHelp}
-                        text="Mengatur seed agar pembagian acak dapat direproduksi."
-                      />
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="SetSeed"
-                        checked={partitionState.SetSeed}
-                        disabled={isSeedDisabled}
-                        onCheckedChange={(checked) =>
-                          handleChange("SetSeed", checked)
-                        }
-                      />
-                      <label
-                        htmlFor="SetSeed"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        Set Seed for Mersenne Twister
-                      </label>
-                      <FieldHelp
-                        show={showFieldHelp}
-                        text="Aktifkan seed manual untuk generator angka acak."
-                      />
+                    <div className="flex w-full items-center justify-between gap-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="SetSeed"
+                          checked={partitionState.SetSeed}
+                          disabled={isSeedDisabled}
+                          onCheckedChange={(checked) =>
+                            handleChange("SetSeed", checked)
+                          }
+                        />
+                        <label
+                          htmlFor="SetSeed"
+                          className="text-sm font-bold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          Set Seed for Mersenne Twister
+                        </label>
+                      </div>
+                      {showFieldHelp ? (
+                        <HelperIcon text={helperText.setSeedForMersenneTwister} />
+                      ) : null}
                     </div>
                     <div className="flex flex-row items-center gap-2 pl-6 w-full">
                       <Label htmlFor="Seed">Seed:</Label>
-                      <FieldHelp
-                        show={showFieldHelp}
-                        text="Nilai seed yang digunakan untuk menghasilkan pembagian acak yang sama pada run berikutnya."
-                      />
                       <Input
                         id="Seed"
                         type="number"

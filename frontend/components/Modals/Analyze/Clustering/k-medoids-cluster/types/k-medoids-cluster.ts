@@ -1,4 +1,3 @@
-import type React from "react";
 import type { Variable } from "@/types/Variable";
 
 /**
@@ -89,6 +88,14 @@ export enum NormalizationMethod {
 }
 
 /**
+ * Mode untuk pemakaian seed:
+ * - default: gunakan seed default bawaan sistem
+ * - random: gunakan RNG acak (seed kosong)
+ * - custom: gunakan seed angka dari user
+ */
+export type SeedMode = "default" | "random" | "custom";
+
+/**
  * ========================================
  * MAIN DIALOG - Variable Selection & Basic Config
  * ========================================
@@ -145,6 +152,9 @@ export type KMedoidsClusterIterateType = {
 
     /** Convergence criterion: stop jika perubahan cost < threshold (default: 0) */
     ConvergenceCriterion: number | null;
+
+    /** Mode pemakaian seed: default, random, atau custom */
+    SeedMode: SeedMode;
 
     /** Random seed untuk reproducibility (null = random) */
     RandomSeed: number | null;

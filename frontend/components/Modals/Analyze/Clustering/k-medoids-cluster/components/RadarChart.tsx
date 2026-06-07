@@ -29,7 +29,7 @@ function clusterColor(idx: number, total: number, alpha = 1): string {
 
 /** Truncate text to maxLen characters, appending "…" if needed. */
 function truncate(text: string, maxLen = 14): string {
-    return text.length > maxLen ? text.slice(0, maxLen - 1) + "…" : text;
+    return text.length > maxLen ? `${text.slice(0, maxLen - 1)  }…` : text;
 }
 
 export const KMedoidsRadarChart: React.FC<KMedoidsRadarChartProps> = ({
@@ -134,7 +134,7 @@ export const KMedoidsRadarChart: React.FC<KMedoidsRadarChartProps> = ({
             const lx = cx + (radius + labelPad) * Math.cos(a);
             const ly = cy + (radius + labelPad) * Math.sin(a);
             const label =
-                variables.find((v) => v.name === varName)?.label || varName;
+                variables.find((v) => v.name === varName)?.label ?? varName;
 
             // Wrap long labels into two lines
             const line1 = truncate(label, 14);
@@ -209,7 +209,7 @@ export const KMedoidsRadarChart: React.FC<KMedoidsRadarChartProps> = ({
                 const py = ptY(norm, i);
                 const rawVal = profile.meanAttributes?.[v];
                 const rawStr =
-                    rawVal != null && isFinite(rawVal)
+                    rawVal !== null && isFinite(rawVal)
                         ? rawVal.toFixed(2)
                         : "N/A";
 
@@ -225,7 +225,7 @@ export const KMedoidsRadarChart: React.FC<KMedoidsRadarChartProps> = ({
 
                 // Simple title tooltip (shown by browser on hover)
                 const varLabel =
-                    variables.find((vv) => vv.name === v)?.label || v;
+                    variables.find((vv) => vv.name === v)?.label ?? v;
                 dot.append("title").text(
                     `${varLabel}: ${rawStr}\nCluster ${profile.clusterLabel}`
                 );

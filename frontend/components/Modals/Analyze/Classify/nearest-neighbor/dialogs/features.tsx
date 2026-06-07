@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import type {
   KNNFeaturesProps,
   KNNFeaturesType,
@@ -9,16 +8,18 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { PopoverArrow } from "@radix-ui/react-popover";
-import { Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FieldHelp } from "./field-help";
+import { HelperIcon } from "./helper-icon";
+
+const helperText = {
+  performFeatureSelection:
+    "Automatically select the most useful features before building the final KNN model.",
+  forwardSelection: "Forward Selection is used to evaluate featires for inclusion",
+  forcedEntry: "Move features to force into the model prior to forward selection.",
+  stoppingCriterion:
+    "Define when the forward feature selection process should stop.",
+};
 
 export const KNNFeatures = ({
   updateFormData,
@@ -127,44 +128,22 @@ export const KNNFeatures = ({
                     />
                     <label
                       htmlFor="PerformSelection"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      className="text-sm font-bold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                     >
                       Perform Feature Selection
                     </label>
-                    <FieldHelp
-                      show={showFieldHelp}
-                      text="Aktifkan pemilihan fitur otomatis untuk mengevaluasi fitur mana yang paling membantu model."
-                    />
                   </div>
-                  <div>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="ghost">
-                          <Info />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent>
-                        <PopoverArrow />
-                        <div className="p-2">
-                          <p className="text-sm">
-                            Forward selection is used to evaluate features for
-                            inclusions. To force a feature to be included in the
-                            model, enter the feature name in the Forced Entry
-                            box.
-                          </p>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+                  {showFieldHelp ? (
+                    <HelperIcon text={helperText.performFeatureSelection} />
+                  ) : null}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex min-w-0 flex-col gap-2">
-                      <div className="flex items-center gap-2">
+                      <div className="flex w-full items-center gap-2">
                         <Label className="font-bold">Forward Selection:</Label>
-                        <FieldHelp
-                          show={showFieldHelp}
-                          text="Daftar fitur kandidat yang akan dievaluasi oleh prosedur forward selection."
-                        />
+                        {showFieldHelp ? (
+                          <HelperIcon text={helperText.forwardSelection} />
+                        ) : null}
                       </div>
                       <div className="w-full h-[150px] p-2 border rounded overflow-hidden">
                         <ScrollArea>
@@ -204,12 +183,11 @@ export const KNNFeatures = ({
                         handleDrop("ForcedEntryVar", variable);
                       }}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex w-full items-center gap-2">
                         <Label className="font-bold">Forced Entry:</Label>
-                        <FieldHelp
-                          show={showFieldHelp}
-                          text="Fitur yang wajib masuk ke model dan tidak dikeluarkan oleh proses seleksi."
-                        />
+                        {showFieldHelp ? (
+                          <HelperIcon text={helperText.forcedEntry} />
+                        ) : null}
                       </div>
                       <div className="w-full h-[150px] p-2 border rounded overflow-hidden">
                         <ScrollArea>
@@ -263,12 +241,11 @@ export const KNNFeatures = ({
                 onValueChange={handleCriterionGrp}
               >
                 <div className="flex flex-col gap-2 p-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex w-full items-center gap-2">
                     <Label className="font-bold">Stopping Criterion</Label>
-                    <FieldHelp
-                      show={showFieldHelp}
-                      text="Aturan kapan proses pemilihan fitur harus berhenti."
-                    />
+                    {showFieldHelp ? (
+                      <HelperIcon text={helperText.stoppingCriterion} />
+                    ) : null}
                   </div>
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center space-x-2">
@@ -276,18 +253,10 @@ export const KNNFeatures = ({
                       <Label htmlFor="MaxReached">
                         Stop when the specified number of features is reached
                       </Label>
-                      <FieldHelp
-                        show={showFieldHelp}
-                        text="Hentikan seleksi saat jumlah fitur terpilih mencapai batas yang ditentukan."
-                      />
                     </div>
                     <div className="flex flex-col space-x-2 pl-4">
                       <div className="flex items-center space-x-2 pl-2">
                         <Label className="w-[150px]">Number to Select:</Label>
-                        <FieldHelp
-                          show={showFieldHelp}
-                          text="Jumlah maksimum fitur yang boleh dipilih oleh proses seleksi."
-                        />
                         <div className="w-[75px]">
                           <Input
                             id="MaxToSelect"
@@ -313,18 +282,10 @@ export const KNNFeatures = ({
                         Stop when the change in the absolute error ratio is less
                         than or equal to minimum
                       </Label>
-                      <FieldHelp
-                        show={showFieldHelp}
-                        text="Hentikan seleksi ketika penurunan error sudah terlalu kecil."
-                      />
                     </div>
                     <div className="flex flex-col space-x-2 pl-4 gap-1">
                       <div className="flex items-center space-x-2 pl-2">
                         <Label className="w-[150px]">Minimum Change:</Label>
-                        <FieldHelp
-                          show={showFieldHelp}
-                          text="Ambang minimum perubahan error ratio agar fitur berikutnya masih dianggap berguna."
-                        />
                         <div className="w-[75px]">
                           <Input
                             id="MinChange"
