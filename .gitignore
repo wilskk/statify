@@ -104,3 +104,6 @@ frontend/.trae/rules/project_rules.md
 # Backend temp dirs (hasil sementara .sav)
 backend/temp/
 backend/server/temp/
+
+# Validation data (local only, not published to GitHub)
+/testing/validation_data/
