@@ -1,20 +1,20 @@
 /**
- * K-Medoids Visualization Charts
- * Comprehensive chart components for clustering visualization
- * Uses existing chart system but with K-Medoids specific formatting
+ * Chart Visualisasi K-Medoids
+ * Komponen chart komprehensif untuk visualisasi clustering
+ * Menggunakan sistem chart yang ada dengan format khusus K-Medoids
  */
 
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { KMedoidsOutput, ClusterProfile } from "../types/output";
+import type { KMedoidsOutput, IterationHistory } from "../types/output";
 
 /**
- * Format K-Medoids data for scatter plot visualization
- * Creates chart data compatible with GeneralChartContainer's "Grouped Scatter Plot"
- * Separates regular points and medoids for distinct visualization
+ * Format data K-Medoids untuk visualisasi scatter plot
+ * Membuat data chart yang kompatibel dengan "Grouped Scatter Plot" GeneralChartContainer
+ * Memisahkan titik biasa dan medoid untuk visualisasi yang berbeda
  */
 export function formatScatterPlotData(output: KMedoidsOutput, xVar: string, yVar: string) {
-    // Separate regular points and medoids for distinct visualization
+    // Pisahkan titik biasa dan medoid untuk visualisasi yang berbeda
     const dataPoints = output.assignments
         .filter(obj => !obj.isMedoid)
         .map(obj => {
@@ -22,15 +22,15 @@ export function formatScatterPlotData(output: KMedoidsOutput, xVar: string, yVar
             const yVal = obj.attributes?.[yVar];
             
             return {
-                x: xVal != null && isFinite(xVal as number) ? (xVal as number) : 0,
-                y: yVal != null && isFinite(yVal as number) ? (yVal as number) : 0,
+                x: xVal !== null && isFinite(xVal as number) ? (xVal as number) : 0,
+                y: yVal !== null && isFinite(yVal as number) ? (yVal as number) : 0,
                 category: `cluster ${obj.clusterLabel}`,
                 label: `Case ${obj.objectId}`,
                 clusterNum: obj.clusterLabel
             };
         });
 
-    // Add medoids as separate category
+    // Tambahkan medoid sebagai kategori terpisah
     const medoids = output.assignments
         .filter(obj => obj.isMedoid)
         .map(obj => {
@@ -38,8 +38,8 @@ export function formatScatterPlotData(output: KMedoidsOutput, xVar: string, yVar
             const yVal = obj.attributes?.[yVar];
             
             return {
-                x: xVal != null && isFinite(xVal as number) ? (xVal as number) : 0,
-                y: yVal != null && isFinite(yVal as number) ? (yVal as number) : 0,
+                x: xVal !== null && isFinite(xVal as number) ? (xVal as number) : 0,
+                y: yVal !== null && isFinite(yVal as number) ? (yVal as number) : 0,
                 category: "centroide",
                 label: `Medoid C${obj.clusterLabel}`,
                 clusterNum: obj.clusterLabel
@@ -72,7 +72,7 @@ export function formatScatterPlotData(output: KMedoidsOutput, xVar: string, yVar
                     x: xVar,
                     y: yVar
                 },
-                // Distinct styling for clusters and centroids
+                // Styling berbeda untuk klaster dan centroid
                 pointStyles: {
                     "cluster 1": { symbol: "circle", color: "#FF6B6B" },
                     "cluster 2": { symbol: "circle", color: "#4ECDC4" },
@@ -85,13 +85,31 @@ export function formatScatterPlotData(output: KMedoidsOutput, xVar: string, yVar
 }
 
 /**
- * Format data for donut chart (cluster sizes)
+ * Konversi data sampling CLARA ke format IterationHistory
+ * agar dapat digunakan kembali dengan komponen ConvergenceChart yang ada
+ */
+export function formatClaraSamplingAsConvergenceData(
+    samples: { sampleIndex: number; cost: number; sampleSize?: number; pamIterations?: number }[]
+): IterationHistory[] {
+    return samples.map((s, idx) => {
+        const prevCost = idx === 0 ? s.cost : samples[idx - 1].cost;
+        return {
+            iteration: s.sampleIndex,
+            totalCost: s.cost,
+            improvement: prevCost - s.cost,   // positif = membaik
+            swapsMade: s.pamIterations ?? 0,
+        };
+    });
+}
+
+/**
+ * Format data untuk donut chart (ukuran klaster)
  */
 export function formatDonutChartData(output: KMedoidsOutput) {
     const labels = output.clusterProfiles.map(p => `Cluster ${p.clusterLabel}`);
     const data = output.clusterProfiles.map(p => p.size);
     const percentages = output.clusterProfiles.map(p => 
-        p.percentage != null ? p.percentage.toFixed(1) : '0'
+        p.percentage !== null ? p.percentage.toFixed(1) : '0'
     );
 
     return {
@@ -123,8 +141,8 @@ export function formatDonutChartData(output: KMedoidsOutput) {
                 },
                 tooltip: {
                     callbacks: {
-                        label: (context: any) => {
-                            const label = context.label || '';
+                        label: (context: {label?: string; parsed: number; dataIndex: number}) => {
+                            const label = context.label ?? '';
                             const value = context.parsed;
                             const percentage = percentages[context.dataIndex];
                             return `${label}: ${value} cases (${percentage}%)`;
@@ -137,14 +155,14 @@ export function formatDonutChartData(output: KMedoidsOutput) {
 }
 
 /**
- * Format data for radar chart (cluster profiles)
+ * Format data untuk radar chart (profil klaster)
  */
 export function formatRadarChartData(output: KMedoidsOutput, variables: string[]) {
     const datasets = output.clusterProfiles.map((profile, idx) => ({
         label: `Cluster ${profile.clusterLabel}`,
         data: variables.map(v => {
             const val = profile.meanAttributes?.[v];
-            return val != null && isFinite(val) ? val : 0;
+            return val !== null && isFinite(val) ? val : 0;
         }),
         backgroundColor: `hsla(${(idx * 360) / output.clusterProfiles.length}, 70%, 50%, 0.2)`,
         borderColor: `hsl(${(idx * 360) / output.clusterProfiles.length}, 70%, 50%)`,
@@ -179,7 +197,7 @@ export function formatRadarChartData(output: KMedoidsOutput, variables: string[]
 }
 
 /**
- * Format data for convergence line chart
+ * Format data untuk line chart konvergensi
  */
 export function formatConvergenceChartData(output: KMedoidsOutput) {
     const iterations = output.iterationHistory.map(h => h.iteration);
@@ -231,17 +249,17 @@ export function formatConvergenceChartData(output: KMedoidsOutput) {
 }
 
 /**
- * Format data for silhouette bar chart
+ * Format data untuk bar chart silhouette
  */
 export function formatSilhouetteBarChartData(output: KMedoidsOutput) {
     const labels = output.silhouetteScores.perCluster.map(s => `Cluster ${s.clusterLabel}`);
     const scores = output.silhouetteScores.perCluster.map(s => s.averageScore);
     
     const colors = scores.map(score => {
-        if (score >= 0.7) return "rgba(34, 197, 94, 0.8)"; // green
-        if (score >= 0.5) return "rgba(59, 130, 246, 0.8)"; // blue
-        if (score >= 0.3) return "rgba(234, 179, 8, 0.8)"; // yellow
-        return "rgba(239, 68, 68, 0.8)"; // red
+        if (score >= 0.7) return "rgba(34, 197, 94, 0.8)"; // hijau
+        if (score >= 0.5) return "rgba(59, 130, 246, 0.8)"; // biru
+        if (score >= 0.3) return "rgba(234, 179, 8, 0.8)"; // kuning
+        return "rgba(239, 68, 68, 0.8)"; // merah
     });
 
     return {
@@ -269,7 +287,7 @@ export function formatSilhouetteBarChartData(output: KMedoidsOutput) {
                 },
                 tooltip: {
                     callbacks: {
-                        afterLabel: (context: any) => {
+                        afterLabel: (context: {parsed: {x: number}}) => {
                             const score = context.parsed.x;
                             if (score >= 0.7) return "Quality: Very Strong";
                             if (score >= 0.5) return "Quality: Strong";
@@ -294,7 +312,7 @@ export function formatSilhouetteBarChartData(output: KMedoidsOutput) {
 }
 
 /**
- * Format data for elbow chart
+ * Format data untuk elbow chart
  */
 export function formatElbowChartData(output: KMedoidsOutput) {
     if (!output.elbowData) return null;
@@ -349,12 +367,12 @@ export function formatElbowChartData(output: KMedoidsOutput) {
 }
 
 /**
- * Chart container wrapper component
+ * Komponen pembungkus container chart
  */
 interface ChartCardProps {
     title: string;
     description?: string;
-    chartData: any;
+    chartData: {type?: string; data?: unknown; options?: unknown};
     height?: number;
 }
 
@@ -367,9 +385,9 @@ export const ChartCard: React.FC<ChartCardProps> = ({ title, description, chartD
             </CardHeader>
             <CardContent>
                 <div style={{ height: `${height}px` }}>
-                    {/* Chart will be rendered by GeneralChartContainer */}
+                    {/* Chart akan dirender oleh GeneralChartContainer */}
                     <div data-chart-type={chartData.type} data-chart-config={JSON.stringify(chartData)}>
-                        {/* Placeholder for chart rendering */}
+                        {/* Placeholder untuk rendering chart */}
                     </div>
                 </div>
             </CardContent>

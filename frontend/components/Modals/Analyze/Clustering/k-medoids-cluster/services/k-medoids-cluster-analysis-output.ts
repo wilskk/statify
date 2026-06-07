@@ -19,17 +19,33 @@ interface AutomaticKSelection {
     optimalScore: number;
 }
 
+interface ClusteringConfig {
+    iterate: {
+        Method?: string;
+    };
+    results: {
+        ShowCaseCount: boolean;
+        ShowIterationHistory: boolean;
+    };
+    main: {
+        Cluster: number;
+        DistanceMetric?: string;
+    };
+}
+
 interface KMedoidsAnalysisResult {
     success: boolean;
     message: string;
     result: ClusteringResult;
-    config: any;
+    config: ClusteringConfig;
     automaticKSelection?: AutomaticKSelection;
 }
 
+type DataRow = Record<string, string | number | boolean | null | undefined>;
+
 export async function resultKMedoidsCluster(
     analysisResult: KMedoidsAnalysisResult,
-    dataVariables: any[],
+    dataVariables: DataRow[],
     variables: Variable[]
 ) {
     try {
@@ -37,26 +53,18 @@ export async function resultKMedoidsCluster(
         const { result, config, automaticKSelection } = analysisResult;
 
         // Validate result structure
-        if (!result || !result.labels || !Array.isArray(result.labels)) {
-            console.error("Invalid clustering result structure:", result);
+        if (!result?.labels || !Array.isArray(result.labels)) {
             throw new Error("Clustering result is missing required fields (labels, medoids, etc.)");
         }
 
-        console.log("Processing clustering results:", {
-            numCases: dataVariables.length,
-            numClusters: result.medoids?.length || 0,
-            hasLabels: !!result.labels,
-            hasAutomaticK: !!automaticKSelection
-        });
-
         // Create main log
-        const method = config.iterate.Method || "PAM";
+        const method = config.iterate.Method ?? "PAM";
         const titleMessage = `K-Medoids Cluster Analysis (${method})`;
         const logId = await addLog({ log: titleMessage });
 
         // Collect all tables
         const allTables: Table[] = [];
-        
+
         // 📊 Case Processing Summary
         const validCases = dataVariables.length;
         allTables.push({
@@ -114,7 +122,7 @@ export async function resultKMedoidsCluster(
         if (config.results.ShowCaseCount) {
             const clusterCounts: Record<number, number> = {};
             result.labels.forEach(label => {
-                clusterCounts[label] = (clusterCounts[label] || 0) + 1;
+                clusterCounts[label] = (clusterCounts[label] ?? 0) + 1;
             });
 
             allTables.push({
@@ -129,62 +137,57 @@ export async function resultKMedoidsCluster(
                     rowHeader: [],
                     Cluster: `Cluster ${parseInt(cluster) + 1}`,
                     Cases: count,
-                    Percent: ((count / validCases) * 100).toFixed(1) + "%"
+                    Percent: `${((count / validCases) * 100).toFixed(1)}%`
                 }))
             });
         }
 
-        // 🎯 Final Cluster Centers (Medoids)
-        if (config.results.ShowFinalMedoids) {
-            const medoidData = result.medoids.map((medoidIdx, clusterIdx) => {
-                const medoidRow = dataVariables[medoidIdx];
-                const row: any = { 
+        // 🎯 Final Cluster Centers (Medoids) - always shown
+        const medoidData = result.medoids.map((medoidIdx, clusterIdx) => {
+            const medoidRow = dataVariables[medoidIdx];
+            const row: Record<string, string | number> = {
+                Cluster: `Cluster ${clusterIdx + 1}`,
+                CaseNumber: medoidIdx + 1
+            };
+            variables.forEach(v => {
+                const value = medoidRow[v.name];
+                row[v.name] = typeof value === "number" ? value.toFixed(4) : String(value ?? "");
+            });
+            return { rowHeader: [] as string[], ...row };
+        });
+
+        allTables.push({
+            key: "final_cluster_centers",
+            title: "Final Cluster Centers (Medoids)",
+            columnHeaders: [
+                { header: "Cluster" },
+                { header: "Case #" },
+                ...variables.map(v => ({ header: v.label ?? v.name }))
+            ],
+            rows: medoidData
+        });
+
+        // 💰 Total Cost / Dissimilarity (always shown)
+        allTables.push({
+            key: "total_cost",
+            title: "Total Within-Cluster Dissimilarity",
+            columnHeaders: [
+                { header: "Metric" },
+                { header: "Value" }
+            ],
+            rows: [
+                {
                     rowHeader: [],
-                    Cluster: `Cluster ${clusterIdx + 1}`,
-                    CaseNumber: medoidIdx + 1  // Show which case is the medoid
-                };
-                variables.forEach(v => {
-                    const value = medoidRow[v.name];
-                    row[v.name] = typeof value === 'number' ? value.toFixed(4) : value;
-                });
-                return row;
-            });
-
-            allTables.push({
-                key: "final_cluster_centers",
-                title: "Final Cluster Centers (Medoids)",
-                columnHeaders: [
-                    { header: "Cluster" },
-                    { header: "Case #" },
-                    ...variables.map(v => ({ header: v.label || v.name }))
-                ],
-                rows: medoidData
-            });
-        }
-
-        // 💰 Total Cost / Dissimilarity
-        if (config.results.ShowTotalCost) {
-            allTables.push({
-                key: "total_cost",
-                title: "Total Within-Cluster Dissimilarity",
-                columnHeaders: [
-                    { header: "Metric" },
-                    { header: "Value" }
-                ],
-                rows: [
-                    { 
-                        rowHeader: [], 
-                        Metric: "Total Cost (Sum of Distances)", 
-                        Value: result.cost.toFixed(4) 
-                    },
-                    { 
-                        rowHeader: [], 
-                        Metric: "Average Distance to Medoid", 
-                        Value: (result.cost / dataVariables.length).toFixed(4) 
-                    }
-                ]
-            });
-        }
+                    Metric: "Total Cost (Sum of Distances)",
+                    Value: result.cost.toFixed(4)
+                },
+                {
+                    rowHeader: [],
+                    Metric: "Average Distance to Medoid",
+                    Value: (result.cost / dataVariables.length).toFixed(4)
+                }
+            ]
+        });
 
         // 📊 Iteration History & Convergence Information
         if (config.results.ShowIterationHistory) {
@@ -200,7 +203,7 @@ export async function resultKMedoidsCluster(
                     { rowHeader: [], Metric: "Converged", Value: result.converged ? "Yes" : "No" },
                     { rowHeader: [], Metric: "Final Cost", Value: result.cost.toFixed(4) },
                     { rowHeader: [], Metric: "Algorithm Used", Value: method },
-                    { rowHeader: [], Metric: "Distance Metric", Value: config.main.DistanceMetric || "Euclidean" }
+                    { rowHeader: [], Metric: "Distance Metric", Value: config.main.DistanceMetric ?? "Euclidean" }
                 ]
             });
         }
@@ -208,7 +211,7 @@ export async function resultKMedoidsCluster(
         // 🔍 Automatic K Selection Results
         if (automaticKSelection) {
             const kSelectionData = automaticKSelection.scores.map(({ k, score }) => ({
-                rowHeader: [],
+                rowHeader: [] as string[],
                 K: k.toString(),
                 Score: score.toFixed(4)
             }));
@@ -227,7 +230,7 @@ export async function resultKMedoidsCluster(
         // Create single analytic with all results
         const analyticId = await addAnalytic(logId, {
             title: `K-Medoids Cluster Analysis`,
-            note: automaticKSelection 
+            note: automaticKSelection
                 ? `Automatic k selection: k=${automaticKSelection.optimalK} (${automaticKSelection.method})`
                 : `Manual k selection: k=${config.main.Cluster}, Algorithm: ${method}`,
         });
@@ -240,11 +243,9 @@ export async function resultKMedoidsCluster(
             components: `K-Medoids Analysis`,
         });
 
-        console.log("K-Medoids clustering output saved successfully");
         return { success: true };
 
     } catch (error) {
-        console.error("Error in resultKMedoidsCluster:", error);
         throw error;
     }
 }

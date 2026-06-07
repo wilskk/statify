@@ -29,7 +29,7 @@ pub fn run(
     variable_groups: &[VariableGroup],
 ) -> Result<LogisticResult, JsValue> {
     let n_samples = x_matrix.nrows();
-    let n_total_vars = x_matrix.ncols();
+    let _n_total_vars = x_matrix.ncols();
     let n_groups = variable_groups.len();
 
     // Track included GROUPS (not individual columns)
@@ -164,7 +164,7 @@ pub fn run(
 
         let mut best_candidate_group_idx: Option<usize> = None;
         let mut best_score_stat = 0.0;
-        let mut best_score_df = 1_i32;
+        let mut _best_score_df = 1_i32;
 
         // ---------------------------------------------------------
         // A. FORWARD ENTRY: Score Test (Group-aware)
@@ -207,7 +207,7 @@ pub fn run(
 
             if p_val < config.p_entry && stat > best_score_stat {
                 best_score_stat = stat;
-                best_score_df = df;
+                _best_score_df = df;
                 best_candidate_group_idx = Some(g_idx);
             }
         }
@@ -747,7 +747,7 @@ fn calculate_step_snapshot(
     included_group_indices: &[usize],
 ) -> StepDetail {
     let n = y_vector.len();
-    let n_total_vars = full_x.ncols();
+    let _n_total_vars = full_x.ncols();
     let chi_dist_1df = ChiSquared::new(1.0).unwrap();
     let z_score = crate::utils::probability::z_score_from_confidence(config.confidence_level);
 
@@ -874,7 +874,7 @@ fn calculate_step_snapshot(
         }
 
         // Emit individual rows for each column in the group
-        for (sub_idx, &col_idx) in group.column_indices.iter().enumerate() {
+        for (_sub_idx, &col_idx) in group.column_indices.iter().enumerate() {
             if let Some(pos) = included_indices.iter().position(|&c| c == col_idx) {
                 let beta_idx = pos + beta_offset;
                 let b = model.beta[beta_idx];

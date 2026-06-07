@@ -13,7 +13,7 @@
  * 2       9.076        1     .003   | 65.220       2   .000 | 83.8%   | IN: trestbps
  */
 
-import { LogisticResult, AnalysisSection, StepSummaryRow } from "../types/binary-logistic";
+import type { LogisticResult, AnalysisSection, StepSummaryRow } from "../types/binary-logistic";
 import { createSection, safeFixed, fmtSig, fmtPct } from "./formatter_utils";
 
 /**

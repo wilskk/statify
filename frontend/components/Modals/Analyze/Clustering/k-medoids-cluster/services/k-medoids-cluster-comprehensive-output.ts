@@ -1,9 +1,10 @@
 // k-medoids-cluster-comprehensive-output.ts
+/* eslint-disable no-console */
 import { useResultStore } from "@/stores/useResultStore";
 import type { Table } from "@/types/Table";
 import type { Variable } from "@/types/Variable";
-import type { KMedoidsOutput, KMedoidsSummary, ObjectAssignment, MedoidInfo, ClusterProfile, IterationHistory, MedoidDistanceMatrix, SilhouetteClusterScore } from "../types/output";
-import { buildCaseProcessingSummary } from "./k-medoids-cluster-guards";
+import type { KMedoidsOutput, KMedoidsSummary, ObjectAssignment, MedoidInfo, ClusterProfile, IterationHistory, MedoidDistanceMatrix, DistanceMatrix, SilhouetteClusterScore } from "../types/output";
+import { buildCaseProcessingSummary, recoverMedoidsFromMismatch } from "./k-medoids-cluster-guards";
 
 interface ClusteringResult {
     labels: number[];
@@ -21,21 +22,32 @@ interface ClusteringResult {
     cost_history?: number[];
     /** Medoid indices at each step: [0]=initial, [i]=after swap i. */
     medoid_history?: number[][];
+    /** CLARA: cost per sample on the full dataset (length = num_samples). Empty for PAM/CLARANS. */
+    sample_costs?: number[];
+    /** CLARA: pam iterations per sample. */
+    sample_pam_iterations?: number[];
+    /** CLARA: 1-based index of the best sample. 0 means N/A (PAM/CLARANS). */
+    clara_best_sample_index?: number;
 }
 
 interface AutomaticKSelection {
     method: string;
     testedRange: { min: number; max: number };
-    scores: Array<{ k: number; score: number }>;
+    scores: Array<{
+        k: number;
+        score: number;
+        silhouetteScore?: number;
+        totalCost?: number;
+    }>;
     optimalK: number;
     optimalScore: number;
 }
 
-interface KMedoidsAnalysisResult {
+export interface KMedoidsAnalysisResult {
     success: boolean;
     message: string;
     result: ClusteringResult;
-    config: any;
+    config: Record<string, Record<string, unknown>>;
     preprocessingSummary?: {
         initialN: number;
         afterPreprocessingN: number;
@@ -44,6 +56,30 @@ interface KMedoidsAnalysisResult {
         missingByVariable: Record<string, number>;
     };
     automaticKSelection?: AutomaticKSelection;
+    kChartSelection?: AutomaticKSelection;
+}
+
+type NormalizationKind = "none" | "zscore" | "minmax";
+
+function resolveNormalizationMethod(config: Record<string, Record<string, unknown>>): NormalizationKind {
+    const methodFromOptions = config?.options?.NormalizationMethod as NormalizationKind | undefined;
+    const methodFromIterate = config?.iterate?.NormalizationMethod as NormalizationKind | undefined;
+
+    if (methodFromOptions) return methodFromOptions;
+    if (methodFromIterate) return methodFromIterate;
+
+    const hasStandardizeFlag =
+        config?.options?.Standardize !== undefined ||
+        config?.iterate?.Standardize !== undefined;
+    const standardizeFlag =
+        config?.options?.Standardize ??
+        config?.iterate?.Standardize;
+
+    if (hasStandardizeFlag) {
+        return standardizeFlag ? "zscore" : "none";
+    }
+
+    return "none";
 }
 
 /**
@@ -61,22 +97,47 @@ function euclideanDistance(p1: number[], p2: number[]): number {
 }
 
 /**
+ * Calculate Manhattan distance between two points
+ */
+function manhattanDistance(p1: number[], p2: number[]): number {
+    if (!p1 || !p2 || p1.length !== p2.length) return 0;
+    let sum = 0;
+    for (let i = 0; i < p1.length; i++) {
+        sum += Math.abs((p1[i] || 0) - (p2[i] || 0));
+    }
+    return sum;
+}
+
+type DistanceMetricKind = "euclidean" | "manhattan";
+
+function calculateDistance(
+    p1: number[],
+    p2: number[],
+    metric: DistanceMetricKind
+): number {
+    return metric === "manhattan"
+        ? manhattanDistance(p1, p2)
+        : euclideanDistance(p1, p2);
+}
+
+/**
  * Calculate silhouette score for a single object (TypeScript fallback)
  */
 function calculateObjectSilhouette(
     objectIdx: number,
     cluster: number,
     dataMatrix: number[][],
-    labels: number[]
+    labels: number[],
+    metric: DistanceMetricKind
 ): number {
     const n = dataMatrix.length;
     const point = dataMatrix[objectIdx];
     
     // Calculate a(i): average distance to points in same cluster
-    let sameClusterDistances: number[] = [];
+    const sameClusterDistances: number[] = [];
     for (let j = 0; j < n; j++) {
         if (labels[j] === cluster && j !== objectIdx) {
-            sameClusterDistances.push(euclideanDistance(point, dataMatrix[j]));
+            sameClusterDistances.push(calculateDistance(point, dataMatrix[j], metric));
         }
     }
     
@@ -89,10 +150,10 @@ function calculateObjectSilhouette(
     let minAvgDistance = Infinity;
     
     for (const otherCluster of uniqueClusters) {
-        let otherDistances: number[] = [];
+        const otherDistances: number[] = [];
         for (let j = 0; j < n; j++) {
             if (labels[j] === otherCluster) {
-                otherDistances.push(euclideanDistance(point, dataMatrix[j]));
+                otherDistances.push(calculateDistance(point, dataMatrix[j], metric));
             }
         }
         
@@ -118,6 +179,7 @@ function calculateObjectSilhouette(
 async function calculateSilhouetteScoresAsync(
     dataMatrix: number[][],
     labels: number[],
+    metric: DistanceMetricKind,
     chunkSize: number = 50
 ): Promise<number[]> {
     const n = dataMatrix.length;
@@ -128,7 +190,7 @@ async function calculateSilhouetteScoresAsync(
         
         // Calculate chunk
         for (let j = i; j < end; j++) {
-            scores[j] = calculateObjectSilhouette(j, labels[j], dataMatrix, labels);
+            scores[j] = calculateObjectSilhouette(j, labels[j], dataMatrix, labels, metric);
         }
         
         // Yield to browser to keep UI responsive
@@ -145,7 +207,8 @@ async function calculateSilhouetteScoresAsync(
  */
 function calculateMedoidDistanceMatrix(
     standardizedMatrix: number[][],
-    medoidFilteredIndices: number[]
+    medoidFilteredIndices: number[],
+    metric: DistanceMetricKind
 ): MedoidDistanceMatrix {
     const k = medoidFilteredIndices.length;
     const distances: number[][] = Array(k).fill(0).map(() => Array(k).fill(0));
@@ -157,7 +220,7 @@ function calculateMedoidDistanceMatrix(
             const point1 = standardizedMatrix[medoid1] || [];
             const point2 = standardizedMatrix[medoid2] || [];
             
-            const dist = euclideanDistance(point1, point2);
+            const dist = calculateDistance(point1, point2, metric);
             distances[i][j] = dist;
             distances[j][i] = dist;
         }
@@ -167,6 +230,38 @@ function calculateMedoidDistanceMatrix(
         clusterLabels: Array.from({ length: k }, (_, i) => i + 1),
         distances
     };
+}
+
+/**
+ * Build full distance matrix for all valid rows (sorted by cluster label)
+ */
+async function buildDistanceMatrix(
+    clusteringMatrix: number[][],
+    orderedFilteredIndices: number[],
+    labels: string[],
+    clusters: number[],
+    metric: DistanceMetricKind,
+    yieldToUI: () => Promise<void>
+): Promise<DistanceMatrix> {
+    const n = orderedFilteredIndices.length;
+    const distances: number[][] = Array(n).fill(0).map(() => Array(n).fill(0));
+
+    for (let i = 0; i < n; i++) {
+        const idxI = orderedFilteredIndices[i];
+        const pointI = clusteringMatrix[idxI] || [];
+        for (let j = i + 1; j < n; j++) {
+            const idxJ = orderedFilteredIndices[j];
+            const pointJ = clusteringMatrix[idxJ] || [];
+            const dist = calculateDistance(pointI, pointJ, metric);
+            distances[i][j] = dist;
+            distances[j][i] = dist;
+        }
+        if (i % 25 === 0) {
+            await yieldToUI();
+        }
+    }
+
+    return { labels, clusters, distances };
 }
 
 /**
@@ -188,7 +283,7 @@ function generateClusterLabel(
 
 export async function generateComprehensiveKMedoidsOutput(
     analysisResult: KMedoidsAnalysisResult,
-    dataVariables: any[],
+    dataVariables: (number | string | null | undefined)[][],
     variables: Variable[],
     caseLabelColumnIndex: number | null = null,
     standardizedMatrix?: number[][]
@@ -199,17 +294,24 @@ export async function generateComprehensiveKMedoidsOutput(
 
     try {
         const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
-        const { result, config, automaticKSelection } = analysisResult;
+        const { result, config, automaticKSelection, kChartSelection } = analysisResult;
+        const chartSelection = automaticKSelection ?? kChartSelection;
 
-        if (!result || !result.labels || !Array.isArray(result.labels)) {
+        if (!result?.labels || !Array.isArray(result.labels)) {
             throw new Error("Invalid clustering result structure");
         }
 
-        const method = config.iterate.Method || "PAM";
-        const useStandardization =
-            config?.options?.Standardize ??
-            config?.iterate?.Standardize ??
-            true;
+        const method = (config.iterate?.Method as string) ?? "PAM";
+        const normalizedMethod = String(method).toUpperCase();
+        const normalizationMethod = resolveNormalizationMethod(config);
+        const distanceMetric: DistanceMetricKind =
+            config?.main?.DistanceMetric === "manhattan" ? "manhattan" : "euclidean";
+        const useNormalization = normalizationMethod !== "none";
+        const normalizationLabel = normalizationMethod === "zscore"
+            ? "Z-score"
+            : normalizationMethod === "minmax"
+            ? "Min-Max"
+            : "Tanpa normalisasi";
 
         // ── Authoritative k: prefer config value over WASM-derived medoid count ──
         // result.medoids.length MUST equal the configured k.  If they differ it
@@ -249,10 +351,10 @@ export async function generateComprehensiveKMedoidsOutput(
         //
         // This makes case numbers and cluster assignments match R's pam() output.
         const validRowIndices: number[] = [];
-        dataVariables.forEach((row: any, origIdx: number) => {
+        dataVariables.forEach((row, origIdx: number) => {
             const valid = variables.every(v => {
                 const val = row[v.columnIndex as number];
-                return isFinite(typeof val === 'number' ? val : parseFloat(val));
+                return isFinite(typeof val === 'number' ? val : parseFloat(String(val ?? '')));
             });
             if (valid) validRowIndices.push(origIdx);
         });
@@ -266,23 +368,37 @@ export async function generateComprehensiveKMedoidsOutput(
         const origToFiltered = new Array(nTotal).fill(-1);
         validRowIndices.forEach((origIdx, filtIdx) => { origToFiltered[origIdx] = filtIdx; });
 
-        // Clamp result.medoids to the first k entries so all subsequent code
-        // works with exactly k medoid indices regardless of what WASM returned.
+        // Re-map labels early (needed by medoid recovery logic below).
+        const safeLabels: number[] = result.labels.map(l =>
+            (typeof l === 'number' && l >= 0 && l < k) ? l : 0
+        );
+
+        // Clamp result.medoids to the first k entries and recover if invalid.
         // safeMedoids[j] is an index into the FILTERED matrix (0..n-1).
-        const safeMedoids: number[] = result.medoids.slice(0, k);
+        const rawMedoids = Array.isArray(result.medoids) ? result.medoids : [];
+        const slicedMedoids = rawMedoids.slice(0, k);
+        const hasInvalidMedoid = slicedMedoids.some(
+            (m) => !Number.isInteger(m) || m < 0 || m >= n
+        );
+        const hasDuplicateMedoid = new Set(slicedMedoids).size !== slicedMedoids.length;
+        const hasMissingMedoid = slicedMedoids.length < k;
+
+        const safeMedoids: number[] =
+            hasInvalidMedoid || hasDuplicateMedoid || hasMissingMedoid
+                ? (() => {
+                      console.warn(
+                          `[ComprehensiveOutput] Invalid medoid set detected ` +
+                          `(len=${slicedMedoids.length}, unique=${new Set(slicedMedoids).size}, k=${k}). Recovering medoids from labels.`
+                      );
+                      return recoverMedoidsFromMismatch(slicedMedoids, safeLabels, k, n);
+                  })()
+                : slicedMedoids;
 
         // Map WASM medoid indices (filtered) → original row indices.
         // This is what matches R's id.med output (1-based case numbers).
         const safeMedoidsOrig: number[] = safeMedoids.map(fi => validRowIndices[fi] ?? fi);
 
-        // Re-map labels: values returned by the (potentially stale) WASM may
-        // already be in 0..(k-1), but if the stale BUILD phase caused n-many
-        // "medoids" then compute_assignments only examined the first k of them,
-        // so label values are still in 0..(k-1).  Clamp for safety.
         // safeLabels[i] is the cluster for the i-th VALID row (filtIdx i).
-        const safeLabels: number[] = result.labels.map(l =>
-            (typeof l === 'number' && l >= 0 && l < k) ? l : 0
-        );
 
         // Build data matrix aligned with safeLabels (valid rows only, same order as WASM input).
         const dataMatrix = validRowIndices.map((origIdx: number) =>
@@ -305,7 +421,11 @@ export async function generateComprehensiveKMedoidsOutput(
         if (result.silhouette_scores && result.silhouette_scores.length === n) {
             silhouetteScores = result.silhouette_scores;
         } else {
-            silhouetteScores = await calculateSilhouetteScoresAsync(clusteringMatrix, safeLabels);
+            silhouetteScores = await calculateSilhouetteScoresAsync(
+                clusteringMatrix,
+                safeLabels,
+                distanceMetric
+            );
         }
 
         const averageSilhouette = silhouetteScores.reduce((a, b) => a + b, 0) / silhouetteScores.length;
@@ -327,11 +447,14 @@ export async function generateComprehensiveKMedoidsOutput(
         );
 
         // Pre-group data rows by cluster — iterate valid rows only so indices align.
-        const dataByCluster: Map<number, any[]> = new Map();
+        const dataByCluster: Map<number, (number | string | null | undefined)[][]> = new Map();
         validRowIndices.forEach((origIdx, filtIdx) => {
             const label = safeLabels[filtIdx];
             if (!dataByCluster.has(label)) dataByCluster.set(label, []);
-            dataByCluster.get(label)!.push(dataVariables[origIdx]);
+            const cluster = dataByCluster.get(label);
+            if (cluster) {
+                cluster.push(dataVariables[origIdx]);
+            }
         });
 
         // Yield before building assignment objects (O(n) object allocations)
@@ -340,8 +463,8 @@ export async function generateComprehensiveKMedoidsOutput(
         // medoidSet contains ORIGINAL row indices so isMedoid checks work correctly.
         const medoidSet = new Set<number>(safeMedoidsOrig);
 
-        const getCaseLabel = (row: any, fallbackCaseNumber: number): string => {
-            if (caseLabelColumnIndex == null || caseLabelColumnIndex < 0) {
+        const getCaseLabel = (row: (number | string | null | undefined)[], fallbackCaseNumber: number): string => {
+            if (caseLabelColumnIndex === null || caseLabelColumnIndex === undefined || caseLabelColumnIndex < 0) {
                 return `Case ${fallbackCaseNumber}`;
             }
             const rawValue = row?.[caseLabelColumnIndex];
@@ -356,17 +479,17 @@ export async function generateComprehensiveKMedoidsOutput(
         // same distance matrix used for PAM.  This matches R pam() precisely.
         // Fall back to JS Euclidean re-computation only if WASM did not supply them
         // (e.g. old WASM binary, CLARA/CLARANS path that skips the field).
+        const resultExt = result as ClusteringResult & { distances_to_medoids?: number[] };
         const wasmDistances: number[] | undefined =
-            Array.isArray((result as any).distances_to_medoids) &&
-            (result as any).distances_to_medoids.length === n
-                ? (result as any).distances_to_medoids
+            Array.isArray(resultExt.distances_to_medoids) &&
+            resultExt.distances_to_medoids.length === n
+                ? resultExt.distances_to_medoids
                 : undefined;
 
         // Build object assignments — iterate valid rows only.
         // objectId/objectName use the ORIGINAL row index so case numbers match R.
         const assignments: ObjectAssignment[] = validRowIndices.map((origIdx, filtIdx) => {
             const clusterLabel = safeLabels[filtIdx];
-            const medoidOrigIdx = safeMedoidsOrig[clusterLabel];
             const isMedoid = medoidSet.has(origIdx);
 
             let distanceToMedoid: number;
@@ -380,10 +503,10 @@ export async function generateComprehensiveKMedoidsOutput(
                 // Fallback: JS Euclidean re-computation.
                 // safeMedoids[clusterLabel] is the filtered index of the medoid.
                 const medoidFiltIdx = safeMedoids[clusterLabel];
-                const medoidPoint = medoidFiltIdx != null && clusteringMatrix[medoidFiltIdx] ? clusteringMatrix[medoidFiltIdx] : [];
+                const medoidPoint = medoidFiltIdx !== null && medoidFiltIdx !== undefined && clusteringMatrix[medoidFiltIdx] ? clusteringMatrix[medoidFiltIdx] : [];
                 const objectPoint = clusteringMatrix[filtIdx] || [];
                 distanceToMedoid = medoidPoint.length > 0 && objectPoint.length > 0
-                    ? euclideanDistance(objectPoint, medoidPoint)
+                    ? calculateDistance(objectPoint, medoidPoint, distanceMetric)
                     : 0;
             }
 
@@ -396,7 +519,7 @@ export async function generateComprehensiveKMedoidsOutput(
             variables.forEach((v, varIdx) => {
                 const standardizedValue = clusteringMatrix[filtIdx]?.[varIdx];
                 standardizedAttributes[v.name] =
-                    standardizedValue != null && isFinite(standardizedValue)
+                    standardizedValue !== null && standardizedValue !== undefined && isFinite(standardizedValue)
                         ? standardizedValue
                         : 0;
             });
@@ -407,13 +530,46 @@ export async function generateComprehensiveKMedoidsOutput(
                 clusterLabel: clusterLabel + 1,
                 distanceToMedoid: isFinite(distanceToMedoid) && distanceToMedoid >= 0 ? distanceToMedoid : 0,
                 isMedoid,
-                silhouetteScore: silhouetteScores[filtIdx] != null && isFinite(silhouetteScores[filtIdx])
+                silhouetteScore: silhouetteScores[filtIdx] !== null && silhouetteScores[filtIdx] !== undefined && isFinite(silhouetteScores[filtIdx])
                     ? silhouetteScores[filtIdx]
                     : 0,
                 attributes,
-                standardizedAttributes: useStandardization ? standardizedAttributes : undefined,
+                standardizedAttributes: useNormalization ? standardizedAttributes : undefined,
             };
         });
+
+        const shouldBuildDistanceMatrix =
+            config?.options?.ShowDistanceMatrixTable ?? false;
+        let distanceMatrix: DistanceMatrix | undefined;
+
+        if (shouldBuildDistanceMatrix) {
+            const orderMeta = validRowIndices.map((origIdx, filtIdx) => {
+                const row = dataVariables[origIdx];
+                return {
+                    filtIdx,
+                    origIdx,
+                    label: getCaseLabel(row, origIdx + 1),
+                    clusterLabel: (safeLabels[filtIdx] ?? 0) + 1,
+                };
+            });
+
+            orderMeta.sort((a, b) =>
+                a.clusterLabel - b.clusterLabel || a.origIdx - b.origIdx
+            );
+
+            const orderedFilteredIndices = orderMeta.map(item => item.filtIdx);
+            const orderedLabels = orderMeta.map(item => item.label);
+            const orderedClusters = orderMeta.map(item => item.clusterLabel);
+
+            distanceMatrix = await buildDistanceMatrix(
+                clusteringMatrix,
+                orderedFilteredIndices,
+                orderedLabels,
+                orderedClusters,
+                distanceMetric,
+                yieldToUI
+            );
+        }
 
         // Single source of truth (R-compatible): gunakan nilai dari WASM.
         // Jangan hitung ulang total cost di JS agar tidak menyimpang dari R.
@@ -484,8 +640,8 @@ export async function generateComprehensiveKMedoidsOutput(
                 attributes[v.name] = medoidRow[v.columnIndex as number] ?? 0;
             });
             variables.forEach((v, varIdx) => {
-                const value = medoidFiltIdx != null ? clusteringMatrix[medoidFiltIdx]?.[varIdx] : undefined;
-                standardizedAttributes[v.name] = value != null && isFinite(value) ? value : 0;
+                const value = medoidFiltIdx !== null && medoidFiltIdx !== undefined ? clusteringMatrix[medoidFiltIdx]?.[varIdx] : undefined;
+                standardizedAttributes[v.name] = value !== null && value !== undefined && isFinite(value) ? value : 0;
             });
 
             // Calculate within-cluster distance from already-computed assignments (avoids O(k×n) euclidean recomputation)
@@ -511,7 +667,7 @@ export async function generateComprehensiveKMedoidsOutput(
 
         // Build cluster profiles
         const clusterProfiles: ClusterProfile[] = Array.from({ length: k }, (_, clusterIdx) => {
-            const clusterMembers = dataByCluster.get(clusterIdx) || [];
+            const clusterMembers = dataByCluster.get(clusterIdx) ?? [];
             const size = clusterMembers.length;
             const percentage = (size / n) * 100;
 
@@ -520,7 +676,11 @@ export async function generateComprehensiveKMedoidsOutput(
                 const values = clusterMembers
                     .map(row => {
                         const val = row[v.columnIndex as number];
-                        return typeof val === 'number' ? val : parseFloat(val);
+                        return typeof val === 'number'
+                            ? val
+                            : typeof val === 'string'
+                                ? parseFloat(val)
+                                : NaN;
                     })
                     .filter(val => isFinite(val));
                 meanAttributes[v.name] = values.length > 0
@@ -557,14 +717,13 @@ export async function generateComprehensiveKMedoidsOutput(
         // produces the full per-iteration table.
         const rawIterHistory: { iteration: number; cost: number }[] | undefined =
             result.iteration_history
-                ? result.iteration_history
-                : Array.isArray(result.cost_history) && result.cost_history.length > 0
+                ?? (Array.isArray(result.cost_history) && result.cost_history.length > 0
                     ? (result.cost_history as number[]).map((cost, idx) => ({ iteration: idx, cost }))
-                    : undefined;
+                    : undefined);
 
         const iterationHistory: IterationHistory[] = rawIterHistory
             ? rawIterHistory.map((item, idx) => {
-                  const cost = item.cost != null ? item.cost : 0;
+                  const cost = item.cost ?? 0;
                   const prevCost = idx > 0 ? rawIterHistory[idx - 1].cost : cost;
 
                   // Untuk entri terakhir, pakai swapCost dari WASM sebagai final.
@@ -583,39 +742,60 @@ export async function generateComprehensiveKMedoidsOutput(
               })
             : [{ iteration: 0, totalCost: swapCost, improvement: 0, swapsMade: 0, medoids: result.medoids }];
 
-        // Build elbow data (if automatic k)
-        const elbowData = automaticKSelection
-            ? automaticKSelection.scores.map((item: any) => {
+        const isManualMode = config?.main?.ClusterMode === "manual";
+        const shouldBuildManualOptimalKChart =
+            !automaticKSelection &&
+            isManualMode &&
+            (config?.evaluation?.ShowOptimalKChart ?? false);
+
+        // Build optimal-k chart data.
+        // Automatic mode gets full k-range scores; manual mode gets the selected k point
+        // so the chart can still be shown in output when user chooses k manually.
+        const elbowData = chartSelection
+            ? chartSelection.scores.map((item: { k: number; score: number; silhouetteScore?: number; totalCost?: number }) => {
                   const isSilhouetteMethod =
-                      automaticKSelection.method === "Silhouette" ||
-                      automaticKSelection.method === "silhouette";
+                      chartSelection.method === "Silhouette" ||
+                      chartSelection.method === "silhouette";
+                  const resolvedTotalCost =
+                      item.totalCost !== null && item.totalCost !== undefined && isFinite(item.totalCost)
+                          ? item.totalCost
+                          : isSilhouetteMethod
+                          ? 0
+                          : (item.score ?? 0);
                   return {
                       k: item.k,
-                      // totalCost carries the primary metric (WCSS for elbow, or the score for silhouette)
-                      totalCost: isSilhouetteMethod ? 0 : (item.score ?? 0),
+                      // totalCost always carries the elbow/WCSS curve if available.
+                      totalCost: resolvedTotalCost,
                       // silhouetteScore is always the actual silhouette value
                       silhouetteScore:
-                          item.silhouetteScore != null && isFinite(item.silhouetteScore)
+                          item.silhouetteScore !== null && item.silhouetteScore !== undefined && isFinite(item.silhouetteScore)
                               ? item.silhouetteScore
                               : isSilhouetteMethod
                               ? (item.score ?? 0)
                               : 0,
                   };
               })
+                        : shouldBuildManualOptimalKChart
+                        ? [{
+                                    k,
+                                    totalCost: isFinite(swapCost) ? swapCost : (result.cost ?? 0),
+                                    silhouetteScore: isFinite(averageSilhouette) ? averageSilhouette : 0,
+                            }]
             : undefined;
 
         // Calculate medoid distance matrix in standardized space
         // (same space used for PAM clustering).
         const medoidDistanceMatrix = calculateMedoidDistanceMatrix(
             clusteringMatrix,
-            safeMedoids
+            safeMedoids,
+            distanceMetric
         );
 
         // Silhouette scores per cluster
         const silhouettePerCluster: SilhouetteClusterScore[] = clusterProfiles.map(profile => {
             const clusterIdx = profile.clusterLabel - 1;
             const clusterScores = silhouetteScores
-                .filter((score, idx) => safeLabels[idx] === clusterIdx && score != null && isFinite(score));
+                .filter((score, idx) => safeLabels[idx] === clusterIdx && score !== null && score !== undefined && isFinite(score));
             
             return {
                 clusterLabel: profile.clusterLabel,
@@ -629,35 +809,158 @@ export async function generateComprehensiveKMedoidsOutput(
         // Yield before building comprehensive output object + tables
         await yieldToUI();
 
+        const rawClaraNumSamples = config?.iterate?.NumSamples;
+        const claraNumSamples = typeof rawClaraNumSamples === "number" && Number.isFinite(rawClaraNumSamples)
+            ? rawClaraNumSamples
+            : 5;
+        const rawClaraSampleSize = config?.iterate?.SampleSize;
+        const claraConfiguredSampleSize = typeof rawClaraSampleSize === "number" && Number.isFinite(rawClaraSampleSize)
+            ? rawClaraSampleSize
+            : 40 + 2 * k;
+        const claraEffectiveSampleSize = Math.min(claraConfiguredSampleSize, n);
+
+        // ── Priority 1: dedicated sample_costs field (new WASM builds) ──
+        // ── Priority 2: cost_history fallback (also populated by new WASM for CLARA) ──
+        const rawSampleCosts: number[] | undefined =
+            normalizedMethod === "CLARA"
+                ? (() => {
+                    // Primary: result.sample_costs sent by new WASM builds
+                    if (Array.isArray(result.sample_costs) && result.sample_costs.length > 0) {
+                        return (result.sample_costs as number[]).filter(
+                            (c: unknown) => typeof c === "number" && isFinite(c as number)
+                        );
+                    }
+                    // Fallback: cost_history is also set to per-sample costs by the same WASM update
+                    if (Array.isArray(result.cost_history) && result.cost_history.length > 0) {
+                        return (result.cost_history as number[]).filter(
+                            (c: unknown) => typeof c === "number" && isFinite(c as number)
+                        );
+                    }
+                    return undefined;
+                })()
+                : undefined;
+
+        const claraSamplingCosts = rawSampleCosts && rawSampleCosts.length > 0 ? rawSampleCosts : undefined;
+        const resolvedClaraNumSamples =
+            claraSamplingCosts && claraSamplingCosts.length > 0
+                ? claraSamplingCosts.length
+                : claraNumSamples;
+
+        // Prefer the 1-based best-sample index sent by WASM; compute from min cost as fallback.
+        const claraBestSampleIndex: number | undefined =
+            normalizedMethod === "CLARA"
+                ? (() => {
+                    // Primary: WASM-computed best sample index
+                    if (
+                        typeof result.clara_best_sample_index === "number" &&
+                        result.clara_best_sample_index > 0
+                    ) {
+                        return result.clara_best_sample_index;
+                    }
+                    // Fallback: derive from minimum cost
+                    if (claraSamplingCosts && claraSamplingCosts.length > 0) {
+                        return claraSamplingCosts.findIndex(
+                            (cost) => cost === Math.min(...claraSamplingCosts)
+                        ) + 1;
+                    }
+                    return undefined;
+                })()
+                : undefined;
+
+
         // Build comprehensive output
+        const resolvedOptimalKMethod: "silhouette" | "elbow" | undefined = chartSelection
+            ? (
+            chartSelection.method === "Silhouette" ||
+            chartSelection.method === "silhouette"
+                    ? "silhouette"
+                    : "elbow"
+            )
+            : config?.main?.ClusterMode === "automatic"
+            ? (
+                config?.main?.AutoKMethod === "elbow"
+                    ? "elbow"
+                    : "silhouette"
+            )
+            : shouldBuildManualOptimalKChart
+            ? (
+                config?.main?.AutoKMethod === "elbow"
+                    ? "elbow"
+                    : "silhouette"
+            )
+            : undefined;
+
         const comprehensiveOutput: KMedoidsOutput = {
             summary,
             assignments,
             medoids,
             clusterProfiles,
             iterationHistory,
+            algorithmMethod: normalizedMethod,
+            normalizationMethod,
+            claraConvergence: normalizedMethod === "CLARA"
+                ? {
+                    numSamples: resolvedClaraNumSamples,
+                    sampleSize: claraEffectiveSampleSize,
+                    bestTotalCost: swapCost,
+                    bestCost: swapCost,
+                    ...(typeof claraBestSampleIndex === "number" && claraBestSampleIndex > 0
+                        ? { bestSampleIndex: claraBestSampleIndex }
+                        : {}),
+                    ...(claraSamplingCosts && claraSamplingCosts.length > 0
+                        ? {
+                            samplingCosts: claraSamplingCosts,
+                            samples: claraSamplingCosts.map((cost: number, idx: number) => ({
+                                sampleIndex: idx + 1,
+                                sampleSize: claraEffectiveSampleSize,
+                                cost,
+                                // Use the per-sample PAM iterations sent from WASM
+                                pamIterations: (Array.isArray(result.sample_pam_iterations) && result.sample_pam_iterations.length > idx)
+                                    ? result.sample_pam_iterations[idx]
+                                    : (result.iterations ?? 0),
+                            })),
+                        }
+                        : {}),
+                }
+                : undefined,
             elbowData,
+            optimalKMethod: resolvedOptimalKMethod,
+            clusterMode: config?.main?.ClusterMode === "automatic" ? "automatic" : "manual",
+            autoKMethod: config?.main?.AutoKMethod === "elbow" ? "elbow" : "silhouette",
             medoidDistanceMatrix,
+            distanceMatrix,
             silhouetteScores: {
                 overall: isFinite(averageSilhouette) ? averageSilhouette : 0,
                 perCluster: silhouettePerCluster,
-                perObject: silhouetteScores.map(s => s != null && isFinite(s) ? s : 0)
+                perObject: silhouetteScores.map(s => s !== null && s !== undefined && isFinite(s) ? s : 0)
             },
             tables: [], // Will be populated below
             visualizationOptions: {
-                showPCAProjection: config?.options?.ShowPCAProjection ?? true,
-                showClusterScatterPlot: config?.options?.ShowClusterScatterPlot ?? false,
-                showClusterSizeDistribution: config?.options?.ShowClusterSizeDistribution ?? false,
-                showClusterAttributeProfile: config?.options?.ShowClusterAttributeProfile ?? false,
-                showDistanceMatrixBetweenMedoids: config?.options?.ShowDistanceMatrixBetweenMedoids ?? false,
-                showClusterMedoids: config?.options?.ShowClusterMedoids ?? true,
-                showObjectAssignments: config?.options?.ShowObjectAssignments ?? false,
-                showSilhouettePerObject: config?.evaluation?.ShowSilhouettePlot ?? false,
-                showSilhouetteByCluster: config?.evaluation?.ShowSilhouetteByCluster ?? true,
-                showOverallQualityAssessment: config?.evaluation?.ShowOverallQualityAssessment ?? true,
-                showConvergenceAlgorithm: config?.results?.ShowConvergenceAlgorithm ?? true,
+                // Convergence mode always exposes iteration history details.
+                showIterationHistory:
+                    config?.results?.ShowConvergenceAlgorithm === false
+                        ? (config?.results?.ShowIterationHistory !== false)
+                        : true,
+                showPCAProjection: config?.options?.ShowPCAProjection !== false,
+                showClusterScatterPlot: config?.options?.ShowClusterScatterPlot === true,
+                showClusterSizeDistribution: config?.options?.ShowClusterSizeDistribution === true,
+                showClusterAttributeProfile: config?.options?.ShowClusterAttributeProfile === true,
+                showDistanceMatrixBetweenMedoids: config?.options?.ShowDistanceMatrixBetweenMedoids === true,
+                showDistanceMatrixTable: config?.options?.ShowDistanceMatrixTable === true,
+                showClusterMedoids: config?.results?.ShowClusterMedoids !== false,
+                showObjectAssignments: config?.results?.ShowClusterMembership === true,
+                showCaseCount: config?.results?.ShowCaseCount !== false,
+                // Total Cost is always shown in output.
+                showTotalCost: true,
+                showSilhouettePerObject: config?.evaluation?.ShowSilhouettePlot === true,
+                showSilhouetteByCluster: config?.evaluation?.ShowSilhouetteByCluster !== false,
+                // The checkbox in Evaluation tab is the source of truth for visibility.
+                showOptimalKChart: config?.evaluation?.ShowOptimalKChart === true,
+                showOverallQualityAssessment: config?.evaluation?.ShowOverallQualityAssessment !== false,
+                showConvergenceAlgorithm: config?.results?.ShowConvergenceAlgorithm !== false,
+                showSamplingHistory: config?.results?.ShowSamplingHistory !== false,
             },
-            variables: variables.map(v => ({ name: v.name, label: v.label || v.name }))
+            variables: variables.map(v => ({ name: v.name, label: v.label ?? v.name }))
         };
 
         // Create tables (keeping existing format for compatibility)
@@ -674,68 +977,26 @@ export async function generateComprehensiveKMedoidsOutput(
         allTables.push({
             key: "case_processing_summary",
             title: "Case Processing Summary",
-            columnHeaders: [
-                {
-                    header: "Cases",
-                    key: "cases",
-                    children: [
-                        {
-                            header: "Valid",
-                            key: "valid",
-                            children: [
-                                { header: "N", key: "valid_n" },
-                                { header: "Percent", key: "valid_percent" },
-                            ],
-                        },
-                        {
-                            header: "Missing",
-                            key: "missing",
-                            children: [
-                                { header: "N", key: "missing_n" },
-                                { header: "Percent", key: "missing_percent" },
-                            ],
-                        },
-                        {
-                            header: "Total",
-                            key: "total",
-                            children: [
-                                { header: "N", key: "total_n" },
-                                { header: "Percent", key: "total_percent" },
-                            ],
-                        },
-                    ],
-                },
-            ],
+            columnHeaders: [{ header: "Metric" }, { header: "Value" }],
             rows: [
-                {
-                    rowHeader: [""],
-                    valid_n: caseSummary.validN.toString(),
-                    valid_percent: caseSummary.validPercent,
-                    missing_n: caseSummary.missingN.toString(),
-                    missing_percent: caseSummary.missingPercent,
-                    total_n: caseSummary.totalN.toString(),
-                    total_percent: caseSummary.totalPercent,
-                },
-                {
-                    rowHeader: [`a. ${method} Method`],
-                },
-                {
-                    rowHeader: [`b. Data awal: ${caseSummary.initialN}`],
-                },
-                {
-                    rowHeader: [`c. Setelah preprocessing: ${caseSummary.preprocessedN}`],
-                },
-                {
-                    rowHeader: [`d. Missing rows dibuang: ${caseSummary.missingRowsRemoved}`],
-                },
-                {
-                    rowHeader: [`e. Outlier rows dibuang (IQR): ${caseSummary.outlierRowsRemoved}`],
-                },
-                {
-                    rowHeader: [`f. Missing per variabel: ${caseSummary.missingVariablesText}`],
-                },
+                { rowHeader: [], Metric: "Valid (N)", Value: caseSummary.validN.toString() },
+                { rowHeader: [], Metric: "Valid (%)", Value: caseSummary.validPercent },
+                { rowHeader: [], Metric: "Missing (N)", Value: caseSummary.missingN.toString() },
+                { rowHeader: [], Metric: "Missing (%)", Value: caseSummary.missingPercent },
+                { rowHeader: [], Metric: "Total (N)", Value: caseSummary.totalN.toString() },
+                { rowHeader: [], Metric: "Total (%)", Value: caseSummary.totalPercent },
+                { rowHeader: [], Metric: "Method", Value: `${method} Method` },
+                { rowHeader: [], Metric: "Distance Measure", Value: (config.main?.DistanceMetric as string) ?? "Euclidean" },
+                { rowHeader: [], Metric: "Data awal", Value: caseSummary.initialN.toString() },
+                { rowHeader: [], Metric: "Setelah preprocessing", Value: caseSummary.preprocessedN.toString() },
+                { rowHeader: [], Metric: "Missing rows dibuang", Value: caseSummary.missingRowsRemoved.toString() },
+                { rowHeader: [], Metric: "Outlier rows dibuang (IQR)", Value: caseSummary.outlierRowsRemoved.toString() },
+                { rowHeader: [], Metric: "Missing per variabel", Value: caseSummary.missingVariablesText },
+                { rowHeader: [], Metric: "Metode normalisasi", Value: normalizationLabel },
             ],
         });
+
+        const hideBuildAverage = normalizedMethod === "CLARA" || normalizedMethod === "CLARANS";
 
         // Summary table
         allTables.push({
@@ -745,9 +1006,10 @@ export async function generateComprehensiveKMedoidsOutput(
             rows: [
                 { rowHeader: [], Metric: "Number of Clusters", Value: k.toString() },
                 { rowHeader: [], Metric: "Total Cases", Value: n.toString() },
-                { rowHeader: [], Metric: "Average Cost (BUILD)", Value: buildCost != null && n > 0 ? (buildCost / n).toFixed(6) : "N/A" },
+                { rowHeader: [], Metric: "Normalization", Value: normalizationLabel },
+            ...(hideBuildAverage ? [] : [{ rowHeader: [], Metric: "Average Cost (BUILD)", Value: buildCost !== null && buildCost !== undefined && n > 0 ? (buildCost / n).toFixed(6) : "N/A" }]),
                 { rowHeader: [], Metric: "Average Cost (Objective)", Value: avgCost.toFixed(6) },
-                { rowHeader: [], Metric: "Total Cost (BUILD)", Value: buildCost != null ? buildCost.toFixed(4) : "N/A" },
+                { rowHeader: [], Metric: "Total Cost (BUILD)", Value: buildCost !== null && buildCost !== undefined ? buildCost.toFixed(4) : "N/A" },
                 { rowHeader: [], Metric: "Total Cost (SWAP)", Value: swapCost.toFixed(4) },
                 { rowHeader: [], Metric: "Average Silhouette Score", Value: averageSilhouette.toFixed(4) },
                 { rowHeader: [], Metric: "Quality", Value: averageSilhouette >= 0.7 ? "Very Strong" : averageSilhouette >= 0.5 ? "Strong" : "Moderate" },
@@ -766,13 +1028,13 @@ export async function generateComprehensiveKMedoidsOutput(
                 { header: "%" },
                 { header: "Medoid ID" },
                 { header: "Silhouette" },
-                ...variables.map(v => ({ header: `Avg ${v.label || v.name}` }))
+                ...variables.map(v => ({ header: `Avg ${v.label ?? v.name}` }))
             ],
             rows: clusterProfiles.map(profile => ({
                 rowHeader: [],
                 Cluster: `Cluster ${profile.clusterLabel}`,
                 Size: profile.size,
-                Percentage: profile.percentage.toFixed(1) + "%",
+                Percentage: `${profile.percentage.toFixed(1)}%`,
                 MedoidID: profile.medoidId,
                 Silhouette: profile.silhouetteScore.toFixed(3),
                 ...Object.fromEntries(
@@ -782,15 +1044,25 @@ export async function generateComprehensiveKMedoidsOutput(
         });
 
         // Medoids table
+        const medoidStandardizedValues = useNormalization
+            ? medoids.flatMap((medoid) =>
+                  variables.map((v) => medoid.standardizedAttributes?.[v.name] ?? 0)
+              )
+            : [];
+        const allMedoidZScoresNearZero =
+            useNormalization &&
+            medoidStandardizedValues.length > 0 &&
+            medoidStandardizedValues.every((v) => Math.abs(v) < 1e-9);
+
         allTables.push({
             key: "medoids",
-            title: useStandardization
-                ? "Final Medoids (Standardized Z-score)"
+            title: useNormalization
+                ? `Final Medoids (${normalizationLabel})`
                 : "Final Medoids (Original Scale)",
             columnHeaders: [
-                { header: "Cluster" },
-                { header: "Medoid ID" },
-                ...variables.map(v => ({ header: v.label || v.name }))
+                { header: "Cluster", key: "Cluster" },
+                { header: "Medoid ID", key: "MedoidID" },
+                ...variables.map(v => ({ header: v.label ?? v.name, key: v.name }))
             ],
             rows: medoids.map(medoid => ({
                 rowHeader: [],
@@ -798,7 +1070,7 @@ export async function generateComprehensiveKMedoidsOutput(
                 MedoidID: `★ ${medoid.objectId}`,
                 ...Object.fromEntries(
                     variables.map(v => {
-                        if (useStandardization) {
+                        if (useNormalization) {
                             const standardizedValue = medoid.standardizedAttributes?.[v.name];
                             if (typeof standardizedValue === 'number' && isFinite(standardizedValue)) {
                                 return [v.name, standardizedValue.toFixed(4)];
@@ -813,17 +1085,20 @@ export async function generateComprehensiveKMedoidsOutput(
                         return [v.name, String(originalValue ?? "-")];
                     })
                 )
-            }))
+            })),
+                        ...(allMedoidZScoresNearZero && normalizationMethod === "zscore"
+                ? {
+                      footer:
+                          "Semua nilai Z-score medoid ~0. Ini biasanya terjadi ketika variabel yang dipakai memiliki variansi sangat kecil/konstan pada data valid setelah preprocessing.",
+                  }
+                : {}),
         });
 
         comprehensiveOutput.tables = allTables;
 
-        console.log("💾 Saving to result store...");
-
         // Save to result store THE NEW COMPREHENSIVE FORMAT
         const titleMessage = `K-Medoids Cluster Analysis (${method})`;
         const logId = await addLog({ log: titleMessage });
-        console.log("✅ Log created:", logId);
 
         const analyticId = await addAnalytic(logId, {
             title: `K-Medoids Clustering Results`,
@@ -831,18 +1106,16 @@ export async function generateComprehensiveKMedoidsOutput(
                 ? `Automatic k selection: k=${automaticKSelection.optimalK} (${automaticKSelection.method})`
                 : `Manual k selection: k=${k}, Algorithm: ${method}`,
         });
-        console.log("✅ Analytic created:", analyticId);
 
         // Save Case Processing Summary as separate statistic (first output)
         const caseProcessingSummaryTable = allTables.find(t => t.key === "case_processing_summary");
         if (caseProcessingSummaryTable) {
-            const statId1 = await addStatistic(analyticId, {
+            await addStatistic(analyticId, {
                 title: `Case Processing Summary`,
                 description: `Case Processing Summary`,
                 output_data: JSON.stringify({ tables: [caseProcessingSummaryTable] }),
                 components: `Case Processing Summary`,
             });
-            console.log("✅ Case Processing Summary saved:", statId1);
         }
 
         // Yield to UI before the large JSON.stringify + IndexedDB write.
@@ -852,7 +1125,7 @@ export async function generateComprehensiveKMedoidsOutput(
 
         // Save comprehensive output - Use custom renderer approach
         // Store as a special marker that will trigger custom OutputRenderer
-        const statId2 = await addStatistic(analyticId, {
+        await addStatistic(analyticId, {
             title: `K-Medoids Comprehensive Analysis`,
             description: `Complete clustering analysis with ${k} clusters (Silhouette: ${averageSilhouette.toFixed(3)})`,
             output_data: JSON.stringify({
@@ -861,7 +1134,6 @@ export async function generateComprehensiveKMedoidsOutput(
             }),
             components: `K-Medoids Analysis`,
         });
-        console.log("✅ Comprehensive Analysis saved:", statId2);
 
         return { success: true, output: comprehensiveOutput };
 

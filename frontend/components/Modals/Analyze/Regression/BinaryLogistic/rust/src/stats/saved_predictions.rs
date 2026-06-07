@@ -65,7 +65,7 @@
 
 use crate::models::config::LogisticConfig;
 use crate::models::result::{SavedPredictionRow, SavedPredictions, SavedVariableNames};
-use crate::stats::irls::{FittedModel, FittingWarnings};
+use crate::stats::irls::FittedModel;
 use nalgebra::{DMatrix, DVector};
 
 /// Calculate saved predictions based on config options
@@ -453,6 +453,7 @@ fn generate_variable_names(config: &LogisticConfig, n_params: usize) -> SavedVar
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::stats::irls::FittingWarnings;
     use nalgebra::{DMatrix, DVector};
 
     /// Helper function to create a FittedModel for tests

@@ -13,6 +13,7 @@ import {
     InitialMedoidsStrategy,
     ClusterMode,
     AutoKMethod,
+    NormalizationMethod,
 } from "@/components/Modals/Analyze/Clustering/k-medoids-cluster/types/k-medoids-cluster";
 
 /**
@@ -27,14 +28,14 @@ export const KMedoidsClusterMainDefault: KMedoidsClusterMainType = {
     CaseTarget: null,
     IterateClassify: true,
     ClassifyOnly: false,
-    // --- Cluster selection mode ---
+    // --- Mode pemilihan klaster ---
     ClusterMode: ClusterMode.Manual,
     Cluster: 2,
     AutoKMin: 2,
     AutoKMax: 10,
     AutoKMethod: AutoKMethod.Silhouette,
-    // --- Distance Metric ---
-    DistanceMetric: DistanceMetric.Euclidean, // Euclidean sebagai default standard
+    // --- Ukuran jarak ---
+    DistanceMetric: DistanceMetric.Euclidean, // Euclidean sebagai default standar
     OpenDataset: true,
     ExternalDatafile: false,
     NewDataset: true,
@@ -47,17 +48,19 @@ export const KMedoidsClusterMainDefault: KMedoidsClusterMainType = {
  * Iterate defaults - mengikuti best practices PAM
  */
 export const KMedoidsClusterIterateDefault: KMedoidsClusterIterateType = {
-    Method: KMedoidsMethod.PAM, // PAM sebagai default (optimal quality)
-    InitialStrategy: InitialMedoidsStrategy.Random, // Random initialization
-    MaximumIterations: 300, // PAM biasanya konvergen cepat
-    ConvergenceCriterion: 0, // Stop jika tidak ada improvement
-    RandomSeed: 123, // fixed seed for reproducible PAM result
-    NumberOfInitializations: 10, // 10 initializations untuk hasil optimal
-    SampleSize: null, // Only for CLARA: akan di-set auto = 40 + 2*k
-    NumSamples: 5, // Only for CLARA: jumlah sampling iterations
-    NumLocal: 2, // Only for CLARANS: jumlah local minima
-    MaxNeighbor: null, // Only for CLARANS: akan di-set auto = max(250, 1.25% of n*(k-1))
-    Standardize: true, // Apply Z-score standardization before clustering
+    Method: KMedoidsMethod.PAM, // PAM sebagai default (kualitas optimal)
+    InitialStrategy: InitialMedoidsStrategy.Random, // Inisialisasi acak
+    MaximumIterations: 300, // PAM biasanya konvergen dengan cepat
+    ConvergenceCriterion: 0, // Berhenti jika tidak ada improvement
+    SeedMode: "default",
+    RandomSeed: null, // nilai digunakan hanya saat SeedMode = custom
+    NumberOfInitializations: 10, // 10 inisialisasi untuk hasil optimal
+    SampleSize: null, // Hanya untuk CLARA: akan di-set otomatis = 40 + 2*k
+    NumSamples: 5, // Hanya untuk CLARA: jumlah iterasi sampling
+    NumLocal: 2, // Hanya untuk CLARANS: jumlah local minima
+    MaxNeighbor: null, // Hanya untuk CLARANS: akan di-set otomatis = max(250, 1.25% dari n*(k-1))
+    Standardize: false, // Default: no normalization unless user selects
+    NormalizationMethod: NormalizationMethod.None,
 };
 
 /**
@@ -65,11 +68,13 @@ export const KMedoidsClusterIterateDefault: KMedoidsClusterIterateType = {
  */
 export const KMedoidsClusterResultsDefault: KMedoidsClusterResultsType = {
     ShowFinalMedoids: true, // Wajib tampilkan (setara Final Cluster Centers)
-    ShowClusterMembership: true, // Wajib tampilkan (per case)
-    ShowCaseCount: true, // Wajib tampilkan (Number of Cases)
-    ShowIterationHistory: false, // Optional detail
-    ShowTotalCost: true, // Transparency metric
-    ShowConvergenceAlgorithm: true, // Default on: tampilkan tab & panel konvergensi algoritma
+    ShowClusterMedoids: true, // Tabel Cluster Medoids pada Data Tables
+    ShowClusterMembership: true, // Wajib tampilkan (per kasus)
+    ShowCaseCount: true, // Wajib tampilkan (Jumlah Kasus)
+    ShowIterationHistory: false, // Detail opsional
+    ShowTotalCost: true, // Metrik transparansi
+    ShowConvergenceAlgorithm: true, // Default aktif: tampilkan tab & panel konvergensi algoritma
+    ShowSamplingHistory: true, // Default aktif: tampilkan histori sampling khusus untuk CLARA
 };
 
 /**
@@ -77,11 +82,11 @@ export const KMedoidsClusterResultsDefault: KMedoidsClusterResultsType = {
  */
 export const KMedoidsClusterEvaluationDefault: KMedoidsClusterEvaluationType = {
     ComputeSilhouette: true,   // Wajib (pengganti ANOVA untuk clustering)
-    ShowSilhouettePlot: false, // Optional: visualisasi bar-chart silhouette per case
-    ShowSilhouetteByCluster: true, // Optional: panel ringkas silhouette per klaster
-    ShowElbowPlot: false,      // Optional: grafik SSE vs k (Elbow Method)
-    ShowOptimalKChart: false,  // Optional: gabungan Silhouette + Elbow chart
-    ShowOverallQualityAssessment: true, // Optional: ringkasan kualitas clustering (overall)
+    ShowSilhouettePlot: false, // Opsional: visualisasi bar-chart silhouette per kasus
+    ShowSilhouetteByCluster: true, // Opsional: panel ringkas silhouette per klaster
+    ShowElbowPlot: false,      // Opsional: grafik SSE vs k (Metode Elbow)
+    ShowOptimalKChart: false,  // Opsional: gabungan chart Silhouette + Elbow
+    ShowOverallQualityAssessment: true, // Opsional: ringkasan kualitas clustering secara keseluruhan
 };
 
 export const KMedoidsClusterSaveDefault: KMedoidsClusterSaveType = {
@@ -90,18 +95,18 @@ export const KMedoidsClusterSaveDefault: KMedoidsClusterSaveType = {
 };
 
 export const KMedoidsClusterOptionsDefault: KMedoidsClusterOptionsType = {
-    InitialCluster: true, // Tampilkan initial medoids
-    ClusterInfo: false, // Optional detail per case
+    InitialCluster: true, // Tampilkan medoid awal
+    ClusterInfo: false, // Detail opsional per kasus
     ShowPCAProjection: true, // Tampilkan PCA Projection di hasil visualisasi
-    ShowClusterScatterPlot: false, // Default off: tampilkan hanya jika dipilih user
-    ShowClusterSizeDistribution: false, // Default off: tampilkan hanya jika dipilih user
-    ShowClusterAttributeProfile: false, // Default off: tampilkan hanya jika dipilih user
-    ShowDistanceMatrixBetweenMedoids: false, // Default off: tampilkan hanya jika dipilih user
-    ShowClusterMedoids: true, // Default on: tabel medoids tetap ditampilkan
-    ShowObjectAssignments: false, // Default off: tampilkan hanya jika dipilih user
-    ExcludeListWise: true, // Default: listwise deletion
+    ShowClusterScatterPlot: false, // Default nonaktif: tampilkan hanya jika dipilih pengguna
+    ShowClusterSizeDistribution: false, // Default nonaktif: tampilkan hanya jika dipilih pengguna
+    ShowClusterAttributeProfile: false, // Default nonaktif: tampilkan hanya jika dipilih pengguna
+    ShowDistanceMatrixBetweenMedoids: false, // Default nonaktif: tampilkan hanya jika dipilih pengguna
+    ShowDistanceMatrixTable: false, // Default nonaktif: tampilkan hanya jika dipilih pengguna
+    ExcludeListWise: true, // Default: penghapusan listwise
     ExcludePairWise: false,
-    Standardize: true, // Default R-like behavior: scale() before pam()
+    Standardize: false, // Default: tanpa normalisasi kecuali dipilih pengguna
+    NormalizationMethod: NormalizationMethod.None,
 };
 
 export const KMedoidsClusterDefault: KMedoidsClusterType = {

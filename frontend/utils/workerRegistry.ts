@@ -13,6 +13,7 @@ const ANALYSIS_WORKERS: Record<string, string> = {
   examine: "/workers/DescriptiveStatistics/examine.worker.js", // Used by Explore dialog
   binary_logistic: "/workers/Regression/binaryLogistic.worker.js",
   multinomial_logistic: "/workers/Regression/multinomialLogistic.worker.js",
+  factor_analysis: "/workers/FactorAnalysis/factorAnalysis.worker.js",
   // Add more analysis categories here when needed
 };
 

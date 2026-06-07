@@ -5,7 +5,7 @@ use crate::models::result::{
     StepDetail, StepHistory, StepSummaryRow, VariableNotInEquation, VariableRow,
 };
 use crate::stats::irls::{fit, fit_with_history, FittedModel, FittingWarnings, IterationRecord};
-use crate::stats::score_test::{calculate_score_test, calculate_group_score_test};
+use crate::stats::score_test::{calculate_score_test, calculate_single_score_test, calculate_global_score_test_with_constant, calculate_group_score_test};
 use crate::stats::design_matrix::VariableGroup;
 use crate::stats::wald::calculate_joint_wald_test;
 use crate::stats::hosmer_lemeshow;
@@ -115,7 +115,7 @@ pub fn run(
     };
 
     // CAPTURE STEP 0
-    let step0_detail = calculate_step_snapshot(
+    let mut step0_detail = calculate_step_snapshot(
         0,
         "Start".to_string(),
         None,
@@ -130,7 +130,55 @@ pub fn run(
         config,        // Pass config for re-fitting
         block_0_iter_history,
         variable_groups,
+        &included_group_indices,
     );
+
+    // --- FIX: Override Block 0 score tests with ANALYTICAL computation ---
+    // Menggunakan calculate_single_score_test() dan calculate_global_score_test_with_constant()
+    // yang sama dengan metode Forward Conditional, agar hasilnya konsisten dengan SPSS.
+    {
+        let prob_null = if config.include_constant {
+            let n_positive = y_vector.iter().filter(|&&y| y > 0.5).count() as f64;
+            let n_total = y_vector.len() as f64;
+            let p = n_positive / n_total;
+            p.clamp(1e-15, 1.0 - 1e-15)
+        } else {
+            0.5
+        };
+
+        let mut analytical_vars_not_in = Vec::new();
+        for group in variable_groups.iter() {
+            if group.column_indices.len() > 1 {
+                let cols: Vec<DVector<f64>> = group.column_indices.iter()
+                    .map(|&ci| x_matrix.column(ci).into_owned()).collect();
+                let x_group = DMatrix::from_columns(&cols);
+                let (gs, gd, gp) = crate::stats::score_test::calculate_single_group_score_test(
+                    &x_group, y_vector, prob_null, config.include_constant,
+                );
+                analytical_vars_not_in.push(VariableNotInEquation {
+                    label: group.name.clone(), score: gs, df: gd, sig: gp,
+                });
+            }
+            for &col_idx in &group.column_indices {
+                let col_vec: DVector<f64> = x_matrix.column(col_idx).into();
+                let (score_stat, _, sig_val) = calculate_single_score_test(
+                    &col_vec, y_vector, prob_null, config.include_constant,
+                );
+                let label = if col_idx < feature_names.len() { feature_names[col_idx].clone() } else { format!("Var_{}", col_idx + 1) };
+                analytical_vars_not_in.push(VariableNotInEquation { label, score: score_stat, df: 1, sig: sig_val });
+            }
+        }
+
+        let (g_chi, g_df, g_sig) = calculate_global_score_test_with_constant(
+            x_matrix, y_vector, prob_null, config.include_constant,
+        );
+
+        step0_detail.variables_not_in_equation = analytical_vars_not_in;
+        step0_detail.remainder_test = Some(RemainderTest {
+            chi_square: g_chi, df: g_df, sig: g_sig,
+        });
+    }
+
     steps_details.push(step0_detail);
 
     let block_0_row = if config.include_constant && !steps_details[0].variables_in_equation.is_empty() {
@@ -277,7 +325,7 @@ pub fn run(
                                 neg2_log_likelihood: rec.neg2_log_likelihood,
                                 coefficients: rec.coefficients.clone(),
                             }).collect(),
-                            initial_neg2ll: Some(-2.0 * current_model.final_log_likelihood),
+                            initial_neg2ll: Some(-2.0 * prev_log_likelihood),
                             converged: current_model.converged,
                             final_iteration: current_model.iterations,
                         }
@@ -302,6 +350,7 @@ pub fn run(
                     config,
                     step_history_block,
                     variable_groups,
+                    &included_group_indices,
                 );
                 steps_details.push(step_detail);
             }
@@ -429,7 +478,7 @@ pub fn run(
                                     neg2_log_likelihood: rec.neg2_log_likelihood,
                                     coefficients: rec.coefficients.clone(),
                                 }).collect(),
-                                initial_neg2ll: Some(-2.0 * current_model.final_log_likelihood),
+                                initial_neg2ll: Some(-2.0 * prev_log_likelihood),
                                 converged: current_model.converged,
                                 final_iteration: current_model.iterations,
                             }
@@ -454,6 +503,7 @@ pub fn run(
                         config,
                         removal_history_block,
                         variable_groups,
+                        &included_group_indices,
                     );
                     steps_details.push(step_detail);
                 }
@@ -556,8 +606,19 @@ pub fn run(
         })
         .collect();
 
+    // Extract Block 0 data before steps_details is moved into the result
+    let block_0_vars_not_in = steps_details.first().map(|s| s.variables_not_in_equation.clone());
+
     Ok(LogisticResult {
-        model_info: ModelInfo::default(),
+        model_info: ModelInfo {
+            variables: feature_names.to_vec(),
+            n_total: n_samples,
+            n_missing: 0,
+            n_selected: n_samples,
+            y_encoding: std::collections::HashMap::new(),
+            x_encodings: None,
+            include_constant: config.include_constant,
+        },
         summary: final_step.summary,
         classification_table: final_step.classification_table,
         variables: final_step.variables_in_equation,
@@ -566,7 +627,7 @@ pub fn run(
         step_history: Some(steps_history),
         steps_detail: Some(steps_details),
         block_0_constant: block_0_row,
-        block_0_variables_not_in: None,
+        block_0_variables_not_in: block_0_vars_not_in,
         method_used: "Forward LR".to_string(),
         assumption_tests: None,
         overall_remainder_test: final_step.remainder_test,
@@ -747,7 +808,14 @@ fn calculate_model_if_term_removed(
 
         // 2. Jika subset kosong, berarti kembali ke Null Model
         if subset_indices.is_empty() {
-            reduced_ll = null_log_likelihood;
+            // SPSS convention: when include_constant=false and no predictors remain,
+            // the model has ZERO parameters. SPSS reports LL = 0.0 for this degenerate case.
+            // When include_constant=true, the reduced model is the intercept-only (null) model.
+            if config.include_constant {
+                reduced_ll = null_log_likelihood;
+            } else {
+                reduced_ll = 0.0;
+            }
         } else {
             // Re-fit model subset
             let x_subset = build_design_matrix(x_matrix, &subset_indices, n_samples, config.include_constant);
@@ -798,10 +866,10 @@ fn calculate_step_snapshot(
     included_indices: &[usize], null_ll: f64, prev_ll: f64, prev_n_vars: usize,
     feature_names: &[String], config: &LogisticConfig,
     iteration_history: Option<IterationHistoryBlock>,
-    variable_groups: &[VariableGroup],
+    variable_groups: &[VariableGroup], included_group_indices: &[usize],
 ) -> StepDetail {
     let n = y_vector.len();
-    let n_total_vars = full_x.ncols();
+    let _n_total_vars = full_x.ncols();
     let chi_dist_1df = ChiSquared::new(1.0).unwrap();
     let z_score = crate::utils::probability::z_score_from_confidence(config.confidence_level);
 
@@ -825,11 +893,6 @@ fn calculate_step_snapshot(
         1.0 - ChiSquared::new(df_step as f64).unwrap().cdf(chi_sq_step.abs())
     } else { 1.0 };
     let omni_tests_step = OmniTests { chi_square: chi_sq_step, df: df_step, sig: sig_step };
-
-    // Compute included_group_indices from included_indices
-    let included_group_indices: Vec<usize> = variable_groups.iter().enumerate()
-        .filter(|(_, g)| g.column_indices.iter().any(|ci| included_indices.contains(ci)))
-        .map(|(gi, _)| gi).collect();
 
     let model_if_term_removed = calculate_model_if_term_removed(
         model.final_log_likelihood, full_x, y_vector, null_ll, config, n, variable_groups, &included_group_indices,
@@ -862,7 +925,7 @@ fn calculate_step_snapshot(
         });
     }
 
-    for &g_idx in &included_group_indices {
+    for &g_idx in included_group_indices {
         let group = &variable_groups[g_idx];
         let beta_indices: Vec<usize> = group.column_indices.iter()
             .filter_map(|&col_idx| included_indices.iter().position(|&c| c == col_idx).map(|pos| pos + beta_offset))

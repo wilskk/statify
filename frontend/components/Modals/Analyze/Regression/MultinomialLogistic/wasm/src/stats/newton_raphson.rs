@@ -1,10 +1,116 @@
 use crate::models::config::MultinomialConfig;
 use crate::stats::core::PrimaryResults;
-use crate::stats::log_likelihood::calculate_ll;
+use crate::stats::log_likelihood::{calculate_ll, calculate_smoothed_category_totals};
 use crate::stats::probabilities::compute_probabilities;
 use nalgebra::{DMatrix, DVector};
 
 const MAX_STEP_HALVINGS: usize = 5; // SPSS: MXSTEP(5)
+
+pub(crate) fn initialize_beta_spss(
+    primary: &PrimaryResults,
+    config: &MultinomialConfig,
+) -> DVector<f64> {
+    let p = primary.n_params;
+    let j_count = primary.n_categories;
+    let ref_idx = primary.reference_index;
+    let mut beta = DVector::zeros((j_count - 1) * p);
+
+    let (n_total, n_j) = calculate_smoothed_category_totals(primary, config.delta);
+    if n_total <= 0.0 || ref_idx >= n_j.len() {
+        return beta;
+    }
+
+    let p_ref = n_j[ref_idx] / n_total;
+    for j in 0..j_count {
+        if j == ref_idx {
+            continue;
+        }
+
+        let p_j = n_j[j] / n_total;
+        let intercept_init = if p_j > 0.0 && p_ref > 0.0 {
+            (p_j / p_ref).ln()
+        } else {
+            0.0
+        };
+        let j_idx = if j < ref_idx { j } else { j - 1 };
+        beta[j_idx * p] = intercept_init;
+    }
+
+    beta
+}
+
+pub(crate) fn compute_score_and_information(
+    X: &DMatrix<f64>,
+    primary: &PrimaryResults,
+    beta: &DVector<f64>,
+) -> (DVector<f64>, DMatrix<f64>) {
+    let n_cases = primary.n_cases;
+    let p = primary.n_params;
+    let J = primary.n_categories;
+    let ref_idx = primary.reference_index;
+
+    let pi = compute_probabilities(X, beta, n_cases, J, p, ref_idx);
+    let mut gradient = DVector::zeros((J - 1) * p);
+    let mut information = DMatrix::zeros((J - 1) * p, (J - 1) * p);
+
+    for j in 0..J {
+        if j == ref_idx {
+            continue;
+        }
+        let j_idx = if j < ref_idx { j } else { j - 1 };
+
+        for s in 0..p {
+            let mut score = 0.0;
+            for i in 0..n_cases {
+                let n_i = primary.weights[i];
+                let n_ij =
+                    if (primary.y_categories[i] - primary.category_map[j]).abs() < f64::EPSILON {
+                        n_i
+                    } else {
+                        0.0
+                    };
+                score += X[(i, s)] * (n_ij - n_i * pi[(i, j)]);
+            }
+            gradient[j_idx * p + s] = score;
+        }
+    }
+
+    for j in 0..J {
+        if j == ref_idx {
+            continue;
+        }
+        let j_idx = if j < ref_idx { j } else { j - 1 };
+
+        for j_prime in 0..J {
+            if j_prime == ref_idx {
+                continue;
+            }
+            let j_prime_idx = if j_prime < ref_idx {
+                j_prime
+            } else {
+                j_prime - 1
+            };
+
+            for s in 0..p {
+                for t in 0..p {
+                    let mut info_val = 0.0;
+                    for i in 0..n_cases {
+                        let n_i = primary.weights[i];
+                        let delta_jj_prime = if j == j_prime { 1.0 } else { 0.0 };
+                        info_val += n_i
+                            * pi[(i, j)]
+                            * (delta_jj_prime - pi[(i, j_prime)])
+                            * X[(i, s)]
+                            * X[(i, t)];
+                    }
+                    information[(j_idx * p + s, j_prime_idx * p + t)] = info_val;
+                }
+            }
+        }
+    }
+
+    (gradient, information)
+}
 
 /// Jalankan Newton-Raphson dengan step-halving hingga konvergen.
 /// Mengembalikan (beta, hessian_final, iter_count, converged).
@@ -19,7 +125,11 @@ pub fn run_newton_raphson(
     let J = primary.n_categories;
     let ref_idx = primary.reference_index;
 
-    let mut beta = beta_init;
+    let mut beta = if beta_init.nrows() == (J - 1) * p {
+        beta_init
+    } else {
+        initialize_beta_spss(primary, config)
+    };
     let mut gradient = DVector::zeros((J - 1) * p);
     let mut hessian = DMatrix::zeros((J - 1) * p, (J - 1) * p);
     let mut converged = false;
@@ -47,65 +157,11 @@ pub fn run_newton_raphson(
         }
 
         // 2. Score Function (Gradient): dl/db_j,s = sum_i x_is (n_ij - n_i pi_ij)
-        gradient.fill(0.0);
-        for j in 0..J {
-            if j == ref_idx {
-                continue;
-            }
-            let j_idx = if j < ref_idx { j } else { j - 1 };
+        let (computed_gradient, computed_hessian) =
+            compute_score_and_information(X, primary, &beta);
+        gradient.copy_from(&computed_gradient);
 
-            for s in 0..p {
-                let mut score = 0.0;
-                for i in 0..n_cases {
-                    let n_i = primary.weights[i];
-                    let n_ij = if (primary.y_categories[i] - primary.category_map[j]).abs()
-                        < f64::EPSILON
-                    {
-                        n_i
-                    } else {
-                        0.0
-                    };
-                    score += X[(i, s)] * (n_ij - n_i * pi[(i, j)]);
-                }
-                gradient[j_idx * p + s] = score;
-            }
-        }
-
-        // 3. Hessian: ∂²ℓ/∂β_j,s ∂β_j',t = -Σ_i n_i π_ij (δ_jj' - π_ij') x_is x_it
-        hessian.fill(0.0);
-        for j in 0..J {
-            if j == ref_idx {
-                continue;
-            }
-            let j_idx = if j < ref_idx { j } else { j - 1 };
-
-            for j_prime in 0..J {
-                if j_prime == ref_idx {
-                    continue;
-                }
-                let j_prime_idx = if j_prime < ref_idx {
-                    j_prime
-                } else {
-                    j_prime - 1
-                };
-
-                for s in 0..p {
-                    for t in 0..p {
-                        let mut hess_val = 0.0;
-                        for i in 0..n_cases {
-                            let n_i = primary.weights[i];
-                            let delta_jj_prime = if j == j_prime { 1.0 } else { 0.0 };
-                            hess_val -= n_i
-                                * pi[(i, j)]
-                                * (delta_jj_prime - pi[(i, j_prime)])
-                                * X[(i, s)]
-                                * X[(i, t)];
-                        }
-                        hessian[(j_idx * p + s, j_prime_idx * p + t)] = hess_val;
-                    }
-                }
-            }
-        }
+        hessian.copy_from(&(-computed_hessian));
 
         // 4. Newton-Raphson update: β^(t+1) = β^(t) - H^-1 * g
         let h_inv_g = match hessian.clone().try_inverse() {
@@ -192,42 +248,8 @@ pub fn run_newton_raphson(
     // === SOLUSI #1: Explicit Hessian Recomputation at Final β ===
     // SPSS recomputes Hessian at final converged coefficients
     // This ensures SE, Wald, and p-values match SPSS exactly
-    let pi_final = compute_probabilities(X, &beta, n_cases, J, p, ref_idx);
-    let mut hessian_final = DMatrix::zeros((J - 1) * p, (J - 1) * p);
-
-    for j in 0..J {
-        if j == ref_idx {
-            continue;
-        }
-        let j_idx = if j < ref_idx { j } else { j - 1 };
-
-        for j_prime in 0..J {
-            if j_prime == ref_idx {
-                continue;
-            }
-            let j_prime_idx = if j_prime < ref_idx {
-                j_prime
-            } else {
-                j_prime - 1
-            };
-
-            for s in 0..p {
-                for t in 0..p {
-                    let mut hess_val = 0.0;
-                    for i in 0..n_cases {
-                        let n_i = primary.weights[i];
-                        let delta_jj_prime = if j == j_prime { 1.0 } else { 0.0 };
-                        hess_val -= n_i
-                            * pi_final[(i, j)]
-                            * (delta_jj_prime - pi_final[(i, j_prime)])
-                            * X[(i, s)]
-                            * X[(i, t)];
-                    }
-                    hessian_final[(j_idx * p + s, j_prime_idx * p + t)] = hess_val;
-                }
-            }
-        }
-    }
+    let (_, hessian_final_info) = compute_score_and_information(X, primary, &beta);
+    let hessian_final = -hessian_final_info;
 
     Ok((beta, hessian_final, iter_count, converged))
 }
@@ -244,7 +266,7 @@ pub fn run_newton_raphson_internal(
     let J = primary.n_categories;
     let ref_idx = primary.reference_index;
 
-    let mut beta = DVector::zeros((J - 1) * p);
+    let mut beta = initialize_beta_spss(primary, config);
     let mut gradient = DVector::zeros((J - 1) * p);
     let mut converged = false;
     let mut iter_count = 0u32;

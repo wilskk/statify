@@ -14,13 +14,13 @@
  *   /CRITERIA=PIN(0.05) POUT(0.10) ITERATE(20) CUT(0.5).
  */
 
-import {
+import type {
   BinaryLogisticOptions,
   BinaryLogisticCategoricalParams,
   BinaryLogisticSaveParams,
   BinaryLogisticOptionsParams,
 } from "../types/binary-logistic";
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 
 interface SyntaxGeneratorOptions {
   dependent: Variable;
@@ -104,7 +104,7 @@ export const generateLogisticRegressionSyntax = (
 
   // Add period at the end of last line
   const lastIndex = lines.length - 1;
-  lines[lastIndex] = lines[lastIndex] + ".";
+  lines[lastIndex] = `${lines[lastIndex]  }.`;
 
   return lines.join("\n");
 };

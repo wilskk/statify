@@ -65,13 +65,14 @@ export const SilhouettePerObjectChart: React.FC<SilhouettePerObjectChartProps> =
     const BAR_H = Math.max(3, Math.min(14, Math.floor(480 / n)));
     const GAP_BETWEEN_CLUSTERS = Math.max(6, BAR_H * 1.5);
     const numClusters = clusterOrder.length;
-    const margin = { top: 28, right: 28, bottom: 82, left: 72 };
-    const innerW = width - margin.left - margin.right;
-    const innerH = n * BAR_H + (numClusters - 1) * GAP_BETWEEN_CLUSTERS;
-    const totalH = innerH + margin.top + margin.bottom;
 
     useEffect(() => {
         if (!svgRef.current || n === 0) return;
+
+        const margin = { top: 28, right: 28, bottom: 82, left: 72 };
+        const innerW = width - margin.left - margin.right;
+        const innerH = n * BAR_H + (numClusters - 1) * GAP_BETWEEN_CLUSTERS;
+        const totalH = innerH + margin.top + margin.bottom;
 
         const svg = d3.select(svgRef.current);
         svg.selectAll("*").remove();
@@ -132,7 +133,10 @@ export const SilhouettePerObjectChart: React.FC<SilhouettePerObjectChartProps> =
             .text(`Rata-rata: ${overall.toFixed(3)}`);
 
         // ── Tooltip ───────────────────────────────────────────────────────────
-        const tooltip = d3.select(svgRef.current.parentElement!)
+        const parent = svgRef.current.parentElement;
+        if (!parent) return;
+
+        const tooltip = d3.select(parent)
             .selectAll<HTMLDivElement, unknown>(".spoc-tooltip")
             .data([null])
             .join("div")
@@ -184,7 +188,9 @@ export const SilhouettePerObjectChart: React.FC<SilhouettePerObjectChartProps> =
                     .style("cursor", "pointer")
                     .on("mouseover", function (event) {
                         d3.select(this).attr("opacity", 1);
-                        const [mx, my] = d3.pointer(event, svgRef.current!.parentElement!);
+                        const parent = svgRef.current.parentElement;
+                        if (!parent) return;
+                        const [mx, my] = d3.pointer(event, parent);
                         tooltip
                             .style("opacity", "1")
                             .style("left", `${mx + 14}px`)
@@ -197,7 +203,9 @@ export const SilhouettePerObjectChart: React.FC<SilhouettePerObjectChartProps> =
                             );
                     })
                     .on("mousemove", function (event) {
-                        const [mx, my] = d3.pointer(event, svgRef.current!.parentElement!);
+                        const parent = svgRef.current.parentElement;
+                        if (!parent) return;
+                        const [mx, my] = d3.pointer(event, parent);
                         tooltip
                             .style("left", `${mx + 14}px`)
                             .style("top", `${my - 10}px`);
@@ -265,7 +273,7 @@ export const SilhouettePerObjectChart: React.FC<SilhouettePerObjectChartProps> =
             .attr("font-size", "11").attr("fill", mutedColor)
             .text("Nilai negatif");
 
-    }, [sortedData, overall, width, totalH, innerW, innerH]);
+    }, [sortedData, overall, width, BAR_H, GAP_BETWEEN_CLUSTERS, clusterOrder, grouped, n, numClusters]);
 
     if (n === 0) {
         return (

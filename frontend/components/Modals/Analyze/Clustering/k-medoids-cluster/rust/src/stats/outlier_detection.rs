@@ -156,13 +156,13 @@ fn detect_outliers_modified_zscore(data: &[Vec<f64>], threshold: f64) -> Vec<Out
             continue;
         }
 
-        values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         let median = values[values.len() / 2];
         feature_medians.push(median);
 
         // Calculate MAD: median(|x_i - median|)
         let mut deviations: Vec<f64> = values.iter().map(|v| (v - median).abs()).collect();
-        deviations.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        deviations.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         let mad = deviations[deviations.len() / 2];
 
         // Constant 1.4826 makes MAD consistent with std for normal distribution

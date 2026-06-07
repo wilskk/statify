@@ -1,7 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
     TooltipProvider,
     Tooltip,
@@ -15,11 +25,6 @@ import type {
     KMedoidsClusterContainerProps,
     KMedoidsClusterMainType,
     KMedoidsClusterType,
-    KMedoidsClusterIterateType,
-    KMedoidsClusterResultsType,
-    KMedoidsClusterEvaluationType,
-    KMedoidsClusterSaveType,
-    KMedoidsClusterOptionsType,
 } from "@/components/Modals/Analyze/Clustering/k-medoids-cluster/types/k-medoids-cluster";
 import { ClusterMode } from "@/components/Modals/Analyze/Clustering/k-medoids-cluster/types/k-medoids-cluster";
 import { KMedoidsClusterDialog } from "@/components/Modals/Analyze/Clustering/k-medoids-cluster/dialogs/dialog";
@@ -44,15 +49,18 @@ export const KMedoidsClusterContainer = ({
 }: KMedoidsClusterContainerProps) => {
     const variables = useVariableStore((state) => state.variables);
     const dataVariables = useDataStore((state) => state.data);
-    const tempVariables = useMemo(
-        () => variables.map((variable) => variable.name),
-        [variables]
-    );
 
     const [formData, setFormData] = useState<KMedoidsClusterType>({
         ...KMedoidsClusterDefault,
     });
     const [activeTab, setActiveTab] = useState("variables");
+    const [pendingMainData, setPendingMainData] = useState<KMedoidsClusterMainType | null>(null);
+    const [missingWarning, setMissingWarning] = useState<{
+        rowsWithMissing: number;
+        totalRows: number;
+        missingPercent: string;
+        topVariables: string;
+    } | null>(null);
 
     const { closeModal } = useModal();
     const router = useRouter();
@@ -61,7 +69,7 @@ export const KMedoidsClusterContainer = ({
         const loadFormData = async () => {
             const savedData = await getFormData("KMedoidsCluster");
             if (savedData) {
-                const { id, ...formDataWithoutId } = savedData;
+                const { id: _id, ...formDataWithoutId } = savedData;
                 setFormData({
                     ...KMedoidsClusterDefault,
                     ...formDataWithoutId,
@@ -97,7 +105,7 @@ export const KMedoidsClusterContainer = ({
 
         loadFormData();
 
-        // Pre-warm worker/WASM so first run does not pay initialization cost.
+        // Panaskan worker/WASM lebih awal agar run pertama tidak menanggung biaya inisialisasi.
         void warmupKMedoidsRuntime(true);
     }, []);
 
@@ -116,6 +124,9 @@ export const KMedoidsClusterContainer = ({
     }, []);
 
     const executeKMedoidsCluster = async (mainData: KMedoidsClusterMainType) => {
+        const selectedVarNames = new Set(mainData.TargetVar ?? []);
+        const selectedVariables = variables.filter((v) => selectedVarNames.has(v.name));
+
         closeModal();
         onClose();
 
@@ -127,38 +138,34 @@ export const KMedoidsClusterContainer = ({
 
             await saveFormData("KMedoidsCluster", newFormData);
 
-            // Add progress tracking
-            const n_init = newFormData.iterate.NumberOfInitializations || 10;
+            // Tambahkan pelacakan progres
+            const n_init = newFormData.iterate.NumberOfInitializations ?? 10;
             const dataSize = dataVariables.length;
             const progressToast = toast.loading(
                 `Initializing clustering... (${dataSize} cases, ${n_init} runs)`
             );
-            
-            try {
-                // Filter only variables selected by the user (TargetVar)
-                const selectedVarNames = new Set(newFormData.main.TargetVar || []);
-                const selectedVariables = variables.filter(v => selectedVarNames.has(v.name));
 
+            try {
                 const result = await analyzeKMedoidsCluster({
                     configData: newFormData,
                     dataVariables,
                     variables: selectedVariables,
                     allVariables: variables,
-                    useWorker: true, // Try to use web worker (auto-fallback to direct if not available)
+                    useWorker: true, // Coba gunakan web worker (fallback otomatis ke direct jika tidak tersedia)
                     onProgress: (progress) => {
-                        // Update toast with progress
-                        const statusMsg = progress.stage === "clustering" 
+                        // Perbarui toast dengan progres terkini
+                        const statusMsg = progress.stage === "clustering"
                             ? `${progress.message} (running in background)`
                             : progress.message;
                         toast.loading(statusMsg, { id: progressToast });
                     },
                 });
-                
+
                 toast.dismiss(progressToast);
 
                 if (result.success) {
-                    // Comprehensive result persistence runs in background.
-                    // Navigate immediately; the latest result will appear once persisted.
+                    // Penyimpanan hasil komprehensif berjalan di background.
+                    // Navigasi segera; hasil terbaru akan muncul setelah tersimpan.
                     router.push("/dashboard/result");
                 }
             } catch (error) {
@@ -182,6 +189,151 @@ export const KMedoidsClusterContainer = ({
                 );
             },
         });
+    };
+
+    const detectMissingWarning = (mainData: KMedoidsClusterMainType) => {
+        const selectedVarNames = new Set(mainData.TargetVar ?? []);
+        const selectedVariables = variables.filter((v) => selectedVarNames.has(v.name));
+
+        if (selectedVariables.length === 0 || dataVariables.length === 0) {
+            return null;
+        }
+
+        const missingByVariable: Record<string, number> = Object.fromEntries(
+            selectedVariables.map((v) => [v.name, 0])
+        );
+        let rowsWithMissing = 0;
+
+        for (const row of dataVariables) {
+            let hasMissingInRow = false;
+
+            for (const variable of selectedVariables) {
+                const rawValue = row[variable.columnIndex as number];
+                const parsedValue =
+                    typeof rawValue === "number" ? rawValue : parseFloat(String(rawValue));
+
+                if (!Number.isFinite(parsedValue)) {
+                    hasMissingInRow = true;
+                    missingByVariable[variable.name] = (missingByVariable[variable.name] || 0) + 1;
+                }
+            }
+
+            if (hasMissingInRow) {
+                rowsWithMissing += 1;
+            }
+        }
+
+        if (rowsWithMissing === 0) {
+            return null;
+        }
+
+        const topVariables = Object.entries(missingByVariable)
+            .filter(([, count]) => count > 0)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([name, count]) => `${name} (${count})`)
+            .join(", ");
+
+        return {
+            rowsWithMissing,
+            totalRows: dataVariables.length,
+            missingPercent: ((rowsWithMissing / dataVariables.length) * 100).toFixed(1),
+            topVariables,
+        };
+    };
+
+    const getValidRowCount = (
+    rows: (number | string | null | undefined)[][],
+        selectedVariables: typeof variables,
+        useListWise: boolean,
+        usePairWise: boolean
+    ) => {
+        if (rows.length === 0 || selectedVariables.length === 0) {
+            return 0;
+        }
+
+        let validCount = 0;
+
+        for (const row of rows) {
+            let hasAnyValid = false;
+            let hasAnyMissing = false;
+
+            for (const variable of selectedVariables) {
+                const rawValue = row[variable.columnIndex as number];
+                const parsedValue =
+                    typeof rawValue === "number" ? rawValue : parseFloat(String(rawValue));
+
+                if (Number.isFinite(parsedValue)) {
+                    hasAnyValid = true;
+                } else {
+                    hasAnyMissing = true;
+                }
+            }
+
+            if (useListWise || !usePairWise) {
+                if (!hasAnyMissing && hasAnyValid) {
+                    validCount += 1;
+                }
+            } else if (hasAnyValid) {
+                validCount += 1;
+            }
+        }
+
+        return validCount;
+    };
+
+    const handleRunWithMissingCheck = () => {
+        const selectedVarNames = new Set(formData.main.TargetVar ?? []);
+        const selectedVariables = variables.filter((v) => selectedVarNames.has(v.name));
+
+        if (dataVariables.length === 0) {
+            toast.error("Dataset is empty. Please load data before running clustering.");
+            return;
+        }
+
+        if (selectedVariables.length === 0) {
+            toast.error("Please select at least one numeric variable for clustering.");
+            return;
+        }
+
+        const useListWise = formData.options?.ExcludeListWise ?? true;
+        const usePairWise = formData.options?.ExcludePairWise ?? false;
+        const validRows = getValidRowCount(
+            dataVariables,
+            selectedVariables,
+            useListWise,
+            usePairWise
+        );
+
+        if (validRows < 2) {
+            toast.error(
+                "Not enough valid numeric rows for clustering. Check selected variables and missing handling settings."
+            );
+            return;
+        }
+
+        // Algoritma WASM mengharuskan k < n secara ketat (k == n tidak valid).
+        // Tampilkan pesan error yang ramah sebelum submit agar pengguna dapat memperbaikinya.
+        const isManual = formData.main.ClusterMode === ClusterMode.Manual;
+        if (isManual) {
+            const manualK = formData.main.Cluster ?? 2;
+            if (manualK >= validRows) {
+                toast.error(
+                    `Number of clusters (k=${manualK}) must be less than the number of valid data rows (n=${validRows}). ` +
+                    `Please reduce the number of clusters or add more data.`
+                );
+                return;
+            }
+        }
+
+        const warning = detectMissingWarning(formData.main);
+        if (warning) {
+            setPendingMainData(formData.main);
+            setMissingWarning(warning);
+            return;
+        }
+
+        void executeKMedoidsCluster(formData.main);
     };
 
     const resetFormData = async () => {
@@ -218,7 +370,7 @@ export const KMedoidsClusterContainer = ({
                         >
                             <KMedoidsClusterDialog
                                 data={formData.main}
-                                globalVariables={tempVariables}
+                                globalVariables={variables}
                                 updateFormData={(field, value) =>
                                     updateFormData("main", field, value)
                                 }
@@ -231,6 +383,7 @@ export const KMedoidsClusterContainer = ({
                         >
                             <KMedoidsClusterIterate
                                 data={formData.iterate}
+                                mainData={formData.main}
                                 updateFormData={(field, value) =>
                                     updateFormData("iterate", field, value)
                                 }
@@ -243,6 +396,7 @@ export const KMedoidsClusterContainer = ({
                         >
                             <KMedoidsClusterResults
                                 data={formData.results}
+                                iterateData={formData.iterate}
                                 updateFormData={(field, value) =>
                                     updateFormData("results", field, value)
                                 }
@@ -310,12 +464,13 @@ export const KMedoidsClusterContainer = ({
 
                 <div className="flex items-center space-x-4">
                     <Button
-                        onClick={() => executeKMedoidsCluster(formData.main)}
+                        onClick={handleRunWithMissingCheck}
                         disabled={
-                            !formData.main.TargetVar || 
+                            !formData.main.TargetVar ||
                             formData.main.TargetVar.length === 0 ||
                             (formData.main.ClusterMode === ClusterMode.Manual && (!formData.main.Cluster || formData.main.Cluster < 2)) ||
-                            (formData.main.ClusterMode === ClusterMode.Automatic && (!formData.main.AutoKMin || !formData.main.AutoKMax || formData.main.AutoKMin >= formData.main.AutoKMax))
+                            (formData.main.ClusterMode === ClusterMode.Automatic && (!formData.main.AutoKMin || !formData.main.AutoKMax || formData.main.AutoKMin >= formData.main.AutoKMax)) ||
+                            (formData.iterate.Method === "CLARA" && formData.iterate.SampleSize !== null && formData.iterate.SampleSize <= (formData.main.ClusterMode === ClusterMode.Automatic ? (formData.main.AutoKMax ?? 10) : (formData.main.Cluster ?? 2)))
                         }
                     >
                         OK
@@ -337,6 +492,47 @@ export const KMedoidsClusterContainer = ({
                     </Button>
                 </div>
             </div>
+
+            <AlertDialog
+                open={Boolean(missingWarning)}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setMissingWarning(null);
+                        setPendingMainData(null);
+                    }
+                }}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Warning Missing Value</AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-2">
+                            <span className="block">
+                                Ditemukan missing value pada {missingWarning?.rowsWithMissing ?? 0} dari {missingWarning?.totalRows ?? 0} baris ({missingWarning?.missingPercent ?? "0.0"}%).
+                            </span>
+                            <span className="block mt-2">
+                                Jika dilanjutkan, proses clustering akan menghapus baris yang mengandung missing value.
+                            </span>
+                            {missingWarning?.topVariables ? (
+                                <span className="block mt-2">Variabel terdampak (top 5): {missingWarning.topVariables}</span>
+                            ) : null}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Kembali</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                if (pendingMainData) {
+                                    void executeKMedoidsCluster(pendingMainData);
+                                }
+                                setMissingWarning(null);
+                                setPendingMainData(null);
+                            }}
+                        >
+                            Lanjut
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };

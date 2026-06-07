@@ -111,7 +111,30 @@ async function initializeWasm(wasmPath, requestId) {
   }
   try {
     const wasmImport = await import("@/public/workers/Clustering/K-Medoids/wasm");
-    await wasmImport.default();
+    const initCandidates = [
+      wasmPath,
+      "/workers/Clustering/K-Medoids/wasm_bg.wasm",
+      void 0
+    ];
+    let initialized = false;
+    let lastInitError = null;
+    for (const candidate of initCandidates) {
+      if (initialized) break;
+      try {
+        await wasmImport.default(candidate);
+        initialized = true;
+      } catch (initError) {
+        lastInitError = initError;
+        if (candidate) {
+          console.warn(`[Worker] WASM init failed for path: ${candidate}`, initError);
+        } else {
+          console.warn("[Worker] WASM init failed using module-relative fallback", initError);
+        }
+      }
+    }
+    if (!initialized) {
+      throw lastInitError || new Error("Unable to initialize WASM module");
+    }
     wasmModule = wasmImport;
     wasmInitialized = true;
     if (typeof wasmModule.initThreadPool === "function") {
@@ -174,6 +197,13 @@ async function runClustering(input, requestId) {
     }
     if (input.n_clusters > resolvedData.length) {
       throw new Error("Number of clusters cannot exceed number of data points");
+    }
+    // WASM requires k < n strictly (k == n leaves no non-medoid candidates for CLARANS).
+    if (input.n_clusters >= resolvedData.length) {
+      throw new Error(
+        `Number of clusters (${input.n_clusters}) must be less than the number of data points (${resolvedData.length}). ` +
+        `Please reduce the number of clusters or add more data rows.`
+      );
     }
     sendProgress("preparing", 20, `Processing ${resolvedData.length} data points...`);
     if (currentOperation.signal.aborted) {
