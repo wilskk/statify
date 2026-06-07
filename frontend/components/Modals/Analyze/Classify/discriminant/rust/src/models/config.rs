@@ -150,8 +150,6 @@ pub struct AssumptionsConfig {
     pub multivariate_normality: bool,
     #[serde(rename = "UnivariateNormality", default)]
     pub univariate_normality: bool,
-    #[serde(rename = "Outliers", default)]
-    pub outliers: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

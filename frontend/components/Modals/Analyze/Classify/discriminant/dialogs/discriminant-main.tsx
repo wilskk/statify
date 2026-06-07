@@ -23,8 +23,7 @@ import { DiscriminantMethod } from "./method";
 import { DiscriminantClassify } from "./classify";
 import { DiscriminantSave } from "./save";
 import { DiscriminantBootstrap } from "./bootstrap";
-import { DiscriminantDefineRange } from "./define-range";
-import { DiscriminantSetValue } from "./set-value";
+import { Input } from "@/components/ui/input";
 import { DiscriminantAssumptions } from "./assumptions";
 
 // Types
@@ -49,10 +48,38 @@ export const DiscriminantMain = () => {
 
   const [activeTab, setActiveTab] = useState("variables");
 
-  // Sub-dialog open/close state (Define Range / Value remain popups since they
-  // are contextual actions for the grouping / selection variable).
+  // Define Range inline panel state
   const [isDefineRangeOpen, setIsDefineRangeOpen] = useState(false);
+  const [pendingMinRange, setPendingMinRange] = useState<number | string>("");
+  const [pendingMaxRange, setPendingMaxRange] = useState<number | string>("");
+
+  const handleDefineRangeOpen = () => {
+    setPendingMinRange(formData.defineRange?.minRange ?? "");
+    setPendingMaxRange(formData.defineRange?.maxRange ?? "");
+    setIsSetValueOpen(false);
+    setIsDefineRangeOpen(true);
+  };
+
+  const handleDefineRangeContinue = () => {
+    updateFormData("defineRange", "minRange", Number(pendingMinRange) || 0);
+    updateFormData("defineRange", "maxRange", Number(pendingMaxRange) || 0);
+    setIsDefineRangeOpen(false);
+  };
+
+  // Set Value inline panel state
   const [isSetValueOpen, setIsSetValueOpen] = useState(false);
+  const [pendingValue, setPendingValue] = useState<number | string>("");
+
+  const handleSetValueOpen = () => {
+    setPendingValue(formData.setValue?.Value ?? "");
+    setIsDefineRangeOpen(false);
+    setIsSetValueOpen(true);
+  };
+
+  const handleSetValueContinue = () => {
+    updateFormData("setValue", "Value", Number(pendingValue) || 0);
+    setIsSetValueOpen(false);
+  };
 
   const variables = useVariableStore((state) => state.variables);
 
@@ -111,14 +138,15 @@ export const DiscriminantMain = () => {
   };
 
   const handleMethodGrp = (value: string) => {
-    updateFormData("main", "Together", value === "Together");
-    updateFormData("main", "Stepwise", value === "Stepwise");
-  };
-
-  const openSubDialog = (
-    setter: React.Dispatch<React.SetStateAction<boolean>>
-  ) => () => {
-    setter(true);
+    const isStepwise = value === "Stepwise";
+    updateFormData("main", "Together", !isStepwise);
+    updateFormData("main", "Stepwise", isStepwise);
+    // Bootstrap only applies to "enter independents together". Switching to the
+    // stepwise method clears any previously-checked bootstrap so it doesn't keep
+    // running silently (its tab is hidden under stepwise).
+    if (isStepwise && formData.bootstrap?.PerformBootStrapping) {
+      updateFormData("bootstrap", "PerformBootStrapping", false);
+    }
   };
 
   // --- ANALYZE ---
@@ -143,11 +171,11 @@ export const DiscriminantMain = () => {
   // --- RENDER ---
   return (
     <div className="flex flex-col h-full bg-background">
-      <div className="flex-grow px-6 py-3 overflow-y-auto min-h-0">
+      <div className="flex flex-col flex-grow min-h-0 px-6 py-3">
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
-          className="w-full h-full flex flex-col"
+          className="w-full flex flex-col flex-grow min-h-0"
         >
           <TabsList className="w-full justify-center gap-1 flex-shrink-0">
             <TabsTrigger value="variables" id="discriminant-variables-tab-trigger">
@@ -179,8 +207,8 @@ export const DiscriminantMain = () => {
 
           <div className="flex-grow min-h-0 overflow-y-auto">
             {/* === Variables Tab === */}
-            <TabsContent value="variables" className="h-full mt-0">
-              <div className="flex flex-col gap-4 h-full">
+            <TabsContent value="variables" className="mt-0">
+              <div className="flex flex-col gap-4">
                 {/* Radio: Together / Stepwise */}
                 <div className="flex flex-col gap-1">
                   <Label className="font-semibold text-sm">Method</Label>
@@ -200,11 +228,11 @@ export const DiscriminantMain = () => {
                 </div>
 
                 {/* Variable Assignment Areas */}
-                <div className="flex gap-4 flex-grow min-h-0" style={{ minHeight: 0 }}>
+                <div className="flex gap-4 items-start">
                   {/* Left: Available Variables */}
                   <div className="flex flex-col w-1/4 gap-1">
                     <Label className="font-semibold text-sm">Available Variables</Label>
-                    <ScrollArea className="flex-grow border rounded p-2">
+                    <ScrollArea className="h-[260px] border rounded p-2">
                       <div className="flex flex-col gap-1">
                         {availableVariables.map((variable: Variable, index: number) => (
                           <Badge
@@ -233,7 +261,7 @@ export const DiscriminantMain = () => {
                     </ScrollArea>
                   </div>
 
-                  {/* Right: Assignment Areas */}
+                  {/* Center: Assignment Areas */}
                   <div className="flex flex-col flex-grow gap-3">
                     {/* Grouping Variable */}
                     <div className="flex flex-col gap-1">
@@ -272,7 +300,7 @@ export const DiscriminantMain = () => {
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={openSubDialog(setIsDefineRangeOpen)}
+                        onClick={handleDefineRangeOpen}
                       >
                         Define Range...
                       </Button>
@@ -363,19 +391,86 @@ export const DiscriminantMain = () => {
                         <Button
                           variant="secondary"
                           size="sm"
-                          onClick={openSubDialog(setIsSetValueOpen)}
+                          onClick={handleSetValueOpen}
                         >
                           Value...
                         </Button>
                       </div>
                     </div>
                   </div>
+
+                  {/* Right: inline panel (Define Range or Set Value) */}
+                  {(isDefineRangeOpen || isSetValueOpen) && (
+                    <div className="flex flex-col gap-3 w-44 flex-shrink-0 rounded-lg border p-3">
+                      {isDefineRangeOpen ? (
+                        <>
+                          <Label className="font-semibold text-sm">Define Range</Label>
+                          <div className="flex flex-col gap-1">
+                            <Label className="text-xs text-muted-foreground">Minimum</Label>
+                            <Input
+                              type="number"
+                              value={pendingMinRange}
+                              onChange={(e) => setPendingMinRange(e.target.value)}
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <Label className="text-xs text-muted-foreground">Maximum</Label>
+                            <Input
+                              type="number"
+                              value={pendingMaxRange}
+                              onChange={(e) => setPendingMaxRange(e.target.value)}
+                            />
+                          </div>
+                          <div className="flex flex-col gap-2 pt-1">
+                            <Button size="sm" onClick={handleDefineRangeContinue}>
+                              Continue
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => setIsDefineRangeOpen(false)}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <Label className="font-semibold text-sm">Set Value</Label>
+                          <div className="flex flex-col gap-1">
+                            <Label className="text-xs text-muted-foreground">Value</Label>
+                            <Input
+                              type="number"
+                              value={pendingValue}
+                              onChange={(e) => setPendingValue(e.target.value)}
+                            />
+                          </div>
+                          <div className="flex flex-col gap-2 pt-1">
+                            <Button
+                              size="sm"
+                              disabled={pendingValue === "" || pendingValue === 0}
+                              onClick={handleSetValueContinue}
+                            >
+                              Continue
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => setIsSetValueOpen(false)}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </TabsContent>
 
             {/* === Statistics Tab === */}
-            <TabsContent value="statistics" className="h-full mt-0">
+            <TabsContent value="statistics" className="mt-0">
               <DiscriminantStatistics
                 updateFormData={(field, value) =>
                   updateFormData("statistics", field, value)
@@ -385,7 +480,7 @@ export const DiscriminantMain = () => {
             </TabsContent>
 
             {/* === Method Tab (stepwise only) === */}
-            <TabsContent value="method" className="h-full mt-0">
+            <TabsContent value="method" className="mt-0">
               <DiscriminantMethod
                 updateFormData={(field, value) =>
                   updateFormData("method", field, value)
@@ -395,7 +490,7 @@ export const DiscriminantMain = () => {
             </TabsContent>
 
             {/* === Classify Tab === */}
-            <TabsContent value="classify" className="h-full mt-0">
+            <TabsContent value="classify" className="mt-0">
               <DiscriminantClassify
                 updateFormData={(field, value) =>
                   updateFormData("classify", field, value)
@@ -405,7 +500,7 @@ export const DiscriminantMain = () => {
             </TabsContent>
 
             {/* === Save Tab === */}
-            <TabsContent value="save" className="h-full mt-0">
+            <TabsContent value="save" className="mt-0">
               <DiscriminantSave
                 updateFormData={(field, value) =>
                   updateFormData("save", field, value)
@@ -415,7 +510,7 @@ export const DiscriminantMain = () => {
             </TabsContent>
 
             {/* === Bootstrap Tab (together only) === */}
-            <TabsContent value="bootstrap" className="h-full mt-0">
+            <TabsContent value="bootstrap" className="mt-0">
               <DiscriminantBootstrap
                 updateFormData={(field, value) =>
                   updateFormData("bootstrap", field, value)
@@ -425,7 +520,7 @@ export const DiscriminantMain = () => {
             </TabsContent>
 
             {/* === Assumptions Tab === */}
-            <TabsContent value="assumptions" className="h-full mt-0">
+            <TabsContent value="assumptions" className="mt-0">
               <DiscriminantAssumptions
                 updateFormData={(field, value) =>
                   updateFormData("assumptions", field, value)
@@ -485,24 +580,6 @@ export const DiscriminantMain = () => {
         </div>
       </div>
 
-      {/* Contextual popups (grouping / selection variable) */}
-      <DiscriminantDefineRange
-        isDefineRangeOpen={isDefineRangeOpen}
-        setIsDefineRangeOpen={setIsDefineRangeOpen}
-        updateFormData={(field, value) =>
-          updateFormData("defineRange", field, value)
-        }
-        data={formData.defineRange}
-      />
-
-      <DiscriminantSetValue
-        isSetValueOpen={isSetValueOpen}
-        setIsSetValueOpen={setIsSetValueOpen}
-        updateFormData={(field, value) =>
-          updateFormData("setValue", field, value)
-        }
-        data={formData.setValue}
-      />
     </div>
   );
 };

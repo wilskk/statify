@@ -98,7 +98,6 @@ export const DiscriminantAssumptionsDefault : DiscriminantAssumptionsType = {
     Multicollinearity: false,
     MultivariateNormality: false,
     UnivariateNormality: false,
-    Outliers: false,
 }
 
 export const DiscriminantDefault : DiscriminantType = {

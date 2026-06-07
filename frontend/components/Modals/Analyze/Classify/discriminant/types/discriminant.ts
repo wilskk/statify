@@ -180,7 +180,6 @@ export type DiscriminantAssumptionsType = {
     Multicollinearity: boolean;
     MultivariateNormality: boolean;
     UnivariateNormality: boolean;
-    Outliers: boolean;
 };
 
 export type DiscriminantAssumptionsProps = {

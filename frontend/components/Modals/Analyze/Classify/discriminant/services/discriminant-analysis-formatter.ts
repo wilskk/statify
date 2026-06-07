@@ -414,11 +414,19 @@ export function transformDiscriminantResult(data: any): ResultJson {
         },
         {
           rowHeader: [
-            "Tests null hypothesis of equal population covariance matrices.",
+            "Menguji hipotesis nol bahwa matriks kovariansi populasi antar kelompok adalah sama.",
           ],
         },
       ],
     };
+
+    // Indonesian interpretation (homogeneity-of-covariance assumption), surfaced
+    // as the section Description by store.ts.
+    const boxMp = data.box_m_test.p_value;
+    (table as Table & { footer?: string }).footer =
+      typeof boxMp === "number" && boxMp < 0.05
+        ? "Asumsi tidak terpenuhi: uji Box's M signifikan (p < 0,05), sehingga matriks kovariansi antar kelompok tidak homogen. Pertimbangkan menggunakan klasifikasi dengan matriks kovariansi terpisah (quadratic discriminant)."
+        : "Asumsi terpenuhi: uji Box's M tidak signifikan (p ≥ 0,05), sehingga matriks kovariansi antar kelompok dapat dianggap homogen — sesuai dengan syarat analisis diskriminan linear.";
 
     resultJson.tables.push(table);
   }
@@ -2245,9 +2253,9 @@ export function transformDiscriminantResult(data: any): ResultJson {
         key: "assumption_summary",
         title: "Assumption Checks Summary",
         columnHeaders: [
-          { header: "Assumption", key: "assumption" },
-          { header: "Test", key: "test" },
-          { header: "Finding", key: "finding" },
+          { header: "Asumsi", key: "assumption" },
+          { header: "Uji", key: "test" },
+          { header: "Temuan", key: "finding" },
           { header: "Status", key: "status" },
         ],
         rows: [],
@@ -2259,12 +2267,12 @@ export function transformDiscriminantResult(data: any): ResultJson {
           rowHeader: [r.assumption],
           test: r.test,
           finding: r.finding,
-          status: r.violated ? "⚠ Violated" : "Met",
+          status: r.violated ? "⚠ Tidak terpenuhi" : "Terpenuhi",
         });
       }
       (table as Table & { footer?: string }).footer = anyViolated
-        ? "⚠ One or more assumptions are violated — interpret the discriminant results with caution. See the detail tables below."
-        : "All checked assumptions are met.";
+        ? "⚠ Satu atau lebih asumsi tidak terpenuhi — tafsirkan hasil analisis diskriminan dengan hati-hati. Lihat tabel rinci di bawah untuk tiap asumsi."
+        : "Seluruh asumsi yang diperiksa terpenuhi.";
       resultJson.tables.push(table);
     }
 
@@ -2290,140 +2298,59 @@ export function transformDiscriminantResult(data: any): ResultJson {
       }
       (table as Table & { footer?: string }).footer = mc.note;
       resultJson.tables.push(table);
-
-      if (Array.isArray(mc.dimension) && mc.dimension.length > 0) {
-        const diag: Table = {
-          key: "assumption_collinearity_diagnostics",
-          title: "Collinearity Diagnostics",
-          columnHeaders: [
-            { header: "Dimension", key: "dimension" },
-            { header: "Eigenvalue", key: "eigenvalue" },
-            { header: "Condition Index", key: "condition_index" },
-          ],
-          rows: [],
-        };
-        for (let i = 0; i < mc.dimension.length; i++) {
-          diag.rows.push({
-            rowHeader: [String(mc.dimension[i])],
-            eigenvalue: formatDisplayNumber(mc.eigenvalue[i]),
-            condition_index: formatDisplayNumber(mc.condition_index[i]),
-          });
-        }
-        (diag as Table & { footer?: string }).footer =
-          "Condition indices come from the eigenvalues of the pooled within-groups correlation matrix. A condition index ≥ 30 suggests multicollinearity.";
-        resultJson.tables.push(diag);
-      }
     }
 
-    // Multivariate normality (Henze–Zirkler test), one row per group.
+    // Multivariate normality (Henze–Zirkler) on the full dataset — single row,
+    // matching R's MVN::mvn output (Test / HZ / p value / MVN).
     const mv = assumptions.multivariate_normality;
-    if (mv && Array.isArray(mv.groups) && mv.groups.length > 0) {
+    if (mv && typeof mv.hz === "number") {
       const table: Table = {
         key: "assumption_multivariate_normality",
         title: "Multivariate Normality (Henze-Zirkler Test)",
         columnHeaders: [
-          { header: "Group", key: "group" },
-          { header: "N", key: "n" },
-          { header: "Henze-Zirkler", key: "hz" },
-          { header: "Sig.", key: "p_value" },
-          { header: "Multivariate Normal?", key: "normal" },
+          { header: "Test", key: "test" },
+          { header: "HZ", key: "hz" },
+          { header: "p value", key: "p_value" },
+          { header: "MVN", key: "mvn" },
         ],
-        rows: [],
+        rows: [
+          {
+            rowHeader: ["Henze-Zirkler"],
+            hz: formatDisplayNumber(mv.hz),
+            p_value: formatDisplayNumber(mv.p_value),
+            mvn: mv.normal ? "YES" : "⚠ NO",
+          },
+        ],
       };
-      for (let i = 0; i < mv.groups.length; i++) {
-        table.rows.push({
-          rowHeader: [mv.groups[i]],
-          n: String(mv.n[i]),
-          hz: formatDisplayNumber(mv.hz[i]),
-          p_value: formatDisplayNumber(mv.p_value[i]),
-          normal: mv.normal[i] ? "Yes" : "⚠ No",
-        });
-      }
       (table as Table & { footer?: string }).footer = mv.note;
       resultJson.tables.push(table);
     }
 
-    // Univariate normality, one row per group × variable.
+    // Univariate normality (Anderson–Darling) per predictor on the full dataset,
+    // matching R's MVN::mvn output (Test / Variable / Statistic / p value / Normality).
     const uv = assumptions.univariate_normality;
-    if (uv && Array.isArray(uv.groups) && uv.groups.length > 0) {
+    if (uv && Array.isArray(uv.variables) && uv.variables.length > 0) {
       const table: Table = {
         key: "assumption_univariate_normality",
-        title: "Univariate Normality (Skewness & Kurtosis)",
+        title: "Univariate Normality (Anderson-Darling)",
         columnHeaders: [
-          { header: "Group", key: "group" },
+          { header: "Test", key: "test" },
           { header: "Variable", key: "variable" },
-          { header: "N", key: "n" },
-          {
-            header: "Skewness",
-            key: "skew",
-            children: [
-              { header: "Value", key: "skewness" },
-              { header: "z", key: "skew_z" },
-              { header: "Sig.", key: "skew_p" },
-            ],
-          },
-          {
-            header: "Kurtosis",
-            key: "kurt",
-            children: [
-              { header: "Value", key: "kurtosis" },
-              { header: "z", key: "kurt_z" },
-              { header: "Sig.", key: "kurt_p" },
-            ],
-          },
-          { header: "Normal?", key: "normal" },
+          { header: "Statistic", key: "statistic" },
+          { header: "p value", key: "p_value" },
+          { header: "Normality", key: "normality" },
         ],
         rows: [],
       };
-      for (let i = 0; i < uv.groups.length; i++) {
+      for (let i = 0; i < uv.variables.length; i++) {
         table.rows.push({
-          rowHeader: [uv.groups[i], uv.variables[i]],
-          n: String(uv.n[i]),
-          skewness: formatDisplayNumber(uv.skewness[i]),
-          skew_z: formatDisplayNumber(uv.skew_z[i]),
-          skew_p: formatDisplayNumber(uv.skew_p[i]),
-          kurtosis: formatDisplayNumber(uv.kurtosis[i]),
-          kurt_z: formatDisplayNumber(uv.kurt_z[i]),
-          kurt_p: formatDisplayNumber(uv.kurt_p[i]),
-          normal: uv.normal[i] ? "Yes" : "⚠ No",
+          rowHeader: ["Anderson-Darling", uv.variables[i]],
+          statistic: formatDisplayNumber(uv.statistic[i]),
+          p_value: formatDisplayNumber(uv.p_value[i]),
+          normality: uv.normal[i] ? "YES" : "⚠ NO",
         });
       }
       (table as Table & { footer?: string }).footer = uv.note;
-      resultJson.tables.push(table);
-    }
-
-    // Multivariate outliers (Mahalanobis distance vs χ²).
-    const out = assumptions.outliers;
-    if (out) {
-      const table: Table = {
-        key: "assumption_outliers",
-        title: "Multivariate Outliers (Mahalanobis Distance)",
-        columnHeaders: [
-          { header: "Case", key: "case" },
-          { header: "Group", key: "group" },
-          { header: "Mahalanobis D²", key: "d2" },
-          { header: "Sig.", key: "sig" },
-        ],
-        rows: [],
-      };
-      const count = Array.isArray(out.case_number) ? out.case_number.length : 0;
-      for (let i = 0; i < count; i++) {
-        table.rows.push({
-          rowHeader: [String(out.case_number[i])],
-          group: out.group[i],
-          d2: formatDisplayNumber(out.mahalanobis[i]),
-          sig: formatDisplayNumber(out.p_value[i]),
-        });
-      }
-      if (count === 0) {
-        table.rows.push({
-          rowHeader: ["—"],
-          group: "",
-          d2: "",
-          sig: "No outliers",
-        });
-      }
-      (table as Table & { footer?: string }).footer = out.note;
       resultJson.tables.push(table);
     }
   }

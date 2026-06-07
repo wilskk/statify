@@ -48,7 +48,7 @@ pub struct DiscriminantResult {
     #[serde(rename = "bootstrap_results")]
     pub bootstrap_results: Option<BootstrapResults>,
     /// Pre-results assumption checks (multicollinearity, multivariate &
-    /// univariate normality, outliers). Populated only when at least one
+    /// univariate normality). Populated only when at least one
     /// assumption check is requested in the Assumptions dialog.
     #[serde(rename = "assumption_results")]
     pub assumption_results: Option<AssumptionResults>,
@@ -65,7 +65,6 @@ pub struct AssumptionResults {
     pub multivariate_normality: Option<HenzeZirklerResult>,
     #[serde(rename = "univariate_normality")]
     pub univariate_normality: Option<UnivariateNormalityResult>,
-    pub outliers: Option<OutlierResult>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -101,60 +100,34 @@ pub struct MulticollinearityResult {
     pub note: String,
 }
 
-/// Henze–Zirkler multivariate normality test, one row per group. The HZ
-/// statistic is approximately lognormal under H0; `p_value` is its upper tail.
+/// Henze–Zirkler multivariate normality test computed on the full dataset
+/// (all cases pooled, grouping variable excluded), matching R's `MVN::mvn`.
+/// The HZ statistic is approximately lognormal under H0; `p_value` is its upper
+/// tail.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HenzeZirklerResult {
-    pub groups: Vec<String>,
-    pub n: Vec<i32>,
-    /// Henze–Zirkler statistic per group.
-    pub hz: Vec<f64>,
+    /// Cases used (total across all groups).
+    pub n: i32,
+    /// Henze–Zirkler statistic.
+    pub hz: f64,
     #[serde(rename = "p_value")]
-    pub p_value: Vec<f64>,
-    /// Per-group verdict: p-value above the normality α (not significant).
-    pub normal: Vec<bool>,
+    pub p_value: f64,
+    /// Verdict: p-value above the normality α (not significant).
+    pub normal: bool,
     pub violated: bool,
     pub note: String,
 }
 
-/// Per-(group, variable) univariate skewness & kurtosis z-tests.
+/// Per-variable Anderson–Darling univariate normality test computed on the full
+/// dataset (all cases pooled), matching R's `MVN::mvn` / `nortest::ad.test`.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UnivariateNormalityResult {
-    pub groups: Vec<String>,
     pub variables: Vec<String>,
-    pub n: Vec<i32>,
-    pub skewness: Vec<f64>,
-    #[serde(rename = "skew_z")]
-    pub skew_z: Vec<f64>,
-    #[serde(rename = "skew_p")]
-    pub skew_p: Vec<f64>,
-    pub kurtosis: Vec<f64>,
-    #[serde(rename = "kurt_z")]
-    pub kurt_z: Vec<f64>,
-    #[serde(rename = "kurt_p")]
-    pub kurt_p: Vec<f64>,
-    pub normal: Vec<bool>,
-    pub violated: bool,
-    pub note: String,
-}
-
-/// Cases whose squared Mahalanobis distance from their group centroid exceeds
-/// the chi-square cutoff (df = number of predictors). Only flagged cases listed.
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct OutlierResult {
-    #[serde(rename = "case_number")]
-    pub case_number: Vec<i32>,
-    pub group: Vec<String>,
-    pub mahalanobis: Vec<f64>,
+    /// Anderson–Darling A² statistic per variable.
+    pub statistic: Vec<f64>,
     #[serde(rename = "p_value")]
     pub p_value: Vec<f64>,
-    pub df: i32,
-    #[serde(rename = "threshold_p")]
-    pub threshold_p: f64,
-    #[serde(rename = "num_outliers")]
-    pub num_outliers: i32,
-    #[serde(rename = "total_cases")]
-    pub total_cases: i32,
+    pub normal: Vec<bool>,
     pub violated: bool,
     pub note: String,
 }

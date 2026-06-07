@@ -296,8 +296,10 @@ pub fn run_analysis(
     // Bootstrap resampling. Holds the selected model fixed (reuses the cached
     // selection) and refits the canonical coefficients directly on each resample,
     // so it neither re-runs stepwise nor disturbs the cache.
+    // Bootstrap applies only to "enter independents together"; it is never run
+    // under the stepwise method even if a stale config flag lingers.
     let mut bootstrap_results = None;
-    if config.bootstrap.perform_boot_strapping {
+    if config.bootstrap.perform_boot_strapping && !config.main.stepwise {
         logger.add_log("calculate_bootstrap");
         match core::calculate_bootstrap(&filtered_data, config) {
             Ok(b) => {
@@ -310,13 +312,12 @@ pub fn run_analysis(
     }
 
     // Pre-results assumption checks (multicollinearity, multivariate &
-    // univariate normality, outliers). Computed once from the filtered data;
+    // univariate normality). Computed once from the filtered data;
     // each table carries its own PASS/VIOLATED warning to the output.
     let mut assumption_results = None;
     let want_assumptions = config.assumptions.multicollinearity
         || config.assumptions.multivariate_normality
-        || config.assumptions.univariate_normality
-        || config.assumptions.outliers;
+        || config.assumptions.univariate_normality;
     if want_assumptions {
         logger.add_log("calculate_assumptions");
         match core::calculate_assumptions(&filtered_data, config) {
