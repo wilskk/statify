@@ -172,7 +172,7 @@ export async function saveDiscriminantResult(rawResults: unknown) {
 
         // ── 4. Discriminant functions (the fitted model) ──
         { key: "eigenvalues", title: "Eigenvalues" },
-        { key: "wilks_lambda_test", title: "Wilks' Lambda Test" },
+        { key: "wilks_lambda_test", title: "Wilks' Lambda" },
 
         // ── 5. Function coefficients & interpretation ──
         { key: "standardized_coefficients", title: "Standardized Canonical Discriminant Function Coefficients" },

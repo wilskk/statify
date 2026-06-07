@@ -1546,10 +1546,11 @@ export function transformDiscriminantResult(data: any): ResultJson {
     resultJson.tables.push(table);
   }
 
-  // 18. Wilks' Lambda Test (canonical-function chi-square test).
-  // For stepwise analysis SPSS shows the per-step model Wilks' Lambda table
-  // (rendered above as "stepwise_wilks_lambda") — not the canonical test.
-  if (data.wilks_lambda_test && !data.stepwise_statistics) {
+  // 18. Wilks' Lambda — Summary of Canonical Discriminant Functions
+  // (the chi-square test of the discriminant functions). SPSS shows this for
+  // both the enter and stepwise methods, under Eigenvalues. It is distinct from
+  // the per-step stepwise table rendered above as "stepwise_wilks_lambda".
+  if (data.wilks_lambda_test) {
     const testTable: Table = {
       key: "wilks_lambda_test",
       title: "Wilks' Lambda",
