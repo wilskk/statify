@@ -541,7 +541,7 @@ pub fn calculate_function_at_group_centroids(
                 };
 
                 // Add coefficient * group_mean for each variable
-                for (var_idx, variable) in variables.iter().enumerate() {
+                for (_var_idx, variable) in variables.iter().enumerate() {
                     if let Some(coef_values) = coefficients.get(variable) {
                         if func_idx < coef_values.len() {
                             if let Some(group_mean) =

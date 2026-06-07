@@ -62,7 +62,7 @@ pub struct AssumptionResults {
     pub summary: Vec<AssumptionSummaryRow>,
     pub multicollinearity: Option<MulticollinearityResult>,
     #[serde(rename = "multivariate_normality")]
-    pub multivariate_normality: Option<MardiaResult>,
+    pub multivariate_normality: Option<HenzeZirklerResult>,
     #[serde(rename = "univariate_normality")]
     pub univariate_normality: Option<UnivariateNormalityResult>,
     pub outliers: Option<OutlierResult>,
@@ -101,24 +101,17 @@ pub struct MulticollinearityResult {
     pub note: String,
 }
 
-/// Mardia's multivariate skewness & kurtosis tests, one row per group.
+/// Henze–Zirkler multivariate normality test, one row per group. The HZ
+/// statistic is approximately lognormal under H0; `p_value` is its upper tail.
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MardiaResult {
+pub struct HenzeZirklerResult {
     pub groups: Vec<String>,
     pub n: Vec<i32>,
-    pub skewness: Vec<f64>,
-    #[serde(rename = "skew_stat")]
-    pub skew_stat: Vec<f64>,
-    #[serde(rename = "skew_df")]
-    pub skew_df: Vec<i32>,
-    #[serde(rename = "skew_p")]
-    pub skew_p: Vec<f64>,
-    pub kurtosis: Vec<f64>,
-    #[serde(rename = "kurt_z")]
-    pub kurt_z: Vec<f64>,
-    #[serde(rename = "kurt_p")]
-    pub kurt_p: Vec<f64>,
-    /// Per-group verdict: both skewness & kurtosis non-significant.
+    /// Henze–Zirkler statistic per group.
+    pub hz: Vec<f64>,
+    #[serde(rename = "p_value")]
+    pub p_value: Vec<f64>,
+    /// Per-group verdict: p-value above the normality α (not significant).
     pub normal: Vec<bool>,
     pub violated: bool,
     pub note: String,
@@ -526,7 +519,9 @@ pub struct HighestGroupStatistics {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PriorProbabilities {
-    pub groups: Vec<usize>,
+    /// Actual group values (the grouping variable's category codes), matching
+    /// SPSS's "Prior Probabilities for Groups" first column.
+    pub groups: Vec<String>,
     #[serde(rename = "prior_probabilities")]
     pub prior_probabilities: Vec<f64>,
     #[serde(rename = "cases_used")]

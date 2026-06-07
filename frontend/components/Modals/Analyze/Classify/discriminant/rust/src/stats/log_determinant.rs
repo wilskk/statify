@@ -60,7 +60,7 @@ pub fn calculate_log_determinants(
     // Process each group
     for group in &dataset.group_labels {
         // Create a single-group subset for analysis
-        let single_group_vars: Vec<String> = vec![group.clone()];
+        let _single_group_vars: Vec<String> = vec![group.clone()];
 
         // Get variables values for this group
         let mut group_data = HashMap::new();

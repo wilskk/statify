@@ -226,7 +226,9 @@ pub fn run_analysis(
     // Step 11: Classification results if requested
     let mut classification_function_coefficients = None;
     let mut prior_probabilities = None;
-    if config.classify.summary {
+    // Prior Probabilities for Groups accompany any classification output, so
+    // compute them whenever a summary, casewise, or leave-one-out table is asked for.
+    if config.classify.summary || config.classify.case || config.classify.leave {
         logger.add_log("calculate_prior_probabilities");
         match core::calculate_prior_probabilities(&filtered_data, config) {
             Ok(probabilities) => {
@@ -240,6 +242,8 @@ pub fn run_analysis(
                 // Continue execution despite errors for non-critical functions
             }
         }
+    }
+    if config.classify.summary {
         logger.add_log("calculate_summary_classification");
         match core::calculate_summary_classification(&filtered_data, config) {
             Ok(functions) => {

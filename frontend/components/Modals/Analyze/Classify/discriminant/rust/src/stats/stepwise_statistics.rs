@@ -181,7 +181,6 @@ fn perform_stepwise_analysis(
                     // Eksekusi Removal
                     current_variables.retain(|v| v != &var_name);
                     remaining_variables.push(var_name.clone());
-                    step_action_taken = true;
 
                     let step_data = create_step_data(
                         dataset,
@@ -381,8 +380,8 @@ fn create_initial_step(
     config: &DiscriminantConfig,
 ) -> StepData {
     let initial_variables_not_in = analyze_variables_not_in_model(variables, dataset, &[], config);
-    let k = dataset.num_groups as i32;
-    let n = dataset.total_cases as i32;
+    let _k = dataset.num_groups as i32;
+    let _n = dataset.total_cases as i32;
 
     StepData {
         variable_entered: None,

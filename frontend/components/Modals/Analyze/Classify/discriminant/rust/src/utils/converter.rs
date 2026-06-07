@@ -219,7 +219,7 @@ struct FormattedCrossValidatedCasewiseStatistics {
 
 #[derive(Serialize)]
 struct FormattedPriorProbabilities {
-    groups: Vec<usize>,
+    groups: Vec<String>,
     prior_probabilities: Vec<f64>,
     cases_used: Vec<GroupCases>,
     total: f64,

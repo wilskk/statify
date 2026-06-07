@@ -479,7 +479,13 @@ export function transformDiscriminantResult(data: any): ResultJson {
 
     table.rows.push({
       rowHeader: ["Total"],
-      prior: formatDisplayNumber(data.prior_probabilities.total),
+      // Priors always sum to 1; the count columns sum to the total N.
+      prior: formatDisplayNumber(
+        data.prior_probabilities.prior_probabilities.reduce(
+          (sum: number, val: number) => sum + val,
+          0,
+        ),
+      ),
       unweighted: formatDisplayNumber(totalUnweighted),
       weighted: formatDisplayNumber(totalWeighted),
     });
@@ -943,7 +949,17 @@ export function transformDiscriminantResult(data: any): ResultJson {
                 { header: "Statistic", key: "lambda_statistic" },
                 { header: "df1", key: "lambda_df1" },
                 { header: "df2", key: "lambda_df2" },
-                { header: "Sig.", key: "lambda_sig" },
+                { header: "df3", key: "lambda_df3" },
+              ],
+            },
+            {
+              header: "Exact F",
+              key: "exact_f",
+              children: [
+                { header: "Statistic", key: "exact_f_statistic" },
+                { header: "df1", key: "exact_f_df1" },
+                { header: "df2", key: "exact_f_df2" },
+                { header: "Sig.", key: "exact_f_sig" },
               ],
             },
           ];
@@ -959,7 +975,9 @@ export function transformDiscriminantResult(data: any): ResultJson {
     // Use num_groups from Rust output (authoritative k from dataset.num_groups)
     const numGroups = data.stepwise_statistics.num_groups ?? data.group_statistics?.groups?.length ?? 3;
     const raosVdf = numGroups - 1;
+    const wilksN = data.processing_summary?.valid_count ?? 0;
 
+    let wilksNumVars = 0;
     for (let i = 0; i < stepsCount; i++) {
       const stepNum = i + 1;
 
@@ -1042,6 +1060,8 @@ export function transformDiscriminantResult(data: any): ResultJson {
           ),
         });
       } else {
+        if (data.stepwise_statistics.variables_entered[i]) wilksNumVars++;
+        if (data.stepwise_statistics.variables_removed?.[i]) wilksNumVars--;
         table.rows.push({
           rowHeader: [""],
           step: formatDisplayNumber(stepNum),
@@ -1052,14 +1072,20 @@ export function transformDiscriminantResult(data: any): ResultJson {
           lambda_statistic: formatDisplayNumber(
             data.stepwise_statistics.wilks_lambda?.[i] ?? 1,
           ),
-          lambda_df1: formatDisplayNumber(
-            data.stepwise_statistics.f_to_enter_df1?.[i] ?? 0,
+          lambda_df1: formatDisplayNumber(wilksNumVars),
+          lambda_df2: formatDisplayNumber(numGroups - 1),
+          lambda_df3: formatDisplayNumber(wilksN - numGroups),
+          exact_f_statistic: formatDisplayNumber(
+            data.stepwise_statistics.wilks_exact_f?.[i] ?? 0,
           ),
-          lambda_df2: formatDisplayNumber(
-            data.stepwise_statistics.f_to_enter_df2?.[i] ?? 0,
+          exact_f_df1: formatDisplayNumber(
+            data.stepwise_statistics.wilks_exact_df1?.[i] ?? 0,
           ),
-          lambda_sig: formatDisplayNumber(
-            data.stepwise_statistics.significance?.[i] ?? 1,
+          exact_f_df2: formatDisplayNumber(
+            data.stepwise_statistics.wilks_exact_df2?.[i] ?? 0,
+          ),
+          exact_f_sig: formatDisplayNumber(
+            data.stepwise_statistics.wilks_exact_sig?.[i] ?? 1,
           ),
         });
       }
@@ -2289,34 +2315,17 @@ export function transformDiscriminantResult(data: any): ResultJson {
       }
     }
 
-    // Multivariate normality (Mardia's test), one row per group.
+    // Multivariate normality (Henze–Zirkler test), one row per group.
     const mv = assumptions.multivariate_normality;
     if (mv && Array.isArray(mv.groups) && mv.groups.length > 0) {
       const table: Table = {
         key: "assumption_multivariate_normality",
-        title: "Multivariate Normality (Mardia's Test)",
+        title: "Multivariate Normality (Henze-Zirkler Test)",
         columnHeaders: [
           { header: "Group", key: "group" },
           { header: "N", key: "n" },
-          {
-            header: "Skewness",
-            key: "skew",
-            children: [
-              { header: "b₁,ₚ", key: "skewness" },
-              { header: "Statistic", key: "skew_stat" },
-              { header: "df", key: "skew_df" },
-              { header: "Sig.", key: "skew_p" },
-            ],
-          },
-          {
-            header: "Kurtosis",
-            key: "kurt",
-            children: [
-              { header: "b₂,ₚ", key: "kurtosis" },
-              { header: "z", key: "kurt_z" },
-              { header: "Sig.", key: "kurt_p" },
-            ],
-          },
+          { header: "Henze-Zirkler", key: "hz" },
+          { header: "Sig.", key: "p_value" },
           { header: "Multivariate Normal?", key: "normal" },
         ],
         rows: [],
@@ -2325,13 +2334,8 @@ export function transformDiscriminantResult(data: any): ResultJson {
         table.rows.push({
           rowHeader: [mv.groups[i]],
           n: String(mv.n[i]),
-          skewness: formatDisplayNumber(mv.skewness[i]),
-          skew_stat: formatDisplayNumber(mv.skew_stat[i]),
-          skew_df: String(mv.skew_df[i]),
-          skew_p: formatDisplayNumber(mv.skew_p[i]),
-          kurtosis: formatDisplayNumber(mv.kurtosis[i]),
-          kurt_z: formatDisplayNumber(mv.kurt_z[i]),
-          kurt_p: formatDisplayNumber(mv.kurt_p[i]),
+          hz: formatDisplayNumber(mv.hz[i]),
+          p_value: formatDisplayNumber(mv.p_value[i]),
           normal: mv.normal[i] ? "Yes" : "⚠ No",
         });
       }

@@ -195,7 +195,7 @@ pub fn analyze_variables_in_model(
     variables: &[String],
     dataset: &AnalyzedDataset,
     method_type: MethodType,
-    config: &DiscriminantConfig,
+    _config: &DiscriminantConfig,
 ) -> Vec<VariableInAnalysis> {
     // Parallel analysis of variables
     let results: Vec<VariableInAnalysis> = variables

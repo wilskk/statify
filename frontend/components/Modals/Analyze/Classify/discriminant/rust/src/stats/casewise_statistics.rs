@@ -548,6 +548,7 @@ fn calculate_cross_validated_casewise(
         discriminant_scores: None,
     })
 }
+#[allow(dead_code)]
 struct CrossValidatedCaseResult {
     actual_group: String,
     predicted_group: String,

@@ -672,7 +672,7 @@ pub fn filter_valid_cases(
     for var_idx in 0..data.independent_data.len() {
         let mut filtered_var_data = Vec::new();
 
-        for (group_idx, group_valid_indices) in valid_indices.iter().enumerate() {
+        for (_group_idx, group_valid_indices) in valid_indices.iter().enumerate() {
             for &idx in group_valid_indices {
                 if idx < data.independent_data[var_idx].len() {
                     filtered_var_data.push(data.independent_data[var_idx][idx].clone());

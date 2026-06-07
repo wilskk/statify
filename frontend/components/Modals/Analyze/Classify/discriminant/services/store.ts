@@ -25,7 +25,7 @@ export async function saveDiscriminantResult(rawResults: unknown) {
         { key: "assumption_summary", title: "Assumption Checks Summary" },
         { key: "assumption_multicollinearity", title: "Multicollinearity (Tolerance and VIF)" },
         { key: "assumption_collinearity_diagnostics", title: "Collinearity Diagnostics" },
-        { key: "assumption_multivariate_normality", title: "Multivariate Normality (Mardia's Test)" },
+        { key: "assumption_multivariate_normality", title: "Multivariate Normality (Henze-Zirkler Test)" },
         { key: "assumption_univariate_normality", title: "Univariate Normality (Skewness & Kurtosis)" },
         { key: "assumption_outliers", title: "Multivariate Outliers (Mahalanobis Distance)" },
         { key: "processing_summary", title: "Analysis Case Processing Summary" },
