@@ -36,10 +36,50 @@ export const RepeatedMeasuresDialog = ({
     const { closeModal } = useModal();
 
     useEffect(() => {
-        setMainState((prevState) => ({
-            ...data,
-            SubVar: combinationVars || prevState.SubVar || [],
-        }));
+        setMainState((prevState) => {
+            // Preserve the user's filled-in SubVar across sub-dialog
+            // round-trips (Contrasts/Plots/Options/...). The main dialog
+            // unmounts when one of those opens and remounts when it
+            // closes; the previous version blindly re-applied
+            // `combinationVars`, which is the *placeholder* list emitted
+            // by the Define phase ("?_(1,factor)" etc.). That wiped out
+            // every "perlakuan1_(1,factor)" entry the user had already
+            // dragged in.
+            //
+            // Strategy: identify each slot by its trailing "(N,factor)"
+            // suffix. If the suffix sequence of `data.SubVar` matches
+            // `combinationVars`, the user is still editing the same
+            // factor configuration — keep their entries. If suffixes
+            // differ (typically because the user went back to Define
+            // and changed the factor structure), reseed from
+            // `combinationVars` so the new slots show up.
+            const suffixOf = (s: string) => {
+                const m = s.match(/_(\(.*\))$/);
+                return m ? m[1] : null;
+            };
+            const dataSubVar = data.SubVar || [];
+            const combList = combinationVars || [];
+            const dataSuffixes = dataSubVar.map(suffixOf).filter(Boolean);
+            const combSuffixes = combList.map(suffixOf).filter(Boolean);
+            const suffixesAligned =
+                dataSuffixes.length === combSuffixes.length &&
+                dataSuffixes.length > 0 &&
+                dataSuffixes.every((s, i) => s === combSuffixes[i]);
+
+            const preservedSubVar = suffixesAligned
+                ? dataSubVar
+                : dataSubVar.length > 0 && combList.length === 0
+                    ? dataSubVar
+                    : combList;
+
+            return {
+                ...data,
+                SubVar:
+                    preservedSubVar.length > 0
+                        ? preservedSubVar
+                        : prevState.SubVar || [],
+            };
+        });
     }, [data, combinationVars]);
 
     useEffect(() => {
