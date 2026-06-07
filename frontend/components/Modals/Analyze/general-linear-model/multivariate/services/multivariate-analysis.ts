@@ -231,6 +231,22 @@ export async function analyzeMultivariate({
               }
             : null,
         contrastInfo,
+        sumOfSquareMethod: configData.model?.SumOfSquareMethod ?? null,
+        // Pass the user's DV selection order so per-DV tables (Descriptive
+        // Statistics, Parameter Estimates) render in dialog order instead
+        // of the non-deterministic Rust HashMap order. In paired mode the
+        // DepVar list is rewritten to synthetic diff names; we forward the
+        // effective list so the order still matches what's actually shown.
+        depVarOrder: effectiveConfig.main.DepVar ?? null,
+        // Forward variable-label map so formatter can show SPSS-style labels
+        // (e.g. "ultimate torque") instead of raw variable names ("Y1A1").
+        variableLabels: (Array.isArray(variables) ? variables : []).reduce(
+            (acc: Record<string, string>, v: any) => {
+                if (v?.name && v?.label) acc[v.name] = v.label;
+                return acc;
+            },
+            {} as Record<string, string>
+        ),
     });
 
     // SPSS only shows the "Contrast Coefficients" table when the user

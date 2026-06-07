@@ -21,6 +21,34 @@ export type MultivariateFormatterOptions = {
         method: string;
         first: boolean;
     } | null;
+    /** Sum-of-Squares method the user picked in the Model dialog
+     *  ("typeI" | "typeII" | "typeIII" | "typeIV"). Drives the column header
+     *  of the Tests of Between-Subjects Effects table — SPSS prints
+     *  "Type I Sum of Squares" / "Type III Sum of Squares" etc. so the user
+     *  can confirm at a glance which decomposition is being shown. */
+    sumOfSquareMethod?: string | null;
+    /** Name → user-defined label map for the dependent variables in the
+     *  analysis. SPSS displays the variable LABEL ("ultimate torque")
+     *  wherever a DV appears in output; without this map Statify falls
+     *  back to the raw NAME ("Y1A1"), which looks alien next to the
+     *  reference SPSS output. */
+    variableLabels?: Record<string, string> | null;
+    /** DV names in the order the user dragged them into the dialog. The
+     *  Rust HashMap iteration order is non-deterministic and the formatter
+     *  previously sorted alphabetically, which made the Descriptive
+     *  Statistics block read "disp / hp / mpg / wt" even when the user
+     *  picked "mpg / disp / hp / wt". Tables that group rows by DV
+     *  (Descriptive Statistics, Parameter Estimates) honor this order to
+     *  match the user's mental model and SPSS's behavior. */
+    depVarOrder?: string[] | null;
+};
+
+const sumOfSquaresLabel = (method?: string | null): string => {
+    const m = (method ?? "typeIII").toLowerCase();
+    if (m === "typei" || m === "type1") return "Type I Sum of Squares";
+    if (m === "typeii" || m === "type2") return "Type II Sum of Squares";
+    if (m === "typeiv" || m === "type4") return "Type IV Sum of Squares";
+    return "Type III Sum of Squares";
 };
 
 // ── Student-t helpers (self-contained — no jstat import needed) ───────────────
@@ -172,19 +200,55 @@ function generateContrastRows(
     return rows;
 }
 
-// Maps a synthetic difference-column name (d_v1_minus_v2) back to its human
-// label ("v1 − v2"). Returns the original name when no pair matches.
-function makeDiffLabelMap(
-    pairedMode: MultivariateFormatterOptions["pairedMode"]
+// Resolves a Dependent Variable identifier for display:
+//   1. If paired mode synthesised a "d_v1_minus_v2" column, render as "v1 − v2".
+//   2. If the user attached a label to the underlying variable (the
+//      `variableLabels` map carries name → label pairs from useVariableStore),
+//      render the label. SPSS shows "ultimate torque" instead of "y1" in
+//      every table this way.
+//   3. Otherwise fall back to the raw name.
+function makeDvDisplayMap(
+    pairedMode: MultivariateFormatterOptions["pairedMode"],
+    variableLabels: Record<string, string> | null | undefined
 ): (name: string) => string {
-    if (!pairedMode || pairedMode.pairs.length === 0) {
-        return (name) => name;
+    const diffMap = new Map<string, string>();
+    if (pairedMode && pairedMode.pairs.length > 0) {
+        pairedMode.pairs.forEach(([v1, v2]) => {
+            diffMap.set(`d_${v1}_minus_${v2}`, `${v1} − ${v2}`);
+        });
     }
-    const map = new Map<string, string>();
-    pairedMode.pairs.forEach(([v1, v2]) => {
-        map.set(`d_${v1}_minus_${v2}`, `${v1} − ${v2}`);
-    });
-    return (name) => map.get(name) ?? name;
+    return (name) => {
+        if (diffMap.has(name)) return diffMap.get(name)!;
+        if (variableLabels && variableLabels[name]) return variableLabels[name];
+        return name;
+    };
+}
+
+// Order `[dvName, ...]` entries by the user's dialog selection order so
+// per-DV tables (Descriptive Statistics, Parameter Estimates) read in the
+// same sequence the user dragged variables in. Any DV present in the
+// result but missing from the selection list is appended in numeric-aware
+// alphabetical order so unexpected keys do not silently drop.
+function orderEntriesByDvSelection<T>(
+    entries: [string, T][],
+    depVarOrder: string[] | null
+): [string, T][] {
+    if (!depVarOrder || depVarOrder.length === 0) {
+        return [...entries].sort(([a], [b]) =>
+            a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+        );
+    }
+    const rank = new Map<string, number>();
+    depVarOrder.forEach((name, idx) => rank.set(name, idx));
+    const ranked = entries
+        .filter(([k]) => rank.has(k))
+        .sort(([a], [b]) => (rank.get(a) ?? 0) - (rank.get(b) ?? 0));
+    const leftover = entries
+        .filter(([k]) => !rank.has(k))
+        .sort(([a], [b]) =>
+            a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+        );
+    return [...ranked, ...leftover];
 }
 
 export function transformMultivariateResult(
@@ -197,15 +261,17 @@ export function transformMultivariateResult(
     if (!data) return resultJson;
 
     const pairedMode = options.pairedMode ?? null;
-    const relabelDiff = makeDiffLabelMap(pairedMode);
+    const relabelDv = makeDvDisplayMap(pairedMode, options.variableLabels);
+
+    const depVarOrder = options.depVarOrder ?? null;
 
     formatBetweenSubjectsFactors(data, resultJson);
-    formatDescriptiveStatistics(data, resultJson, relabelDiff);
+    formatDescriptiveStatistics(data, resultJson, relabelDv, depVarOrder);
     formatBoxTest(data, resultJson);
     // Bartlett's Test of Sphericity belongs to Factor Analysis, not GLM Multivariate.
     // Kept computed in Rust for potential reuse by a future Factor Analysis module.
     // formatBartlettTest(data, resultJson);
-    formatLeveneTest(data, resultJson);
+    formatLeveneTest(data, resultJson, relabelDv);
     formatMultivariateTests(
         data,
         resultJson,
@@ -213,18 +279,25 @@ export function transformMultivariateResult(
         options.varianceMode === "Welch" ? options.factor ?? null : null,
         pairedMode
     );
-    formatTestsBetweenSubjectsEffects(data, resultJson);
-    formatParameterEstimates(data, resultJson);
+    formatTestsBetweenSubjectsEffects(
+        data,
+        resultJson,
+        options.sumOfSquareMethod ?? null,
+        relabelDv,
+        depVarOrder
+    );
+    formatParameterEstimates(data, resultJson, relabelDv, depVarOrder);
     formatBetweenSubjectsSSCP(data, resultJson);
     formatResidualMatrix(data, resultJson);
     formatSSCPMatrix(data, resultJson);
     formatContrastCoefficients(data, resultJson);
     formatCustomHypothesisTests(data, resultJson, options.contrastInfo ?? null);
     formatGeneralEstimableFunction(data, resultJson);
-    formatPosthocTests(data, resultJson);
-    formatHomogeneousSubsets(data, resultJson);
-    formatEmmeans(data, resultJson);
+    formatPosthocTests(data, resultJson, relabelDv);
+    formatHomogeneousSubsets(data, resultJson, relabelDv);
+    formatEmmeans(data, resultJson, relabelDv);
     formatSpreadVsLevel(data, resultJson);
+    formatResidualPlots(data, resultJson, relabelDv);
     formatSavedVariables(data, resultJson);
     formatErrors(errors, resultJson);
 
@@ -276,17 +349,23 @@ function formatBetweenSubjectsFactors(data: any, resultJson: ResultJson) {
 function formatDescriptiveStatistics(
     data: any,
     resultJson: ResultJson,
-    relabelDiff: (name: string) => string = (n) => n
+    relabelDiff: (name: string) => string = (n) => n,
+    depVarOrder: string[] | null = null
 ) {
     if (!data.descriptive_statistics) return;
 
-    // Sort by key name so DV order is deterministic (y1 before y2, etc.).
-    // Rust HashMap does not preserve insertion order.
-    const entries = (Object.entries(data.descriptive_statistics) as [string, any][])
-        .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+    // Prefer the user's selection order from the dialog when available so
+    // the rows read "mpg / disp / hp / wt" in the same order the user
+    // dragged them in. Fall back to alphabetical (numeric-aware) sort if
+    // the order vector is missing or doesn't match the result keys —
+    // that preserves the previous deterministic behavior for legacy paths.
+    const entries = orderEntriesByDvSelection(
+        Object.entries(data.descriptive_statistics) as [string, any][],
+        depVarOrder
+    );
     if (entries.length === 0) return;
 
-    const hasData = entries.some(([, stat]) =>
+    const hasData = entries.some(([, stat]: [string, any]) =>
         Array.isArray(stat.groups) && stat.groups.length > 0
     );
     if (!hasData) return;
@@ -307,7 +386,7 @@ function formatDescriptiveStatistics(
             "This table displays the mean, standard deviation, and count (N) for each dependent variable, broken down by each level of the specified factors.",
     };
 
-    entries.forEach(([dvName, stat]) => {
+    entries.forEach(([dvName, stat]: [string, any]) => {
         const displayDvName = relabelDiff(dvName);
         const groups: any[] = stat.groups || [];
         groups.forEach((g: any, idx: number) => {
@@ -383,7 +462,11 @@ function formatBartlettTest(data: any, resultJson: ResultJson) {
 }
 
 // ── 5. Levene's Test ──────────────────────────────────────────────────────────
-function formatLeveneTest(data: any, resultJson: ResultJson) {
+function formatLeveneTest(
+    data: any,
+    resultJson: ResultJson,
+    relabelDv: (name: string) => string = (n) => n
+) {
     if (!data.levene_test) return;
 
     const tests: any[] = Array.isArray(data.levene_test)
@@ -422,7 +505,7 @@ function formatLeveneTest(data: any, resultJson: ResultJson) {
                 : formatDisplayNumber(df2Raw);
             table.rows.push({
                 rowHeader: [],
-                dv_name: idx === 0 ? lt.dependent_variable : "",
+                dv_name: idx === 0 ? relabelDv(lt.dependent_variable) : "",
                 function: entry.test_basis || entry.function || "Mean",
                 levene_statistic: formatDisplayNumber(entry.levene_statistic),
                 df1: String(entry.df1),
@@ -493,7 +576,7 @@ function formatMultivariateTests(
         interpretation = `Hotelling T² Dua Populasi dengan asumsi Σ₁ ≠ Σ₂ (Welch-Satterthwaite). T² = dᵀV⁻¹d dengan V = S₁/n₁ + S₂/n₂; F = ((ν − p + 1)/(pν))·T² ~ F(p, ν − p + 1) dengan ν = derajat kebebasan Krishnamoorthy-Yu. Tolak H₀: μ₁ = μ₂ jika Sig. < α.`;
     } else if (hotellingT2Mode) {
         interpretation =
-            "Hotelling T² Satu Populasi menguji H₀: μ = μ₀. Untuk kasus tanpa faktor between-subjects, T² = (n − 1) × Hotelling's Trace, dan F = ((n − p) / (p(n − 1))) · T² ~ F(p, n − p). Tolak H₀ jika Sig. < α.";
+            "One-Sample Hotelling's T² tests H₀: μ = μ₀. For the intercept-only model (no between-subjects factors), T² = (n − 1) × Hotelling's Trace, and F = ((n − p) / (p(n − 1))) · T² ~ F(p, n − p). Reject H₀ when Sig. < α.";
     } else {
         interpretation =
             "Tests the joint effect of each predictor on the combined dependent variables using four multivariate statistics (Pillai's Trace, Wilks' Lambda, Hotelling's Trace, Roy's Largest Root). A significant Sig. (< .05) indicates that the effect significantly influences the joint distribution of the dependent variables.";
@@ -603,17 +686,27 @@ function formatMultivariateTests(
 }
 
 // ── 7. Tests of Between-Subjects Effects ─────────────────────────────────────
-function formatTestsBetweenSubjectsEffects(data: any, resultJson: ResultJson) {
+function formatTestsBetweenSubjectsEffects(
+    data: any,
+    resultJson: ResultJson,
+    sumOfSquareMethod: string | null,
+    relabelDv: (name: string) => string = (n) => n,
+    depVarOrder: string[] | null = null
+) {
     if (!data.tests_of_between_subjects_effects) return;
 
     const tbs = data.tests_of_between_subjects_effects;
     // Structure from Rust: effects: { [dvName]: { [sourceName]: entry } }
     const effects: Record<string, Record<string, any>> = tbs.effects || {};
 
-    // DV names are the outer keys — sort alphanumerically so order is deterministic
-    // (x1 < x2 < x3 …) regardless of Rust HashMap iteration order.
-    const dvNames: string[] = Object.keys(effects)
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+    // Order DV names by the user's dialog selection so this table groups
+    // rows in the same sequence as Descriptive Statistics and Parameter
+    // Estimates. Falls back to alphanumeric sort when depVarOrder is
+    // unavailable (legacy paths).
+    const dvNames: string[] = orderEntriesByDvSelection(
+        Object.keys(effects).map((k) => [k, null] as [string, null]),
+        depVarOrder
+    ).map(([k]) => k);
 
     // Source names are the inner keys; collect across all DVs preserving order.
     const sourceNames: string[] = [];
@@ -677,7 +770,7 @@ function formatTestsBetweenSubjectsEffects(data: any, resultJson: ResultJson) {
         if (adjRSq !== undefined)
             parts.push(`(Adjusted R Squared = ${formatDisplayNumber(adjRSq)})`);
         noteLines.push(
-            `${letter ? letter + ". " : ""}${parts.join(" ")} — ${dvName}`
+            `${letter ? letter + ". " : ""}${parts.join(" ")} — ${relabelDv(dvName)}`
         );
     });
 
@@ -720,7 +813,7 @@ function formatTestsBetweenSubjectsEffects(data: any, resultJson: ResultJson) {
                 rowHeader: [],
                 // Show source label only on the first DV row of the group (SPSS merges).
                 source: dvIdx === 0 ? sourceName : "",
-                dependent_variable: dvName,
+                dependent_variable: relabelDv(dvName),
                 sum_of_squares: formatDisplayNumber(entry.sum_of_squares),
                 df: entry.df !== undefined && entry.df !== null ? String(entry.df) : "",
                 mean_square: blankMeanSquare ? "" : formatDisplayNumber(entry.mean_square),
@@ -743,41 +836,62 @@ function formatTestsBetweenSubjectsEffects(data: any, resultJson: ResultJson) {
 }
 
 // ── 8. Parameter Estimates ────────────────────────────────────────────────────
-function formatParameterEstimates(data: any, resultJson: ResultJson) {
+// One combined table keyed by `parameter_estimates_combined` with the
+// Dependent Variable column at position 0, matching the post-Multiple-
+// Comparisons convention. The DV column collapses to "" for non-first
+// rows of each block so the table reads like SPSS's multi-DV print-out.
+// Output-layer (multivariate-analysis-output.ts) emits ONE "Parameter
+// Estimates" parent navbar entry with per-DV children — both children
+// render this same combined table; the subnavbar serves as a TOC for the
+// DV blocks.
+function formatParameterEstimates(
+    data: any,
+    resultJson: ResultJson,
+    relabelDv: (name: string) => string = (n) => n,
+    depVarOrder: string[] | null = null
+) {
     if (!data.parameter_estimates) return;
 
     const pe = data.parameter_estimates;
     const estimates: Record<string, any[]> = pe.estimates || {};
+    const orderedEntries = orderEntriesByDvSelection(
+        Object.entries(estimates) as [string, any[]][],
+        depVarOrder
+    );
+    if (orderedEntries.length === 0) return;
 
-    Object.entries(estimates).forEach(([dvName, entries]: [string, any[]]) => {
-        const table: Table = {
-            key: `parameter_estimates_${dvName}`,
-            title: `Parameter Estimates — Dependent Variable: ${dvName}`,
-            columnHeaders: [
-                { header: "Parameter", key: "parameter" },
-                { header: "B", key: "b" },
-                { header: "Std. Error", key: "std_error" },
-                { header: "t", key: "t_value" },
-                { header: "Sig.", key: "significance" },
-                {
-                    header: "95% Confidence Interval",
-                    children: [
-                        { header: "Lower Bound", key: "ci_lower" },
-                        { header: "Upper Bound", key: "ci_upper" },
-                    ],
-                },
-                { header: "Partial Eta Squared", key: "partial_eta_squared" },
-                { header: "Noncent. Parameter", key: "noncent_parameter" },
-                { header: "Observed Power", key: "observed_power" },
-            ],
-            rows: [],
-            interpretation:
-                "Displays the regression coefficient (B), standard error, t-statistic, significance, and 95% confidence interval for each model parameter. A significant Sig. (< .05) indicates that the parameter contributes significantly to predicting the dependent variable.",
-        };
+    const table: Table = {
+        key: "parameter_estimates_combined",
+        title: "Parameter Estimates",
+        columnHeaders: [
+            { header: "Dependent Variable", key: "dv_name" },
+            { header: "Parameter", key: "parameter" },
+            { header: "B", key: "b" },
+            { header: "Std. Error", key: "std_error" },
+            { header: "t", key: "t_value" },
+            { header: "Sig.", key: "significance" },
+            {
+                header: "95% Confidence Interval",
+                children: [
+                    { header: "Lower Bound", key: "ci_lower" },
+                    { header: "Upper Bound", key: "ci_upper" },
+                ],
+            },
+            { header: "Partial Eta Squared", key: "partial_eta_squared" },
+            { header: "Noncent. Parameter", key: "noncent_parameter" },
+            { header: "Observed Power", key: "observed_power" },
+        ],
+        rows: [],
+        interpretation:
+            "Displays the regression coefficient (B), standard error, t-statistic, significance, and 95% confidence interval for each model parameter, grouped by dependent variable. A significant Sig. (< .05) indicates that the parameter contributes significantly to predicting the dependent variable.",
+    };
 
-        entries.forEach((entry: any) => {
+    orderedEntries.forEach(([dvName, entries]: [string, any[]]) => {
+        const displayDvName = relabelDv(dvName);
+        entries.forEach((entry: any, idx: number) => {
             table.rows.push({
                 rowHeader: [],
+                dv_name: idx === 0 ? displayDvName : "",
                 parameter: entry.parameter,
                 b: formatDisplayNumber(entry.b),
                 std_error: formatDisplayNumber(entry.std_error),
@@ -796,9 +910,11 @@ function formatParameterEstimates(data: any, resultJson: ResultJson) {
                     : "",
             });
         });
-
-        resultJson.tables.push(table);
     });
+
+    if (table.rows.length > 0) {
+        resultJson.tables.push(table);
+    }
 }
 
 // ── 9. Between-Subjects SSCP ──────────────────────────────────────────────────

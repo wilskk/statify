@@ -247,6 +247,16 @@ export const MultivariateDialog = ({
         const pairedActive =
             (mainState.PairedMode?.pairs?.length ?? 0) > 0;
 
+        // One-sample Hotelling T² mode: when the user supplies Test Values
+        // (μ₀) the analysis tests H₀: E[X − μ₀] = 0 on an intercept-only
+        // GLM Multivariate model — exactly the SPSS workaround. Requiring a
+        // fixed factor or covariate would block the canonical one-sample
+        // procedure, so we treat a populated TestValues vector the same way
+        // we treat PairedMode.
+        const testValuesActive =
+            Array.isArray(mainState.TestValues) &&
+            mainState.TestValues.length > 0;
+
         if (!pairedActive) {
             if (depVar.length < 2) {
                 toast.warning(
@@ -255,7 +265,11 @@ export const MultivariateDialog = ({
                 return;
             }
 
-            if (fixFactor.length === 0 && covar.length === 0) {
+            if (
+                !testValuesActive &&
+                fixFactor.length === 0 &&
+                covar.length === 0
+            ) {
                 toast.warning(
                     "Please select at least one fixed factor or covariate."
                 );

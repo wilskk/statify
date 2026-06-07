@@ -36,8 +36,18 @@ pub fn calculate_tests_between_subjects_effects(
         .collect::<Vec<String>>();
 
     // Prepare design matrix (X) and dependent variable vectors (Y)
-    for dep_var in &dependent_vars {
+    for (dv_idx, dep_var) in dependent_vars.iter().enumerate() {
         let mut effect_results: HashMap<String, TestEffectEntry> = HashMap::new();
+
+        // For One-Sample Hotelling T² with Test Values (μ₀): the Intercept
+        // effect's Sum of Squares must reflect deviation from μ₀ₖ, not from
+        // 0. Mirrors the parameter_estimates.rs shift and the SPSS workaround
+        // of computing `d_var = var − μ₀` before running GLM. Defaults to 0
+        // (current behavior) when test_values is None.
+        let mu0_k: f64 = config.main.test_values
+            .as_ref()
+            .and_then(|tv| tv.get(dv_idx).copied())
+            .unwrap_or(0.0);
 
         // Build design matrix and response vector
         let (x_matrix, y_vector) = build_design_matrix_and_response(data, config, dep_var)?;
@@ -119,6 +129,11 @@ pub fn calculate_tests_between_subjects_effects(
             //   SS = (Σᵢ ȳᵢ)² / Σᵢ(1/nᵢ)
             // This equals N * grand_mean² only for balanced designs.
             // Fall back to N * ȳ² when no factors are present (one-pop T² case).
+            //
+            // When μ₀ₖ ≠ 0 (Test Values mode) we shift every group mean (or
+            // the grand mean in the no-factor fallback) by μ₀ₖ, which is
+            // arithmetically identical to running GLM on `d_var = var − μ₀`
+            // and matches the reference SPSS output.
             let intercept_ss = if config.main.fix_factor
                 .as_ref()
                 .map_or(false, |f| !f.is_empty())
@@ -143,7 +158,7 @@ pub fn calculate_tests_between_subjects_effects(
                             })
                             .collect();
                         if !group_vals.is_empty() {
-                            sum_group_means += calculate_mean(&group_vals);
+                            sum_group_means += calculate_mean(&group_vals) - mu0_k;
                             sum_inv_n += 1.0 / (group_vals.len() as f64);
                         }
                     }
@@ -151,10 +166,10 @@ pub fn calculate_tests_between_subjects_effects(
                 if sum_inv_n > 0.0 {
                     sum_group_means * sum_group_means / sum_inv_n
                 } else {
-                    (n as f64) * mean_y.powi(2)
+                    (n as f64) * (mean_y - mu0_k).powi(2)
                 }
             } else {
-                (n as f64) * mean_y.powi(2)
+                (n as f64) * (mean_y - mu0_k).powi(2)
             };
             let intercept_df = 1;
             let intercept_ms = intercept_ss;
