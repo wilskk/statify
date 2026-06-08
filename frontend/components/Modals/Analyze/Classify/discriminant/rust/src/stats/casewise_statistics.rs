@@ -317,46 +317,49 @@ fn calculate_cross_validated_casewise(
                     return None;
                 }
 
-                // Create temp data with this case removed
+                // Create temp data with this case removed.
                 let mut temp_data = data.clone();
 
-                let group_idx_in_data = temp_data.group_data.iter().position(|group_records| {
-                    group_records.iter().any(|record| {
-                        match record.values.get(&config.main.grouping_variable) {
-                            Some(crate::models::data::DataValue::Number(n)) => {
-                                n.to_string() == *group_name
-                            }
-                            Some(crate::models::data::DataValue::Text(t)) => t == group_name,
-                            _ => false,
+                // The raw data arrays are flat per-variable: one row per case in the
+                // original input order, with group_data/independent_data parallel by
+                // row. `case_idx` is the index WITHIN the group, so map it to the raw
+                // row index of the `case_idx`-th case that belongs to `group_name`.
+                // (Previously the within-group index was used directly, which removed
+                // the wrong case for every group after the first — so leave-one-out
+                // never actually dropped the target case for groups 2, 3, …)
+                let grouping_var = &config.main.grouping_variable;
+                let matches_group = |record: &crate::models::data::DataRecord| -> bool {
+                    match record.values.get(grouping_var) {
+                        Some(crate::models::data::DataValue::Number(n)) => {
+                            n.to_string() == *group_name
                         }
-                    })
-                })?;
-
-                let mut case_global_idx = 0usize;
-                for group_records in temp_data.group_data.iter() {
-                    let this_is_target_group = group_records.iter().any(|r| {
-                        match r.values.get(&config.main.grouping_variable) {
-                            Some(crate::models::data::DataValue::Number(n)) => {
-                                n.to_string() == *group_name
-                            }
-                            Some(crate::models::data::DataValue::Text(t)) => t == group_name,
-                            _ => false,
-                        }
-                    });
-                    if this_is_target_group {
-                        break;
+                        Some(crate::models::data::DataValue::Text(t)) => t == group_name,
+                        _ => false,
                     }
-                    case_global_idx += group_records.len();
+                };
+
+                let global_case_idx = {
+                    let grouping_col = temp_data.group_data.first()?;
+                    let mut seen = 0usize;
+                    let mut found = None;
+                    for (raw_idx, record) in grouping_col.iter().enumerate() {
+                        if matches_group(record) {
+                            if seen == *case_idx {
+                                found = Some(raw_idx);
+                                break;
+                            }
+                            seen += 1;
+                        }
+                    }
+                    found
+                }?;
+
+                // Remove the case from every parallel column (grouping + independent).
+                for col in temp_data.group_data.iter_mut() {
+                    if global_case_idx < col.len() {
+                        col.remove(global_case_idx);
+                    }
                 }
-
-                let global_case_idx = case_global_idx + case_idx;
-
-                if global_case_idx >= temp_data.group_data[group_idx_in_data].len() {
-                    return None;
-                }
-
-                // Remove the case from temp data
-                temp_data.group_data[group_idx_in_data].remove(global_case_idx);
                 for var_idx in 0..temp_data.independent_data.len() {
                     if global_case_idx < temp_data.independent_data[var_idx].len() {
                         temp_data.independent_data[var_idx].remove(global_case_idx);

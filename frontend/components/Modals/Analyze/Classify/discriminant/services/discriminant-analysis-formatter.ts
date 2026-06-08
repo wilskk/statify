@@ -1356,13 +1356,31 @@ export function transformDiscriminantResult(data: any): ResultJson {
       ...data.stepwise_statistics.variables_in_analysis,
     ].sort((a: any, b: any) => parseInt(a.step) - parseInt(b.step));
 
+    // SPSS lists the variables within each step in the order they ENTERED the
+    // model (Fe2O3, MgO, K2O, …), not most-recently-entered first.
+    const entryOrder: string[] = Array.isArray(
+      data.stepwise_statistics.variables_entered,
+    )
+      ? data.stepwise_statistics.variables_entered.filter(Boolean)
+      : [];
+    const entryRank = (name: string) => {
+      const idx = entryOrder.indexOf(name);
+      return idx === -1 ? Number.MAX_SAFE_INTEGER : idx;
+    };
+
     for (let i = 0; i < sortedSteps.length; i++) {
       const stepData = sortedSteps[i];
       const step = stepData.step;
 
       if (stepData.variables && stepData.variables.length > 0) {
-        for (let j = 0; j < stepData.variables.length; j++) {
-          const variable = stepData.variables[j];
+        const stepVars = [...stepData.variables].sort(
+          (a: any, b: any) => entryRank(a.variable) - entryRank(b.variable),
+        );
+        // Residual variance shown is the model WITHOUT this variable. With only
+        // one variable in the model, removing it leaves nothing, so SPSS blanks it.
+        const modelSize = stepVars.length;
+        for (let j = 0; j < stepVars.length; j++) {
+          const variable = stepVars[j];
 
           if (isRaosVMethod) {
             table.rows.push({
@@ -1387,7 +1405,10 @@ export function transformDiscriminantResult(data: any): ResultJson {
               rowHeader: [step, variable.variable],
               tolerance: formatDisplayNumber(variable.tolerance),
               f_to_remove: formatDisplayNumber(variable.f_to_remove),
-              residual_variance: formatDisplayNumber(variable.min_d_squared || 0),
+              residual_variance:
+                modelSize <= 1
+                  ? ""
+                  : formatDisplayNumber(variable.min_d_squared || 0),
             });
           } else if (isMahalanobis) {
             table.rows.push({
@@ -1478,13 +1499,35 @@ export function transformDiscriminantResult(data: any): ResultJson {
       ...data.stepwise_statistics.variables_not_in_analysis,
     ].sort((a: any, b: any) => parseInt(a.step) - parseInt(b.step));
 
+    // SPSS lists the not-in-analysis variables in the ORIGINAL predictor order
+    // (as entered in the Independents list), not by the selection criterion.
+    const notInOriginalOrder: string[] =
+      (Array.isArray(data.equality_tests?.variables) &&
+        data.equality_tests.variables) ||
+      (Array.isArray(data.pooled_matrices?.variables) &&
+        data.pooled_matrices.variables) ||
+      (Array.isArray(data.group_statistics?.means)
+        ? data.group_statistics.means.map((m: any) => m.variable)
+        : []) ||
+      [];
+    const notInRank = (name: string) => {
+      const idx = notInOriginalOrder.indexOf(name);
+      return idx === -1 ? Number.MAX_SAFE_INTEGER : idx;
+    };
+
     for (let i = 0; i < sortedNotInSteps.length; i++) {
       const stepData = sortedNotInSteps[i];
       const step = stepData.step;
 
       if (stepData.variables && stepData.variables.length > 0) {
-        for (let j = 0; j < stepData.variables.length; j++) {
-          const variable = stepData.variables[j];
+        const stepVars =
+          notInOriginalOrder.length > 0
+            ? [...stepData.variables].sort(
+                (a: any, b: any) => notInRank(a.variable) - notInRank(b.variable),
+              )
+            : stepData.variables;
+        for (let j = 0; j < stepVars.length; j++) {
+          const variable = stepVars[j];
 
           if (isRaosVMethod) {
             table.rows.push({
@@ -1685,9 +1728,10 @@ export function transformDiscriminantResult(data: any): ResultJson {
           header: "Highest Group",
           key: "highest_group",
           children: [
+            // p & df are SPSS's "P(D>d | G=g)".
             { header: "p", key: "p" },
             { header: "df", key: "df" },
-            { header: "P(D=d | G=g)", key: "p_d_g" },
+            { header: "P(G=g | D=d)", key: "p_d_g" },
             {
               header: "Squared Mahalanobis Distance to Centroid",
               key: "mahalanobis",
@@ -1727,29 +1771,14 @@ export function transformDiscriminantResult(data: any): ResultJson {
       const actualGroup = data.casewise_statistics.actual_group[i];
       const isMisclassified = predictedGroup !== actualGroup;
 
-      // Handle discriminant scores dynamically for all functions
-      // discriminant_scores from WASM is a JavaScript object with keys like "0", "1", "Function 1", "Function 2"
-      // We need to convert it to an array format for consistent ordering
+      // Discriminant scores: discriminant_scores is a Vec<ScoreValue> array of
+      // { function, values }, so read the per-case value from each entry's
+      // `values` array (NOT by indexing the entry object itself).
       const scoreData: any = {};
-      if (
-        data.casewise_statistics.discriminant_scores &&
-        typeof data.casewise_statistics.discriminant_scores === "object"
-      ) {
-        // Extract function keys and sort them for consistent ordering
-        const funcKeys = Object.keys(
-          data.casewise_statistics.discriminant_scores,
-        ).sort((a, b) => {
-          // Handle both numeric keys ("0", "1") and function name keys ("Function 1", "Function 2")
-          const numA = parseInt(a.replace(/[^0-9]/g, "")) || parseInt(a) || 0;
-          const numB = parseInt(b.replace(/[^0-9]/g, "")) || parseInt(b) || 0;
-          return numA - numB;
-        });
-
-        for (let j = 0; j < funcKeys.length; j++) {
-          const funcKey = funcKeys[j];
-          const values = data.casewise_statistics.discriminant_scores[funcKey];
-          scoreData[`function_${j + 1}`] = formatDisplayNumber(values[i]);
-        }
+      for (let j = 0; j < discriminantScoreEntries.length; j++) {
+        scoreData[`function_${j + 1}`] = formatDisplayNumber(
+          discriminantScoreEntries[j].values[i],
+        );
       }
 
       table.rows.push({
@@ -1796,23 +1825,10 @@ export function transformDiscriminantResult(data: any): ResultJson {
         const cvActualGroup = cvData.actual_group[i];
         const isMisclassifiedCV = cvPredictedGroup !== cvActualGroup;
 
-        // Cross-validated has NO discriminant scores (SPSS leaves them blank)
+        // Cross-validated has NO discriminant scores (SPSS leaves them blank).
         const scoreDataCV: any = {};
-        if (
-          data.casewise_statistics.discriminant_scores &&
-          typeof data.casewise_statistics.discriminant_scores === "object"
-        ) {
-          const funcKeys = Object.keys(
-            data.casewise_statistics.discriminant_scores,
-          ).sort((a: string, b: string) => {
-            const numA = parseInt(a.replace(/[^0-9]/g, "")) || parseInt(a) || 0;
-            const numB = parseInt(b.replace(/[^0-9]/g, "")) || parseInt(b) || 0;
-            return numA - numB;
-          });
-          for (let j = 0; j < funcKeys.length; j++) {
-            // Leave blank for cross-validated
-            scoreDataCV[`function_${j + 1}`] = "";
-          }
+        for (let j = 0; j < discriminantScoreEntries.length; j++) {
+          scoreDataCV[`function_${j + 1}`] = "";
         }
 
         table.rows.push({
