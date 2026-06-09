@@ -15,7 +15,8 @@ import {
 interface CriteriaTabProps {
     options: {
         iterations: number;
-        convergence: number;
+        pconverge: number;
+        lconverge: number;
         singularity: number;
         delta: number;
     };
@@ -67,15 +68,28 @@ export const CriteriaTab: React.FC<CriteriaTabProps> = ({ options, onChange }) =
                         />
                     </div>
 
-                    {/* Convergence Criterion */}
+                    {/* Parameter convergence criterion */}
                     <div className="space-y-2">
-                        <Label htmlFor="convergence" className="text-xs">Convergence criterion:</Label>
+                        <Label htmlFor="pconverge" className="text-xs">Parameter convergence (PCONVERGE):</Label>
                         <Input
-                            id="convergence"
+                            id="pconverge"
                             type="number"
                             step="0.000001"
-                            value={options.convergence}
-                            onChange={(e) => handleInputChange("convergence", e.target.value)}
+                            value={options.pconverge}
+                            onChange={(e) => handleInputChange("pconverge", e.target.value)}
+                            className="h-8 text-xs"
+                        />
+                    </div>
+
+                    {/* Log-likelihood convergence criterion */}
+                    <div className="space-y-2">
+                        <Label htmlFor="lconverge" className="text-xs">Log-likelihood convergence (LCONVERGE):</Label>
+                        <Input
+                            id="lconverge"
+                            type="number"
+                            step="0.000001"
+                            value={options.lconverge}
+                            onChange={(e) => handleInputChange("lconverge", e.target.value)}
                             className="h-8 text-xs"
                         />
                     </div>
@@ -115,13 +129,7 @@ export const CriteriaTab: React.FC<CriteriaTabProps> = ({ options, onChange }) =
                 </div>
             </div>
 
-            <div className="mt-4 p-3 bg-muted/20 border rounded-md">
-                <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    <span className="font-bold uppercase mr-1">Catatan:</span>
-                    Nilai default mengikuti standar industri (SPSS). Nilai konvergensi yang lebih kecil
-                    meningkatkan presisi namun membutuhkan waktu komputasi Rust WASM yang lebih lama.
-                </p>
-            </div>
+            {/* Note removed as requested */}
         </div>
     );
 };

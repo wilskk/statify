@@ -42,16 +42,17 @@ import { formatAssumptionTests } from "../services/formatter_assumptions";
 import { generateLogisticRegressionSyntax } from "../services/syntaxGenerator";
 
 // Types
-import { Variable } from "@/types/Variable";
+import type { Variable } from "@/types/Variable";
 import type { CellUpdate } from "@/stores/useDataStore";
-import {
+import type {
   BinaryLogisticOptions,
   BinaryLogisticCategoricalParams,
   BinaryLogisticSaveParams,
   BinaryLogisticOptionsParams,
   BinaryLogisticAssumptionParams,
   LogisticResult,
-  SavedPredictions,
+  SavedPredictions} from "../types/binary-logistic";
+import {
   DEFAULT_BINARY_LOGISTIC_OPTIONS,
   DEFAULT_BINARY_LOGISTIC_CATEGORICAL_PARAMS,
   DEFAULT_BINARY_LOGISTIC_SAVE_PARAMS,
@@ -148,9 +149,9 @@ export const BinaryLogisticMain = () => {
         const columnValues = data
           .map((row) => row[colIndex])
           .filter((val) => val !== null && val !== undefined && val !== "");
-        
+
         const uniqueValues = Array.from(new Set(columnValues));
-        
+
         if (uniqueValues.length !== 2) {
           toast.error(
             `Variable "${highlightedVariable.label || highlightedVariable.name}" has ${uniqueValues.length} unique value(s). Dependent variable must have exactly 2 unique values (binary outcome).`
@@ -158,7 +159,7 @@ export const BinaryLogisticMain = () => {
           return;
         }
       }
-      
+
       // Set dependent
       setOptions((prev) => ({ ...prev, dependent: highlightedVariable }));
       setHighlightedVariable(null);
@@ -285,8 +286,8 @@ export const BinaryLogisticMain = () => {
           ...options.covariates.map((v) => v.id),
           ...options.factors.map((v) => v.id),
         ],
-        data: data,
-        variableDetails: variableDetails,
+        data,
+        variableDetails,
         config: JSON.stringify(analysisConfig),
       });
     });
@@ -318,10 +319,10 @@ export const BinaryLogisticMain = () => {
     const storeVariables = useVariableStore.getState().variables;
     const variableNames = savedPredictions.variable_names;
     const rows = savedPredictions.rows;
-    
+
     // Track existing variable names for uniqueness
     const existingVarNames = new Set(storeVariables.map(v => v.name.toUpperCase()));
-    
+
     // Build reverse mapping: 0/1 -> original label (e.g., {0: "Male", 1: "Female"})
     const reverseYEncoding: Record<number, string> = {};
     if (yEncoding) {
@@ -376,7 +377,7 @@ export const BinaryLogisticMain = () => {
         type: "NUMERIC",
         width: 8,
         decimals: 5,
-        label: label,
+        label,
         values: [],
         missing: null,
         columns: 200,
@@ -393,7 +394,7 @@ export const BinaryLogisticMain = () => {
           allCellUpdates.push({
             row: rowIndex,
             col: nextColumnIndex,
-            value: value,
+            value,
           });
         }
       });
@@ -444,7 +445,7 @@ export const BinaryLogisticMain = () => {
           allCellUpdates.push({
             row: rowIndex,
             col: nextColumnIndex,
-            value: value,
+            value,
           });
         }
       });
@@ -490,7 +491,7 @@ export const BinaryLogisticMain = () => {
           type: "NUMERIC",
           width: 8,
           decimals: 5,
-          label: label,
+          label,
           values: [],
           missing: null,
           columns: 200,
@@ -506,7 +507,7 @@ export const BinaryLogisticMain = () => {
             allCellUpdates.push({
               row: rowIndex,
               col: nextColumnIndex,
-              value: value,
+              value,
             });
           }
         });
@@ -516,7 +517,7 @@ export const BinaryLogisticMain = () => {
     };
 
     // --- Queue all variables in order ---
-    
+
     // Predicted Values
     queueNumericVariable(
       variableNames?.predicted_probability,
@@ -572,7 +573,7 @@ export const BinaryLogisticMain = () => {
         // Step 1: Add variables WITHOUT updates (empty columns)
         // This avoids index conflicts during splice operations
         await addVariables(variablesToAdd, []);
-        
+
         // Step 2: After variables are added, apply cell updates separately
         // The column indices should now be valid in the new structure
         if (allCellUpdates.length > 0) {
@@ -580,7 +581,7 @@ export const BinaryLogisticMain = () => {
           await useDataStore.getState().updateCells(allCellUpdates);
           await useDataStore.getState().saveData();
         }
-        
+
         console.log("[Main] Saved predictions added to dataset successfully");
       } catch (error) {
         console.error("[Main] Error adding saved predictions:", error);
@@ -633,7 +634,7 @@ export const BinaryLogisticMain = () => {
       }
     } catch (err: any) {
       console.error(err);
-      throw new Error("Failed to run VIF check: " + err.message);
+      throw new Error(`Failed to run VIF check: ${  err.message}`);
     }
   };
 
@@ -677,7 +678,7 @@ export const BinaryLogisticMain = () => {
       }
     } catch (err: any) {
       console.error(err);
-      throw new Error("Failed to run Box-Tidwell test: " + err.message);
+      throw new Error(`Failed to run Box-Tidwell test: ${  err.message}`);
     }
   };
 
@@ -726,7 +727,7 @@ export const BinaryLogisticMain = () => {
               payload,
               options.dependent!,
               allIndependentVars,
-              { 
+              {
                 displayAtLastStep: !optParams.displayAtEachStep,
                 ciForExpB: optParams.ciForExpB,
                 ciLevel: optParams.ciLevel,
@@ -751,10 +752,10 @@ export const BinaryLogisticMain = () => {
               factors: options.factors,
               method: options.method,
               categoricalParams: catParams,
-              saveParams: saveParams,
+              saveParams,
               optionParams: optParams,
             });
-            
+
             const logId = await addLog({
               log: syntaxLog,
             });
@@ -786,7 +787,7 @@ export const BinaryLogisticMain = () => {
                 if (section.id.includes("fitting_warnings")) {
                   componentCategory = "Warnings";
                 } else if (section.id.includes("case_processing")) {
-                  componentCategory = "Case Processing Summary";
+                  componentCategory = "Case Summary";
                 } else if (section.id.includes("encoding")) {
                   componentCategory = "Dependent Variable Encoding";
                 } else if (section.id.includes("categorical_codings")) {
@@ -858,7 +859,7 @@ export const BinaryLogisticMain = () => {
             closeModal("BINARY_LOGISTIC");
           } catch (saveError: any) {
             console.error("[Main] Error inside SUCCESS block:", saveError);
-            setErrorMsg("Gagal menyimpan hasil: " + saveError.message);
+            setErrorMsg(`Gagal menyimpan hasil: ${  saveError.message}`);
             setIsLoading(false);
             worker.terminate();
           }
@@ -885,7 +886,7 @@ export const BinaryLogisticMain = () => {
       // --- PERSIAPAN DATA INDEX & CONFIG ---
       // Refresh variables from store to ensure we have the latest state
       const currentVariables = useVariableStore.getState().variables;
-      
+
       /**
        * Helper: Find actual variable in store with fallback strategies
        * Returns the ACTUAL variable from currentVariables (with correct ID)
@@ -900,7 +901,7 @@ export const BinaryLogisticMain = () => {
         // Strategy 1: Find by ID
         let found = currentVariables.find((v) => v.id === targetVar.id);
         if (found) return found;
-        
+
         // Strategy 2: Find by columnIndex (more reliable after reload)
         if (targetVar.columnIndex !== undefined) {
           found = currentVariables.find((v) => v.columnIndex === targetVar.columnIndex);
@@ -909,17 +910,17 @@ export const BinaryLogisticMain = () => {
             return found;
           }
         }
-        
+
         // Strategy 3: Find by name (last resort)
         found = currentVariables.find((v) => v.name === targetVar.name);
         if (found) {
           console.log(`[Main] Variable "${targetVar.name}" found by name, new ID: ${found.id}`);
           return found;
         }
-        
+
         return null;
       };
-      
+
       // Find actual variables in store (with correct IDs)
       const actualDependent = findActualVariable(options.dependent!);
       const actualCovariates = options.covariates
@@ -928,16 +929,16 @@ export const BinaryLogisticMain = () => {
       const actualFactors = options.factors
         .map(f => findActualVariable(f))
         .filter((v): v is Variable => v !== null);
-      
+
       // Get indices in currentVariables array
-      const depIndex = actualDependent 
-        ? currentVariables.findIndex(v => v.id === actualDependent.id) 
+      const depIndex = actualDependent
+        ? currentVariables.findIndex(v => v.id === actualDependent.id)
         : -1;
       const indepIndices = [
         ...actualCovariates.map(c => currentVariables.findIndex(v => v.id === c.id)),
         ...actualFactors.map(f => currentVariables.findIndex(v => v.id === f.id)),
       ].filter((idx) => idx !== -1);
-      
+
       // Debug logging
       console.log("[Main] Variables in store:", currentVariables.length);
       console.log("[Main] Dependent variable:", options.dependent?.name, "oldID:", options.dependent?.id, "newID:", actualDependent?.id);
@@ -954,14 +955,14 @@ export const BinaryLogisticMain = () => {
           `Silakan pilih ulang variabel dari daftar yang tersedia.`
         );
       }
-      
+
       if (indepIndices.length === 0) {
         throw new Error(
           `Tidak ada variabel independen yang ditemukan di dataset. ` +
           `Covariates yang dipilih: ${options.covariates.map(c => c.name).join(", ")}`
         );
       }
-      
+
       // Build variableDetails with CURRENT IDs from store
       const currentVariableDetails: Record<number, Variable> = {};
       currentVariables.forEach(v => {
@@ -1069,13 +1070,13 @@ export const BinaryLogisticMain = () => {
           ...actualCovariates.map((v) => v.id),
           ...actualFactors.map((v) => v.id),
         ],
-        data: data,
+        data,
         variableDetails: currentVariableDetails, // Use refreshed variableDetails
         config: JSON.stringify(analysisConfig),
       });
     } catch (err: any) {
       console.error("Main Thread Error:", err);
-      setErrorMsg("Gagal memulai analisis: " + err.message);
+      setErrorMsg(`Gagal memulai analisis: ${  err.message}`);
       setIsLoading(false);
     }
   };

@@ -30,7 +30,8 @@ export const VariablesTab: React.FC<VariablesTabProps> = ({
     options,
     setOptions,
 }) => {
-    const [selectedVar, setSelectedVar] = useState<Variable | null>(null);
+    const [selectedVarIds, setSelectedVarIds] = useState<string[]>([]);
+    const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
 
     const availableVariables = variables.filter(
         (v) =>
@@ -39,33 +40,113 @@ export const VariablesTab: React.FC<VariablesTabProps> = ({
             !options.covariates.some((c) => c.id === v.id)
     );
 
-    const handleSelect = (v: Variable) => {
-        setSelectedVar(selectedVar?.id === v.id ? null : v);
+    const selectedVars = availableVariables.filter((v) =>
+        selectedVarIds.includes(String(v.id))
+    );
+
+    const handleSelect = (v: Variable, e: React.MouseEvent<HTMLDivElement>) => {
+        const multiSelect = e.ctrlKey || e.metaKey;
+        const useRangeSelect = e.shiftKey && lastSelectedIndex !== null;
+        const varId = String(v.id);
+
+        const currentIndex = availableVariables.findIndex((item) => String(item.id) === varId);
+        if (currentIndex < 0) return;
+
+        if (useRangeSelect) {
+            const start = Math.min(lastSelectedIndex, currentIndex);
+            const end = Math.max(lastSelectedIndex, currentIndex);
+            const rangeIds = availableVariables.slice(start, end + 1).map((item) => String(item.id));
+
+            setSelectedVarIds((prev) => {
+                if (multiSelect) {
+                    const merged = new Set([...prev, ...rangeIds]);
+                    return Array.from(merged);
+                }
+                return rangeIds;
+            });
+            setLastSelectedIndex(currentIndex);
+            return;
+        }
+
+        if (multiSelect) {
+            setSelectedVarIds((prev) =>
+                prev.includes(varId)
+                    ? prev.filter((id) => id !== varId)
+                    : [...prev, varId]
+            );
+            setLastSelectedIndex(currentIndex);
+            return;
+        }
+
+        setSelectedVarIds((prev) => (prev.length === 1 && prev[0] === varId ? [] : [varId]));
+        setLastSelectedIndex(currentIndex);
+    };
+
+    const moveSelection = (target: "dependent" | "factors" | "covariates") => {
+        if (selectedVars.length === 0) return;
+
+        setOptions((prev: MultinomialOptions & Record<string, any>) => {
+            if (target === "dependent") {
+                return { ...prev, dependent: selectedVars[0] };
+            }
+
+            const existingIds = new Set(prev[target].map((v: Variable) => String(v.id)));
+            const additions = selectedVars.filter((v) => !existingIds.has(String(v.id)));
+            return {
+                ...prev,
+                [target]: [...prev[target], ...additions],
+            };
+        });
+
+        setSelectedVarIds([]);
+    };
+
+    const handleDragStart = (e: React.DragEvent<HTMLDivElement>, draggedVar: Variable) => {
+        const draggedId = String(draggedVar.id);
+        const idsToDrag = selectedVarIds.includes(draggedId)
+            ? selectedVarIds
+            : [draggedId];
+
+        if (!selectedVarIds.includes(draggedId)) {
+            setSelectedVarIds([draggedId]);
+        }
+
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("application/statify-variable-ids", JSON.stringify(idsToDrag));
+    };
+
+    const handleDropToTarget = (
+        e: React.DragEvent<HTMLDivElement>,
+        target: "dependent" | "factors" | "covariates"
+    ) => {
+        e.preventDefault();
+        const raw = e.dataTransfer.getData("application/statify-variable-ids");
+        if (!raw) return;
+
+        try {
+            const ids = JSON.parse(raw) as string[];
+            const validIds = ids.filter((id) =>
+                availableVariables.some((v) => String(v.id) === id)
+            );
+            if (validIds.length === 0) return;
+            setSelectedVarIds(validIds);
+            moveSelection(target);
+        } catch {
+            // Ignore invalid payload.
+        }
     };
 
     // Fungsi pemindahan variabel
     const moveToDependent = () => {
-        if (!selectedVar) return;
-        setOptions((prev: any) => ({ ...prev, dependent: selectedVar }));
-        setSelectedVar(null);
+        moveSelection("dependent");
     };
 
     const moveToFactors = () => {
-        if (!selectedVar) return;
-        setOptions((prev: MultinomialOptions & Record<string, any>) => {
-            if (prev.factors.some((f: Variable) => f.id === selectedVar.id)) return prev;
-            return { ...prev, factors: [...prev.factors, selectedVar] };
-        });
-        setSelectedVar(null);
+        moveSelection("factors");
     };
 
     const moveToCovariates = () => {
-        if (!selectedVar) return;
-        setOptions((prev: MultinomialOptions & Record<string, any>) => {
-            if (prev.covariates.some((c: Variable) => c.id === selectedVar.id)) return prev;
-            return { ...prev, covariates: [...prev.covariates, selectedVar] };
-        });
-        setSelectedVar(null);
+        moveSelection("covariates");
     };
 
     const removeFromList = (id: string, key: "factors" | "covariates" | "dependent") => {
@@ -93,15 +174,22 @@ export const VariablesTab: React.FC<VariablesTabProps> = ({
                     Variables
                     <Info className="h-3 w-3 opacity-40" />
                 </div>
+                <div className="px-2 py-1 text-[10px] text-muted-foreground border-b bg-muted/10">
+                    Ctrl/Cmd + click untuk pilih banyak, lalu drag sekali.
+                </div>
                 <ScrollArea className="flex-1">
                     <div className="p-2 space-y-1">
                         {availableVariables.map((v) => (
                             <div
                                 key={v.id}
-                                onClick={() => handleSelect(v)}
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, v)}
+                                onClick={(e) => handleSelect(v, e)}
                                 className={cn(
                                     "flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer text-xs transition-colors",
-                                    selectedVar?.id === v.id ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+                                    selectedVarIds.includes(String(v.id))
+                                        ? "bg-primary text-primary-foreground"
+                                        : "hover:bg-accent"
                                 )}
                             >
                                 {getVariableIcon(v.measure || "")}
@@ -119,12 +207,16 @@ export const VariablesTab: React.FC<VariablesTabProps> = ({
                 <div className="flex items-center justify-center h-[70px]">
                     <Button
                         variant="outline" size="icon" className="h-7 w-7"
-                        onClick={moveToDependent} disabled={!selectedVar}
+                        onClick={moveToDependent} disabled={selectedVars.length === 0}
                     >
                         <ChevronRight className="h-4 w-4" />
                     </Button>
                 </div>
-                <div className="border rounded-md bg-card h-[70px] overflow-hidden flex flex-col">
+                <div
+                    className="border rounded-md bg-card h-[70px] overflow-hidden flex flex-col"
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => handleDropToTarget(e, "dependent")}
+                >
                     <div className="p-1.5 border-b bg-muted/20 text-[9px] font-bold uppercase">Dependent Variable</div>
                     <div className="p-1.5 flex-1">
                         {options.dependent && (
@@ -143,12 +235,16 @@ export const VariablesTab: React.FC<VariablesTabProps> = ({
                 <div className="flex items-center justify-center h-[145px]">
                     <Button
                         variant="outline" size="icon" className="h-7 w-7"
-                        onClick={moveToFactors} disabled={!selectedVar}
+                        onClick={moveToFactors} disabled={selectedVars.length === 0}
                     >
                         <ChevronRight className="h-4 w-4" />
                     </Button>
                 </div>
-                <div className="flex flex-col border rounded-md bg-card overflow-hidden h-[145px]">
+                <div
+                    className="flex flex-col border rounded-md bg-card overflow-hidden h-[145px]"
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => handleDropToTarget(e, "factors")}
+                >
                     <div className="p-1.5 border-b bg-muted/20 text-[9px] font-bold uppercase text-orange-600">Factors (Fixed)</div>
                     <ScrollArea className="flex-1">
                         <div className="p-1.5 space-y-1">
@@ -170,12 +266,16 @@ export const VariablesTab: React.FC<VariablesTabProps> = ({
                 <div className="flex items-center justify-center h-[145px]">
                     <Button
                         variant="outline" size="icon" className="h-7 w-7"
-                        onClick={moveToCovariates} disabled={!selectedVar}
+                        onClick={moveToCovariates} disabled={selectedVars.length === 0}
                     >
                         <ChevronRight className="h-4 w-4" />
                     </Button>
                 </div>
-                <div className="flex flex-col border rounded-md bg-card overflow-hidden h-[145px]">
+                <div
+                    className="flex flex-col border rounded-md bg-card overflow-hidden h-[145px]"
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => handleDropToTarget(e, "covariates")}
+                >
                     <div className="p-1.5 border-b bg-muted/20 text-[9px] font-bold uppercase text-blue-600">Covariates</div>
                     <ScrollArea className="flex-1">
                         <div className="p-1.5 space-y-1">

@@ -113,8 +113,6 @@ impl FactorAnalysis {
             value_target_data,
             target_data_defs,
             value_target_data_defs,
-
-            // ===== FIELD BARU (WAJIB) =====
             eigenvalues: None,
             total_variance: None,
             n_variables: 0,

@@ -1,288 +1,569 @@
-import { useEffect, useMemo, useState } from "react";
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CircleHelp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KNNDialog } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/dialog";
-import type {
-  KNNContainerProps,
-  KNNMainType,
-  KNNType,
-} from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor";
-import { KNNDefault } from "@/components/Modals/Analyze/Classify/nearest-neighbor/constants/nearest-neighbor-default";
 import { KNNNeighbors } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/neighbors";
 import { KNNFeatures } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/features";
 import { KNNPartition } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/partition";
 import { KNNSave } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/save";
 import { KNNOutput } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/output";
-import { KNNOptions } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/options";
+
+import type {
+  KNNContainerProps,
+  KNNType,
+} from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor";
+
+import { KNNDefault } from "@/components/Modals/Analyze/Classify/nearest-neighbor/constants/nearest-neighbor-default";
+
 import { useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
-import { useResultStore } from "@/stores/useResultStore";
+
 import { analyzeKNN } from "@/components/Modals/Analyze/Classify/nearest-neighbor/services/nearest-neighbor-analysis";
 import { clearFormData, getFormData, saveFormData } from "@/hooks/useIndexedDB";
+
+import { toast } from "sonner";
+
+type KNNFormValue = string[] | string | number | boolean | null;
+
+const KNN_SETTINGS_LOAD_ERROR_TOAST_ID = "knn-settings-load-error";
+const KNN_VALIDATION_ERROR_TOAST_ID = "knn-validation-error";
+
+const getUserFriendlyKNNError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const normalizedMessage = message.toLowerCase();
+
+  if (normalizedMessage.includes("target variable")) {
+    return "Select a target variable before running the KNN analysis.";
+  }
+
+  if (
+    normalizedMessage.includes("feature variable") ||
+    normalizedMessage.includes("at least one feature") ||
+    normalizedMessage.includes("no valid features") ||
+    normalizedMessage.includes("no predictors")
+  ) {
+    return "Select at least one feature variable before running the KNN analysis.";
+  }
+
+  if (
+    normalizedMessage.includes("no cases found") ||
+    normalizedMessage.includes("no data available") ||
+    normalizedMessage.includes("no valid data records")
+  ) {
+    return "No valid cases are available for analysis. Check the selected variables for missing or invalid values.";
+  }
+
+  if (normalizedMessage.includes("no focal cases")) {
+    return "No matching focal cases were found. Check the focal case identifier values.";
+  }
+
+  if (
+    normalizedMessage.includes("partition variable") &&
+    normalizedMessage.includes("no training cases")
+  ) {
+    return "The selected partition variable does not contain any training cases. Use positive values for training cases.";
+  }
+
+  if (normalizedMessage.includes("partition variable")) {
+    return "Select a partition variable or switch to random partitioning.";
+  }
+
+  if (
+    normalizedMessage.includes("cross-validation fold variable") ||
+    normalizedMessage.includes("fold variable")
+  ) {
+    return "Select a cross-validation fold variable or switch to automatic fold assignment.";
+  }
+
+  if (
+    normalizedMessage.includes("cross-validation") ||
+    normalizedMessage.includes("fold")
+  ) {
+    return "Review the cross-validation settings. Use at least two valid folds and ensure the number of folds does not exceed the available training cases.";
+  }
+
+  if (normalizedMessage.includes("training case")) {
+    return "There are not enough valid training cases for this analysis. Review the partition settings and selected variables.";
+  }
+
+  if (
+    normalizedMessage.includes("worker") ||
+    normalizedMessage.includes("wasm") ||
+    normalizedMessage.includes("module")
+  ) {
+    return "The KNN analysis engine could not be loaded. Please refresh the page and try again.";
+  }
+
+  return "The KNN analysis could not be completed. Review the selected variables and settings, then try again.";
+};
+
+const stripRemovedConfig = <T extends object>(
+  data: T & { options?: unknown },
+): Omit<T, "options"> => {
+  const { options: _options, ...config } = data;
+  return config as Omit<T, "options">;
+};
+
+const createDefaultFormData = (): KNNType => ({
+  main: {
+    ...KNNDefault.main,
+    FeatureVar: KNNDefault.main.FeatureVar
+      ? [...KNNDefault.main.FeatureVar]
+      : null,
+  },
+  neighbors: { ...KNNDefault.neighbors },
+  features: {
+    ...KNNDefault.features,
+    ForwardSelection: KNNDefault.features.ForwardSelection
+      ? [...KNNDefault.features.ForwardSelection]
+      : null,
+    ForcedEntryVar: KNNDefault.features.ForcedEntryVar
+      ? [...KNNDefault.features.ForcedEntryVar]
+      : null,
+  },
+  partition: { ...KNNDefault.partition },
+  save: { ...KNNDefault.save },
+  output: { ...KNNDefault.output },
+});
+
+const normalizeFormData = (
+  data?: Partial<KNNType & { options?: unknown }> | null,
+): KNNType => {
+  const defaults = createDefaultFormData();
+  if (!data) return defaults;
+
+  const config = stripRemovedConfig(data);
+
+  const features = {
+    ...defaults.features,
+    ...(config.features ?? {}),
+    ForwardSelection: config.features?.ForwardSelection
+      ? [...config.features.ForwardSelection]
+      : defaults.features.ForwardSelection,
+    ForcedEntryVar: config.features?.ForcedEntryVar
+      ? [...config.features.ForcedEntryVar]
+      : defaults.features.ForcedEntryVar,
+  };
+
+  if (features.BelowMin) {
+    features.MaxReached = false;
+  } else {
+    features.MaxReached = true;
+    features.BelowMin = false;
+  }
+
+  return {
+    main: {
+      ...defaults.main,
+      ...(config.main ?? {}),
+      FeatureVar: config.main?.FeatureVar
+        ? [...config.main.FeatureVar]
+        : defaults.main.FeatureVar,
+    },
+    neighbors: { ...defaults.neighbors, ...(config.neighbors ?? {}) },
+    features,
+    partition: { ...defaults.partition, ...(config.partition ?? {}) },
+    save: { ...defaults.save, ...(config.save ?? {}) },
+    output: { ...defaults.output, ...(config.output ?? {}) },
+  };
+};
 
 export const KNNContainer = ({ onClose }: KNNContainerProps) => {
   const variables = useVariableStore((state) => state.variables);
   const dataVariables = useDataStore((state) => state.data);
-  const tempVariables = useMemo(
-    () => variables.map((variable) => variable.name),
-    [variables],
-  );
 
-  const [formData, setFormData] = useState<KNNType>({ ...KNNDefault });
-  const [isMainOpen, setIsMainOpen] = useState(true);
-  const [isNeighborsOpen, setIsNeighborsOpen] = useState(false);
-  const [isFeaturesOpen, setIsFeaturesOpen] = useState(false);
-  const [isPartitionOpen, setIsPartitionOpen] = useState(false);
-  const [isSaveOpen, setIsSaveOpen] = useState(false);
-  const [isOutputOpen, setIsOutputOpen] = useState(false);
-  const [isOptionsOpen, setIsOptionsOpen] = useState(false);
+  const [formData, setFormData] = useState<KNNType>(createDefaultFormData);
+  const [resetKey, setResetKey] = useState(0);
+
+  const [activeTab, setActiveTab] = useState("variables");
+  const [helperMode, setHelperMode] = useState(false);
 
   const { closeModal } = useModal();
-  const { addLog, addAnalytic, addStatistic } = useResultStore();
 
   useEffect(() => {
+    let isActive = true;
+
     const loadFormData = async () => {
       try {
         const savedData = await getFormData("NearestNeighbor");
+        if (!isActive) return;
+
         if (savedData) {
-          const { id, ...formDataWithoutId } = savedData;
-          setFormData(formDataWithoutId);
+          const { id: _id, ...formDataWithoutId } = savedData;
+          setFormData(normalizeFormData(formDataWithoutId));
         } else {
-          setFormData({ ...KNNDefault });
+          setFormData(createDefaultFormData());
         }
-      } catch (error) {
-        console.error("Failed to load form data:", error);
+      } catch {
+        if (!isActive) return;
+
+        toast.error(
+          "Saved KNN settings could not be loaded. Default settings will be used.",
+          { id: KNN_SETTINGS_LOAD_ERROR_TOAST_ID },
+        );
       }
     };
 
-    loadFormData();
+    void loadFormData();
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   useEffect(() => {
-    if (formData.main.FeatureVar) {
-      setFormData((prev) => ({
-        ...prev,
-        features: {
-          ...prev.features,
-          ForwardSelection: prev.main.FeatureVar
-            ? [...prev.main.FeatureVar]
-            : [],
-        },
-        partition: {
-          ...prev.partition,
-          SrcVar: prev.main.FeatureVar ? [...prev.main.FeatureVar] : [],
-        },
-      }));
-    }
-  }, [formData.main.FeatureVar]);
+    const featureVars = formData.main.FeatureVar ?? [];
 
-  const updateFormData = <T extends keyof typeof formData>(
-    section: T,
-    field: keyof (typeof formData)[T],
-    value: unknown,
-  ) => {
     setFormData((prev) => ({
       ...prev,
-      [section]: {
-        ...prev[section],
-        [field]: value,
+      features: {
+        ...prev.features,
+        ForwardSelection: featureVars,
       },
     }));
-  };
+  }, [formData.main.FeatureVar]);
 
-  const executeKNN = async (mainData: KNNMainType) => {
-    try {
-      const newFormData = {
-        ...formData,
-        main: mainData,
+  const updateFormData = useCallback((
+    section: keyof KNNType,
+    field: string,
+    value: KNNFormValue,
+  ) => {
+    setFormData((prev) => {
+      const currentSection = prev[section] as Record<string, KNNFormValue>;
+      const nextSection = {
+        ...currentSection,
+        [field]: value,
+        ...(section === "features" && field === "MaxReached" && value === true
+          ? { BelowMin: false }
+          : {}),
+        ...(section === "features" && field === "BelowMin" && value === true
+          ? { MaxReached: false }
+          : {}),
       };
 
-      await saveFormData("NearestNeighbor", newFormData);
+      const hasChanges = Object.entries(nextSection).some(
+        ([key, nextValue]) => !Object.is(currentSection[key], nextValue),
+      );
+      if (!hasChanges) return prev;
+
+      return {
+        ...prev,
+        [section]: nextSection,
+      };
+    });
+  }, []);
+
+  const executeKNN = async () => {
+    closeModal();
+    onClose();
+
+    const promise = async () => {
+      const configData = stripRemovedConfig(formData);
+
+      await saveFormData("NearestNeighbor", configData);
 
       await analyzeKNN({
-        configData: newFormData,
+        configData,
         dataVariables,
         variables,
       });
-    } catch (error) {
-      console.error(error);
-    }
+    };
 
-    closeModal();
-    onClose();
+    toast.promise(promise, {
+      loading: "Running KNN analysis...",
+      success: "KNN analysis completed successfully.",
+      error: getUserFriendlyKNNError,
+    });
   };
 
   const resetFormData = async () => {
     try {
+      setResetKey((key) => key + 1);
+      setActiveTab("variables");
+      setFormData(createDefaultFormData());
       await clearFormData("NearestNeighbor");
-      setFormData({ ...KNNDefault });
-    } catch (error) {
-      console.error("Failed to clear form data:", error);
+
+      toast.success("KNN settings have been reset.");
+    } catch {
+      toast.error(
+        "KNN settings could not be reset. Please try again.",
+        { id: "knn-settings-reset-error" },
+      );
     }
   };
 
-  const handleClose = () => {
-    closeModal();
-    onClose();
+  const variableMap = useMemo(() => {
+    return new Map(variables.map((v) => [v.name, v]));
+  }, [variables]);
+
+  const availableVariables = useMemo(() => {
+    const used = new Set([
+      formData.main.TargetVar,
+      ...(formData.main.FeatureVar ?? []),
+      formData.main.FocalCaseIdenVar,
+      formData.main.CaseIdenVar,
+    ]);
+
+    return variables.filter((v) => !used.has(v.name)).map((v) => v.name);
+  }, [variables, formData.main]);
+
+  const targetVariable = formData.main.TargetVar
+    ? variableMap.get(formData.main.TargetVar)
+    : null;
+
+  const hasTarget = !!targetVariable;
+
+  const targetType =
+    targetVariable && targetVariable.measure !== "unknown"
+      ? targetVariable.measure // scale | nominal | ordinal
+      : null;
+
+  const isAutoK = formData.neighbors.AutoSelection;
+  const isFeatureSelectionActive = formData.features.PerformSelection;
+  const isUsingPartitionVariable = formData.partition.UseVariable;
+  const isUsingFoldVariable = formData.partition.VFoldUsePartitioningVar;
+
+  const validation = useMemo(() => {
+    const errors: string[] = [];
+
+    const featureVars = formData.main.FeatureVar ?? [];
+
+    if (!formData.main.TargetVar) {
+      errors.push("Select a target variable.");
+    }
+
+    if (featureVars.length === 0) {
+      errors.push("Select at least one feature variable.");
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
+  }, [formData.main]);
+
+  const validateFeatureSelection = () => {
+    const f = formData.features;
+
+    if (!f.PerformSelection) return null;
+
+    const forwardCount = (f.ForwardSelection ?? []).filter(
+      (v) => !(f.ForcedEntryVar ?? []).includes(v),
+    ).length;
+    const usesFixedNumber = f.MaxReached && !f.BelowMin;
+
+    if (usesFixedNumber && (!f.MaxToSelect || f.MaxToSelect <= 0)) {
+      return "Enter a positive whole number for the number of features to select.";
+    }
+
+    if (
+      usesFixedNumber &&
+      f.MaxToSelect !== null &&
+      f.MaxToSelect > forwardCount
+    ) {
+      return "The number of features to select cannot exceed the number of features in the Forward Selection list.";
+    }
+
+    return null;
   };
 
   return (
-    <div className="flex h-full w-full flex-col overflow-y-auto">
-      {isMainOpen && (
-        <KNNDialog
-          isMainOpen={isMainOpen}
-          setIsMainOpen={(value) => {
-            if (value) {
-              setIsMainOpen(true);
-            } else {
-              setIsMainOpen(false);
-            }
-          }}
-          setIsNeighborsOpen={(value) => {
-            if (value) {
-              setIsMainOpen(false);
-              setIsNeighborsOpen(true);
-            }
-          }}
-          setIsFeaturesOpen={(value) => {
-            if (value) {
-              setIsMainOpen(false);
-              setIsFeaturesOpen(true);
-            }
-          }}
-          setIsPartitionOpen={(value) => {
-            if (value) {
-              setIsMainOpen(false);
-              setIsPartitionOpen(true);
-            }
-          }}
-          setIsSaveOpen={(value) => {
-            if (value) {
-              setIsMainOpen(false);
-              setIsSaveOpen(true);
-            }
-          }}
-          setIsOutputOpen={(value) => {
-            if (value) {
-              setIsMainOpen(false);
-              setIsOutputOpen(true);
-            }
-          }}
-          setIsOptionsOpen={(value) => {
-            if (value) {
-              setIsMainOpen(false);
-              setIsOptionsOpen(true);
-            }
-          }}
-          updateFormData={(field, value) =>
-            updateFormData("main", field, value)
-          }
-          data={formData.main}
-          globalVariables={tempVariables}
-          onContinue={(mainData) => executeKNN(mainData)}
-          onReset={resetFormData}
-        />
-      )}
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex-grow px-6 min-h-0 overflow-hidden">
+        <Tabs
+          value={activeTab}
+          onValueChange={(nextTab) => {
+            const error = validateFeatureSelection();
 
-      {isNeighborsOpen && (
-        <KNNNeighbors
-          isNeighborsOpen={isNeighborsOpen}
-          setIsNeighborsOpen={(value) => {
-            if (!value) {
-              setIsNeighborsOpen(false);
-              setIsMainOpen(true);
+            if (error) {
+              toast.error(error, { id: KNN_VALIDATION_ERROR_TOAST_ID });
+              return;
             }
+            setActiveTab(nextTab);
           }}
-          updateFormData={(field, value) =>
-            updateFormData("neighbors", field, value)
-          }
-          data={formData.neighbors}
-        />
-      )}
+          className="w-full h-full flex flex-col"
+        >
+          <TabsList className="grid w-full grid-cols-6 flex-shrink-0">
+            <TabsTrigger value="variables" className="min-w-0">
+              <span className="truncate block w-full">Variables</span>
+            </TabsTrigger>
 
-      {/* Features */}
-      {isFeaturesOpen && (
-        <KNNFeatures
-          isFeaturesOpen={isFeaturesOpen}
-          setIsFeaturesOpen={(value) => {
-            if (!value) {
-              setIsFeaturesOpen(false);
-              setIsMainOpen(true);
-            }
-          }}
-          updateFormData={(field, value) =>
-            updateFormData("features", field, value)
-          }
-          data={formData.features}
-        />
-      )}
+            <TabsTrigger value="neighbors" className="min-w-0">
+              <span className="truncate block w-full">Neighbors</span>
+            </TabsTrigger>
 
-      {/* Partition */}
-      {isPartitionOpen && (
-        <KNNPartition
-          isPartitionOpen={isPartitionOpen}
-          setIsPartitionOpen={(value) => {
-            if (!value) {
-              setIsPartitionOpen(false);
-              setIsMainOpen(true);
-            }
-          }}
-          updateFormData={(field, value) =>
-            updateFormData("partition", field, value)
-          }
-          data={formData.partition}
-        />
-      )}
+            <TabsTrigger value="features" className="min-w-0">
+              <span className="truncate block w-full">Features</span>
+            </TabsTrigger>
 
-      {/* Save */}
-      {isSaveOpen && (
-        <KNNSave
-          isSaveOpen={isSaveOpen}
-          setIsSaveOpen={(value) => {
-            if (!value) {
-              setIsSaveOpen(false);
-              setIsMainOpen(true);
-            }
-          }}
-          updateFormData={(field, value) =>
-            updateFormData("save", field, value)
-          }
-          data={formData.save}
-        />
-      )}
+            <TabsTrigger value="partition" className="min-w-0">
+              <span className="truncate block w-full">Partition</span>
+            </TabsTrigger>
 
-      {/* Output */}
-      {isOutputOpen && (
-        <KNNOutput
-          isOutputOpen={isOutputOpen}
-          setIsOutputOpen={(value) => {
-            if (!value) {
-              setIsOutputOpen(false);
-              setIsMainOpen(true);
-            }
-          }}
-          updateFormData={(field, value) =>
-            updateFormData("output", field, value)
-          }
-          data={formData.output}
-        />
-      )}
+            <TabsTrigger value="save" className="min-w-0">
+              <span className="truncate block w-full">Save</span>
+            </TabsTrigger>
 
-      {/* Options */}
-      {isOptionsOpen && (
-        <KNNOptions
-          isOptionsOpen={isOptionsOpen}
-          setIsOptionsOpen={(value) => {
-            if (!value) {
-              setIsOptionsOpen(false);
-              setIsMainOpen(true);
+            <TabsTrigger value="output" className="min-w-0">
+              <span className="truncate block w-full">Output</span>
+            </TabsTrigger>
+
+          </TabsList>
+
+          <div className="flex-grow min-h-0">
+            <TabsContent
+              value="variables"
+              key={`variables-${resetKey}`}
+              className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col"
+            >
+              <KNNDialog
+                data={formData.main}
+                updateFormData={(field, value) =>
+                  updateFormData("main", field, value)
+                }
+                externalErrors={validation.errors}
+                showFieldHelp={helperMode}
+              />
+            </TabsContent>
+
+            <TabsContent
+              value="neighbors"
+              key={`neighbors-${resetKey}`}
+              className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex"
+            >
+              <KNNNeighbors
+                data={formData.neighbors}
+                updateFormData={(field, value) =>
+                  updateFormData("neighbors", field, value)
+                }
+                hasTarget={hasTarget}
+                targetType={targetType}
+                showFieldHelp={helperMode}
+              />
+            </TabsContent>
+
+            <TabsContent
+              value="features"
+              key={`features-${resetKey}`}
+              className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col"
+            >
+              <KNNFeatures
+                data={formData.features}
+                updateFormData={(field, value) =>
+                  updateFormData("features", field, value)
+                }
+                hasTarget={hasTarget}
+                showFieldHelp={helperMode}
+              />
+            </TabsContent>
+
+            <TabsContent
+              value="partition"
+              key={`partition-${resetKey}`}
+              className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col"
+            >
+              <KNNPartition
+                data={formData.partition}
+                updateFormData={(field, value) =>
+                  updateFormData("partition", field, value)
+                }
+                availableVariables={availableVariables}
+                isAutoK={isAutoK}
+                isFeatureSelectionActive={isFeatureSelectionActive}
+                showFieldHelp={helperMode}
+              />
+            </TabsContent>
+
+            <TabsContent
+              value="save"
+              key={`save-${resetKey}`}
+              className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col"
+            >
+              <KNNSave
+                data={formData.save}
+                updateFormData={(field, value) =>
+                  updateFormData("save", field, value)
+                }
+                hasTarget={hasTarget}
+                targetType={targetType}
+                isAutoK={isAutoK}
+                isFeatureSelectionActive={isFeatureSelectionActive}
+                featureCount={(formData.main.FeatureVar ?? []).length}
+                isUsingPartitionVariable={isUsingPartitionVariable}
+                isUsingFoldVariable={isUsingFoldVariable}
+                showFieldHelp={false}
+              />
+            </TabsContent>
+
+            <TabsContent
+              value="output"
+              key={`output-${resetKey}`}
+              className="h-full min-h-0 mt-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col"
+            >
+              <KNNOutput
+                data={formData.output}
+                updateFormData={(field, value) =>
+                  updateFormData("output", field, value)
+                }
+                isAutoK={isAutoK}
+                isFeatureSelectionActive={isFeatureSelectionActive}
+                showFieldHelp={false}
+              />
+            </TabsContent>
+
+          </div>
+        </Tabs>
+      </div>
+
+      <div className="px-6 py-3 border-t border-border flex flex-shrink-0 items-center justify-between gap-4 bg-secondary">
+        <Button
+          type="button"
+          variant="outline"
+          aria-pressed={helperMode}
+          onClick={() => setHelperMode((value) => !value)}
+          className={helperMode ? "bg-accent" : undefined}
+        >
+          <CircleHelp className="mr-2 h-4 w-4" />
+        </Button>
+
+        <div className="flex items-center justify-end gap-4">
+        <Button
+          onClick={() => {
+            const error = validateFeatureSelection();
+
+            if (error) {
+              toast.error(error, { id: KNN_VALIDATION_ERROR_TOAST_ID });
+              return;
             }
+
+            executeKNN();
           }}
-          updateFormData={(field, value) =>
-            updateFormData("options", field, value)
-          }
-          data={formData.options}
-        />
-      )}
+          disabled={!validation.isValid}
+        >
+          OK
+        </Button>
+
+        <Button variant="outline" onClick={resetFormData}>
+          Reset
+        </Button>
+
+        <Button
+          variant="outline"
+          onClick={() => {
+            closeModal();
+            onClose();
+          }}
+        >
+          Cancel
+        </Button>
+        </div>
+      </div>
     </div>
   );
 };
+
+export default KNNContainer;

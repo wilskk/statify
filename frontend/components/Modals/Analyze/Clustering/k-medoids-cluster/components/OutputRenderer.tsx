@@ -14,16 +14,7 @@ import type { KMedoidsOutput } from "../types/output";
 import { KMedoidsSummaryCards } from "./SummaryCards";
 import { ClusterProfilesComponent } from "./ClusterProfiles";
 import { DistanceMatrixHeatmap, DistanceMatrixTable } from "./DistanceMatrix";
-import {
-    formatScatterPlotData,
-    formatDonutChartData,
-    formatRadarChartData,
-    formatConvergenceChartData,
-    formatSilhouetteBarChartData,
-    formatElbowChartData,
-    formatClaraSamplingAsConvergenceData,
-    ChartCard
-} from "./ChartFormatters";
+import { formatClaraSamplingAsConvergenceData } from "./ChartFormatters";
 import { KMedoidsRadarChart } from "./RadarChart";
 import { ClusterScatterPlot } from "./ClusterScatterPlot";
 import { PCAClusterPlot } from "./PCAClusterPlot";
@@ -36,7 +27,6 @@ import { ConvergenceChart } from "./ConvergenceChart";
 import { IterationDetailsTable } from "./IterationDetailsTable";
 import { ConvergenceAlgorithmPanel } from "./ConvergenceAlgorithmPanel";
 import DataTableRenderer from "@/components/Output/Table/DataTableRenderer";
-import GeneralChartContainer from "@/components/Output/Chart/GeneralChartContainer";
 
 interface KMedoidsOutputRendererProps {
     output: KMedoidsOutput;
@@ -53,7 +43,8 @@ function samplePoints<T extends { cluster: number }>(pts: T[], max: number): T[]
     const byCluster = new Map<number, T[]>();
     for (const p of pts) {
         if (!byCluster.has(p.cluster)) byCluster.set(p.cluster, []);
-        byCluster.get(p.cluster)!.push(p);
+        const bucket = byCluster.get(p.cluster);
+        if (bucket) bucket.push(p);
     }
     const result: T[] = [];
     byCluster.forEach((clusterPts) => {
@@ -111,9 +102,13 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
     const convergenceChartRef = useRef<HTMLDivElement>(null);
 
     // Use variables from output if not provided as prop
-    const effectiveVariables = (variables && variables.length > 0
-        ? variables
-        : output?.variables || []);
+    const effectiveVariables = useMemo(
+        () =>
+            variables && variables.length > 0
+                ? variables
+                : output?.variables ?? [],
+        [variables, output?.variables]
+    );
 
     const [selectedXVar, setSelectedXVar] = useState(effectiveVariables[0]?.name || "");
     const [selectedYVar, setSelectedYVar] = useState(effectiveVariables[1]?.name || effectiveVariables[0]?.name || "");
@@ -139,8 +134,6 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
         output?.visualizationOptions?.showCaseCount ?? true;
     const showTotalCost =
         output?.visualizationOptions?.showTotalCost ?? true;
-    const showIterationHistory =
-        output?.visualizationOptions?.showIterationHistory ?? true;
     const showSilhouettePerObject =
         output?.visualizationOptions?.showSilhouettePerObject ?? false;
     const showSilhouetteByCluster =
@@ -156,26 +149,13 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
         output?.visualizationOptions?.showConvergenceAlgorithm ?? true;
     const showSamplingHistory = 
         output?.visualizationOptions?.showSamplingHistory ?? true;
-    const isClaraMethod = (output?.algorithmMethod || "").toUpperCase() === "CLARA";
-    const claraNumSamples = output?.claraConvergence?.numSamples ?? 0;
+    const isClaraMethod = (output?.algorithmMethod ?? "").toUpperCase() === "CLARA";
     const claraCosts = output?.claraConvergence?.samplingCosts ?? [];
-    const claraDisplayRows = useMemo(
-        () => Array.from({ length: claraNumSamples }, (_, idx) => ({
-            sampleNumber: idx + 1,
-            cost: claraCosts[idx],
-        })),
-        [claraNumSamples, claraCosts]
-    );
     const claraBestSample =
         output?.claraConvergence?.bestSampleIndex ??
         (claraCosts.length > 0
             ? (claraCosts.findIndex((cost) => cost === Math.min(...claraCosts)) + 1)
             : undefined);
-    const resolvedOptimalKMethod: "silhouette" | "elbow" =
-        output?.optimalKMethod ??
-        ((output?.elbowData?.some((point) => (point?.totalCost ?? 0) > 0) ?? false)
-            ? "elbow"
-            : "silhouette");
 
     // Determine which charts to show based on cluster mode
     const clusterMode = output?.clusterMode ?? "automatic";
@@ -332,10 +312,10 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                         { header: "Cluster" },
                         { header: "Distance" },
                         { header: "Silhouette" },
-                        ...effectiveVariables.map(v => ({ header: v.label || v.name, key: v.name })),
+                        ...effectiveVariables.map(v => ({ header: v.label ?? v.name, key: v.name })),
                         ...(hasStandardizedAssignmentData
                             ? effectiveVariables.map(v => ({
-                                header: `${v.label || v.name} (${assignmentsNormalizationLabel})`,
+                                header: `${v.label ?? v.name} (${assignmentsNormalizationLabel})`,
                                 key: `${v.name}_zscore`,
                             }))
                             : [])
@@ -366,7 +346,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                 }
             ]
         });
-    }, [output?.assignments, pagedAssignments, effectiveVariables, hasStandardizedAssignmentData]);
+    }, [output?.assignments, pagedAssignments, effectiveVariables, hasStandardizedAssignmentData, assignmentsNormalizationLabel]);
 
     // Memoize medoids table JSON
     const medoidsTableJson = useMemo(() => {
@@ -498,9 +478,9 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
             "Cluster",
             "Distance",
             "Silhouette",
-            ...effectiveVariables.map((v) => v.label || v.name),
+            ...effectiveVariables.map((v) => v.label ?? v.name),
             ...(hasStandardizedAssignmentData
-                ? effectiveVariables.map((v) => `${v.label || v.name} (${assignmentsNormalizationLabel})`)
+                ? effectiveVariables.map((v) => `${v.label ?? v.name} (${assignmentsNormalizationLabel})`)
                 : []),
         ];
 
@@ -524,7 +504,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
 
         const filename = `${sanitizeFilename(`object-assignments-all-${output.assignments.length}-rows`)}.xlsx`;
         XLSX.writeFile(workbook, filename);
-    }, [output?.assignments, effectiveVariables, hasStandardizedAssignmentData]);
+    }, [output?.assignments, effectiveVariables, hasStandardizedAssignmentData, assignmentsNormalizationLabel]);
 
     const handleDownloadDistanceMatrixCsv = useCallback(() => {
         if (!output?.distanceMatrix) return;
@@ -536,7 +516,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
             labels[rowIdx],
             `C${clusters[rowIdx]}`,
             ...row.map((value) =>
-                value != null && isFinite(value) ? value.toFixed(6) : ""
+                value !== null && isFinite(value) ? value.toFixed(6) : ""
             ),
         ]);
 
@@ -572,7 +552,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
             labels[rowIdx],
             `C${clusters[rowIdx]}`,
             ...row.map((value) =>
-                value != null && isFinite(value) ? Number(value.toFixed(6)) : ""
+                value !== null && isFinite(value) ? Number(value.toFixed(6)) : ""
             ),
         ]);
 
@@ -628,15 +608,6 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
             </div>
         );
     }
-
-    console.log("CLARA DEBUG", {
-        isClaraMethod,
-        algorithmMethod: output?.algorithmMethod,
-        claraConvergence: output?.claraConvergence,
-        samples: output?.claraConvergence?.samples,
-        samplingCosts: output?.claraConvergence?.samplingCosts,
-        numSamples: output?.claraConvergence?.numSamples,
-    });
 
     return (
         <div className="space-y-6">
@@ -695,7 +666,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                                     <PCAClusterPlot
                                         points={pcaPoints}
                                         medoids={pcaMedoids}
-                                        variableNames={effectiveVariables.map(v => v.label || v.name)}
+                                        variableNames={effectiveVariables.map(v => v.label ?? v.name)}
                                         title="PCA Projection of K-Medoids Clusters"
                                         height={420}
                                     />
@@ -721,7 +692,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                                         className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
                                     >
                                         {effectiveVariables.map(v => (
-                                            <option key={v.name} value={v.name}>{v.label || v.name}</option>
+                                            <option key={v.name} value={v.name}>{v.label ?? v.name}</option>
                                         ))}
                                     </select>
                                     <span className="flex items-center text-muted-foreground">vs</span>
@@ -731,7 +702,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                                         className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
                                     >
                                         {effectiveVariables.map(v => (
-                                            <option key={v.name} value={v.name}>{v.label || v.name}</option>
+                                            <option key={v.name} value={v.name}>{v.label ?? v.name}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -746,8 +717,8 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                                     <ClusterScatterPlot
                                         points={scatterPoints}
                                         medoids={scatterMedoids}
-                                        xLabel={effectiveVariables.find(v => v.name === selectedXVar)?.label || selectedXVar}
-                                        yLabel={effectiveVariables.find(v => v.name === selectedYVar)?.label || selectedYVar}
+                                        xLabel={effectiveVariables.find(v => v.name === selectedXVar)?.label ?? selectedXVar}
+                                        yLabel={effectiveVariables.find(v => v.name === selectedYVar)?.label ?? selectedYVar}
                                         title="K-Medoids Cluster Visualization"
                                         subtitle={`${output.summary.numClusters} cluster(s) — ${output.assignments.length} observations`}
                                         height={420}
@@ -1014,7 +985,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                                                     {renderDownloadActions(optimalKChartRef, "grafik-k-optimal-elbow")}
                                                     <div ref={optimalKChartRef}>
                                                         <ElbowChart
-                                                            data={output.elbowData!}
+                                                            data={output.elbowData ?? []}
                                                             currentK={output.summary.numClusters}
                                                             method="elbow"
                                                             width={560}
@@ -1030,7 +1001,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                                                     {renderDownloadActions(optimalKChartRef, "grafik-k-optimal-elbow")}
                                                     <div ref={optimalKChartRef}>
                                                         <ElbowChart
-                                                            data={output.elbowData!}
+                                                            data={output.elbowData ?? []}
                                                             currentK={output.summary.numClusters}
                                                             method="elbow"
                                                             silhouetteOptimalK={silhouetteOptimalK}
@@ -1059,7 +1030,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                                 <div className="space-y-4">
                                     <div>
                                         <div className="text-sm text-muted-foreground">Overall Silhouette Score</div>
-                                        <div className="text-3xl font-bold">{output.silhouetteScores?.overall != null ? output.silhouetteScores.overall.toFixed(3) : 'N/A'}</div>
+                                        <div className="text-3xl font-bold">{output.silhouetteScores?.overall !== null ? output.silhouetteScores.overall.toFixed(3) : 'N/A'}</div>
                                     </div>
 
                                     <div className="space-y-2">
@@ -1111,7 +1082,7 @@ export const KMedoidsOutputRenderer: React.FC<KMedoidsOutputRendererProps> = ({ 
                                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                                             {[
                                                 { label: "Total Samples", value: output.claraConvergence?.numSamples ?? "—", sub: "sampling runs" },
-                                                { label: "Best Cost", value: bestCostVal > 0 ? bestCostVal.toFixed(4) : "—", sub: claraBestSample != null ? `sample ${claraBestSample}` : "" },
+                                                { label: "Best Cost", value: bestCostVal > 0 ? bestCostVal.toFixed(4) : "—", sub: claraBestSample !== null ? `sample ${claraBestSample}` : "" },
                                                 { label: "Avg PAM Iterations", value: avgPamIter, sub: "per sample" },
                                                 { label: "Cost Reduction", value: costReduction, sub: "worst → best" },
                                             ].map(({ label, value, sub }) => (

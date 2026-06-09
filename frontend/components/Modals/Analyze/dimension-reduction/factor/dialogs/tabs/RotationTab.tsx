@@ -27,7 +27,7 @@ export const RotationTab: React.FC<RotationTabProps> = ({
         onChange("Quartimax", value === "Quartimax");
         onChange("Varimax", value === "Varimax");
         onChange("Equimax", value === "Equimax");
-        onChange("Oblimin", value === "Oblimin");
+        onChange("Oblimin", value === "Oblimin"); 
         onChange("Promax", value === "Promax");
     };
 
@@ -36,8 +36,8 @@ export const RotationTab: React.FC<RotationTabProps> = ({
         if (data.Quartimax) return "Quartimax";
         if (data.Varimax) return "Varimax";
         if (data.Equimax) return "Equimax";
-        if (data.Oblimin) return "Oblimin";
-        if (data.Promax) return "Promax";
+        if (data.Oblimin) return "Oblimin"; 
+        if (data.Promax) return "Promax"; 
         return "None";
     };
 
@@ -109,7 +109,7 @@ export const RotationTab: React.FC<RotationTabProps> = ({
                                             disabled={!data.Promax}
                                             onChange={(e) => onChange("Kappa", Number(e.target.value))}
                                         />
-                                    </div>
+                                    </div>                                
                                 </div>
                             </div>
                         </RadioGroup>

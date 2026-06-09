@@ -4,6 +4,7 @@ import type { DataRow } from "@/types/Data";
 import { toast } from "sonner";
 import { ChartService } from "@/services/chart/ChartService";
 import { useResultStore } from "@/stores/useResultStore";
+import { useVariableStore } from "@/stores/useVariableStore";
 import { getTimeSeriesWorker } from "@/utils/timeseriesWorkerPool";
 
 export const useAnalyzeHook = (
@@ -13,6 +14,8 @@ export const useAnalyzeHook = (
     selectedPeriod: any,
     pOrder: number,
     qOrders: number[],
+    saveLongRun: boolean,
+    saveShortRun: boolean,
     onClose: () => void
 ) => {
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -30,39 +33,45 @@ export const useAnalyzeHook = (
 
         try {
 
-            // Extract Y (dependent) data
+            // Extract Y and X data, ensuring no missing values in any row (Listwise Deletion)
             const yVar = dependentVariable[0];
             const yData: number[] = [];
-            for (const row of data) {
-                const value = row[yVar.columnIndex];
-                if (value !== null && value !== undefined && !isNaN(Number(value))) {
-                    yData.push(Number(value));
-                }
-            }
+            const xDataArrays: number[][] = independentVariables.map(() => []);
+            const validRowIndices: number[] = [];
 
-            // Extract X (independent) data for each variable
-            const xDataArrays: number[][] = [];
-            for (const xVar of independentVariables) {
-                const xDataSingle: number[] = [];
-                for (const row of data) {
-                    const value = row[xVar.columnIndex];
-                    if (value !== null && value !== undefined && !isNaN(Number(value))) {
-                        xDataSingle.push(Number(value));
-                    }
+            let rIdx = 0;
+            for (const row of data) {
+                const yValue = row[yVar.columnIndex];
+                if (yValue === null || yValue === undefined || isNaN(Number(yValue))) {
+                    rIdx++;
+                    continue;
                 }
-                xDataArrays.push(xDataSingle);
+
+                let rowValid = true;
+                const xVals = [];
+                for (const xVar of independentVariables) {
+                    const xValue = row[xVar.columnIndex];
+                    if (xValue === null || xValue === undefined || isNaN(Number(xValue))) {
+                        rowValid = false;
+                        break;
+                    }
+                    xVals.push(Number(xValue));
+                }
+
+                if (rowValid) {
+                    yData.push(Number(yValue));
+                    xVals.forEach((val, idx) => {
+                        xDataArrays[idx].push(val);
+                    });
+                    validRowIndices.push(rIdx);
+                }
+                rIdx++;
             }
 
             // Validate data
             const nObs = yData.length;
             if (nObs < 10) {
                 throw new Error("Insufficient data points (minimum 10 required)");
-            }
-
-            for (let i = 0; i < xDataArrays.length; i++) {
-                if (xDataArrays[i].length !== nObs) {
-                    throw new Error(`Variable ${independentVariables[i].name} has different length than Y`);
-                }
             }
 
             // Flatten X data
@@ -121,6 +130,28 @@ export const useAnalyzeHook = (
                             rows: longRunRows,
                             footer: `R-squared: ${result.longRun.rSquared} | Adjusted R-squared: ${result.longRun.adjRSquared} | F-statistic: ${result.longRun.fStat}`
                         });
+
+                        if (result.longRun?.diagnostics) {
+                            const d = result.longRun.diagnostics;
+                            tables.push({
+                                title: "Long Run Fit & Diagnostics",
+                                columnHeaders: [
+                                    { header: "Statistic", key: "col1" },
+                                    { header: "Value", key: "val1" },
+                                    { header: "Statistic", key: "col2" },
+                                    { header: "Value", key: "val2" }
+                                ],
+                                rows: [
+                                    { col1: "R-squared", val1: d.rSquared, col2: "Mean dependent var", val2: d.meanDependentVar },
+                                    { col1: "Adjusted R-squared", val1: d.adjRSquared, col2: "S.D. dependent var", val2: d.sdDependentVar },
+                                    { col1: "S.E. of regression", val1: d.seRegression, col2: "Akaike info criterion", val2: d.aic },
+                                    { col1: "Sum squared resid", val1: d.sumSquaredResid, col2: "Schwarz criterion", val2: d.bic },
+                                    { col1: "Log likelihood", val1: d.logLikelihood, col2: "Hannan-Quinn criter.", val2: d.hq },
+                                    { col1: "F-statistic", val1: d.fStatistic, col2: "Durbin-Watson stat", val2: d.durbinWatson },
+                                    { col1: "Prob(F-statistic)", val1: d.probFStatistic, col2: "", val2: "" }
+                                ]
+                            });
+                        }
 
                         // 2. Cointegration Test Table
                         const isCointegrated = result.cointegration.isCointegrated;
@@ -202,6 +233,28 @@ export const useAnalyzeHook = (
                             footer: `R-squared: ${result.shortRun.rSquared} | Adjusted R-squared: ${result.shortRun.adjRSquared} | F-statistic: ${result.shortRun.fStat}`
                         });
 
+                        if (result.shortRun?.diagnostics) {
+                            const d = result.shortRun.diagnostics;
+                            tables.push({
+                                title: "Short Run ECM Fit & Diagnostics",
+                                columnHeaders: [
+                                    { header: "Statistic", key: "col1" },
+                                    { header: "Value", key: "val1" },
+                                    { header: "Statistic", key: "col2" },
+                                    { header: "Value", key: "val2" }
+                                ],
+                                rows: [
+                                    { col1: "R-squared", val1: d.rSquared, col2: "Mean dependent var", val2: d.meanDependentVar },
+                                    { col1: "Adjusted R-squared", val1: d.adjRSquared, col2: "S.D. dependent var", val2: d.sdDependentVar },
+                                    { col1: "S.E. of regression", val1: d.seRegression, col2: "Akaike info criterion", val2: d.aic },
+                                    { col1: "Sum squared resid", val1: d.sumSquaredResid, col2: "Schwarz criterion", val2: d.bic },
+                                    { col1: "Log likelihood", val1: d.logLikelihood, col2: "Hannan-Quinn criter.", val2: d.hq },
+                                    { col1: "F-statistic", val1: d.fStatistic, col2: "Durbin-Watson stat", val2: d.durbinWatson },
+                                    { col1: "Prob(F-statistic)", val1: d.probFStatistic, col2: "", val2: "" }
+                                ]
+                            });
+                        }
+
                         // 4. Classical Assumptions
                         const diag = result.diagnostics;
                         tables.push({
@@ -273,7 +326,96 @@ export const useAnalyzeHook = (
                             charts.push(residualsChart);
                         }
 
-                         // Dispatch
+                         // Save residuals if requested
+                        if (saveLongRun || saveShortRun) {
+                            const currentVarCount = useVariableStore.getState().variables.length;
+                            const existingVars = useVariableStore.getState().variables.map(v => v.name);
+                            
+                            const findNextNumber = (prefix: string) => {
+                                const pattern = new RegExp(`^${prefix}_(\\d+)$`);
+                                let maxNum = 0;
+                                existingVars.forEach(name => {
+                                    const match = name.match(pattern);
+                                    if (match) {
+                                        const num = parseInt(match[1], 10);
+                                        if (num > maxNum) maxNum = num;
+                                    }
+                                });
+                                return maxNum + 1;
+                            };
+
+                            const varsForStore = [];
+                            const aggregatedUpdates = [];
+                            let addedVarsCount = 0;
+
+                            if (saveLongRun && result.longRun?.residuals) {
+                                const resNumber = findNextNumber("RES_LR");
+                                const varIndex = currentVarCount + addedVarsCount;
+                                
+                                varsForStore.push({
+                                    name: `RES_LR_${resNumber}`,
+                                    label: `Long-Run Residuals - ARDL`,
+                                    type: "NUMERIC" as const,
+                                    width: 12,
+                                    decimals: 5,
+                                    measure: "scale" as const,
+                                    columnIndex: varIndex,
+                                    values: []
+                                });
+                                
+                                const lrResids = result.longRun.residuals;
+                                lrResids.forEach((val, i) => {
+                                    const origRowIdx = validRowIndices[i];
+                                    if (origRowIdx !== undefined) {
+                                        aggregatedUpdates.push({
+                                            row: origRowIdx,
+                                            col: varIndex,
+                                            value: Number(val.toFixed(5)),
+                                        });
+                                    }
+                                });
+                                addedVarsCount++;
+                            }
+
+                            if (saveShortRun && result.shortRun?.residuals) {
+                                const resNumber = findNextNumber("RES_SR");
+                                const varIndex = currentVarCount + addedVarsCount;
+                                
+                                varsForStore.push({
+                                    name: `RES_SR_${resNumber}`,
+                                    label: `Short-Run ARDL-ECM Residuals - ARDL`,
+                                    type: "NUMERIC" as const,
+                                    width: 12,
+                                    decimals: 5,
+                                    measure: "scale" as const,
+                                    columnIndex: varIndex,
+                                    values: []
+                                });
+                                
+                                const maxLagVal = Math.max(pOrder, ...qOrdersArray);
+                                const startIdx = maxLagVal + 1;
+                                
+                                const srResids = result.shortRun.residuals;
+                                srResids.forEach((val, i) => {
+                                    const origRowIdx = validRowIndices[startIdx + i];
+                                    if (origRowIdx !== undefined) {
+                                        aggregatedUpdates.push({
+                                            row: origRowIdx,
+                                            col: varIndex,
+                                            value: Number(val.toFixed(5)),
+                                        });
+                                    }
+                                });
+                                addedVarsCount++;
+                            }
+
+                            if (varsForStore.length > 0) {
+                                await useVariableStore.getState().addVariables(varsForStore, aggregatedUpdates);
+                                toast.success("Residuals saved to dataset successfully!");
+                            }
+                        }
+
+                        // Dispatch
                         const logMsg = `ARDL: ${yVar.name} vs X Variables`;
                         const logId = await addLog({ log: logMsg });
                         const analyticId = await addAnalytic(logId, { title: "ARDL Analysis", note: `p=${pOrder}, q=[${qOrdersArray}]` });

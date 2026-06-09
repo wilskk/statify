@@ -14,7 +14,7 @@ import {BaseModalProps} from "@/types/modalTypes";
 import {useModal} from "@/hooks/useModal";
 import {useVariableStore} from "@/stores/useVariableStore";
 import {useDataStore} from "@/stores/useDataStore";
-import {analyzeFactor} from "@/components/Modals/Analyze/dimension-reduction/factor/services/factor-analysis";
+import {analyzeFactor, warmupFactorAnalysisWorker} from "@/components/Modals/Analyze/dimension-reduction/factor/services/factor-analysis";
 import {clearFormData, getFormData, saveFormData} from "@/hooks/useIndexedDB";
 import {toast} from "sonner";
 
@@ -30,9 +30,10 @@ interface FactorContentProps {
     ) => void;
     formData: FactorType;
     tempVariables: string[];
-    onContinue: (mainData: FactorMainType) => void;
+    onContinue: (mainData: FactorMainType) => Promise<void>;
     onReset: () => void;
     onClose: () => void;
+    isAnalyzing: boolean;
     containerType?: "dialog" | "sidebar";
 }
 
@@ -47,6 +48,7 @@ const FactorContent = ({
     onContinue,
     onReset,
     onClose,
+    isAnalyzing,
     containerType = "dialog"
 }: FactorContentProps) => {
     
@@ -64,6 +66,7 @@ const FactorContent = ({
                     globalVariables={tempVariables}
                     onContinue={onContinue}
                     onReset={onReset}
+                    isAnalyzing={isAnalyzing}
                     containerType={containerType}
                     onClose={onClose}
                 />
@@ -93,6 +96,7 @@ export const FactorContainer = ({ onClose, containerType = "dialog" }: FactorCon
     const [formData, setFormData] = useState<FactorType>({ ...FactorDefault });
     const [isMainOpen, setIsMainOpen] = useState(true);
     const [isValueOpen, setIsValueOpen] = useState(false);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
 
     const { closeModal } = useModal();
 
@@ -112,6 +116,16 @@ export const FactorContainer = ({ onClose, containerType = "dialog" }: FactorCon
         };
 
         loadFormData();
+    }, []);
+
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
+            void warmupFactorAnalysisWorker().catch(() => {
+                // Warmup failure is non-blocking. analyzeFactor will retry initialization.
+            });
+        }, 0);
+
+        return () => window.clearTimeout(timer);
     }, []);
 
     const updateFormData = <T extends keyof typeof formData>(
@@ -141,7 +155,11 @@ export const FactorContainer = ({ onClose, containerType = "dialog" }: FactorCon
     };
 
     const executeFactor = async (mainData: FactorMainType) => {
-        const promise = async () => {
+        if (isAnalyzing) return;
+
+        setIsAnalyzing(true);
+
+        const promise = (async () => {
             const newFormData = {
                 ...formData,
                 main: mainData,
@@ -154,7 +172,9 @@ export const FactorContainer = ({ onClose, containerType = "dialog" }: FactorCon
                 dataVariables: dataVariables,
                 variables: variables,
             });
-        };
+        })().finally(() => {
+            setIsAnalyzing(false);
+        });
 
         toast.promise(promise, {
             loading: "Running Factor Analysis...",
@@ -204,6 +224,7 @@ export const FactorContainer = ({ onClose, containerType = "dialog" }: FactorCon
                         onContinue={(mainData: FactorMainType) => executeFactor(mainData)}
                         onReset={resetFormData}
                         onClose={onClose}
+                        isAnalyzing={isAnalyzing}
                         containerType={containerType}
                     />
                 </div>
@@ -231,6 +252,7 @@ export const FactorContainer = ({ onClose, containerType = "dialog" }: FactorCon
                         onContinue={(mainData: FactorMainType) => executeFactor(mainData)}
                         onReset={resetFormData}
                         onClose={onClose}
+                        isAnalyzing={isAnalyzing}
                         containerType={containerType}
                     />
                 </div>

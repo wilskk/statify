@@ -28,6 +28,7 @@ interface ChartData {
       parameters?: Record<string, number>; // Store coefficients: {a: 2, b: 3}
     }>; // For Scatter Plot With Multiple Fit Line
     showNormalCurve?: boolean; // For Histogram - show normal curve overlay
+    showValueTooltip?: boolean;
     axisLabels: {
       x: string;
       y: string;
@@ -825,7 +826,9 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                   subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
                 },
                 chartConfig?.axisLabels,
-                chartConfig?.axisScaleOptions
+                chartConfig?.axisScaleOptions,
+                undefined,
+                chartConfig?.showValueTooltip
               );
               break;
             case "Pie Chart":
@@ -860,6 +863,27 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartConfig?.chartColor
               );
               break;
+            case "Scatter Plot Matrix": {
+              // dimensions = [{key, label}, ...] are carried inside the
+              // chartConfig under `matrixDimensions`. The formatter packs
+              // them there so the rest of the ChartData contract stays
+              // intact (chartData is the array of value rows).
+              const matrixDimensions =
+                (chartConfig as any)?.matrixDimensions ?? [];
+              chartNode = chartUtils.createScatterPlotMatrix(
+                chartDataPoints,
+                matrixDimensions,
+                width,
+                height,
+                {
+                  title: chartMetadata?.title || "Scatter Plot Matrix",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                }
+              );
+              break;
+            }
             case "Scatter Plot With Fit Line":
               chartNode = chartUtils.createScatterPlotWithFitLine(
                 chartDataPoints,
@@ -911,7 +935,8 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 },
                 chartConfig?.axisLabels,
                 chartConfig?.axisScaleOptions,
-                chartConfig?.chartColor
+                chartConfig?.chartColor,
+                chartConfig?.showValueTooltip
               );
               break;
             case "Area Chart":

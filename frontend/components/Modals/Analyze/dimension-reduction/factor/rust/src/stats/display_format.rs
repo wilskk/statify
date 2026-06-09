@@ -25,12 +25,6 @@ fn get_dominant_component(row: &[f64]) -> (usize, f64) {
 }
 
 /// Memformat matriks faktor dengan sorted by size dan suppress small coefficients
-/// 
-/// # Arguments
-/// * `var_names` - Nama variabel dalam urutan asli
-/// * `values` - Matriks nilai loading (baris = variabel, kolom = komponen)
-/// * `config` - Konfigurasi options yang berisi sort_size dan suppress_values
-/// 
 /// # Returns
 /// FormattedMatrixData dengan nama variabel yang sudah diurutkan dan nilai yang diformat
 pub fn format_factor_matrix(
@@ -61,7 +55,7 @@ pub fn format_factor_matrix(
             let (comp_a, max_a) = get_dominant_component(&a.1);
             let (comp_b, max_b) = get_dominant_component(&b.1);
             
-            // Pertama, urutkan berdasarkan komponen (variabel dengan loading tinggi di komponen 1 lebih dulu)
+            // urutkan berdasarkan komponen (variabel dengan loading tinggi di komponen 1 lebih dulu)
             match comp_a.cmp(&comp_b) {
                 std::cmp::Ordering::Equal => {
                     // Jika komponen sama, urutkan berdasarkan nilai loading (descending)
@@ -104,6 +98,7 @@ pub fn format_factor_matrix(
     }
 }
 
+// ini cuma test aja
 #[cfg(test)]
 mod tests {
     use super::*;
