@@ -38,7 +38,9 @@ const TransformMenu: React.FC = () => {
         <MenubarItem disabled>Optimal Binning</MenubarItem>
         <MenubarItem disabled>Prepare Data for Modeling</MenubarItem>
         <MenubarSeparator />
-        <MenubarItem disabled>Rank Cases</MenubarItem>
+        <MenubarItem onClick={() => openModal(ModalType.RankCases)}>
+          Rank Cases
+          </MenubarItem>
         <MenubarSeparator />
         <MenubarItem disabled>Date and Time Wizard</MenubarItem>
         <MenubarItem disabled>Create Time Series</MenubarItem>
