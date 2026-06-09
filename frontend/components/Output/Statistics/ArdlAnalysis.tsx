@@ -66,23 +66,23 @@ const ArdlAnalysis: React.FC<ArdlAnalysisProps> = ({ data }) => {
           {/* Cointegration & Long Run */}
           <div className="space-y-3 p-4 bg-white dark:bg-slate-950 rounded-lg border border-slate-100 dark:border-slate-850">
             <h4 className="font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between">
-              <span>🔗 Hubungan Jangka Panjang (Cointegration)</span>
+              <span>🔗 Long-Run Relationship (Cointegration)</span>
               <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${isCoint ? 'bg-emerald-50 text-emerald-700 border border-emerald-250' : 'bg-amber-50 text-amber-700 border border-amber-250'}`}>
                 {isCoint ? 'Cointegrated' : 'No Cointegration'}
               </span>
             </h4>
             <p className="text-sm text-slate-600 dark:text-slate-350 leading-relaxed">
               {isCoint 
-                ? `Terdapat hubungan jangka panjang yang stabil (kointegrasi) antara variabel dependen dan independen (ADF = ${adfVal}, p-value = ${pVal}). Persamaan jangka panjang valid untuk interpretasi struktural.`
-                : `Tidak ditemukan bukti kointegrasi yang cukup (ADF = ${adfVal}, p-value = ${pVal}). Hubungan jangka panjang antar variabel tidak stabil secara statistik.`
+                ? `A stable long-run relationship (cointegration) exists between the dependent and independent variables (ADF = ${adfVal}, p-value = ${pVal}). The long-run equation is valid for structural interpretation.`
+                : `No sufficient evidence of cointegration was found (ADF = ${adfVal}, p-value = ${pVal}). The long-run relationship among the variables is not statistically stable.`
               }
             </p>
           </div>
-
+ 
           {/* Short Run Adjustment */}
           <div className="space-y-3 p-4 bg-white dark:bg-slate-950 rounded-lg border border-slate-100 dark:border-slate-850">
             <h4 className="font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between">
-              <span>⚡ Koreksi Jangka Pendek (ECT)</span>
+              <span>⚡ Short-Run Correction (ECT)</span>
               {ectCoef !== null && (
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${ectCoef < 0 && (ectProb !== null && ectProb < 0.05) ? 'bg-indigo-50 text-indigo-700 border border-indigo-250' : 'bg-rose-50 text-rose-700 border border-rose-250'}`}>
                   ECT = {ectCoef.toFixed(4)}
@@ -92,18 +92,18 @@ const ArdlAnalysis: React.FC<ArdlAnalysisProps> = ({ data }) => {
             <p className="text-sm text-slate-600 dark:text-slate-350 leading-relaxed">
               {ectCoef !== null 
                 ? (ectCoef < 0 && (ectProb !== null && ectProb < 0.05)
-                    ? `Error Correction Term (ECT) bernilai negatif (${ectCoef.toFixed(4)}) dan signifikan secara statistik (p = ${ectProb?.toFixed(4)}). Ini mengonfirmasi adanya mekanisme penyesuaian dari fluktuasi jangka pendek kembali menuju keseimbangan jangka panjang dengan kecepatan penyesuaian sebesar ${Math.abs(ectCoef * 100).toFixed(2)}% per periode.`
-                    : `Koefisien ECT bernilai ${ectCoef.toFixed(4)} (p = ${ectProb?.toFixed(4)}). Mekanisme koreksi kesalahan jangka pendek tidak berjalan secara ideal karena koefisien ECT tidak memenuhi syarat (harus bernilai negatif dan signifikan secara statistik).`
+                    ? `The Error Correction Term (ECT) is negative (${ectCoef.toFixed(4)}) and statistically significant (p = ${ectProb?.toFixed(4)}). This confirms a valid adjustment mechanism from short-run deviations back to long-run equilibrium, with an adjustment speed of ${Math.abs(ectCoef * 100).toFixed(2)}% per period.`
+                    : `The ECT coefficient is ${ectCoef.toFixed(4)} (p = ${ectProb?.toFixed(4)}). The short-run error correction mechanism is not operating ideally because the ECT coefficient does not satisfy the necessary conditions (must be negative and statistically significant).`
                   )
-                : 'Informasi ECT tidak tersedia untuk estimasi ini.'
+                : 'ECT information is not available for this estimation.'
               }
             </p>
           </div>
-
+ 
           {/* Classical OLS Assumptions */}
           <div className="md:col-span-2 space-y-3 p-4 bg-white dark:bg-slate-950 rounded-lg border border-slate-100 dark:border-slate-850">
             <h4 className="font-semibold text-slate-700 dark:text-slate-200">
-              🛠️ Validasi Asumsi Model (Diagnostic Check)
+              🛠️ Model Assumptions Validation (Diagnostic Check)
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
               <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded border border-slate-100 dark:border-slate-850">
