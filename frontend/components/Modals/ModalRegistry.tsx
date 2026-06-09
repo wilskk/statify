@@ -266,6 +266,7 @@ export const MODAL_CONTAINER_PREFERENCES: Partial<
   [ModalType.ModalCurveEstimation]: "sidebar",
   [ModalType.ModalBinaryLogistic]: "sidebar",
   [ModalType.ModalOrdinal]: "sidebar",
+  [ModalType.ModalMultinomialLogistic]: "sidebar",
 };
 
 /**
