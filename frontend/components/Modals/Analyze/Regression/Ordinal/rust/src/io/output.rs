@@ -6,7 +6,7 @@ use crate::statistics::{
     compute_gvif_diagnostics, goodness_of_fit, model_fit_statistics,
     multinomial_log_likelihood_constant,
     parameter_statistics, predicted_categories, predicted_cell_counts, predicted_probabilities,
-    LOG_LIKELIHOOD_MODE_KERNEL, LOG_LIKELIHOOD_MODE_SPSS,
+    excluding_log_likelihood, including_log_likelihood,
 };
 use crate::types::{
     EncodedPredictorBlock, EstimationOptions, FitResult, GvifOptions, IterationHistoryMeta,
@@ -180,11 +180,11 @@ pub fn build_plum_output(
         .as_ref()
         .and_then(|opt| opt.print_log_likelihood.as_deref())
         .map(|value| match value {
-            "Including" | "SPSS_COMPATIBLE" => LOG_LIKELIHOOD_MODE_SPSS,
-            "Excluding" | "KERNEL" => LOG_LIKELIHOOD_MODE_KERNEL,
-            _ => LOG_LIKELIHOOD_MODE_KERNEL,
+            "Including" | "SPSS_COMPATIBLE" | "including_log_likelihood" => including_log_likelihood,
+            "Excluding" | "KERNEL" | "excluding_log_likelihood" => excluding_log_likelihood,
+            _ => excluding_log_likelihood,
         })
-        .unwrap_or(LOG_LIKELIHOOD_MODE_KERNEL);
+        .unwrap_or(excluding_log_likelihood);
 
     let log_likelihood_constant = multinomial_log_likelihood_constant(data);
     let log_likelihood_kernel = fit.log_likelihood;
@@ -212,7 +212,7 @@ pub fn build_plum_output(
     };
 
     let iteration_history = if want_iteration {
-        let adjustment = if display_mode == LOG_LIKELIHOOD_MODE_SPSS {
+        let adjustment = if display_mode == including_log_likelihood {
             -2.0 * log_likelihood_constant
         } else {
             0.0
@@ -288,7 +288,7 @@ pub fn build_plum_output(
                     spec.location_parameter_count(),
                     spec.category_count,
                 );
-                if display_mode == LOG_LIKELIHOOD_MODE_SPSS {
+                if display_mode == including_log_likelihood {
                     let adjustment = -2.0 * log_likelihood_constant;
                     test.minus2_log_likelihood_parallel += adjustment;
                     test.minus2_log_likelihood_non_parallel += adjustment;

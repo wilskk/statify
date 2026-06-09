@@ -10,8 +10,10 @@ use crate::types::{
 };
 use crate::utils::EPS;
 
-pub const LOG_LIKELIHOOD_MODE_KERNEL: &str = "KERNEL";
-pub const LOG_LIKELIHOOD_MODE_SPSS: &str = "SPSS_COMPATIBLE";
+#[allow(non_upper_case_globals)]
+pub const excluding_log_likelihood: &str = "excluding_log_likelihood";
+#[allow(non_upper_case_globals)]
+pub const including_log_likelihood: &str = "including_log_likelihood";
 
 pub fn multinomial_log_likelihood_constant(data: &AggregatedData) -> f64 {
     let mut constant = 0.0;
@@ -32,7 +34,7 @@ pub fn multinomial_log_likelihood_constant(data: &AggregatedData) -> f64 {
 }
 
 pub fn displayed_log_likelihood(kernel: f64, constant: f64, mode: &str) -> f64 {
-    if mode == LOG_LIKELIHOOD_MODE_SPSS {
+    if mode == including_log_likelihood {
         kernel + constant
     } else {
         kernel

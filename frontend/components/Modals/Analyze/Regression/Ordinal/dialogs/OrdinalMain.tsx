@@ -303,6 +303,10 @@ const OrdinalMain: React.FC = () => {
       // ==================================================
       // VALIDATE USER INPUT
       // ==================================================
+      if ((scaleParams.scaleModel ?? []).length > 0) {
+        throw new Error("Fitur belum tersedia");
+      }
+
       const responseVariable = options.dependent;
       if (!responseVariable) {
         throw new Error("Mohon pilih variabel dependen.");
