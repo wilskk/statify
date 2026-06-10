@@ -5,6 +5,7 @@ import type { DataRow } from "@/types/Data";
 import { toast } from "sonner";
 import { ChartService } from "@/services/chart/ChartService";
 import { useResultStore } from "@/stores/useResultStore";
+import { getTimeSeriesWorker } from "@/utils/timeseriesWorkerPool";
 
 export const useAnalyzeHook = (
     selectedVariables: Variable[],
@@ -46,10 +47,9 @@ export const useAnalyzeHook = (
 
             console.log(`Running ${modelType}(${pOrder},${qOrder}) with ${returns.length} observations`);
 
-            // Use Web Worker
-            const worker = new Worker("/workers/TimeSeries/worker.js", { type: "module" });
+            const client = getTimeSeriesWorker();
 
-            worker.onmessage = async (e) => {
+            client.onMessage(async (e) => {
                 const { status, result, error } = e.data;
                 
                 if (status === "success") {
@@ -61,43 +61,103 @@ export const useAnalyzeHook = (
                         // 1. Prepare Tables
                         const tables = [];
                         
-                        // Parameter Table
+                        // Parameter Tables
                         if (result.coefficients) {
-                            const rows = [];
+                            // --- MEAN EQUATION TABLE ---
+                            const meanRows = [];
+                            meanRows.push({
+                                rowHeader: ["C"],
+                                coefficient: result.coefficients.mu,
+                                stdError: result.coefficients.mu_se || "-",
+                                tStat: result.coefficients.mu_z || "-",
+                                pValue: result.coefficients.mu_p || "-"
+                            });
                             
-                            // Omega
+                            tables.push({
+                                title: "Mean Equation",
+                                columnHeaders: [
+                                    { header: "Variable", key: "rowHeader" },
+                                    { header: "Coefficient", key: "coefficient" },
+                                    { header: "Std. Error", key: "stdError" },
+                                    { header: "z-Statistic", key: "tStat" },
+                                    { header: "Prob.", key: "pValue" }
+                                ],
+                                rows: meanRows,
+                            });
+
+                            // --- VARIANCE EQUATION TABLE ---
+                            const varRows = [];
+                            
+                            // Omega (Variance Equation Constant)
                             if (result.coefficients.omega !== undefined) {
-                                rows.push({
-                                    rowHeader: ["Omega (ω)"],
+                                varRows.push({
+                                    rowHeader: ["C"],
                                     coefficient: result.coefficients.omega,
-                                    stdError: "-", 
-                                    tStat: "-",
-                                    pValue: "-" 
+                                    stdError: result.coefficients.omega_se || "-", 
+                                    tStat: result.coefficients.omega_z || "-",
+                                    pValue: result.coefficients.omega_p || "-" 
                                 });
                             }
 
-                            // Alpha terms
+                            // Alpha terms (ARCH terms)
                             if (Array.isArray(result.coefficients.alpha)) {
                                 result.coefficients.alpha.forEach((val: any, idx: number) => {
-                                    rows.push({
-                                        rowHeader: [`Alpha (${idx + 1})`],
+                                    const seVal = Array.isArray(result.coefficients.alpha_se) ? result.coefficients.alpha_se[idx] : "-";
+                                    const zVal = Array.isArray(result.coefficients.alpha_z) ? result.coefficients.alpha_z[idx] : "-";
+                                    const pVal = Array.isArray(result.coefficients.alpha_p) ? result.coefficients.alpha_p[idx] : "-";
+                                    
+                                    let label = `RESID(-${idx + 1})^2`;
+                                    if (modelType === "EGARCH") {
+                                        label = `|RESID(-${idx + 1})|/@SQRT(GARCH(-${idx + 1}))`;
+                                    }
+                                    
+                                    varRows.push({
+                                        rowHeader: [label],
                                         coefficient: val,
-                                        stdError: "-",
-                                        tStat: "-",
-                                        pValue: "-"
+                                        stdError: seVal,
+                                        tStat: zVal,
+                                        pValue: pVal
                                     });
                                 });
                             }
 
-                            // Beta terms (not for ARCH)
+                            // Gamma terms (Asymmetry terms for EGARCH/TGARCH)
+                            if (Array.isArray(result.coefficients.gamma)) {
+                                result.coefficients.gamma.forEach((val: any, idx: number) => {
+                                    const seVal = Array.isArray(result.coefficients.gamma_se) ? result.coefficients.gamma_se[idx] : "-";
+                                    const zVal = Array.isArray(result.coefficients.gamma_z) ? result.coefficients.gamma_z[idx] : "-";
+                                    const pVal = Array.isArray(result.coefficients.gamma_p) ? result.coefficients.gamma_p[idx] : "-";
+                                    
+                                    let label = `Gamma (${idx + 1})`;
+                                    if (modelType === "EGARCH") {
+                                        label = `RESID(-${idx + 1})/@SQRT(GARCH(-${idx + 1}))`;
+                                    } else if (modelType === "TGARCH") {
+                                        label = `RESID(-${idx + 1})^2 * (RESID(-${idx + 1})<0)`;
+                                    }
+                                    
+                                    varRows.push({
+                                        rowHeader: [label],
+                                        coefficient: val,
+                                        stdError: seVal,
+                                        tStat: zVal,
+                                        pValue: pVal
+                                    });
+                                });
+                            }
+
+                            // Beta terms (GARCH terms)
                             if (Array.isArray(result.coefficients.beta)) {
                                 result.coefficients.beta.forEach((val: any, idx: number) => {
-                                    rows.push({
-                                        rowHeader: [`Beta (${idx + 1})`],
+                                    const seVal = Array.isArray(result.coefficients.beta_se) ? result.coefficients.beta_se[idx] : "-";
+                                    const zVal = Array.isArray(result.coefficients.beta_z) ? result.coefficients.beta_z[idx] : "-";
+                                    const pVal = Array.isArray(result.coefficients.beta_p) ? result.coefficients.beta_p[idx] : "-";
+                                    
+                                    varRows.push({
+                                        rowHeader: [`GARCH(-${idx + 1})`],
                                         coefficient: val,
-                                        stdError: "-",
-                                        tStat: "-",
-                                        pValue: "-"
+                                        stdError: seVal,
+                                        tStat: zVal,
+                                        pValue: pVal
                                     });
                                 });
                             }
@@ -105,13 +165,13 @@ export const useAnalyzeHook = (
                             tables.push({
                                 title: "Variance Equation",
                                 columnHeaders: [
-                                    { header: "Parameter", key: "rowHeader" },
+                                    { header: "Variable", key: "rowHeader" },
                                     { header: "Coefficient", key: "coefficient" },
                                     { header: "Std. Error", key: "stdError" },
-                                    { header: "t-Statistic", key: "tStat" },
+                                    { header: "z-Statistic", key: "tStat" },
                                     { header: "Prob.", key: "pValue" }
                                 ],
-                                rows: rows,
+                                rows: varRows,
                             });
                         }
 
@@ -124,57 +184,63 @@ export const useAnalyzeHook = (
                                     { header: "Value", key: "value" }
                                 ],
                                 rows: [
-                                    { rowHeader: ["AIC"], value: result.diagnostics.aic },
-                                    { rowHeader: ["BIC"], value: result.diagnostics.bic },
-                                    { rowHeader: ["Log Likelihood"], value: result.diagnostics.logLikelihood }
+                                    { rowHeader: ["R-squared"], value: result.diagnostics.rSquared },
+                                    { rowHeader: ["Adjusted R-squared"], value: result.diagnostics.adjRSquared },
+                                    { rowHeader: ["S.E. of regression"], value: result.diagnostics.seRegression },
+                                    { rowHeader: ["Sum squared resid"], value: result.diagnostics.sumSquaredResid },
+                                    { rowHeader: ["Log likelihood"], value: result.diagnostics.logLikelihood },
+                                    { rowHeader: ["Durbin-Watson stat"], value: result.diagnostics.durbinWatson },
+                                    { rowHeader: ["Mean dependent var"], value: result.diagnostics.meanDependentVar },
+                                    { rowHeader: ["S.D. dependent var"], value: result.diagnostics.sdDependentVar },
+                                    { rowHeader: ["Akaike info criterion"], value: result.diagnostics.aic },
+                                    { rowHeader: ["Schwarz criterion"], value: result.diagnostics.bic },
+                                    { rowHeader: ["Hannan-Quinn criter."], value: result.diagnostics.hq }
                                 ]
                             });
                         }
 
                         // 2. Prepare Charts
                         const charts = [];
-                        const varianceData = result.variance || [];
-                        const periods = Array.from({ length: varianceData.length }, (_, i) => ({
-                            index: i + 1,
-                            variance: varianceData[i],
-                            residual: result.residuals ? result.residuals[i] : 0
-                        }));
+                        const varianceData: number[] = result.variance || [];
+                        const residualsData: number[] = result.residuals || [];
 
-                        // Conditional Variance Chart
-                        const varianceChart = ChartService.createChartJSON({
-                            chartType: "Line Chart",
-                            chartData: periods,
-                            chartVariables: {
-                                x: ["index"],
-                                y: ["variance"]
-                            },
-                            chartMetadata: {
-                                title: "Conditional Variance",
-                                subtitle: `${modelType} Process`
-                            },
-                            chartConfig: {
-                                axisLabels: { x: "Time", y: "Variance" }
-                            }
-                        });
-                        charts.push(varianceChart);
+                        if (varianceData.length > 0) {
+                            const varianceChartData = varianceData.map((v, i) => ({
+                                category: String(i + 1),
+                                value: v
+                            }));
+                            const varianceChart = ChartService.createChartJSON({
+                                chartType: "Line Chart",
+                                chartData: varianceChartData,
+                                chartMetadata: {
+                                    title: "Conditional Variance",
+                                    subtitle: `${modelType} Process`
+                                },
+                                chartConfig: {
+                                    axisLabels: { x: "Time", y: "Variance" }
+                                }
+                            });
+                            charts.push(varianceChart);
+                        }
 
-                         // Residuals Chart
-                        const residualsChart = ChartService.createChartJSON({
-                            chartType: "Line Chart",
-                            chartData: periods,
-                            chartVariables: {
-                                x: ["index"],
-                                y: ["residual"]
-                            },
-                            chartMetadata: {
-                                title: "Residuals",
-                                subtitle: `${modelType} Process`
-                            },
-                            chartConfig: {
-                                axisLabels: { x: "Time", y: "Residual" }
-                            }
-                        });
-                        charts.push(residualsChart);
+                        if (residualsData.length > 0) {
+                            const residualsChartData = residualsData.map((r, i) => ({
+                                category: String(i + 1),
+                                value: r
+                            }));
+                            const residualsChart = ChartService.createChartJSON({
+                                chartType: "Line Chart",
+                                chartData: residualsChartData,
+                                chartMetadata: {
+                                    title: "Residuals",
+                                    subtitle: `${modelType} Process`
+                                },
+                                chartConfig: {
+                                    axisLabels: { x: "Time", y: "Residual" }
+                                }
+                            });
+                            charts.push(residualsChart);
+                        }
 
                         // 3. Dispatch Results directly to Output Output
                         const logMsg = `${modelType} Estimation on ${variable.name}`;
@@ -195,27 +261,26 @@ export const useAnalyzeHook = (
                         console.error("Error processing results:", err);
                         setErrorMsg("Error processing results for display.");
                     } finally {
-                         worker.terminate();
+                         client.release();
                          setIsCalculating(false);
                     }
 
                 } else {
                     setErrorMsg(error || "Unknown worker error");
                     toast.error(`Estimation Failed: ${error}`);
-                    worker.terminate();
+                    client.release();
                     setIsCalculating(false);
                 }
-            };
+            });
 
-            worker.onerror = (err) => {
+            client.onError((err) => {
                 console.error("Worker connection error:", err);
                 setErrorMsg("Failed to connect to worker");
                 setIsCalculating(false);
-                worker.terminate();
-            };
+                client.release();
+            });
 
-            // Send payload to worker
-            worker.postMessage({
+            client.post({
                 type: modelType, 
                 payload: {
                     data: returns,

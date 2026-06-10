@@ -19,10 +19,18 @@ export interface ClusteringInput {
     random_seed?: number | null;
     n_init?: number;
     convergence_tolerance?: number;
+    /** PAM only: true = BUILD initialization, false = random initialization. */
+    use_build_phase?: boolean;
+    /** PAM only: true = R-style path, false = native non-R path. */
+    use_r_implementation?: boolean;
     /** CLARA: number of sub-samples to draw (default: 5) */
     clara_num_samples?: number;
     /** CLARA: explicit sample size per sub-sample (default: 40 + 2*k) */
     clara_sample_size?: number;
+    /** CLARANS: number of local searches to perform (default: 2) */
+    clarans_num_local?: number;
+    /** CLARANS: maximum number of neighbors to check per search (default: max(250, 1.25% of n*k)) */
+    clarans_max_neighbors?: number;
 }
 
 /**
@@ -62,6 +70,8 @@ export interface ClusteringResult {
     labels: number[];
     medoids: number[];
     cost: number;
+    /** Objective average cost: total cost / n. */
+    avgCost?: number;
     /** Total cost after BUILD phase (before any SWAP). */
     total_cost_build?: number;
     /** Total cost after SWAP phase (final). */
@@ -129,8 +139,8 @@ export class ClusterWorker {
     private worker: Worker | null = null;
     private messageId = 0;
     private callbacks = new Map<number, {
-        resolve: (value: any) => void;
-        reject: (error: any) => void;
+        resolve: (value: unknown) => void;
+        reject: (error: unknown) => void;
     }>();
     private progressCallback?: (progress: ProgressUpdate) => void;
     /** Called immediately after the PAM BUILD phase with initial medoid indices. */
@@ -210,7 +220,7 @@ export class ClusterWorker {
         console.error("Worker error:", error);
     }
 
-    private sendMessage(message: WorkerRequestMessage): Promise<any> {
+    private sendMessage(message: WorkerRequestMessage): Promise<unknown> {
         return new Promise((resolve, reject) => {
             if (!this.worker) {
                 reject(new Error("Worker not initialized"));
@@ -228,7 +238,10 @@ export class ClusterWorker {
      * Initialize WASM module in worker
      */
     async init(wasmPath?: string): Promise<void> {
-        await this.sendMessage({ type: "init", wasmPath });
+        await this.sendMessage({
+            type: "init",
+            wasmPath: wasmPath ?? "/workers/Clustering/K-Medoids/wasm_bg.wasm",
+        });
     }
 
     /**
@@ -247,7 +260,7 @@ export class ClusterWorker {
         onProgress?: (progress: ProgressUpdate) => void
     ): Promise<ClusteringResult> {
         this.progressCallback = onProgress;
-        return this.sendMessage({ type: "cluster", input });
+        return this.sendMessage({ type: "cluster", input }) as Promise<ClusteringResult>;
     }
 
     /**
@@ -260,7 +273,7 @@ export class ClusterWorker {
         onProgress?: (progress: ProgressUpdate) => void
     ): Promise<ClusteringRangeItem[]> {
         this.progressCallback = onProgress;
-        return this.sendMessage({ type: "cluster_range", input });
+        return this.sendMessage({ type: "cluster_range", input }) as Promise<ClusteringRangeItem[]>;
     }
 
     /**

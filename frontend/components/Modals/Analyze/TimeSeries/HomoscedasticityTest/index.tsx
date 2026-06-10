@@ -8,7 +8,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import type { Variable } from "@/types/Variable";
 import { useAnalyzeHook } from "@/components/Modals/Analyze/TimeSeries/HomoscedasticityTest/hooks/analyzeHook";
-import VariablesTab from "@/components/Modals/Analyze/TimeSeries/GARCH/VariablesTab";
+import VariablesTab from "@/components/Modals/Analyze/TimeSeries/HeteroskedasticityModels/VariablesTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

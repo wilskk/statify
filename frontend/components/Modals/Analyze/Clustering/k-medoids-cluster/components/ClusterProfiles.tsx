@@ -1,10 +1,11 @@
 /**
- * Cluster Profiles Component
- * Shows detailed characteristics of each cluster with attribute profiles
+ * Komponen Profil Klaster
+ * Menampilkan karakteristik detail setiap klaster beserta profil atribut
  */
 
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import type { ClusterProfile } from "../types/output";
 
 const Progress: React.FC<{ value: number; className?: string }> = ({ value, className }) => (
@@ -15,7 +16,6 @@ const Progress: React.FC<{ value: number; className?: string }> = ({ value, clas
         />
     </div>
 );
-import { Badge } from "@/components/ui/badge";
 
 interface ClusterProfilesProps {
     profiles: ClusterProfile[];
@@ -23,13 +23,13 @@ interface ClusterProfilesProps {
 }
 
 export const ClusterProfilesComponent: React.FC<ClusterProfilesProps> = ({ profiles, variables }) => {
-    // Calculate min/max for each attribute across all clusters for normalization
+    // Hitung min/maks untuk setiap atribut di semua klaster untuk normalisasi
     const attributeRanges: Record<string, { min: number; max: number }> = {};
     
     variables.forEach(v => {
         const values = profiles
             .map(p => p.meanAttributes?.[v.name])
-            .filter(val => val != null && isFinite(val)) as number[];
+            .filter((val): val is number => val !== null && val !== undefined && isFinite(val));
         
         attributeRanges[v.name] = {
             min: values.length > 0 ? Math.min(...values) : 0,
@@ -44,7 +44,7 @@ export const ClusterProfilesComponent: React.FC<ClusterProfilesProps> = ({ profi
     };
 
     const getSilhouetteBadge = (score: number | null | undefined) => {
-        if (score == null || !isFinite(score)) return <Badge variant="secondary">N/A</Badge>;
+        if (score === null || score === undefined || !isFinite(score)) return <Badge variant="secondary">N/A</Badge>;
         if (score >= 0.7) return <Badge variant="default" className="bg-green-600">Very Strong</Badge>;
         if (score >= 0.5) return <Badge variant="default" className="bg-blue-600">Strong</Badge>;
         if (score >= 0.3) return <Badge variant="default" className="bg-yellow-600">Moderate</Badge>;
@@ -65,11 +65,11 @@ export const ClusterProfilesComponent: React.FC<ClusterProfilesProps> = ({ profi
                         </div>
                     </CardHeader>
                     <CardContent>
-                        {/* Cluster Statistics */}
+                        {/* Statistik Klaster */}
                         <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
                             <div>
                                 <div className="text-muted-foreground">Size</div>
-                                <div className="font-semibold">{profile.size} cases ({profile.percentage != null ? profile.percentage.toFixed(1) : '0'}%)</div>
+                                <div className="font-semibold">{profile.size} cases ({profile.percentage !== null ? profile.percentage.toFixed(1) : '0'}%)</div>
                             </div>
                             <div>
                                 <div className="text-muted-foreground">Medoid</div>
@@ -77,26 +77,26 @@ export const ClusterProfilesComponent: React.FC<ClusterProfilesProps> = ({ profi
                             </div>
                             <div>
                                 <div className="text-muted-foreground">Avg Distance</div>
-                                <div className="font-semibold">{profile.withinClusterDistance != null ? profile.withinClusterDistance.toFixed(2) : 'N/A'}</div>
+                                <div className="font-semibold">{profile.withinClusterDistance !== null ? profile.withinClusterDistance.toFixed(2) : 'N/A'}</div>
                             </div>
                             <div>
                                 <div className="text-muted-foreground">Silhouette</div>
-                                <div className="font-semibold">{profile.silhouetteScore != null ? profile.silhouetteScore.toFixed(3) : 'N/A'}</div>
+                                <div className="font-semibold">{profile.silhouetteScore !== null ? profile.silhouetteScore.toFixed(3) : 'N/A'}</div>
                             </div>
                         </div>
 
-                        {/* Attribute Profiles */}
+                        {/* Profil Atribut */}
                         <div className="space-y-3">
                             <div className="text-sm font-medium">Attribute Profile</div>
                             {variables.map(v => {
                                 const value = profile.meanAttributes?.[v.name];
-                                const safeValue = value != null && isFinite(value) ? value : 0;
+                                const safeValue = value !== null && isFinite(value) ? value : 0;
                                 const normalized = normalizeValue(safeValue, v.name);
                                 
                                 return (
                                     <div key={v.name} className="space-y-1">
                                         <div className="flex justify-between text-xs">
-                                            <span className="text-muted-foreground">{v.label || v.name}</span>
+                                            <span className="text-muted-foreground">{v.label ?? v.name}</span>
                                             <span className="font-mono">{safeValue.toFixed(2)}</span>
                                         </div>
                                         <Progress value={normalized} className="h-2" />

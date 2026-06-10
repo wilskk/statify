@@ -65,13 +65,14 @@ export const SilhouettePerObjectChart: React.FC<SilhouettePerObjectChartProps> =
     const BAR_H = Math.max(3, Math.min(14, Math.floor(480 / n)));
     const GAP_BETWEEN_CLUSTERS = Math.max(6, BAR_H * 1.5);
     const numClusters = clusterOrder.length;
-    const margin = { top: 28, right: 28, bottom: 48, left: 72 };
-    const innerW = width - margin.left - margin.right;
-    const innerH = n * BAR_H + (numClusters - 1) * GAP_BETWEEN_CLUSTERS;
-    const totalH = innerH + margin.top + margin.bottom;
 
     useEffect(() => {
         if (!svgRef.current || n === 0) return;
+
+        const margin = { top: 28, right: 28, bottom: 82, left: 72 };
+        const innerW = width - margin.left - margin.right;
+        const innerH = n * BAR_H + (numClusters - 1) * GAP_BETWEEN_CLUSTERS;
+        const totalH = innerH + margin.top + margin.bottom;
 
         const svg = d3.select(svgRef.current);
         svg.selectAll("*").remove();
@@ -132,7 +133,10 @@ export const SilhouettePerObjectChart: React.FC<SilhouettePerObjectChartProps> =
             .text(`Rata-rata: ${overall.toFixed(3)}`);
 
         // ── Tooltip ───────────────────────────────────────────────────────────
-        const tooltip = d3.select(svgRef.current.parentElement!)
+        const parent = svgRef.current.parentElement;
+        if (!parent) return;
+
+        const tooltip = d3.select(parent)
             .selectAll<HTMLDivElement, unknown>(".spoc-tooltip")
             .data([null])
             .join("div")
@@ -184,7 +188,9 @@ export const SilhouettePerObjectChart: React.FC<SilhouettePerObjectChartProps> =
                     .style("cursor", "pointer")
                     .on("mouseover", function (event) {
                         d3.select(this).attr("opacity", 1);
-                        const [mx, my] = d3.pointer(event, svgRef.current!.parentElement!);
+                        const parent = svgRef.current.parentElement;
+                        if (!parent) return;
+                        const [mx, my] = d3.pointer(event, parent);
                         tooltip
                             .style("opacity", "1")
                             .style("left", `${mx + 14}px`)
@@ -197,7 +203,9 @@ export const SilhouettePerObjectChart: React.FC<SilhouettePerObjectChartProps> =
                             );
                     })
                     .on("mousemove", function (event) {
-                        const [mx, my] = d3.pointer(event, svgRef.current!.parentElement!);
+                        const parent = svgRef.current.parentElement;
+                        if (!parent) return;
+                        const [mx, my] = d3.pointer(event, parent);
                         tooltip
                             .style("left", `${mx + 14}px`)
                             .style("top", `${my - 10}px`);
@@ -244,27 +252,28 @@ export const SilhouettePerObjectChart: React.FC<SilhouettePerObjectChartProps> =
 
         // ── Legend ────────────────────────────────────────────────────────────
         const legendG = svg.append("g")
-            .attr("transform", `translate(${margin.left},${totalH - 6})`);
+            .attr("transform", `translate(${margin.left},${totalH - 30})`);
 
-        // Overall line swatch
+        // Row 1: overall mean reference line
         legendG.append("line")
-            .attr("x1", 0).attr("x2", 18).attr("y1", -5).attr("y2", -5)
+            .attr("x1", 0).attr("x2", 18).attr("y1", 0).attr("y2", 0)
             .attr("stroke", "#6366f1").attr("stroke-width", 2)
             .attr("stroke-dasharray", "6,4");
         legendG.append("text")
-            .attr("x", 23).attr("y", -1)
+            .attr("x", 23).attr("y", 4)
             .attr("font-size", "11").attr("fill", mutedColor)
             .text("Rata-rata keseluruhan");
 
+        // Row 2: negative silhouette bars
         legendG.append("rect")
-            .attr("x", 170).attr("y", -13).attr("width", 13).attr("height", 10)
+            .attr("x", 0).attr("y", 16).attr("width", 13).attr("height", 10)
             .attr("rx", 2).attr("fill", "#ef4444").attr("opacity", 0.82);
         legendG.append("text")
-            .attr("x", 188).attr("y", -4)
+            .attr("x", 18).attr("y", 25)
             .attr("font-size", "11").attr("fill", mutedColor)
             .text("Nilai negatif");
 
-    }, [sortedData, overall, width, totalH, innerW, innerH]);
+    }, [sortedData, overall, width, BAR_H, GAP_BETWEEN_CLUSTERS, clusterOrder, grouped, n, numClusters]);
 
     if (n === 0) {
         return (

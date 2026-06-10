@@ -19,25 +19,12 @@ const ClassifyMenu: React.FC = () => {
             <MenubarSubContent>
                 <MenubarItem
                     disabled={true}
-                    onClick={() => openModal(ModalType.ModalTwoStepCluster)}
-                >
-                    TwoStep Cluster
-                </MenubarItem>
-                <MenubarItem
-                    disabled={true}
-                    onClick={() => openModal(ModalType.ModalClusterSilhouettes)}
-                >   
-                    Cluster Silhouettes
-                </MenubarItem>
-                <MenubarSeparator />
-                <MenubarItem
-                    disabled={true}
                     onClick={() => openModal(ModalType.ModalTree)}
                 >
                     Tree
                 </MenubarItem>
                 <MenubarItem
-                    disabled={true}
+                    // disabled={true}
                     onClick={() => openModal(ModalType.ModalDiscriminant)}
                 >
                     Discriminant

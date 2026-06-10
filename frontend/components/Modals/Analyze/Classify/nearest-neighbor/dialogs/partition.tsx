@@ -1,13 +1,4 @@
 import React, { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import type {
   KNNPartitionProps,
   KNNPartitionType,
@@ -23,147 +14,283 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { HelperIcon } from "./helper-icon";
+
+const helperText = {
+  trainingAndHoldoutPartition:
+    "Split the data into training and holdout sets for model building and evaluation.",
+  crossValidationFolds:
+    "V-fold cross-validations is performed if you choose automatic k selection but do not choose feature selection.",
+  setSeedForMersenneTwister:
+    "Use a fixed Mersenne Twister seed to produce repeatable random results.",
+};
+
+const partitionFields: (keyof KNNPartitionType)[] = [
+  "PartitioningVariable",
+  "UseRandomly",
+  "UseVariable",
+  "VFoldPartitioningVariable",
+  "VFoldUseRandomly",
+  "VFoldUsePartitioningVar",
+  "TrainingNumber",
+  "NumPartition",
+  "SetSeed",
+  "Seed",
+];
+
+const normalizePartitionState = (
+  data: KNNPartitionType,
+): KNNPartitionType => ({
+  ...data,
+  UseRandomly: data.UseRandomly ?? true,
+  UseVariable: data.UseVariable ?? false,
+});
+
+const partitionStatesEqual = (
+  left: KNNPartitionType,
+  right: KNNPartitionType,
+) => partitionFields.every((field) => Object.is(left[field], right[field]));
+
+const isSeedUnavailable = (state: KNNPartitionType) =>
+  Boolean(state.UseVariable && state.VFoldUsePartitioningVar);
+
+const enforcePartitionRules = (state: KNNPartitionType): KNNPartitionType => {
+  if (!isSeedUnavailable(state) || !state.SetSeed) return state;
+
+  return {
+    ...state,
+    SetSeed: false,
+  };
+};
 
 export const KNNPartition = ({
-  isPartitionOpen,
-  setIsPartitionOpen,
   updateFormData,
   data,
+  availableVariables,
+  isAutoK,
+  isFeatureSelectionActive,
+  showFieldHelp = false,
 }: KNNPartitionProps) => {
-  const [partitionState, setPartitionState] = useState<KNNPartitionType>({
-    ...data,
-  });
-  const [isContinueDisabled, setIsContinueDisabled] = useState(false);
-  const [availableVariables, setAvailableVariables] = useState<string[]>([]);
+  const [partitionState, setPartitionState] = useState<KNNPartitionType>(() =>
+    enforcePartitionRules(normalizePartitionState(data)),
+  );
+
+  const isCrossValidationEnabled = isAutoK && !isFeatureSelectionActive;
 
   useEffect(() => {
-    if (isPartitionOpen) {
-      setPartitionState({ ...data });
-      setAvailableVariables(data.SrcVar ?? []);
-    }
-  }, [isPartitionOpen, data]);
+    const nextState = enforcePartitionRules(normalizePartitionState(data));
+    setPartitionState((prev) => {
+      if (partitionStatesEqual(prev, nextState)) return prev;
+      return nextState;
+    });
+  }, [data]);
+
+  const partitionMode = partitionState.UseRandomly
+    ? "UseRandomly"
+    : partitionState.UseVariable
+      ? "UseVariable"
+      : "UseRandomly";
+
+  const foldMode = partitionState.VFoldUseRandomly
+    ? "VFoldUseRandomly"
+    : partitionState.VFoldUsePartitioningVar
+      ? "VFoldUsePartitioningVar"
+      : "VFoldUseRandomly"; // default
+  const isSeedDisabled = isSeedUnavailable(partitionState);
 
   useEffect(() => {
-    const usedVariables = [
-      partitionState.PartitioningVariable,
-      partitionState.VFoldPartitioningVariable,
-    ].filter(Boolean);
-
-    if (!(partitionState.SrcVar === null)) {
-      const updatedVariables = partitionState.SrcVar.filter(
-        (variable) => !usedVariables.includes(variable),
-      );
-      setAvailableVariables(updatedVariables);
+    if (isCrossValidationEnabled) {
+      setPartitionState((prev) => {
+        const nextState = enforcePartitionRules({
+          ...prev,
+          VFoldUseRandomly: prev.VFoldUseRandomly ?? true,
+          VFoldUsePartitioningVar: prev.VFoldUsePartitioningVar ?? false,
+          NumPartition: prev.NumPartition ?? 10, // biasanya default 10 folds
+        });
+        if (partitionStatesEqual(prev, nextState)) return prev;
+        return nextState;
+      });
+    } else if (isFeatureSelectionActive) {
+      setPartitionState((prev) => {
+        const nextState = enforcePartitionRules({
+          ...prev,
+          VFoldUseRandomly: false,
+          VFoldUsePartitioningVar: false,
+        });
+        if (partitionStatesEqual(prev, nextState)) return prev;
+        return nextState;
+      });
     }
-  }, [partitionState]);
+  }, [isCrossValidationEnabled, isFeatureSelectionActive]);
+
+  useEffect(() => {
+    if (!isSeedDisabled) return;
+
+    setPartitionState((prev) => {
+      if (!prev.SetSeed) return prev;
+      return {
+        ...prev,
+        SetSeed: false,
+      };
+    });
+  }, [isSeedDisabled]);
+
+  const filteredAvailableVariables = availableVariables.filter(
+    (variable) =>
+      variable !== partitionState.PartitioningVariable &&
+      variable !== partitionState.VFoldPartitioningVariable,
+  );
+
+  useEffect(() => {
+    for (const field of partitionFields) {
+      if (!Object.is(partitionState[field], data[field])) {
+        updateFormData(field, partitionState[field]);
+      }
+    }
+  }, [data, partitionState, updateFormData]);
 
   const handleChange = (
     field: keyof KNNPartitionType,
     value: CheckedState | number | boolean | string | null,
   ) => {
-    setPartitionState((prevState) => ({
-      ...prevState,
-      [field]: value,
-    }));
+    setPartitionState((prevState) => {
+      const newState = enforcePartitionRules({
+        ...prevState,
+        [field]: value,
+      });
+
+      //updateFormData(field, value);
+
+      return newState;
+    });
   };
 
   const handleDrop = (target: string, variable: string) => {
     setPartitionState((prev) => {
       const updatedState = { ...prev };
+
       if (target === "PartitioningVariable") {
         updatedState.PartitioningVariable = variable;
-      } else if (target === "VFoldPartitioningVariable") {
-        updatedState.VFoldPartitioningVariable = variable;
+        //updateFormData("PartitioningVariable", variable);
       }
-      return updatedState;
+
+      if (target === "VFoldPartitioningVariable") {
+        updatedState.VFoldPartitioningVariable = variable;
+        // updateFormData("VFoldPartitioningVariable", variable);
+      }
+
+      return enforcePartitionRules(updatedState);
     });
   };
 
-  const handleRemoveVariable = (target: string, variable?: string) => {
+  const handleRemoveVariable = (target: string) => {
     setPartitionState((prev) => {
       const updatedState = { ...prev };
+
       if (target === "PartitioningVariable") {
-        updatedState.PartitioningVariable = "";
-      } else if (target === "VFoldPartitioningVariable") {
-        updatedState.VFoldPartitioningVariable = "";
+        updatedState.PartitioningVariable = null;
+        // updateFormData("PartitioningVariable", null);
       }
-      return updatedState;
+
+      if (target === "VFoldPartitioningVariable") {
+        updatedState.VFoldPartitioningVariable = null;
+        // updateFormData("VFoldPartitioningVariable", null);
+      }
+
+      return enforcePartitionRules(updatedState);
     });
   };
 
   const handlePartitionGrp = (value: string) => {
-    setPartitionState((prevState) => ({
-      ...prevState,
-      UseRandomly: value === "UseRandomly",
-      UseVariable: value === "UseVariable",
-    }));
+    setPartitionState((prev) =>
+      enforcePartitionRules({
+        ...prev,
+        UseRandomly: value === "UseRandomly",
+        UseVariable: value === "UseVariable",
+        PartitioningVariable:
+          value === "UseVariable" ? prev.PartitioningVariable : null,
+      }),
+    );
   };
 
   const handleFoldGrp = (value: string) => {
-    setPartitionState((prevState) => ({
-      ...prevState,
+    const newState = {
       VFoldUseRandomly: value === "VFoldUseRandomly",
       VFoldUsePartitioningVar: value === "VFoldUsePartitioningVar",
-    }));
-  };
+    };
 
-  const handleContinue = () => {
-    Object.entries(partitionState).forEach(([key, value]) => {
-      updateFormData(key as keyof KNNPartitionType, value);
-    });
-    setIsPartitionOpen(false);
+    setPartitionState((prev) =>
+      enforcePartitionRules({
+        ...prev,
+        ...newState,
+      }),
+    );
+
+    // updateFormData("VFoldUseRandomly", newState.VFoldUseRandomly);
+    // updateFormData("VFoldUsePartitioningVar", newState.VFoldUsePartitioningVar);
   };
-  if (!isPartitionOpen) return null;
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto">
-        <div className="flex flex-col items-start gap-2 p-4">
+    <div className="flex flex-col h-full min-h-0 w-full">
+      <div className="flex-1 min-h-0 w-full">
+        <div className="flex flex-col items-start gap-2 p-4 h-full min-h-0 w-full">
           <ResizablePanelGroup
             direction="horizontal"
-            className="min-h-[615px] max-w-xl rounded-lg border md:min-w-[200px]"
+            className="h-full min-h-0 w-full rounded-lg border md:min-w-[200px]"
           >
-            <ResizablePanel defaultSize={40}>
-              <ScrollArea>
-                <div className="flex flex-col justify-start items-start h-[510px] gap-1 p-2 overflow-hidden">
-                  {availableVariables.map((variable: string, index: number) => (
-                    <Badge
-                      key={index}
-                      className="w-full text-start text-sm font-light p-2 cursor-pointer"
-                      variant="outline"
-                      draggable
-                      onDragStart={(e) =>
-                        e.dataTransfer.setData("text", variable)
-                      }
-                    >
-                      {variable}
-                    </Badge>
-                  ))}
+            <ResizablePanel defaultSize={30} className="min-h-0 min-w-0">
+              <div className="h-full min-h-0 overflow-y-auto hide-scrollbar">
+                <div className="flex flex-col justify-start items-start gap-1 p-2 min-w-0">
+                  {filteredAvailableVariables.map(
+                    (variable: string, index: number) => (
+                      <Badge
+                        key={index}
+                        className="block w-full min-w-0 truncate text-start text-sm font-light p-2 cursor-pointer"
+                        variant="outline"
+                        draggable
+                        title={variable}
+                        onDragStart={(e) =>
+                          e.dataTransfer.setData("text", variable)
+                        }
+                      >
+                        {variable}
+                      </Badge>
+                    ),
+                  )}
                 </div>
-              </ScrollArea>
+              </div>
             </ResizablePanel>
             <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={60}>
-              <ResizablePanelGroup direction="vertical">
-                <ResizablePanel defaultSize={45}>
+            <ResizablePanel defaultSize={70} className="min-h-0">
+              <div className="h-full min-h-0 overflow-y-auto">
+                <div className="flex min-h-full flex-col">
+                <section className="border-b">
                   <RadioGroup
-                    value={
-                      partitionState.UseRandomly ? "UseRandomly" : "UseVariable"
-                    }
+                    value={partitionMode}
                     onValueChange={handlePartitionGrp}
                   >
                     <div className="flex flex-col gap-2 p-2">
-                      <Label className="font-bold">
-                        Training and Holdout Partition
-                      </Label>
+                      <div className="flex w-full items-center gap-2">
+                        <Label className="font-bold">
+                          Training and Holdout Partition
+                        </Label>
+                        {showFieldHelp ? (
+                          <HelperIcon text={helperText.trainingAndHoldoutPartition} />
+                        ) : null}
+                      </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="UseRandomly" id="UseRandomly" />
                         <Label htmlFor="UseRandomly">
                           Randomly assign cases to partition
                         </Label>
                       </div>
-                      <div className="flex flex-row gap-1 pl-6">
+                      <div
+                        className={`flex flex-row gap-1 pl-6 ${
+                          !partitionState.UseRandomly
+                            ? "opacity-50 pointer-events-none"
+                            : ""
+                        }`}
+                      >
                         <div className="flex flex-col gap-2">
                           <Label htmlFor="TrainingNumber">Training %:</Label>
                           <Input
@@ -174,7 +301,10 @@ export const KNNPartition = ({
                             value={partitionState.TrainingNumber ?? 70}
                             disabled={!partitionState.UseRandomly}
                             onChange={(e) =>
-                              handleChange("TrainingNumber", e.target.value)
+                              handleChange(
+                                "TrainingNumber",
+                                Number(e.target.value),
+                              )
                             }
                           />
                         </div>
@@ -214,9 +344,13 @@ export const KNNPartition = ({
                           <Label htmlFor="PartitioningVariable">
                             Partition Variable:
                           </Label>
-                          <div className="flex w-full items-center space-x-2">
+                          <div className="flex w-full min-w-0 items-center space-x-2">
                             <div
-                              className="w-full min-h-[40px] p-2 border rounded"
+                              className={`w-full min-w-0 min-h-[40px] p-2 border rounded ${
+                                !partitionState.UseVariable
+                                  ? "opacity-50 pointer-events-none"
+                                  : ""
+                              }`}
                               onDrop={(e) => {
                                 handleDrop(
                                   "PartitioningVariable",
@@ -227,8 +361,9 @@ export const KNNPartition = ({
                             >
                               {partitionState.PartitioningVariable ? (
                                 <Badge
-                                  className="text-start text-sm font-light p-2 cursor-pointer"
+                                  className="block max-w-full min-w-0 truncate text-start text-sm font-light p-2 cursor-pointer"
                                   variant="outline"
+                                  title={partitionState.PartitioningVariable}
                                   onClick={() =>
                                     handleRemoveVariable("PartitioningVariable")
                                   }
@@ -251,21 +386,28 @@ export const KNNPartition = ({
                       </div>
                     </div>
                   </RadioGroup>
-                </ResizablePanel>
-                <ResizableHandle />
-                <ResizablePanel defaultSize={38}>
+                </section>
+                <section className="border-b">
                   <RadioGroup
-                    value={
-                      partitionState.VFoldUseRandomly
-                        ? "VFoldUseRandomly"
-                        : "VFoldUsePartitioningVar"
-                    }
+                    disabled={!isCrossValidationEnabled}
+                    value={foldMode}
                     onValueChange={handleFoldGrp}
                   >
-                    <div className="flex flex-col gap-2 p-2">
-                      <Label className="font-bold">
-                        Cross Validation Folds
-                      </Label>
+                    <div
+                      className={`flex flex-col gap-2 p-2 ${
+                        !isCrossValidationEnabled
+                          ? "opacity-50 pointer-events-none"
+                          : ""
+                      }`}
+                    >
+                      <div className="flex w-full items-center gap-2">
+                        <Label className="font-bold">
+                          Cross Validation Folds
+                        </Label>
+                        {showFieldHelp ? (
+                          <HelperIcon text={helperText.crossValidationFolds} />
+                        ) : null}
+                      </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem
                           value="VFoldUseRandomly"
@@ -283,9 +425,12 @@ export const KNNPartition = ({
                           className="min-w-2xl w-full"
                           placeholder=""
                           value={partitionState.NumPartition ?? ""}
-                          disabled={!partitionState.VFoldUseRandomly}
+                          disabled={
+                            !isCrossValidationEnabled ||
+                            !partitionState.VFoldUseRandomly
+                          }
                           onChange={(e) =>
-                            handleChange("NumPartition", e.target.value)
+                            handleChange("NumPartition", Number(e.target.value))
                           }
                         />
                       </div>
@@ -302,9 +447,14 @@ export const KNNPartition = ({
                         <Label htmlFor="VFoldPartitioningVariable">
                           Fold Variable:
                         </Label>
-                        <div className="flex w-full items-center space-x-2">
+                        <div className="flex w-full min-w-0 items-center space-x-2">
                           <div
-                            className="w-full min-h-[40px] p-2 border rounded"
+                            className={`w-full min-w-0 min-h-[40px] p-2 border rounded ${
+                              !isCrossValidationEnabled ||
+                              !partitionState.VFoldUsePartitioningVar
+                                ? "opacity-50 pointer-events-none"
+                                : ""
+                            }`}
                             onDrop={(e) => {
                               handleDrop(
                                 "VFoldPartitioningVariable",
@@ -315,8 +465,11 @@ export const KNNPartition = ({
                           >
                             {partitionState.VFoldPartitioningVariable ? (
                               <Badge
-                                className="text-start text-sm font-light p-2 cursor-pointer"
+                                className="block max-w-full min-w-0 truncate text-start text-sm font-light p-2 cursor-pointer"
                                 variant="outline"
+                                title={
+                                  partitionState.VFoldPartitioningVariable
+                                }
                                 onClick={() =>
                                   handleRemoveVariable(
                                     "VFoldPartitioningVariable",
@@ -342,25 +495,32 @@ export const KNNPartition = ({
                       </div>
                     </div>
                   </RadioGroup>
-                </ResizablePanel>
-                <ResizableHandle />
-                <ResizablePanel defaultSize={17}>
+                </section>
+                <section>
                   <div className="flex flex-col gap-2 p-2">
-                    <Label className="font-bold">Random Number Seed</Label>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="SetSeed"
-                        checked={partitionState.SetSeed}
-                        onCheckedChange={(checked) =>
-                          handleChange("SetSeed", checked)
-                        }
-                      />
-                      <label
-                        htmlFor="SetSeed"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        Set Seed for Mersenne Twister
-                      </label>
+                    <div className="flex items-center gap-2">
+                      <Label className="font-bold">Random Number Seed</Label>
+                    </div>
+                    <div className="flex w-full items-center justify-between gap-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="SetSeed"
+                          checked={partitionState.SetSeed}
+                          disabled={isSeedDisabled}
+                          onCheckedChange={(checked) =>
+                            handleChange("SetSeed", checked)
+                          }
+                        />
+                        <label
+                          htmlFor="SetSeed"
+                          className="text-sm font-bold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          Set Seed for Mersenne Twister
+                        </label>
+                      </div>
+                      {showFieldHelp ? (
+                        <HelperIcon text={helperText.setSeedForMersenneTwister} />
+                      ) : null}
                     </div>
                     <div className="flex flex-row items-center gap-2 pl-6 w-full">
                       <Label htmlFor="Seed">Seed:</Label>
@@ -370,56 +530,18 @@ export const KNNPartition = ({
                         className="min-w-2xl w-full"
                         placeholder=""
                         value={partitionState.Seed ?? ""}
-                        disabled={!partitionState.SetSeed}
+                        disabled={isSeedDisabled || !partitionState.SetSeed}
                         onChange={(e) =>
                           handleChange("Seed", Number(e.target.value))
                         }
                       />
                     </div>
                   </div>
-                </ResizablePanel>
-              </ResizablePanelGroup>
+                </section>
+                </div>
+              </div>
             </ResizablePanel>
           </ResizablePanelGroup>
-        </div>
-      </div>
-      <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-        <div>
-          {/* <TooltipProvider>
-                                                                                                    <Tooltip>
-                                                                                                      <TooltipTrigger asChild>
-                                                                                                        <Button
-                                                                                                          variant="ghost"
-                                                                                                          size="icon"
-                                                                                                          onClick={startTour}
-                                                                                                          className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
-                                                                                                        >
-                                                                                                          <HelpCircle className="h-4 w-4" />
-                                                                                                        </Button>
-                                                                                                      </TooltipTrigger>
-                                                                                                      <TooltipContent side="top">
-                                                                                                        <p className="text-xs">Start feature tour</p>
-                                                                                                      </TooltipContent>
-                                                                                                    </Tooltip>
-                                                                                                  </TooltipProvider> */}
-        </div>
-        <div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setIsPartitionOpen(false)}
-            className="mr-2"
-          >
-            Cancel
-          </Button>
-          <Button
-            id="knn-partition-continue-button"
-            disabled={isContinueDisabled}
-            type="button"
-            onClick={handleContinue}
-          >
-            Continue
-          </Button>
         </div>
       </div>
     </div>

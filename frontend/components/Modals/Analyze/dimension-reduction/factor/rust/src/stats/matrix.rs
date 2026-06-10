@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use nalgebra::DMatrix;
 use statrs::distribution::{StudentsT, ContinuousCDF}; // ini untuk p-value (significant value)s
+use web_sys::console;
 use crate::models::{
     config::FactorAnalysisConfig,
     data::AnalysisData,
@@ -15,115 +16,6 @@ use crate::models::{
 };
 
 use super::core::extract_data_matrix;
-
-// pub fn calculate_matrix(
-//     data_matrix: &DMatrix<f64>,
-//     matrix_type: &str
-// ) -> Result<DMatrix<f64>, String> {
-//     let n_rows = data_matrix.nrows();
-//     let n_cols = data_matrix.ncols();
-
-//     if n_rows < 2 {
-//         return Err("Not enough data to calculate matrix".to_string());
-//     }
-
-//     // Calculate column means
-//     let mut means = DVector::zeros(n_cols);
-//     for j in 0..n_cols {
-//         let mut sum = 0.0;
-//         for i in 0..n_rows {
-//             sum += data_matrix[(i, j)];
-//         }
-//         means[j] = sum / (n_rows as f64);
-//     }
-
-//     // Calculate matrix
-//     let mut result = DMatrix::zeros(n_cols, n_cols);
-
-//     if matrix_type == "correlation" {
-//         // Implement Pearson correlation formula:
-//         // r = sum((x_i - mean_x) * (y_i - mean_y)) / sqrt(sum((x_i - mean_x)^2) * sum((y_i - mean_y)^2))
-//         for i in 0..n_cols {
-//             for j in 0..n_cols {
-//                 let mut sum_xy = 0.0;
-//                 let mut sum_x2 = 0.0;
-//                 let mut sum_y2 = 0.0;
-
-//                 for k in 0..n_rows {
-//                     let dx = data_matrix[(k, i)] - means[i];
-//                     let dy = data_matrix[(k, j)] - means[j];
-
-//                     sum_xy += dx * dy;
-//                     sum_x2 += dx * dx;
-//                     sum_y2 += dy * dy;
-//                 }
-
-//                 let denominator = (sum_x2 * sum_y2).sqrt();
-
-//                 if denominator > 0.0 {
-//                     result[(i, j)] = sum_xy / denominator;
-//                 } else {
-//                     // If denominator is 0 (no variation), correlation is undefined
-//                     result[(i, j)] = if i == j { 1.0 } else { 0.0 };
-//                 }
-//             }
-//         }
-//     } else {
-//         // Covariance matrix: cov = sum((x_i - mean_x) * (y_i - mean_y)) / (n - 1)
-//         for i in 0..n_cols {
-//             for j in 0..n_cols {
-//                 let mut sum_product = 0.0;
-//                 for k in 0..n_rows {
-//                     sum_product += (data_matrix[(k, i)] - means[i]) * (data_matrix[(k, j)] - means[j]);
-//                 }
-//                 result[(i, j)] = sum_product / ((n_rows - 1) as f64);
-//             }
-//         }
-//     }
-
-//     Ok(result)
-// }
-
-// // Calculate descriptive statistics
-// pub fn calculate_descriptive_statistics(
-//     data: &AnalysisData,
-//     config: &FactorAnalysisConfig
-// ) -> Result<Vec<DescriptiveStatistic>, String> {
-//     let (data_matrix, var_names) = extract_data_matrix(data, config)?;
-
-//     let n_rows = data_matrix.nrows();
-//     let n_cols = data_matrix.ncols();
-//     let mut stats = Vec::with_capacity(n_cols);
-
-//     for j in 0..n_cols {
-//         let mut sum = 0.0;
-//         let mut sum_sq = 0.0;
-
-//         for i in 0..n_rows {
-//             let val = data_matrix[(i, j)];
-//             sum += val;
-//             sum_sq += val.powi(2);
-//         }
-
-//         let mean = sum / (n_rows as f64);
-//         let variance = (sum_sq - sum.powi(2) / (n_rows as f64)) / ((n_rows - 1) as f64);
-//         let std_dev = variance.sqrt();
-
-//         stats.push(DescriptiveStatistic {
-//             variable: var_names[j].clone(),
-//             mean,
-//             std_deviation: std_dev,
-//             analysis_n: n_rows,
-//         });
-//     }
-
-//     Ok(stats)
-// }
-
-
-
-// perbaikan untuk mendukung menu options
-// ... imports tetap sama ...
 
 pub fn calculate_matrix(
     data_matrix: &DMatrix<f64>,
@@ -259,8 +151,6 @@ pub fn calculate_descriptive_statistics(
     Ok(stats)
 }
 
-
-
 // Independent correlation matrix functions
 pub fn calculate_correlation_matrix(
     data: &AnalysisData,
@@ -310,20 +200,10 @@ pub fn calculate_correlation_matrix(
                     let denominator = (1.0 - r_clamped * r_clamped).sqrt();
                     let t_stat = numerator / denominator;
 
-                    // Calculate 2-tailed p-value using t distribution with df = n-2
-                    // incomplete_beta gives CDF: P(T <= |t|)
-                    // We need: P(T > |t|) = 1 - CDF(|t|)
-                    // let df = n - 2.0;
-                    // let abs_t = t_stat.abs();
-                    // let x = df / (df + abs_t * abs_t);
-                    // let cdf = incomplete_beta(0.5 * df, 0.5, x);  // P(T <= |t|)
-                    // let p_two_tailed = 2.0 * (1.0 - cdf);          // P(T > |t|) two-tailed
-
                     let df = n - 2.0;
                     let t_dist = StudentsT::new(0.0, 1.0, df).unwrap();
-                    // 1-tailed p-value (same formula SPSS uses for "Sig. (1-tailed)")
+                    // 1-tailed p-value  
                     let p_one_tailed = 1.0 - t_dist.cdf(t_stat.abs());
-
 
                     // Convert to 1-tailed p-value: P_1-tailed = P_2-tailed / 2
                     p_one_tailed 
@@ -504,7 +384,8 @@ pub fn calculate_anti_image_matrices(
     let (data_matrix, var_names) = extract_data_matrix(data, config)?;
     let corr_matrix = calculate_matrix(&data_matrix, "correlation")?;
 
-    let inverse = match corr_matrix.try_inverse() {
+    // 1. Invers matriks (dengan .clone() untuk menghindari error ownership)
+    let inverse = match corr_matrix.clone().try_inverse() {
         Some(inv) => inv,
         None => {
             return Err("Could not invert correlation matrix".to_string());
@@ -512,9 +393,56 @@ pub fn calculate_anti_image_matrices(
     };
 
     let n_vars = var_names.len();
+    
+    console::log_1(&format!("DEBUG: Inverse matrix diagonal: {:?}", 
+        (0..n_vars).map(|i| inverse[(i, i)]).collect::<Vec<_>>()
+    ).into());
+    
+    // 2. Hitung off-diagonal Anti-image Correlation
+    // (Ini akan digunakan untuk off-diagonal entries saja)
+    let mut anti_img_corr_matrix = nalgebra::DMatrix::zeros(n_vars, n_vars);
+    for i in 0..n_vars {
+        for j in 0..n_vars {
+            if i != j {
+                // Partial correlation dari inverse matrix
+                anti_img_corr_matrix[(i, j)] = inverse[(i, j)] / (inverse[(i, i)] * inverse[(j, j)]).sqrt();
+            }
+        }
+    }
+
+    // 3. Hitung Individual KMO / Measure of Sampling Adequacy (MSA)
+    // Formula: MSA_i = sum(r_ij^2) / (sum(r_ij^2) + sum(a_ij^2))
+    // where r_ij = correlation off-diagonal, a_ij = partial correlation off-diagonal
+    let mut msa_values = Vec::new();
+    for i in 0..n_vars {
+        let mut sum_squared_correlation = 0.0;
+        let mut sum_squared_partial = 0.0;
+
+        for j in 0..n_vars {
+            if i != j {
+                let corr_val = corr_matrix[(i, j)];
+                let partial_val = anti_img_corr_matrix[(i, j)];
+                
+                sum_squared_correlation += corr_val * corr_val;
+                sum_squared_partial += partial_val * partial_val;
+            }
+        }
+
+        let msa = if (sum_squared_correlation + sum_squared_partial) > 0.0 {
+            sum_squared_correlation / (sum_squared_correlation + sum_squared_partial)
+        } else {
+            0.0
+        };
+
+        msa_values.push(msa);
+    }
+    
+    console::log_1(&format!("DEBUG: Calculated MSA values = {:?}", msa_values).into());
+
     let mut anti_image_covariance = HashMap::new();
     let mut anti_image_correlation = HashMap::new();
 
+    // 4. Susun ke dalam HashMap untuk hasil akhir
     for i in 0..n_vars {
         let var_name = &var_names[i];
         let mut var_cov = HashMap::new();
@@ -523,28 +451,35 @@ pub fn calculate_anti_image_matrices(
         for j in 0..n_vars {
             let other_var = &var_names[j];
 
-            // Anti-image covariance: -partial covariances (negative of off-diagonal elements of inverse)
-            let cov_value = if i == j {
-                1.0 / inverse[(i, j)]
-            } else {
-                inverse[(i, j)] / (inverse[(i, i)] * inverse[(j, j)])
-            };
-
+            // Anti-image covariance: dihitung dari inverse correlation matrix
+            let cov_value = inverse[(i, j)] / (inverse[(i, i)] * inverse[(j, j)]);
             var_cov.insert(other_var.clone(), cov_value);
 
-            // Anti-image correlation: partial correlations with sign reversed
+            // Anti-image correlation
             let corr_value = if i == j {
-                1.0
+                // Diagonal: MSA value untuk variable ini
+                msa_values[i]
             } else {
-               inverse[(i, j)] / (inverse[(i, i)] * inverse[(j, j)]).sqrt()
+                anti_img_corr_matrix[(i, j)]
             };
-
             var_corr.insert(other_var.clone(), corr_value);
         }
 
         anti_image_covariance.insert(var_name.clone(), var_cov);
         anti_image_correlation.insert(var_name.clone(), var_corr);
+        
+        // Verify what was actually stored
+        if let Some(stored_corr_row) = anti_image_correlation.get(var_name) {
+            if let Some(diagonal_val) = stored_corr_row.get(var_name) {
+                console::log_1(&format!(
+                    "DEBUG VERIFY: {} diagonal in HashMap = {:.10}",
+                    var_name, diagonal_val
+                ).into());
+            }
+        }
     }
+
+    console::log_1(&format!("DEBUG FINAL: MSA values before return: {:?}", msa_values).into());
 
     Ok(AntiImageMatrices {
         anti_image_covariance,
@@ -552,7 +487,6 @@ pub fn calculate_anti_image_matrices(
         variable_order: var_names,
     })
 }
-
 
 /// Menghitung standar deviasi sampel untuk kolom tertentu
 pub fn calculate_std_dev(data: &DMatrix<f64>, col_index: usize) -> f64 {

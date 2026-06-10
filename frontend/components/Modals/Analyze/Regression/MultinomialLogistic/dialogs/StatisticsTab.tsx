@@ -24,6 +24,7 @@ export interface StatisticsOptions {
     asymptoticCovariances: boolean;
     confidenceInterval: number;
     subpopulationMode: SubpopulationMode;
+    subpopulationVariables: string[];
 }
 
 interface StatisticsTabProps {
@@ -33,10 +34,13 @@ interface StatisticsTabProps {
 
 type ToggleableStatistic = Exclude<
     keyof StatisticsOptions,
-    "confidenceInterval" | "subpopulationMode"
+    "confidenceInterval" | "subpopulationMode" | "subpopulationVariables"
 >;
 
-export const StatisticsTab: React.FC<StatisticsTabProps> = ({ options, onChange }) => {
+export const StatisticsTab: React.FC<StatisticsTabProps> = ({
+    options,
+    onChange,
+}) => {
     const handleToggle = (key: ToggleableStatistic) => {
         onChange({
             ...options,
@@ -49,13 +53,6 @@ export const StatisticsTab: React.FC<StatisticsTabProps> = ({ options, onChange 
         onChange({
             ...options,
             confidenceInterval: isNaN(num) ? 95 : Math.max(1, Math.min(99, num)),
-        });
-    };
-
-    const handleSubpopulationChange = (value: SubpopulationMode) => {
-        onChange({
-            ...options,
-            subpopulationMode: value,
         });
     };
 
@@ -100,7 +97,6 @@ export const StatisticsTab: React.FC<StatisticsTabProps> = ({ options, onChange 
                     <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         Model
                     </Label>
-                    <span className="text-[11px] text-muted-foreground">Match SPSS layout</span>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                     {modelOptions.map((item) => (
@@ -146,41 +142,6 @@ export const StatisticsTab: React.FC<StatisticsTabProps> = ({ options, onChange 
                         max={99}
                     />
                 </div>
-            </section>
-
-            <section className="rounded-md border p-4">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Define subpopulations
-                </Label>
-                <RadioGroup
-                    className="mt-3 space-y-3"
-                    value={options.subpopulationMode}
-                    onValueChange={(value) => handleSubpopulationChange(value as SubpopulationMode)}
-                >
-                    <div className="flex items-start space-x-3">
-                        <RadioGroupItem value="factors" id="subpop-factors" />
-                        <div>
-                            <Label htmlFor="subpop-factors" className="text-sm font-normal">
-                                Covariate patterns defined by factors and covariates
-                            </Label>
-                            <p className="text-xs text-muted-foreground">Matches SPSS default behavior.</p>
-                        </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                        <RadioGroupItem value="variableList" id="subpop-variables" />
-                        <div className="w-full">
-                            <Label htmlFor="subpop-variables" className="text-sm font-normal">
-                                Covariate patterns defined by variable list below
-                            </Label>
-                            <p className="text-xs text-muted-foreground">
-                                Coming soon: select custom variables to mirror SPSS subpopulation lists.
-                            </p>
-                            <div className="mt-2 h-16 rounded border border-dashed border-muted-foreground/40 bg-muted/10 text-center text-[11px] text-muted-foreground flex items-center justify-center">
-                                Variable list placeholder
-                            </div>
-                        </div>
-                    </div>
-                </RadioGroup>
             </section>
         </div>
     );

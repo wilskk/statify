@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * K-Medoids Clustering Web Worker
  * Runs WASM clustering algorithms in background thread
@@ -7,7 +8,15 @@ import type { WorkerRequestMessage, WorkerResponseMessage, ClusteringInput, Clus
 import { recoverMedoidsFromMismatch } from "./k-medoids-cluster-guards";
 
 // Import WASM module - will be initialized when worker starts
-let wasmModule: any = null;
+type WasmModule = {
+    test_connection: () => string;
+    run_k_medoids: (input: unknown) => Record<string, unknown>;
+    run_k_medoids_typed: (...args: unknown[]) => Record<string, unknown>;
+    run_k_medoids_range: (input: unknown) => Record<string, unknown>[];
+    run_silhouette?: (input: unknown) => Record<string, unknown>;
+    initThreadPool?: (n: number) => Promise<void>;
+};
+let wasmModule: WasmModule | null = null;
 let wasmInitialized = false;
 let currentOperation: AbortController | null = null;
 /** Data matrix cached via setData – avoids re-serialization in auto-k loops */
@@ -17,13 +26,36 @@ let cachedData: number[][] | null = null;
 
 const MAX_SILHOUETTE_SAMPLE = 300;
 
+function normalizeDistanceMetric(metric: unknown): "euclidean" | "manhattan" {
+    const normalized = String(metric ?? "euclidean").toLowerCase();
+    if (normalized === "manhattan" || normalized === "cityblock" || normalized === "l1") {
+        return "manhattan";
+    }
+    return "euclidean";
+}
+
 function workerEuclidean(a: number[], b: number[]): number {
     let s = 0;
     for (let i = 0; i < a.length; i++) s += (a[i] - b[i]) ** 2;
     return Math.sqrt(s);
 }
 
-function computeSilhouette(data: number[][], labels: number[], nClusters: number): number {
+function workerManhattan(a: number[], b: number[]): number {
+    let s = 0;
+    for (let i = 0; i < a.length; i++) s += Math.abs(a[i] - b[i]);
+    return s;
+}
+
+function workerDistance(a: number[], b: number[], metric: "euclidean" | "manhattan"): number {
+    return metric === "manhattan" ? workerManhattan(a, b) : workerEuclidean(a, b);
+}
+
+function computeSilhouette(
+    data: number[][],
+    labels: number[],
+    nClusters: number,
+    metric: "euclidean" | "manhattan"
+): number {
     const n = data.length;
     if (nClusters <= 1 || nClusters >= n || n === 0) return 0;
 
@@ -52,7 +84,7 @@ function computeSilhouette(data: number[][], labels: number[], nClusters: number
         const same = clusters[ci];
         let a = 0;
         if (same.length > 1) {
-            for (const j of same) if (i !== j) a += workerEuclidean(sampleData[i], sampleData[j]);
+            for (const j of same) if (i !== j) a += workerDistance(sampleData[i], sampleData[j], metric);
             a /= (same.length - 1);
         }
         let b = Infinity;
@@ -61,7 +93,7 @@ function computeSilhouette(data: number[][], labels: number[], nClusters: number
             const op = clusters[oc];
             if (op.length === 0) continue;
             let d = 0;
-            for (const j of op) d += workerEuclidean(sampleData[i], sampleData[j]);
+            for (const j of op) d += workerDistance(sampleData[i], sampleData[j], metric);
             b = Math.min(b, d / op.length);
         }
         total += b === Infinity ? 0 : (b - a) / Math.max(a, b);
@@ -69,11 +101,17 @@ function computeSilhouette(data: number[][], labels: number[], nClusters: number
     return total / sn;
 }
 
-function computeWCSS(data: number[][], labels: number[], medoidIndices: number[]): number {
+function computeWCSS(
+    data: number[][],
+    labels: number[],
+    medoidIndices: number[],
+    metric: "euclidean" | "manhattan"
+): number {
     let wcss = 0;
     for (let i = 0; i < data.length; i++) {
         const m = medoidIndices[labels[i]];
-        wcss += workerEuclidean(data[i], data[m]) ** 2;
+        const dist = workerDistance(data[i], data[m], metric);
+        wcss += metric === "manhattan" ? dist : dist ** 2;
     }
     return wcss;
 }
@@ -84,7 +122,12 @@ function computeWCSS(data: number[][], labels: number[], medoidIndices: number[]
  * points — avoids O(n²) cost for large datasets while keeping representative scores.
  */
 const MAX_PER_OBJECT = 2000;
-function computeSilhouettePerObject(data: number[][], labels: number[], nClusters: number): number[] {
+function computeSilhouettePerObject(
+    data: number[][],
+    labels: number[],
+    nClusters: number,
+    metric: "euclidean" | "manhattan"
+): number[] {
     const n = data.length;
     if (nClusters <= 1 || nClusters >= n || n === 0) return new Array(n).fill(0);
 
@@ -112,7 +155,7 @@ function computeSilhouettePerObject(data: number[][], labels: number[], nCluster
         const same = clusters[ci];
         let a = 0;
         if (same.length > 1) {
-            for (const j of same) if (i !== j) a += workerEuclidean(data[i], data[j]);
+            for (const j of same) if (i !== j) a += workerDistance(data[i], data[j], metric);
             a /= same.length - 1;
         }
         let b = Infinity;
@@ -121,7 +164,7 @@ function computeSilhouettePerObject(data: number[][], labels: number[], nCluster
             const op = clusters[oc];
             if (op.length === 0) continue;
             let d = 0;
-            for (const j of op) d += workerEuclidean(data[i], data[j]);
+            for (const j of op) d += workerDistance(data[i], data[j], metric);
             b = Math.min(b, d / op.length);
         }
         scores[i] = b === Infinity ? 0 : (b - a) / Math.max(a, b);
@@ -142,10 +185,37 @@ async function initializeWasm(wasmPath?: string, requestId?: number): Promise<vo
     try {
         // Import WASM module dynamically
         const wasmImport = await import("@/public/workers/Clustering/K-Medoids/wasm");
-        
-        // Initialize WASM
-        await wasmImport.default();
-        wasmModule = wasmImport;
+
+        // Initialize WASM using explicit public path first. This avoids
+        // brittle relative URL resolution when worker chunks are relocated.
+        const initCandidates: (string | undefined)[] = [
+            wasmPath,
+            "/workers/Clustering/K-Medoids/wasm_bg.wasm",
+            undefined,
+        ];
+        let initialized = false;
+        let lastInitError: unknown = null;
+
+        for (const candidate of initCandidates) {
+            if (initialized) break;
+            try {
+                await wasmImport.default(candidate as string | undefined);
+                initialized = true;
+            } catch (initError) {
+                lastInitError = initError;
+                if (candidate) {
+                    console.warn(`[Worker] WASM init failed for path: ${candidate}`, initError);
+                } else {
+                    console.warn("[Worker] WASM init failed using module-relative fallback", initError);
+                }
+            }
+        }
+
+        if (!initialized) {
+            throw lastInitError ?? new Error("Unable to initialize WASM module");
+        }
+        const moduleInstance = wasmImport as unknown as WasmModule;
+        wasmModule = moduleInstance;
         wasmInitialized = true;
 
         // ── Rayon thread pool (wasm-bindgen-rayon, `threading` feature) ────────
@@ -156,20 +226,18 @@ async function initializeWasm(wasmPath?: string, requestId?: number): Promise<vo
         // so SharedArrayBuffer is available.  If the module was built without
         // the feature (or SAB is unavailable) the function won't exist — we
         // fall through silently and run single-threaded.
-        if (typeof wasmModule.initThreadPool === "function") {
+        if (typeof moduleInstance.initThreadPool === "function") {
             try {
                 const numThreads = navigator.hardwareConcurrency || 4;
-                await wasmModule.initThreadPool(numThreads);
-                console.log(`[Worker] Rayon thread pool initialized: ${numThreads} threads`);
+                await moduleInstance.initThreadPool(numThreads);
             } catch (e) {
                 console.warn("[Worker] Thread pool init skipped (single-threaded build or no SAB):", e);
             }
         }
 
         // Test connection
-        const testResult = wasmModule.test_connection();
-        console.log("[Worker] WASM initialized:", testResult);
-        
+        moduleInstance.test_connection();
+
         postMessage({ type: "ready", requestId } as WorkerResponseMessage);
     } catch (error) {
         console.error("[Worker] Failed to initialize WASM:", error);
@@ -243,6 +311,15 @@ async function runClustering(input: ClusteringInput, requestId?: number): Promis
             throw new Error("Number of clusters cannot exceed number of data points");
         }
 
+        // WASM requires k < n strictly (k == n leaves no non-medoid candidates
+        // for CLARANS and is meaningless for PAM). Catch it here with a clear message.
+        if (input.n_clusters >= resolvedData.length) {
+            throw new Error(
+                `Number of clusters (${input.n_clusters}) must be less than the number of data points (${resolvedData.length}). ` +
+                `Please reduce the number of clusters or add more data rows.`
+            );
+        }
+
         sendProgress("preparing", 20, `Processing ${resolvedData.length} data points...`);
 
         // Check for cancellation
@@ -255,26 +332,20 @@ async function runClustering(input: ClusteringInput, requestId?: number): Promis
         // The typed path avoids serde_wasm_bindgen overhead for the data matrix
         // AND allows live per-iteration progress callbacks from Rust to JS.
         // Fallback to the serde path for CLARA/CLARANS (not yet in typed API).
+        const normalizedMetric = normalizeDistanceMetric(input.distance_metric);
         const isPAM = (input.method || "pam").toLowerCase() === "pam";
-        const hasTypedApi = isPAM && typeof wasmModule.run_k_medoids_typed === "function";
+        // Typed path currently hardcodes R-style BUILD initialization in WASM.
+        // If caller requests non-R/random init, force serde path so those flags apply.
+        const requiresCustomPamInit = input.use_build_phase === false || input.use_r_implementation === false;
+        // Typed path is known to be unreliable for Manhattan in some builds — use serde path instead.
+        const typedMetricSupported = normalizedMetric === "euclidean";
+        const hasTypedApi = isPAM && typedMetricSupported && !requiresCustomPamInit && typeof wasmModule.run_k_medoids_typed === "function";
 
-        // ── k-pipeline verification ──────────────────────────────────────────
-        // Log here so we can confirm the k received from the main thread is
-        // exactly what the user set — detecting any stale-state issues early.
-        console.log(`[Worker] k-pipeline CHECK: input.n_clusters=${input.n_clusters} (expected = user's k)`);
-        console.log("[Worker] Running clustering:", {
-            method: input.method,
-            n_clusters: input.n_clusters,
-            data_points: resolvedData.length,
-            dimensions: resolvedData[0]?.length || 0,
-            path: hasTypedApi ? "typed-array (fast)" : "serde-JSON (fallback)",
-        });
         if (input.n_clusters < 2 || !Number.isInteger(input.n_clusters)) {
             console.error(`[Worker] INVALID k=${input.n_clusters} — must be an integer ≥ 2. Possible stale state from prior run.`);
         }
 
-        const startTime = performance.now();
-        let result: any;
+        let result: Record<string, unknown>;
 
         if (hasTypedApi) {
             // ── Fast path: Float64Array input + callback ──────────────────────
@@ -315,10 +386,10 @@ async function runClustering(input: ClusteringInput, requestId?: number): Promis
                 input.n_clusters,
                 "pam",
                 maxIter,
-                input.distance_metric || "euclidean",
-                BigInt(input.random_seed != null ? Math.trunc(input.random_seed) : -1),
-                input.convergence_tolerance || 0.0,
-                input.n_init || 1,
+                normalizedMetric,
+                BigInt(input.random_seed !== null && input.random_seed !== undefined ? Math.trunc(input.random_seed) : -1),
+                input.convergence_tolerance ?? 0.0,
+                input.n_init ?? 1,
                 onProgress,
                 onInitialMedoids,
             );
@@ -342,9 +413,9 @@ async function runClustering(input: ClusteringInput, requestId?: number): Promis
             }
             // medoid_history is a JS Array of Uint32Arrays from the typed path
             if (Array.isArray(result.medoid_history)) {
-                result.medoid_history = (result.medoid_history as any[]).map((arr: any) =>
-                    arr instanceof Uint32Array ? Array.from(arr) : (Array.isArray(arr) ? arr : [])
-                );
+                result.medoid_history = (result.medoid_history as (Uint32Array | number[])[]).map((arr) =>
+    arr instanceof Uint32Array ? Array.from(arr) : (Array.isArray(arr) ? arr : [])
+);
             }
 
         } else {
@@ -354,21 +425,20 @@ async function runClustering(input: ClusteringInput, requestId?: number): Promis
                 n_clusters: input.n_clusters,
                 method: input.method,
                 max_iterations: input.max_iterations,
-                distance_metric: input.distance_metric,
-                random_seed: input.random_seed,
-                // n_init is ignored for PAM (BUILD phase is deterministic) but kept
-                // for CLARA/CLARANS; use 1 as default to match the typed-array path.
+                distance_metric: normalizedMetric,
+                ...(input.random_seed !== null && input.random_seed !== undefined ? { random_seed: input.random_seed } : {}),
                 n_init: input.n_init ?? 1,
-                convergence_tolerance: input.convergence_tolerance || 0.0,
+                convergence_tolerance: input.convergence_tolerance ?? 0.0,
+                use_build_phase: input.use_build_phase ?? true,
+                use_r_implementation: input.use_r_implementation ?? true,
                 clara_num_samples: input.clara_num_samples ?? 5,
-                ...(input.clara_sample_size != null ? { clara_sample_size: input.clara_sample_size } : {}),
+                ...(input.clara_sample_size !== null && input.clara_sample_size !== undefined ? { clara_sample_size: input.clara_sample_size } : {}),
+                clarans_num_local: input.clarans_num_local ?? 2,
+                ...(input.clarans_max_neighbors !== null && input.clarans_max_neighbors !== undefined ? { clarans_max_neighbors: input.clarans_max_neighbors } : {}),
             };
             sendProgress("clustering", 40, `Running ${input.method} algorithm…`);
             result = wasmModule.run_k_medoids(wasmInput);
         }
-
-        const duration = ((performance.now() - startTime) / 1000).toFixed(2);
-        console.log("[Worker] Clustering completed in", duration, "seconds");
 
         sendProgress("finalizing", 90, "Finalizing results...");
 
@@ -379,8 +449,8 @@ async function runClustering(input: ClusteringInput, requestId?: number): Promis
         }
 
         // Send result back to main thread (map WASM output format to TypeScript format)
-        const labels: number[] = result.cluster_assignments || result.labels || [];
-        const rawMedoids: number[] = result.medoids_indices || result.medoid_indices || result.medoids || [];
+        const labels: number[] = (result.cluster_assignments ?? result.labels ?? []) as number[];
+        const rawMedoids: number[] = (result.medoids_indices ?? result.medoid_indices ?? result.medoids ?? []) as number[];
 
         // ── k-integrity guard ────────────────────────────────────────────────────
         // If the WASM binary is stale (compiled before the pam_build destructuring
@@ -417,7 +487,7 @@ async function runClustering(input: ClusteringInput, requestId?: number): Promis
         // Priority 1: WASM embeds per-object scores inside the PAM result itself
         // (added in the cache-optimisation refactor — reuses the dist matrix already
         //  built by PAM, so no extra distance computation is needed).
-        const wasmEmbeddedScores: number[] = result.silhouette_scores || [];
+        const wasmEmbeddedScores: number[] = (result.silhouette_scores ?? []) as number[];
         if (wasmEmbeddedScores.length === resolvedData.length) {
             silhouettePerObject = wasmEmbeddedScores;
         } else if (typeof wasmModule.run_silhouette === "function") {
@@ -427,7 +497,7 @@ async function runClustering(input: ClusteringInput, requestId?: number): Promis
                     data: resolvedData,
                     labels,
                     n_clusters: input.n_clusters,
-                    distance_metric: input.distance_metric,
+                    distance_metric: normalizedMetric,
                 });
                 silhouetteScore = typeof silResult?.overall === "number" ? silResult.overall : 0;
                 silhouettePerObject = Array.isArray(silResult?.per_object) ? silResult.per_object : [];
@@ -438,13 +508,23 @@ async function runClustering(input: ClusteringInput, requestId?: number): Promis
 
         // Priority 3: JS fallback (O(n²) in worker thread — non-blocking for main UI)
         if (silhouettePerObject.length !== resolvedData.length) {
-            silhouettePerObject = computeSilhouettePerObject(resolvedData, labels, input.n_clusters);
+            silhouettePerObject = computeSilhouettePerObject(
+                resolvedData,
+                labels,
+                input.n_clusters,
+                normalizedMetric
+            );
         }
         silhouetteScore = silhouettePerObject.length > 0
             ? silhouettePerObject.reduce((s, v) => s + v, 0) / silhouettePerObject.length
             : 0;
 
-        const wcssScore = computeWCSS(resolvedData, labels, medoids);
+        const wcssScore = computeWCSS(
+            resolvedData,
+            labels,
+            medoids,
+            normalizedMetric
+        );
 
         // distances_to_medoids from WASM is the authoritative source — computed
         // from the exact same distance matrix used for PAM (matches R pam() output).
@@ -465,10 +545,21 @@ async function runClustering(input: ClusteringInput, requestId?: number): Promis
                 ? explicitIterations
                 : inferredIterations;
 
+        const totalCost = (result.total_distance ?? result.total_cost ?? result.cost ?? 0) as number;
+        const avgCost =
+            typeof result.avg_cost === "number"
+                ? result.avg_cost
+                : typeof result.avgCost === "number"
+                ? result.avgCost
+                : labels.length > 0
+                ? totalCost / labels.length
+                : 0;
+
         const mappedResult = {
             labels,
             medoids,
-            cost: result.total_distance || result.total_cost || result.cost || 0,
+            cost: totalCost,
+            avgCost,
             total_cost_build:
                 result.total_cost_build ??
                 (Array.isArray(result.cost_history) && result.cost_history.length > 0
@@ -480,27 +571,25 @@ async function runClustering(input: ClusteringInput, requestId?: number): Promis
                     ? result.cost_history[result.cost_history.length - 1]
                     : undefined),
             iterations: totalIterations,
-            converged: result.converged || false,
-            cost_history: result.cost_history || [],
-            medoid_history: result.medoid_history || [],
+            converged: (result.converged ?? false) as boolean,
+            cost_history: (result.cost_history ?? []) as number[],
+            medoid_history: (result.medoid_history ?? []) as (number[] | Uint32Array)[],
             // Use WASM per-object scores (fast) so generateComprehensiveKMedoidsOutput
             // skips the O(n²) JavaScript fallback in calculateSilhouetteScoresAsync
-            silhouette_scores: silhouettePerObject.length > 0 ? silhouettePerObject : (result.silhouette_scores || []),
+            silhouette_scores: silhouettePerObject.length > 0 ? silhouettePerObject : ((result.silhouette_scores ?? []) as number[]),
             distances_to_medoids,
             silhouetteScore,
             wcssScore,
+            // CLARA-specific: per-sample costs on the full dataset (empty for PAM/CLARANS)
+            sample_costs: Array.isArray(result.sample_costs) ? result.sample_costs : [],
+            // CLARA-specific: per-sample PAM iterations
+            sample_pam_iterations: Array.isArray(result.sample_pam_iterations) ? result.sample_pam_iterations : [],
+            // CLARA-specific: 1-based index of the best sample (0 = N/A for PAM/CLARANS)
+            clara_best_sample_index: typeof result.clara_best_sample_index === "number"
+                ? result.clara_best_sample_index
+                : 0,
         };
         
-        console.log("[Worker] Mapped result:", {
-            labelsCount: mappedResult.labels.length,
-            medoidsCount: mappedResult.medoids.length,
-            cost: mappedResult.cost,
-            silhouetteScore,
-            wcssScore,
-            sampleLabels: mappedResult.labels.slice(0, 5),
-            medoids: mappedResult.medoids
-        });
-
         sendProgress("complete", 100, "Analysis complete!");
         
         postMessage({
@@ -527,7 +616,6 @@ async function runClustering(input: ClusteringInput, requestId?: number): Promis
 function cancelOperation(): void {
     if (currentOperation) {
         currentOperation.abort();
-        console.log("[Worker] Operation cancelled");
     }
 }
 
@@ -563,59 +651,50 @@ async function runClusteringRange(input: ClusteringRangeInput, requestId?: numbe
             for (let i = 0; i < resolvedData.length && rangeData.length < RANGE_SAMPLE; i += step) {
                 rangeData.push(resolvedData[i]);
             }
-            console.log(`[Worker] Range scan: subsampled ${resolvedData.length} → ${rangeData.length} points`);
         }
 
         sendProgress("preparing", 5, `Building distance matrix for n=${rangeData.length}...`);
 
+        const normalizedMetric = normalizeDistanceMetric(input.distance_metric);
         const wasmInput = {
             data: rangeData,
             k_min: input.k_min,
             k_max: input.k_max,
             method: input.method,
             max_iterations: input.max_iterations,
-            distance_metric: input.distance_metric,
+            distance_metric: normalizedMetric,
             random_seed: input.random_seed ?? null,
             convergence_tolerance: input.convergence_tolerance ?? 0.0,
         };
 
-        console.log("[Worker] Running k-range clustering:", {
-            k_min: wasmInput.k_min,
-            k_max: wasmInput.k_max,
-            n: rangeData.length,
-            method: wasmInput.method,
-        });
-
         sendProgress("clustering", 20, `Testing k=${input.k_min}..${input.k_max} (single WASM call)...`);
 
-        const startTime = performance.now();
-        const rawResults: any[] = wasmModule.run_k_medoids_range(wasmInput);
-        const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
-        console.log(`[Worker] Range clustering done in ${elapsed}s, ${rawResults.length} results`);
+        const rawResults: Record<string, unknown>[] = wasmModule.run_k_medoids_range(wasmInput);
 
         sendProgress("scoring", 80, "Computing silhouette scores...");
 
         // Map WASM output and compute silhouette/WCSS in worker (off main thread).
         // Use rangeData for scoring — labels/medoids are indices into rangeData.
-        const items: ClusteringRangeItem[] = rawResults.map((item: any) => {
-            const labels: number[] = item.cluster_assignments || [];
-            const medoids: number[] = item.medoids_indices || [];
+        const metric = normalizeDistanceMetric(input.distance_metric);
+        const items: ClusteringRangeItem[] = rawResults.map((item) => {
+            const labels: number[] = (item.cluster_assignments ?? []) as number[];
+            const medoids: number[] = (item.medoids_indices ?? []) as number[];
             const k = item.k as number;
             // Prefer the WASM-computed silhouette_overall (reuses shared dist matrix).
             // Fall back to the JS computation only if the field is absent (old build).
             const silhouetteScore = typeof item.silhouette_overall === "number"
                 ? item.silhouette_overall
-                : computeSilhouette(rangeData, labels, k);
+                : computeSilhouette(rangeData, labels, k, metric);
             return {
                 k,
                 labels,
                 medoids,
-                cost: item.total_distance || 0,
-                iterations: item.iterations || 0,
-                converged: item.converged || false,
-                cost_history: item.cost_history || [],
+                cost: (item.total_distance ?? 0) as number,
+                iterations: (item.iterations ?? 0) as number,
+                converged: (item.converged ?? false) as boolean,
+                cost_history: (item.cost_history ?? []) as number[],
                 silhouetteScore,
-                wcssScore: computeWCSS(rangeData, labels, medoids),
+                wcssScore: computeWCSS(rangeData, labels, medoids, metric),
             };
         });
 
@@ -637,7 +716,7 @@ async function runClusteringRange(input: ClusteringRangeInput, requestId?: numbe
  */
 self.onmessage = async (event: MessageEvent<WorkerRequestMessage>) => {
     const message = event.data;
-    const requestId: number | undefined = (message as any).id;
+    const requestId: number | undefined = (message as WorkerRequestMessage & { id?: number }).id;
 
     try {
         switch (message.type) {
@@ -647,7 +726,6 @@ self.onmessage = async (event: MessageEvent<WorkerRequestMessage>) => {
 
             case "setData":
                 cachedData = message.data;
-                console.log(`[Worker] Data cached: ${cachedData.length} rows`);
                 postMessage({ type: "dataStored", requestId } as WorkerResponseMessage);
                 break;
 
@@ -688,9 +766,9 @@ self.onerror = (error: string | Event) => {
     
     if (typeof error === 'string') {
         errorMessage = error;
-    } else if ('message' in error && typeof (error as any).message === 'string') {
-        errorMessage = (error as any).message;
-    }
+    } else if (error instanceof ErrorEvent) {
+    errorMessage = error.message;
+}
     
     postMessage({ 
         type: "error", 
@@ -699,7 +777,6 @@ self.onerror = (error: string | Event) => {
 };
 
 // Auto-initialize on worker start
-console.log("[Worker] K-Medoids Clustering Worker started");
 initializeWasm().catch(error => {
     console.error("[Worker] Auto-init failed:", error);
 });

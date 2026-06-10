@@ -11,6 +11,8 @@ import type { Table } from "@/types/Table";
 export interface KMedoidsSummary {
     numClusters: number;
     totalCost: number;
+    /** Objective average cost shown as primary metric: totalCost / numCases. */
+    avgCost: number;
     /** Cost after the BUILD phase (initial medoid selection), before any SWAP. */
     buildCost?: number;
     /** Cost after the SWAP phase converges — same as totalCost. */
@@ -104,6 +106,15 @@ export interface MedoidDistanceMatrix {
 }
 
 /**
+ * Full distance matrix for all valid cases (sorted by cluster)
+ */
+export interface DistanceMatrix {
+    labels: string[];
+    clusters: number[];
+    distances: number[][];
+}
+
+/**
  * Silhouette score details per cluster
  */
 export interface SilhouetteClusterScore {
@@ -112,6 +123,32 @@ export interface SilhouetteClusterScore {
     minScore: number;
     maxScore: number;
     count: number;
+}
+
+/**
+ * CLARA-specific convergence summary for output panel.
+ */
+export interface ClaraConvergenceInfo {
+    numSamples: number;
+    sampleSize: number;
+    bestTotalCost: number;
+    bestCost?: number;
+    /** 1-based sample number with the best (minimum) cost. */
+    bestSampleIndex?: number;
+    /** Optional per-sampling costs, if available from runtime/build. */
+    samplingCosts?: number[];
+    /** Detailed sampling history with PAM iterations per sample. */
+    samples?: Array<{
+        sampleIndex: number;
+        sampleSize: number;
+        cost: number;
+        pamIterations: number;
+    }>;
+    /** Medoid stability tracking: how often each object was selected as medoid across samples. */
+    medoidFrequency?: {
+        objectId: string;
+        frequency: number;
+    }[];
 }
 
 /**
@@ -132,12 +169,33 @@ export interface KMedoidsOutput {
     
     // Iteration history
     iterationHistory: IterationHistory[];
+
+    // Algorithm metadata (for output routing)
+    algorithmMethod?: string;
+
+    // Normalization method used for preprocessing
+    normalizationMethod?: "none" | "zscore" | "minmax";
+
+    // CLARA convergence details (shown instead of PAM iteration panel)
+    claraConvergence?: ClaraConvergenceInfo;
     
     // Elbow method (if automatic k)
     elbowData?: ElbowPoint[];
+
+    // Method used for automatic k selection
+    optimalKMethod?: "silhouette" | "elbow";
+
+    // Cluster mode (manual or automatic k selection)
+    clusterMode?: "manual" | "automatic";
+
+    // Method used in automatic k selection (for routing chart display logic)
+    autoKMethod?: "silhouette" | "elbow";
     
     // Distance matrix
     medoidDistanceMatrix: MedoidDistanceMatrix;
+
+    // Full distance matrix (optional)
+    distanceMatrix?: DistanceMatrix;
     
     // Silhouette scores
     silhouetteScores: {
@@ -156,12 +214,18 @@ export interface KMedoidsOutput {
         showClusterSizeDistribution: boolean;
         showClusterAttributeProfile: boolean;
         showDistanceMatrixBetweenMedoids: boolean;
+        showDistanceMatrixTable: boolean;
         showClusterMedoids: boolean;
         showObjectAssignments: boolean;
+        showCaseCount: boolean;
+        showTotalCost: boolean;
+        showIterationHistory: boolean;
         showSilhouettePerObject: boolean;
         showSilhouetteByCluster: boolean;
+        showOptimalKChart: boolean;
         showOverallQualityAssessment: boolean;
         showConvergenceAlgorithm: boolean;
+        showSamplingHistory: boolean;
     };
     
     // Variable information (for rendering)

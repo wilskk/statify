@@ -1,4 +1,4 @@
-import type React from "react";
+import type { Variable } from "@/types/Variable";
 
 /**
  * ========================================
@@ -76,6 +76,26 @@ export enum AutoKMethod {
 }
 
 /**
+ * Metode normalisasi data sebelum clustering
+ * - None: tanpa normalisasi
+ * - ZScore: standardisasi Z-score
+ * - MinMax: skala min-max ke [0, 1]
+ */
+export enum NormalizationMethod {
+    None = "none",
+    ZScore = "zscore",
+    MinMax = "minmax",
+}
+
+/**
+ * Mode untuk pemakaian seed:
+ * - default: gunakan seed default bawaan sistem
+ * - random: gunakan RNG acak (seed kosong)
+ * - custom: gunakan seed angka dari user
+ */
+export type SeedMode = "default" | "random" | "custom";
+
+/**
  * ========================================
  * MAIN DIALOG - Variable Selection & Basic Config
  * ========================================
@@ -111,7 +131,7 @@ export type KMedoidsClusterDialogProps = {
         value: string[] | string | boolean | number | ClusterMode | AutoKMethod | DistanceMetric | null
     ) => void;
     data: KMedoidsClusterMainType;
-    globalVariables: string[];
+    globalVariables: Variable[];
 };
 
 /**
@@ -123,31 +143,34 @@ export type KMedoidsClusterDialogProps = {
 export type KMedoidsClusterIterateType = {
     /** Metode K-Medoids: PAM, CLARA, atau CLARANS */
     Method: KMedoidsMethod;
-    
+
     /** Strategi pemilihan medoid awal */
     InitialStrategy: InitialMedoidsStrategy;
-    
+
     /** Maksimum iterasi sebelum stop (default: 300 untuk PAM) */
     MaximumIterations: number | null;
-    
+
     /** Convergence criterion: stop jika perubahan cost < threshold (default: 0) */
     ConvergenceCriterion: number | null;
-    
+
+    /** Mode pemakaian seed: default, random, atau custom */
+    SeedMode: SeedMode;
+
     /** Random seed untuk reproducibility (null = random) */
     RandomSeed: number | null;
-    
+
     /** Number of initializations untuk mencari hasil terbaik (default: 10) */
     NumberOfInitializations: number | null;
-    
+
     /** CLARA only: ukuran sample (default: 40 + 2k) */
     SampleSize: number | null;
-    
+
     /** CLARA only: jumlah sampling iterations (default: 5) */
     NumSamples: number | null;
-    
+
     /** CLARANS only: jumlah local minima yang dicari (default: 2) */
     NumLocal: number | null;
-    
+
     /** CLARANS only: maksimum neighbors yang diperiksa (default: max(250, 1.25% of n*(k-1))) */
     MaxNeighbor: number | null;
 
@@ -157,6 +180,12 @@ export type KMedoidsClusterIterateType = {
      * Wajib diaktifkan agar skala variabel sebanding.
      */
     Standardize: boolean;
+
+    /**
+     * Metode normalisasi sebelum clustering.
+     * Default: Z-score (untuk kompatibilitas dengan pam stand=TRUE).
+     */
+    NormalizationMethod: NormalizationMethod;
 };
 
 export type KMedoidsClusterIterateProps = {
@@ -165,6 +194,7 @@ export type KMedoidsClusterIterateProps = {
         value: string | boolean | number | null
     ) => void;
     data: KMedoidsClusterIterateType;
+    mainData: KMedoidsClusterMainType;
 };
 
 /**
@@ -176,21 +206,27 @@ export type KMedoidsClusterIterateProps = {
 export type KMedoidsClusterResultsType = {
     /** Tampilkan final medoids (setara "Final Cluster Centers" SPSS) */
     ShowFinalMedoids: boolean;
-    
+
+    /** Tampilkan tabel Cluster Medoids pada tab Data Tables */
+    ShowClusterMedoids: boolean;
+
     /** Tampilkan cluster membership untuk setiap case */
     ShowClusterMembership: boolean;
-    
+
     /** Tampilkan jumlah case per cluster */
     ShowCaseCount: boolean;
-    
+
     /** Tampilkan iteration history (perubahan medoid per iterasi) */
     ShowIterationHistory: boolean;
-    
+
     /** Tampilkan total cost / dissimilarity */
     ShowTotalCost: boolean;
 
     /** Tampilkan output Konvergensi Algoritma (tab convergence + chart + detail iterasi) */
     ShowConvergenceAlgorithm: boolean;
+
+    /** Tampilkan output Histori Sampling (khusus CLARA) */
+    ShowSamplingHistory: boolean;
 };
 
 export type KMedoidsClusterResultsProps = {
@@ -199,6 +235,7 @@ export type KMedoidsClusterResultsProps = {
         value: boolean | null
     ) => void;
     data: KMedoidsClusterResultsType;
+    iterateData: KMedoidsClusterIterateType;
 };
 
 /**
@@ -210,7 +247,7 @@ export type KMedoidsClusterResultsProps = {
 export type KMedoidsClusterEvaluationType = {
     /** Silhouette Coefficient (range: -1 to 1, higher is better) */
     ComputeSilhouette: boolean;
-    
+
     /** Tampilkan silhouette plot per case */
     ShowSilhouettePlot: boolean;
 
@@ -245,7 +282,7 @@ export type KMedoidsClusterEvaluationProps = {
 export type KMedoidsClusterSaveType = {
     /** Simpan cluster membership (variable: CLU_1, CLU_2, ...) */
     ClusterMembership: boolean;
-    
+
     /** Simpan distance dari medoid cluster (variable: DIS_1, DIS_2, ...) */
     DistanceClusterCenter: boolean;
 };
@@ -266,7 +303,7 @@ export type KMedoidsClusterSaveProps = {
 export type KMedoidsClusterOptionsType = {
     /** Tampilkan initial medoids sebelum iterasi */
     InitialCluster: boolean;
-    
+
     /** Tampilkan cluster information per case (optional detail) */
     ClusterInfo: boolean;
 
@@ -285,15 +322,12 @@ export type KMedoidsClusterOptionsType = {
     /** Tampilkan panel Distance Matrix Between Medoids pada tab visualisasi output */
     ShowDistanceMatrixBetweenMedoids: boolean;
 
-    /** Tampilkan tabel Cluster Medoids pada tab Data Tables */
-    ShowClusterMedoids: boolean;
+    /** Tampilkan tabel matriks jarak pada tab Data Tables */
+    ShowDistanceMatrixTable: boolean;
 
-    /** Tampilkan tabel Object Assignments pada tab Data Tables */
-    ShowObjectAssignments: boolean;
-    
     /** Missing value handling: exclude listwise */
     ExcludeListWise: boolean;
-    
+
     /** Missing value handling: exclude pairwise */
     ExcludePairWise: boolean;
 
@@ -302,6 +336,12 @@ export type KMedoidsClusterOptionsType = {
      * Jika false, data numerik tanpa scaling langsung dipakai untuk PAM.
      */
     Standardize: boolean;
+
+    /**
+     * Metode normalisasi sebelum clustering.
+     * None = tanpa scaling, Z-score = standardisasi, Min-max = [0,1].
+     */
+    NormalizationMethod: NormalizationMethod;
 };
 
 export type KMedoidsClusterOptionsProps = {

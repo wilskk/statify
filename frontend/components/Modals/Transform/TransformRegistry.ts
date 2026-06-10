@@ -7,6 +7,8 @@ import {
 } from "./recode";
 import ComputeVariableModal from "./ComputeVariable/ComputeVariableModal";
 import StringToWordVectorModal from "./StringToWordVector/StringToWordVectorModal";
+import { RankCasesUI } from "./RankCases/RankCasesUI";
+
 /**
  * TRANSFORM_MODAL_COMPONENTS - Registry for transform modal components
  *
@@ -20,6 +22,7 @@ export const TRANSFORM_MODAL_COMPONENTS: Record<
   [ModalType.RecodeDifferentVariables]: RecodeDifferentVariablesModal,
   [ModalType.ComputeVariable]: ComputeVariableModal,
   [ModalType.StringToWordVector]: StringToWordVectorModal,
+  [ModalType.RankCases]: RankCasesUI,
 
   // Add more transform modal components here as needed
 };
@@ -56,6 +59,7 @@ export const TRANSFORM_MODAL_CONTAINER_PREFERENCES: Partial<
   [ModalType.RecodeDifferentVariables]: "sidebar",
   [ModalType.ComputeVariable]: "sidebar",
   [ModalType.StringToWordVector]: "sidebar",
+  [ModalType.RankCases]: "sidebar",
 };
 
 /**
@@ -66,6 +70,7 @@ export const isTransformModal = (type: ModalType): boolean => {
     ModalType.RecodeSameVariables,
     ModalType.RecodeDifferentVariables,
     ModalType.ComputeVariable,
+    ModalType.RankCases,
     // Add more transform types as they are added
   ].includes(type);
 };

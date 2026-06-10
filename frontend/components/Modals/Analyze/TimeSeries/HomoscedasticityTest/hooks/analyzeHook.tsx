@@ -4,6 +4,7 @@ import type { Variable } from "@/types/Variable";
 import type { DataRow } from "@/types/Data";
 import { toast } from "sonner";
 import { useResultStore } from "@/stores/useResultStore";
+import { getTimeSeriesWorker } from "@/utils/timeseriesWorkerPool";
 
 export const useAnalyzeHook = (
     selectedVariables: Variable[],
@@ -42,10 +43,9 @@ export const useAnalyzeHook = (
 
             console.log(`Running ARCH-LM Test with ${residuals.length} residuals and ${lags} lags`);
 
-            // Use Web Worker
-            const worker = new Worker("/workers/TimeSeries/worker.js", { type: "module" });
+            const client = getTimeSeriesWorker();
 
-            worker.onmessage = async (e) => {
+            client.onMessage(async (e) => {
                 const { status, result, error } = e.data;
                 
                 if (status === "success") {
@@ -62,35 +62,71 @@ export const useAnalyzeHook = (
                         const logId = await addLog({ log: logMsg });
                         const analyticId = await addAnalytic(logId, { title: `ARCH-LM Test`, note: `Lags=${lags}` });
 
-                        // Add statistic output
-                        // We reuse the existing HomoscedasticityTest component
-                        // It expects a JSON string with specific structure
-                        const outputData = {
-                            title: "Homoscedasticity Test (ARCH-LM)",
-                            description: `Test for ARCH effects in ${variable.name} (Lags: ${lags})`,
-                            isHomoscedastic: result.isHomoscedastic,
-                            tests: {
-                                archLM: {
-                                    testName: "ARCH-LM Test",
-                                    statistic: parseFloat(result.statistic),
-                                    pValue: parseFloat(result.pValue),
-                                    isHomoscedastic: result.isHomoscedastic,
-                                    df: lags
-                                }
+                        const n = residuals.length;
+                        const mean = residuals.reduce((a, b) => a + b, 0) / n;
+                        const variance = residuals.reduce((a, b) => a + (b - mean) ** 2, 0) / n;
+                        const stdDev = Math.sqrt(variance);
+                        const isHomo = result.isHomoscedastic;
+
+                        const tables = [
+                            {
+                                title: `ARCH-LM Test: ${variable.name} (Lags = ${lags})`,
+                                columnHeaders: [
+                                    { header: "Test", key: "test" },
+                                    { header: "Statistic", key: "stat" },
+                                    { header: "Prob.", key: "prob" },
+                                    { header: "df1 / df2", key: "df" },
+                                    { header: "Result", key: "result" }
+                                ],
+                                rows: [
+                                    {
+                                        test: "F-statistic",
+                                        stat: result.fStatistic,
+                                        prob: result.fPValue,
+                                        df: `F(${lags}, ${residuals.length - 2 * lags - 1})`,
+                                        result: isHomo ? "Homoscedastic" : "Heteroscedastic (ARCH effects present)"
+                                    },
+                                    {
+                                        test: "Obs*R-squared",
+                                        stat: result.statistic,
+                                        prob: result.pValue,
+                                        df: `Chi-Square(${lags})`,
+                                        result: isHomo ? "Homoscedastic" : "Heteroscedastic (ARCH effects present)"
+                                    }
+                                ]
                             },
-                            residualStats: {
-                                count: residuals.length,
-                                mean: residuals.reduce((a,b)=>a+b,0)/residuals.length,
-                                stdDev: Math.sqrt(residuals.map(x=>x*x).reduce((a,b)=>a+b,0)/residuals.length - (residuals.reduce((a,b)=>a+b,0)/residuals.length)**2),
-                                min: Math.min(...residuals),
-                                max: Math.max(...residuals)
+                            {
+                                title: "Residual Statistics",
+                                columnHeaders: [
+                                    { header: "Statistic", key: "stat" },
+                                    { header: "Value", key: "val" }
+                                ],
+                                rows: [
+                                    { stat: "Count (N)", val: n },
+                                    { stat: "Mean", val: mean.toFixed(6) },
+                                    { stat: "Std. Deviation", val: stdDev.toFixed(6) },
+                                    { stat: "Minimum", val: Math.min(...residuals).toFixed(6) },
+                                    { stat: "Maximum", val: Math.max(...residuals).toFixed(6) }
+                                ]
+                            },
+                            {
+                                title: "Interpretation",
+                                columnHeaders: [
+                                    { header: "Component", key: "comp" },
+                                    { header: "Description", key: "desc" }
+                                ],
+                                rows: [
+                                    { comp: "H0 (Null Hypothesis)", desc: "No ARCH effects — residuals are homoscedastic" },
+                                    { comp: "Decision", desc: isHomo ? `Fail to reject H0 (p-value > 0.05). No significant ARCH effects detected.` : `Reject H0 (p-value < 0.05). Significant ARCH effects detected.` },
+                                    { comp: "Recommendation", desc: isHomo ? "Residuals appear homoscedastic. ARCH/GARCH modeling may not be necessary." : "Consider ARCH/GARCH models to capture volatility clustering in the residuals." }
+                                ]
                             }
-                        };
+                        ];
 
                         await addStatistic(analyticId, {
                             title: `ARCH-LM Test Output`,
-                            output_data: JSON.stringify(outputData),
-                            components: "HomoscedasticityTest", // Maps to component in Output/Statistics/index.tsx
+                            output_data: JSON.stringify({ tables, charts: [] }),
+                            components: "HomoscedasticityTest",
                             description: `Result of ARCH-LM Test`
                         });
 
@@ -101,27 +137,26 @@ export const useAnalyzeHook = (
                         console.error("Error processing results:", err);
                         setErrorMsg("Error processing results for display.");
                     } finally {
-                         worker.terminate();
+                         client.release();
                          setIsCalculating(false);
                     }
 
                 } else {
                     setErrorMsg(error || "Unknown worker error");
                     toast.error(`Test Failed: ${error}`);
-                    worker.terminate();
+                    client.release();
                     setIsCalculating(false);
                 }
-            };
+            });
 
-            worker.onerror = (err) => {
+            client.onError((err) => {
                 console.error("Worker connection error:", err);
                 setErrorMsg("Failed to connect to worker");
                 setIsCalculating(false);
-                worker.terminate();
-            };
+                client.release();
+            });
 
-            // Send payload to worker
-            worker.postMessage({
+            client.post({
                 type: "ARCH_LM", 
                 payload: {
                     residuals: residuals,

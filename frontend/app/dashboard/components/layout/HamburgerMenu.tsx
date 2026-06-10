@@ -333,7 +333,11 @@ const HamburgerMenu: React.FC = () => {
                     Prepare Data for Modeling
                   </DrawerMenuItem>
                   <DrawerMenuSeparator />
-                  <DrawerMenuItem disabled>Rank Cases...</DrawerMenuItem>
+                  <DrawerMenuItem
+                    onClick={() => openModal(ModalType.RankCases)}
+                  >
+                    Rank Case...
+                  </DrawerMenuItem>
                   <DrawerMenuSeparator />
                   <DrawerMenuItem disabled>
                     Date and Time Wizard...
@@ -632,15 +636,16 @@ const HamburgerMenu: React.FC = () => {
                           Error Correction Model
                         </DrawerMenuItem>
                         <DrawerMenuItem
-                          onClick={() => openModal(ModalType.ARCH)}
+                          onClick={() => openModal(ModalType.HomoscedasticityTest)}
                         >
-                          Autoregressive Conditional Heteroscedasticity
+                          Homoscedasticity Test (ARCH-LM)
                         </DrawerMenuItem>
                         <DrawerMenuItem
-                          onClick={() => openModal(ModalType.GARCH)}
+                          onClick={() => openModal(ModalType.HeteroskedasticityModels)}
                         >
-                          Generalized Autoregressive Conditional Heteroscedasticity
+                          Heteroscedasticity Models (ARCH/GARCH)
                         </DrawerMenuItem>
+
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>

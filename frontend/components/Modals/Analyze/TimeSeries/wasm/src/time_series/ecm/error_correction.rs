@@ -1,41 +1,53 @@
-use wasm_bindgen::prelude::*;
 use crate::ECM;
-#[wasm_bindgen]
+use crate::time_series::ecm::ols_helper::ols_matrix;
+
 impl ECM {
-    /// Estimate ECM: ΔY_t = α + γ·ECT_{t-1} + θ·ΔY_{t-1} + φ·ΔX_t + ε_t
-    pub fn estimate_ecm(&mut self) {
-        // Estimate long-run first
-        let ols_result = self.estimate_long_run();
-        self.set_long_run(ols_result.beta0, ols_result.beta1, ols_result.get_residuals());
-        
-        // Test cointegration
-        let coint_result = self.test_cointegration(ols_result.get_residuals());
-        self.set_cointegration(coint_result.adf_statistic, coint_result.is_cointegrated);
-        
-        if !coint_result.is_cointegrated {
-            return; // Stop if not cointegrated
+    /// Compute first difference of a slice
+    fn first_diff(v: &[f64]) -> Vec<f64> {
+        v.windows(2).map(|w| w[1] - w[0]).collect()
+    }
+
+    /// Short-run ECM: ΔY_t = α + γ·ECT_{t-1} + φ₁·ΔX₁_t + φ₂·ΔX₂_t + …
+    pub fn estimate_short_run(&mut self) {
+        let n  = self.y.len();
+        let nx = self.n_x;
+
+        if n < 3 || self.lr_residuals.len() < 2 {
+            return;
         }
-        
-        // Calculate first differences
-        let n = self.y.len();
-        let mut delta_y = Vec::new();
-        let mut delta_x = Vec::new();
-        
-        for i in 1..n {
-            delta_y.push(self.y[i] - self.y[i-1]);
-            delta_x.push(self.x[i] - self.x[i-1]);
+
+        // ΔY (length n-1)
+        let delta_y = Self::first_diff(&self.y);
+        let m = delta_y.len(); // = n - 1
+
+        // ECT lagged: ECT_{t-1} = lr_residuals[0..m]  (residual from t=0..n-2)
+        let ect_lag: Vec<f64> = self.lr_residuals[..m].to_vec();
+
+        // ΔXₖ (length n-1) for k = 0..nx
+        let mut delta_xs: Vec<Vec<f64>> = Vec::new();
+        for k in 0..nx {
+            let col: Vec<f64> = (0..n).map(|i| self.x_flat[k * n + i]).collect();
+            delta_xs.push(Self::first_diff(&col));
         }
-        
-        // ECT (lagged residuals)
-        let ect = &self.long_run_residuals[..n-1];
-        
-        // Simple ECM regression (no lags for simplicity)
-        // ΔY_t = α + γ·ECT_{t-1} + φ·ΔX_t
-        let n_obs = delta_y.len();
-        
-        // This is simplified - full implementation would use matrix OLS
-        // For now, just store placeholder
-        self.ecm_coefficients = vec![0.0, -0.1, 0.5]; // [α, γ, φ]
-        self.r_squared = 0.5;
+
+        // Build X matrix: [1, ECT(-1), ΔX₁, ΔX₂, ...]
+        let x_mat: Vec<Vec<f64>> = (0..m).map(|i| {
+            let mut row = vec![1.0, ect_lag[i]];
+            for k in 0..nx {
+                row.push(delta_xs[k][i]);
+            }
+            row
+        }).collect();
+
+        let res = ols_matrix(&delta_y, &x_mat);
+
+        self.ecm_coefficients  = res.get_coefficients();
+        self.ecm_std_errors    = res.get_std_errors();
+        self.ecm_t_statistics  = res.get_t_statistics();
+        self.ecm_p_values      = res.get_p_values();
+        self.ecm_residuals     = res.get_residuals();
+        self.ecm_r_squared     = res.r_squared;
+        self.ecm_adj_r_squared = res.adj_r_squared;
+        self.ecm_f_statistic   = res.f_statistic;
     }
 }

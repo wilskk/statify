@@ -10,6 +10,7 @@ import { useMobile } from "@/hooks/useMobile";
 export interface TargetListConfig {
     id: string;               // Unique identifier for the list (e.g., 'selected', 'rows', 'factors')
     title: string;            // Display title for the list
+    titleAction?: React.ReactNode;
     variables: Variable[];    // The array of variables currently in this list
     height: string;           // CSS height for the list container
     maxItems?: number;        // Optional limit for the number of items
@@ -546,6 +547,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         arrowInfo?: ArrowInfo
     ) => {
         const { id, title, variables, height } = listConfig;
+        const titleAction = "titleAction" in listConfig ? listConfig.titleAction : null;
         
         // Check if it's a full TargetListConfig or just the basic available list structure
         const isTargetConfig = 'droppable' in listConfig || 'draggableItems' in listConfig || 'maxItems' in listConfig;
@@ -595,6 +597,11 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                             </span>
                         )}
                         <span className="truncate" title={title}>{title}</span>
+                        {titleAction ? (
+                            <span className="ml-auto flex shrink-0 items-center pl-2">
+                                {titleAction}
+                            </span>
+                        ) : null}
                     </div>
                 )}
                 <div

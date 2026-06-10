@@ -26,6 +26,19 @@ use crate::utils::validation::validate_clustering_input;
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
 
+/// Detail satu sampling run (untuk dikirim ke JS sebagai sampling history)
+#[derive(Debug, Clone)]
+pub struct SampleRecord {
+    /// 1-based sample number
+    pub sample_index: usize,
+    /// Number of points in this sample
+    pub sample_size: usize,
+    /// Total cost evaluated on the **entire** dataset for this sample's medoids
+    pub cost: f64,
+    /// Number of PAM SWAP iterations performed on this sample
+    pub pam_iterations: usize,
+}
+
 /// Configuration for CLARA algorithm
 #[derive(Debug, Clone)]
 pub struct CLARAConfig {
@@ -94,6 +107,9 @@ pub struct CLARAResult {
     
     /// Best sample cost (cost on sample data)
     pub best_sample_cost: f64,
+
+    pub samples: Vec<SampleRecord>,      // ← BARU
+    pub best_sample_index: usize,        // ← BARU (1-based)
 }
 
 /// Run CLARA clustering algorithm
@@ -145,12 +161,21 @@ pub fn run_clara(data: &[Vec<f64>], config: &CLARAConfig) -> Result<CLARAResult,
         
         let pam_result = run_pam(data, &pam_config)?;
         
+        let fallback_cost = pam_result.total_cost;
+        let fallback_iters = pam_result.iterations;
         return Ok(CLARAResult {
             medoids: pam_result.medoids,
             assignments: pam_result.assignments,
             total_cost: pam_result.total_cost,
             samples_tried: 1,
             best_sample_cost: pam_result.total_cost,
+            samples: vec![SampleRecord {
+                sample_index: 1,
+                sample_size,
+                cost: fallback_cost,
+                pam_iterations: fallback_iters,
+            }],
+            best_sample_index: 1,
         });
     }
     
@@ -164,6 +189,8 @@ pub fn run_clara(data: &[Vec<f64>], config: &CLARAConfig) -> Result<CLARAResult,
     let mut best_medoids: Vec<usize> = Vec::new();
     let mut best_cost = f64::INFINITY;
     let mut best_sample_cost = f64::INFINITY;
+    let mut sample_records: Vec<SampleRecord> = Vec::new();  // ← BARU  
+    let mut best_sample_index: usize = 1;                    // ← BARU
     
     // Try multiple samples
     for sample_idx in 0..config.num_samples {
@@ -200,12 +227,21 @@ pub fn run_clara(data: &[Vec<f64>], config: &CLARAConfig) -> Result<CLARAResult,
         
         // Calculate cost on entire dataset
         let (_assignments, total_cost) = assign_and_cost(data, &medoids_in_original, &config.metric);
+
+        // ── BARU: simpan record tiap sample ──
+        sample_records.push(SampleRecord {
+            sample_index: sample_idx + 1,          // 1-based
+            sample_size,
+            cost: total_cost,
+            pam_iterations: pam_result.iterations, // pastikan PAMResult expose field ini
+        });
         
         // Update best if this is better
         if total_cost < best_cost {
             best_cost = total_cost;
             best_medoids = medoids_in_original;
             best_sample_cost = pam_result.total_cost;
+            best_sample_index = sample_idx + 1;    // ← BARU
         }
     }
     
@@ -222,6 +258,8 @@ pub fn run_clara(data: &[Vec<f64>], config: &CLARAConfig) -> Result<CLARAResult,
         total_cost,
         samples_tried: config.num_samples,
         best_sample_cost,
+        samples: sample_records,        // ← BARU
+        best_sample_index,              // ← BARU
     })
 }
 

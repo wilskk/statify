@@ -58,6 +58,7 @@ export enum ModalType {
     RecodeSameVariables = "RecodeSameVariables",
     RecodeDifferentVariables = "RecodeDifferentVariables",
     StringToWordVector = "StringToWordVector",
+    RankCases = "RankCases",
 
     // Regression modals - Analisis regresi dan model terkait
     ModalAutomaticLinearModeling = "ModalAutomaticLinearModeling",
@@ -88,13 +89,13 @@ export enum ModalType {
     Autocorrelation = "Autocorrelation",
     UnitRootTest = "UnitRootTest",
     BoxJenkinsModel = "BoxJenkinsModel",
-    ARCH ="ARCH",
+    ARCH = "ARCH",
     GARCH = "GARCH",
     ECM = "ECM",
     ARDL = "ARDL",
     HomoscedasticityTest = "HomoscedasticityTest",
     HeteroskedasticityModels = "HeteroskedasticityModels",
-    
+
 
     // Descriptive statistics modals
     Descriptives = "Descriptives",
@@ -260,6 +261,7 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
     [ModalType.RecodeSameVariables]: ModalCategory.Transform,
     [ModalType.RecodeDifferentVariables]: ModalCategory.Transform,
     [ModalType.StringToWordVector]: ModalCategory.Transform,
+    [ModalType.RankCases]: ModalCategory.Transform,
 
     // Regression modals
     [ModalType.ModalAutomaticLinearModeling]: ModalCategory.Regression,

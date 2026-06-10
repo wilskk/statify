@@ -1,6 +1,7 @@
 use crate::models::config::MultinomialConfig;
 use crate::models::result::{
     ClassificationTable, GoodnessOfFit, LikelihoodRatioTest, MultinomialResult, PseudoRSquare,
+    StepwiseStep,
 };
 use crate::stats::core::PrimaryResults;
 use nalgebra::{DMatrix, DVector};
@@ -22,6 +23,7 @@ pub fn format_results(
     classification: ClassificationTable,
     goodness_of_fit: GoodnessOfFit,
     lr_tests: Vec<LikelihoodRatioTest>,
+    stepwise_trace: Vec<StepwiseStep>,
 ) -> MultinomialResult {
     let J = primary.n_categories;
     let p = primary.n_params;
@@ -144,10 +146,18 @@ pub fn format_results(
         null_log_likelihood: null_ll,
         chi_square: 2.0 * (ll - null_ll),
         df: ((J - 1) * (p - 1)) as u32,
-        p_value_model: 1.0
-            - ChiSquared::new(((J - 1) * (p - 1)) as f64)
-                .unwrap()
-                .cdf(2.0 * (ll - null_ll)),
+        p_value_model: {
+            let df_val = ((J - 1) * (p - 1)) as f64;
+            if df_val > 0.0 {
+                if let Ok(dist) = ChiSquared::new(df_val) {
+                    1.0 - dist.cdf((2.0 * (ll - null_ll)).max(0.0))
+                } else {
+                    1.0
+                }
+            } else {
+                1.0
+            }
+        },
         iterations: iters,
         converged: conv,
         pseudo_r_square: PseudoRSquare {
@@ -158,6 +168,7 @@ pub fn format_results(
         goodness_of_fit,
         classification_table: classification,
         likelihood_ratio_tests: lr_tests,
+        stepwise_trace,
         asymptotic_covariance,
         asymptotic_correlation,
     }

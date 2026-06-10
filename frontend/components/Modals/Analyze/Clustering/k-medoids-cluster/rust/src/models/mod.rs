@@ -14,15 +14,24 @@ pub struct KMedoidsInput {
     pub n_init: usize, // Number of times to run with different seeds, keep best result
     #[serde(default = "default_convergence_tolerance")]
     pub convergence_tolerance: f64, // Stop if cost improvement < tolerance
+    #[serde(default)]
+    pub use_build_phase: Option<bool>, // PAM: Some(true)=BUILD (deterministic), Some(false)=random init, None=true
+    #[serde(default)]
+    pub use_r_implementation: Option<bool>, // PAM: Some(true)=R-style path, Some(false)=native path, None=true
     #[serde(default = "default_clara_num_samples")]
     pub clara_num_samples: usize, // CLARA: number of sub-samples (default 5)
     #[serde(default)]
     pub clara_sample_size: Option<usize>, // CLARA: explicit sample size (default: 40 + 2*k)
+    #[serde(default = "default_clarans_num_local")]
+    pub clarans_num_local: usize, // CLARANS: number of local searches (default 2)
+    #[serde(default)]
+    pub clarans_max_neighbors: Option<usize>, // CLARANS: explicit max neighbors
 }
 
 fn default_n_init() -> usize { 10 }
 fn default_convergence_tolerance() -> f64 { 0.0 }
 fn default_clara_num_samples() -> usize { 5 }
+fn default_clarans_num_local() -> usize { 2 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KMedoidsOutput {
@@ -31,6 +40,9 @@ pub struct KMedoidsOutput {
     pub medoids: Vec<Vec<f64>>,
     pub distances_to_medoids: Vec<f64>,
     pub total_distance: f64,
+    /// Objective value (average distance): total_distance / n.
+    #[serde(default)]
+    pub avg_cost: f64,
     /// Total cost setelah fase BUILD.
     #[serde(default)]
     pub total_cost_build: f64,
@@ -50,6 +62,16 @@ pub struct KMedoidsOutput {
     /// Mirrors cost_history layout so UI can show exact medoids per iteration.
     #[serde(default)]
     pub medoid_history: Vec<Vec<usize>>,
+    /// Per-sample costs for CLARA (length = num_samples). Empty for PAM/CLARANS.
+    /// Each entry is the total cost on the full dataset for that sample's medoids.
+    #[serde(default)]
+    pub sample_costs: Vec<f64>,
+    /// Per-sample PAM iterations for CLARA.
+    #[serde(default)]
+    pub sample_pam_iterations: Vec<usize>,
+    /// 1-based index of the best sample (lowest cost) for CLARA. 0 means N/A.
+    #[serde(default)]
+    pub clara_best_sample_index: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
