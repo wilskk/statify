@@ -57,6 +57,7 @@ export const useStringToWordVector = () => {
             tfMethod: "log", // binary | raw | normalized | log
             idfMethod: "smooth", // none | idf | smooth
         },
+        wordsToKeep: 1000,
     });
 
     // ── Execution state ───────────────────────────────────────────────────────
@@ -156,6 +157,7 @@ export const useStringToWordVector = () => {
                 ngram_max: isNgram ? config.tokenizer.maxSize : 1,
                 tf_method: config.vectorization.tfMethod,
                 idf_method: config.vectorization.idfMethod,
+                words_to_keep: config.wordsToKeep || 1000,
             };
 
             // 3. Inisialisasi Worker (lazy) dan kirim pesan

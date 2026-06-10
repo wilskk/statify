@@ -34,6 +34,7 @@ pub struct VectorizerConfig {
     pub tf_method: String,
     /// "none" | "idf" | "smooth"
     pub idf_method: String,
+    pub words_to_keep: usize,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,7 +98,7 @@ pub fn process_text_data(js_data: JsValue, js_config: JsValue) -> Result<JsValue
         .collect();
 
     // ── Vectorize (bangun vocabulary + matriks angka) ─────────────────────────
-    let output = vectorizer::vectorize(processed, &config.tf_method, &config.idf_method)
+    let output = vectorizer::vectorize(processed, &config.tf_method, &config.idf_method, config.words_to_keep)
         .map_err(|e| e.to_js())?;
 
     // ── Serialize output ke JsValue ───────────────────────────────────────────

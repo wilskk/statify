@@ -61,6 +61,7 @@ export interface VectorizerConfigPayload {
     tf_method: string;
     /** "none" | "idf" | "smooth" */
     idf_method: string;
+    words_to_keep: number;
 }
 
 /** Output dari Rust process_text_data */

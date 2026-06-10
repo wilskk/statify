@@ -193,11 +193,11 @@ export const OptionsTab: React.FC<OptionsTabProps> = ({ config, setConfig }) => 
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="binary" id="vec-binary" />
-                  <Label htmlFor="vec-binary" className="font-normal cursor-pointer text-sm">Binary (0/1)</Label>
+                  <Label htmlFor="vec-binary" className="font-normal cursor-pointer text-sm">Boolean (0/1)</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="raw" id="vec-raw" />
-                  <Label htmlFor="vec-raw" className="font-normal cursor-pointer text-sm">Raw TF (Word Count)</Label>
+                  <Label htmlFor="vec-raw" className="font-normal cursor-pointer text-sm">Natural TF (Word Count)</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="normalized" id="vec-normalized" />
@@ -231,10 +231,23 @@ export const OptionsTab: React.FC<OptionsTabProps> = ({ config, setConfig }) => 
                   <Label htmlFor="idf-smooth" className="font-normal cursor-pointer text-sm">Smooth IDF</Label>
                 </div>
               </RadioGroup>
-              <p className="text-[10px] text-muted-foreground mt-2 leading-tight">
-                {/* * Hint: Untuk mendapatkan hasil TF-IDF standar, kombinasikan <span className="font-medium text-foreground">Log TF</span> dengan <span className="font-medium text-foreground">Smooth IDF</span> (Default). */}
-              </p>
             </div>
+          </div>
+
+          {/* Words to Keep */}
+          <div className="space-y-2 max-w-xs pt-1">
+            <Label htmlFor="words-to-keep" className="text-sm font-semibold">Words to Keep</Label>
+            <Input 
+              id="words-to-keep" 
+              type="number"
+              min={1}
+              value={config.wordsToKeep} 
+              onChange={(e) => handleConfigChange("wordsToKeep", parseInt(e.target.value) || 1000)}
+              className="h-9 text-sm"
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Jumlah kata/kolom maksimum yang akan disimpan (diprioritaskan berdasarkan metode vektorisasi yang dipilih).
+            </p>
           </div>
           
         </div>
