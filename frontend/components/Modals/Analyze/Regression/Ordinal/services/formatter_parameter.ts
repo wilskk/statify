@@ -55,7 +55,7 @@ export const formatParameterEstimates = (
   );
   const notes = [
     options?.linkFunctionNote,
-    hasRedundant ? "0a. This parameter is set to zero because it is redundant." : undefined,
+    hasRedundant ? "0. This parameter is set to zero because it is redundant." : undefined,
   ].filter(Boolean);
 
   sections.push(
@@ -64,7 +64,7 @@ export const formatParameterEstimates = (
       "Parameter Estimates",
       data,
       {
-        description: "Estimasi parameter model PLUM",
+        description: "Estimasi parameter model",
         note: notes.length > 0 ? notes.join("\n") : undefined,
       }
     )
