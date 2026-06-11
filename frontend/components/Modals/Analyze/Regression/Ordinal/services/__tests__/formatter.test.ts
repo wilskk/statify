@@ -302,4 +302,45 @@ describe("formatOrdinalResult", () => {
     expect(section?.note).toContain("GVIF is independent of the selected link function.");
     expect(section?.note).toContain("Warning: Correlation matrix was near-singular");
   });
+
+  it("should include factor level counts in case processing summary", () => {
+    const formatted = formatOrdinalResult({
+      outputOptions: { summaryStatistics: true },
+      summaryStatistics: {
+        model: { minus2LogLikelihood: 12, logLikelihood: -6, converged: true, iterations: 1 },
+        interceptOnly: { minus2LogLikelihood: 18, logLikelihood: -9 },
+        modelChiSquare: { chiSquare: 6, df: 1, sig: 0.01 },
+        pseudoRSquare: { coxSnell: 0.1, nagelkerke: 0.2, mcfadden: 0.3 },
+      },
+      metadata: {
+        caseProcessingSummary: {
+          variableLabel: "Satisfaction",
+          categories: [
+            { label: "Low", n: 30, percent: 0.3 },
+            { label: "High", n: 70, percent: 0.7 },
+          ],
+          factors: [
+            {
+              variableLabel: "Residence Type",
+              levels: [
+                { value: "1", label: "Tower Block", n: 40, percent: 0.4 },
+                { value: "2", label: "Apartment", n: 60, percent: 0.6 },
+              ],
+            },
+          ],
+          validN: 100,
+          missingN: 0,
+          totalN: 100,
+        },
+      },
+    });
+
+    const section = formatted.sections.find(s => s.id === "ordinal_case_processing_summary");
+    expect(section).toBeDefined();
+    expect(section?.data.columnHeaders[1].header).toBe("Marginal Percentage");
+    expect(section?.data.rows).toEqual(expect.arrayContaining([
+      expect.objectContaining({ rowHeader: ["Residence Type", "Tower Block"], n: 40, percent: "40.0%" }),
+      expect.objectContaining({ rowHeader: ["Residence Type", "Apartment"], n: 60, percent: "60.0%" }),
+    ]));
+  });
 });

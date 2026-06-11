@@ -176,6 +176,14 @@ const OrdinalMain: React.FC = () => {
     return numeric;
   };
 
+  const normalizeValueLabelKey = (value: unknown) => String(value);
+
+  const getValueLabel = (variable: Variable, value: unknown) => {
+    const key = normalizeValueLabelKey(value);
+    const match = variable.values?.find((entry) => normalizeValueLabelKey(entry.value) === key);
+    return match?.label ?? String(value);
+  };
+
   const getVariableKey = (variable: Variable) => `${variable.columnIndex}-${variable.name}`;
 
   const getVariableIdentity = (variable: Variable) => {
@@ -572,6 +580,31 @@ const OrdinalMain: React.FC = () => {
         })),
       });
 
+      const factorCaseSummaries = factorPredictors.map((factor) => {
+        const summary = factorLevelSummaries.find((item) => item.variableName === factor.name);
+        const levels = summary?.levels ?? [];
+        const counts = new Map(levels.map((level) => [level, 0]));
+
+        validRows.forEach((row, index) => {
+          const level = String(getRowValue(row, factor.columnIndex));
+          counts.set(level, (counts.get(level) ?? 0) + (validWeights[index] ?? 0));
+        });
+
+        return {
+          variableName: factor.name,
+          variableLabel: factor.label || factor.name,
+          levels: levels.map((level) => {
+            const n = counts.get(level) ?? 0;
+            return {
+              value: level,
+              label: summary?.levelLabels?.[level] ?? level,
+              n,
+              percent: validWeightTotal > 0 ? n / validWeightTotal : 0,
+            };
+          }),
+        };
+      });
+
       const scaleDesignMatrix: number[][] = validRows.map((row) => {
         const rowValues: number[] = [];
         for (const predictor of scalePredictors) {
@@ -734,10 +767,12 @@ const OrdinalMain: React.FC = () => {
           caseProcessingSummary: {
             variableLabel: responseVariable.label || responseVariable.name,
             categories: responseCategories.map((category, index) => ({
-              label: String(category),
+              value: category,
+              label: getValueLabel(responseVariable, category),
               n: categoryCounts[index] ?? 0,
               percent: validWeightTotal > 0 ? (categoryCounts[index] ?? 0) / validWeightTotal : 0,
             })),
+            factors: factorCaseSummaries,
             validN: validWeightTotal,
             missingN: missingWeightTotal,
             totalN: totalWeightAll || validWeightTotal,
