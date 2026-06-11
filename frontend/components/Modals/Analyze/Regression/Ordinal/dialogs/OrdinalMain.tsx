@@ -2,10 +2,17 @@
 
 import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  TooltipProvider,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, HelpCircle } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
 import { Variable } from "@/types/Variable";
 
 // Stores & Hooks
@@ -14,6 +21,12 @@ import { useModalStore } from "@/stores/useModalStore";
 import { useAnalysisData } from "@/hooks/useAnalysisData";
 import { useResultStore } from "@/stores/useResultStore";
 import { useDataStore, CellUpdate } from "@/stores/useDataStore";
+
+// Tour Guide
+import type { TabControlProps } from "@/components/Modals/Analyze/Descriptive/Descriptive/hooks/useTourGuide";
+import { useTourGuide } from "@/components/Modals/Analyze/Descriptive/Descriptive/hooks/useTourGuide";
+import { TourPopup, ActiveElementHighlight } from "@/components/Common/TourComponents";
+import { baseTourSteps } from "../hooks/tourConfig";
 
 // Components
 import { VariablesTab } from "./VariablesTab";
@@ -48,6 +61,17 @@ const OrdinalMain: React.FC = () => {
   const [activeTab, setActiveTab] = useState("variables");
   const [isLoading, setIsLoading] = useState(false); // Tetap digunakan untuk UI loading
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const tabControl = useMemo<TabControlProps>(
+    () => ({
+      setActiveTab: (tab: string) => setActiveTab(tab),
+      currentActiveTab: activeTab,
+    }),
+    [activeTab]
+  );
+
+  const { tourActive, currentStep, tourSteps, currentTargetElement, startTour, nextStep, prevStep, endTour } =
+    useTourGuide(baseTourSteps, "dialog", tabControl);
 
   // State untuk variabel yang dipilih
   const [options, setOptions] = useState<OrdinalOptions>({
@@ -174,6 +198,14 @@ const OrdinalMain: React.FC = () => {
       throw new Error(`Covariate '${label}' contains non-numeric values.`);
     }
     return numeric;
+  };
+
+  const normalizeValueLabelKey = (value: unknown) => String(value);
+
+  const getValueLabel = (variable: Variable, value: unknown) => {
+    const key = normalizeValueLabelKey(value);
+    const match = variable.values?.find((entry) => normalizeValueLabelKey(entry.value) === key);
+    return match?.label ?? String(value);
   };
 
   const getVariableKey = (variable: Variable) => `${variable.columnIndex}-${variable.name}`;
@@ -523,6 +555,7 @@ const OrdinalMain: React.FC = () => {
       const {
         locationDesignMatrix,
         locationTermNames,
+        interactionColumnCounts,
         factorLevelMetadata,
         factorLevelSummaries,
         referenceCategories,
@@ -569,6 +602,31 @@ const OrdinalMain: React.FC = () => {
           levels: summary.levels.length,
           reference: summary.referenceLevel,
         })),
+      });
+
+      const factorCaseSummaries = factorPredictors.map((factor) => {
+        const summary = factorLevelSummaries.find((item) => item.variableName === factor.name);
+        const levels = summary?.levels ?? [];
+        const counts = new Map(levels.map((level) => [level, 0]));
+
+        validRows.forEach((row, index) => {
+          const level = String(getRowValue(row, factor.columnIndex));
+          counts.set(level, (counts.get(level) ?? 0) + (validWeights[index] ?? 0));
+        });
+
+        return {
+          variableName: factor.name,
+          variableLabel: factor.label || factor.name,
+          levels: levels.map((level) => {
+            const n = counts.get(level) ?? 0;
+            return {
+              value: level,
+              label: summary?.levelLabels?.[level] ?? level,
+              n,
+              percent: validWeightTotal > 0 ? n / validWeightTotal : 0,
+            };
+          }),
+        };
       });
 
       const scaleDesignMatrix: number[][] = validRows.map((row) => {
@@ -654,9 +712,11 @@ const OrdinalMain: React.FC = () => {
               };
             }),
             ...interactionTerms.map((interaction) => ({
+              id: interaction.id,
               name: interaction.name,
               columnIndex: null,
               role: "interaction",
+              encodedColumnCount: interactionColumnCounts[interaction.id] ?? 1,
               variables: interaction.variables.map((variable) => ({
                 name: variable.name,
                 columnIndex: variable.columnIndex,
@@ -731,10 +791,12 @@ const OrdinalMain: React.FC = () => {
           caseProcessingSummary: {
             variableLabel: responseVariable.label || responseVariable.name,
             categories: responseCategories.map((category, index) => ({
-              label: String(category),
+              value: category,
+              label: getValueLabel(responseVariable, category),
               n: categoryCounts[index] ?? 0,
               percent: validWeightTotal > 0 ? (categoryCounts[index] ?? 0) / validWeightTotal : 0,
             })),
+            factors: factorCaseSummaries,
             validN: validWeightTotal,
             missingN: missingWeightTotal,
             totalN: totalWeightAll || validWeightTotal,
@@ -853,6 +915,21 @@ const OrdinalMain: React.FC = () => {
   // --- RENDER ---
   return (
     <div className="flex flex-col h-full bg-background">
+      <AnimatePresence>
+        {tourActive && tourSteps.length > 0 && currentStep < tourSteps.length && (
+          <TourPopup
+            step={tourSteps[currentStep]}
+            currentStep={currentStep}
+            totalSteps={tourSteps.length}
+            onNext={nextStep}
+            onPrev={prevStep}
+            onClose={endTour}
+            targetElement={currentTargetElement}
+          />
+        )}
+      </AnimatePresence>
+      <ActiveElementHighlight active={tourActive} />
+
       <div className="px-6 py-4 flex-shrink-0">
         <h2 className="text-lg font-semibold tracking-tight">
           Ordinal Regression
@@ -862,11 +939,11 @@ const OrdinalMain: React.FC = () => {
       <div className="flex-grow px-6 overflow-y-auto min-h-0">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col">
           <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
-            <TabsTrigger value="variables">Variables</TabsTrigger>
-            <TabsTrigger value="location">Location</TabsTrigger>
-            <TabsTrigger value="scale">Scale</TabsTrigger>
-            <TabsTrigger value="options">Options</TabsTrigger>
-            <TabsTrigger value="output">Output</TabsTrigger>
+            <TabsTrigger value="variables" id="ordinal-regression-variables-tab-trigger">Variables</TabsTrigger>
+            <TabsTrigger value="location" id="ordinal-regression-location-tab-trigger">Location</TabsTrigger>
+            <TabsTrigger value="scale" id="ordinal-regression-scale-tab-trigger">Scale</TabsTrigger>
+            <TabsTrigger value="options" id="ordinal-regression-options-tab-trigger">Options</TabsTrigger>
+            <TabsTrigger value="output" id="ordinal-regression-output-tab-trigger">Output</TabsTrigger>
           </TabsList>
           <div className="flex-grow min-h-0 overflow-hidden">
             <TabsContent value="variables" className="h-full mt-0">
@@ -914,9 +991,27 @@ const OrdinalMain: React.FC = () => {
         )}
       </div>
       <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-        <Button variant="ghost" size="icon">
-          <HelpCircle className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center text-muted-foreground">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  data-testid="ordinal-regression-help-button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={startTour}
+                  aria-label="Start feature tour"
+                  className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">Start feature tour</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
         <div className="flex items-center space-x-4">
           <Button onClick={handleAnalyze} disabled={isLoading || !options.dependent}>
             {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> OK</> : "OK"}

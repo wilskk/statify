@@ -133,6 +133,8 @@ pub fn build_plum_output(
             .take(covariate_count)
             .cloned()
             .collect();
+        let mut consumed_indices: std::collections::HashSet<usize> =
+            (0..covariate_count).collect();
 
         for meta in &spec.factor_level_metadata {
             if let Some(active_idx) = meta.active_column_index {
@@ -141,6 +143,7 @@ pub fn build_plum_output(
                     cloned.variable = meta.parameter_name.clone();
                     cloned.is_redundant = Some(meta.is_redundant);
                     ordered_location.push(cloned);
+                    consumed_indices.insert(active_idx);
                 } else {
                     warnings.push(format!(
                         "Parameter aktif untuk '{}' tidak ditemukan",
@@ -160,6 +163,11 @@ pub fn build_plum_output(
                     upper: None,
                     is_redundant: Some(true),
                 });
+            }
+        }
+        for (idx, row) in location_parameter_estimates.iter().enumerate() {
+            if !consumed_indices.contains(&idx) {
+                ordered_location.push(row.clone());
             }
         }
         location_parameter_estimates = ordered_location;
@@ -442,13 +450,15 @@ fn build_encoded_predictor_blocks(input: &PlumWorkerPayload) -> Vec<EncodedPredi
                 });
             }
             "interaction" => {
-                if next_column < total_columns {
+                let width = predictor.encoded_column_count.unwrap_or(1).max(1);
+                let end_column = (next_column + width).min(total_columns);
+                if next_column < end_column {
                     blocks.push(EncodedPredictorBlock {
                         predictor_name: predictor.name.clone(),
                         predictor_type: "Interaction".to_string(),
-                        column_indices: vec![next_column],
+                        column_indices: (next_column..end_column).collect(),
                     });
-                    next_column += 1;
+                    next_column = end_column;
                 }
             }
             _ => {

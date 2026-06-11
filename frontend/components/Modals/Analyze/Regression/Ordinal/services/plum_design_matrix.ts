@@ -30,6 +30,7 @@ export interface BuildOrdinalPlumDesignMatrixInput {
 export interface BuildOrdinalPlumDesignMatrixResult {
   locationDesignMatrix: number[][];
   locationTermNames: string[];
+  interactionColumnCounts: Record<string, number>;
   factorLevelMetadata: FactorLevelMetadata[];
   factorLevelSummaries: FactorLevelSummary[];
   referenceCategories: Record<string, string>;
@@ -38,6 +39,13 @@ export interface BuildOrdinalPlumDesignMatrixResult {
 }
 
 const normalizeLevelKey = (value: unknown) => String(value);
+
+const getVariableKey = (variable: Variable) => {
+  if (typeof variable.columnIndex === "number") {
+    return `col:${variable.columnIndex}`;
+  }
+  return `name:${variable.name}`;
+};
 
 const buildValueLabelOrder = (variable: Variable): Array<string | number> => {
   if (!Array.isArray(variable.values) || variable.values.length === 0) {
@@ -157,6 +165,75 @@ export const encodeTreatmentContrastsForPlum = (
   return coding;
 };
 
+interface EncodedTermColumn {
+  name: string;
+  value: number;
+}
+
+const buildFactorColumnName = (variableName: string, level: string) => `${variableName}=${level}`;
+
+const encodeVariableForRow = (
+  row: Record<string, any>,
+  variable: Variable,
+  factorSummaryByKey: Map<string, FactorLevelSummary>,
+  getRowValue: (row: any, columnIndex: number) => unknown,
+  toNumberOrThrow: (value: unknown, label: string) => number
+): EncodedTermColumn[] => {
+  const summary = factorSummaryByKey.get(getVariableKey(variable));
+  const value = getRowValue(row, variable.columnIndex);
+
+  if (!summary) {
+    return [{
+      name: variable.name,
+      value: toNumberOrThrow(value, variable.name),
+    }];
+  }
+
+  const coding = encodeTreatmentContrastsForPlum(value, summary.levels, summary.referenceLevel);
+  const activeLevels = summary.levels.filter((level) => level !== summary.referenceLevel);
+
+  return activeLevels.map((level, index) => ({
+    name: buildFactorColumnName(summary.variableName, level),
+    value: coding[index] ?? 0,
+  }));
+};
+
+const buildVariableColumnTemplate = (
+  variable: Variable,
+  factorSummaryByKey: Map<string, FactorLevelSummary>
+): EncodedTermColumn[] => {
+  const summary = factorSummaryByKey.get(getVariableKey(variable));
+
+  if (!summary) {
+    return [{ name: variable.name, value: 1 }];
+  }
+
+  return summary.levels
+    .filter((level) => level !== summary.referenceLevel)
+    .map((level) => ({
+      name: buildFactorColumnName(summary.variableName, level),
+      value: 1,
+    }));
+};
+
+const buildInteractionColumns = (encodedVariables: EncodedTermColumn[][]): EncodedTermColumn[] => {
+  return encodedVariables.reduce<EncodedTermColumn[]>(
+    (columns, variableColumns) => {
+      const nextColumns: EncodedTermColumn[] = [];
+      for (const left of columns) {
+        for (const right of variableColumns) {
+          nextColumns.push({
+            name: left.name ? `${left.name}*${right.name}` : right.name,
+            value: left.value * right.value,
+          });
+        }
+      }
+      return nextColumns;
+    },
+    [{ name: "", value: 1 }]
+  );
+};
+
 export const buildPlumParameterMetadata = (
   factorSummaries: FactorLevelSummary[],
   currentColumnOffset: number
@@ -193,6 +270,7 @@ export const buildOrdinalPlumDesignMatrix = (
   const { rows, factors, covariates, interactions, getRowValue, toNumberOrThrow } = input;
   const warnings: string[] = [];
   const locationTermNames: string[] = [];
+  const interactionColumnCounts: Record<string, number> = {};
   const referenceCategories: Record<string, string> = {};
 
   const factorSummaries: FactorLevelSummary[] = factors.map((factor) => {
@@ -204,6 +282,9 @@ export const buildOrdinalPlumDesignMatrix = (
     referenceCategories[factor.name] = summary.referenceLevel;
     return summary;
   });
+  const factorSummaryByKey = new Map(
+    factors.map((factor, index) => [getVariableKey(factor), factorSummaries[index]])
+  );
 
   const levelWarningThreshold = Math.max(20, Math.floor(Math.sqrt(Math.max(rows.length, 1))));
   factorSummaries.forEach((summary) => {
@@ -226,12 +307,17 @@ export const buildOrdinalPlumDesignMatrix = (
   for (const summary of factorSummaries) {
     for (const level of summary.levels) {
       if (level === summary.referenceLevel) continue;
-      locationTermNames.push(`${summary.variableName}=${level}`);
+      locationTermNames.push(buildFactorColumnName(summary.variableName, level));
     }
   }
 
   for (const interaction of interactions) {
-    locationTermNames.push(interaction.name);
+    const encodedVariables = interaction.variables.map((variable) =>
+      buildVariableColumnTemplate(variable, factorSummaryByKey)
+    );
+    const interactionColumns = buildInteractionColumns(encodedVariables);
+    interactionColumnCounts[interaction.id] = interactionColumns.length;
+    interactionColumns.forEach((column) => locationTermNames.push(column.name));
   }
 
   const locationDesignMatrix = rows.map((row) => {
@@ -251,11 +337,11 @@ export const buildOrdinalPlumDesignMatrix = (
     }
 
     for (const interaction of interactions) {
-      const product = interaction.variables.reduce((acc, variable) => {
-        const value = getRowValue(row, variable.columnIndex);
-        return acc * toNumberOrThrow(value, variable.name);
-      }, 1);
-      rowValues.push(product);
+      const encodedVariables = interaction.variables.map((variable) =>
+        encodeVariableForRow(row, variable, factorSummaryByKey, getRowValue, toNumberOrThrow)
+      );
+      const interactionColumns = buildInteractionColumns(encodedVariables);
+      rowValues.push(...interactionColumns.map((column) => column.value));
     }
 
     return rowValues;
@@ -266,6 +352,7 @@ export const buildOrdinalPlumDesignMatrix = (
   return {
     locationDesignMatrix,
     locationTermNames,
+    interactionColumnCounts,
     factorLevelMetadata,
     factorLevelSummaries: factorSummaries,
     referenceCategories,

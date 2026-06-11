@@ -16,24 +16,47 @@ export const formatCaseProcessingSummary = (
   const missing = Number(summary.missingN ?? Math.max(0, total - valid));
   const totalSafe = total > 0 ? total : valid + missing;
   const variableLabel = summary.variableLabel || "Ordinal Regression";
+  const formatPercent = (fraction: number) =>
+    Number.isFinite(fraction) ? `${(fraction * 100).toFixed(1)}%` : "0.0%";
+  const nToPercent = (n: number) => valid > 0 ? n / valid : 0;
 
   const rows = Array.isArray(summary.categories)
     ? summary.categories.map((category: any) => ({
       rowHeader: [variableLabel, String(category.label ?? "")],
       n: Number(category.n ?? 0),
-      percent: valid > 0 ? `${(((category.n ?? 0) / valid) * 100).toFixed(1)}%` : "0.0%",
+      percent: formatPercent(
+        typeof category.percent === "number" ? category.percent : nToPercent(Number(category.n ?? 0))
+      ),
     }))
     : [];
+
+  if (Array.isArray(summary.factors)) {
+    for (const factor of summary.factors) {
+      const factorLabel = factor.variableLabel || factor.variableName || "Factor";
+      if (!Array.isArray(factor.levels)) continue;
+
+      factor.levels.forEach((level: any) => {
+        const n = Number(level.n ?? 0);
+        rows.push({
+          rowHeader: [factorLabel, String(level.label ?? level.value ?? "")],
+          n,
+          percent: formatPercent(
+            typeof level.percent === "number" ? level.percent : nToPercent(n)
+          ),
+        });
+      });
+    }
+  }
 
   rows.push({
     rowHeader: ["Overall", "Valid"],
     n: valid,
-    percent: totalSafe > 0 ? `${((valid / totalSafe) * 100).toFixed(1)}%` : "0.0%",
+    percent: formatPercent(totalSafe > 0 ? valid / totalSafe : 0),
   });
   rows.push({
     rowHeader: ["Overall", "Missing"],
     n: missing,
-    percent: totalSafe > 0 ? `${((missing / totalSafe) * 100).toFixed(1)}%` : "0.0%",
+    percent: formatPercent(totalSafe > 0 ? missing / totalSafe : 0),
   });
   rows.push({
     rowHeader: ["Overall", "Total"],
@@ -48,7 +71,7 @@ export const formatCaseProcessingSummary = (
       {
         columnHeaders: [
           { header: "N", key: "n" },
-          { header: "Percent", key: "percent" },
+          { header: "Marginal Percentage", key: "percent" },
         ],
         rows,
       },
