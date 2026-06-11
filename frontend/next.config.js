@@ -1,5 +1,14 @@
 const path = require('path');
 
+const driveRoot = path.parse(__dirname).root;
+const windowsSystemWatchIgnores = [
+    path.join(driveRoot, 'pagefile.sys'),
+    path.join(driveRoot, 'swapfile.sys'),
+    path.join(driveRoot, 'hiberfil.sys'),
+    path.join(driveRoot, 'System Volume Information'),
+    path.join(driveRoot, '$RECYCLE.BIN'),
+].map((entry) => entry.replace(/\\/g, '/'));
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     reactStrictMode: true,
@@ -24,6 +33,13 @@ const nextConfig = {
                 '**/.next-dev/**',
                 '**/dist/**',
                 '**/target/**',
+                '**/pagefile.sys',
+                '**/swapfile.sys',
+                '**/hiberfil.sys',
+                '**/System Volume Information/**',
+                '**/$RECYCLE.BIN/**',
+                ...windowsSystemWatchIgnores,
+                ...windowsSystemWatchIgnores.map((entry) => `${entry}/**`),
             ],
         };
 

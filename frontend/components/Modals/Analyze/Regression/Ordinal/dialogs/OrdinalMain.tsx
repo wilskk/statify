@@ -523,6 +523,7 @@ const OrdinalMain: React.FC = () => {
       const {
         locationDesignMatrix,
         locationTermNames,
+        interactionColumnCounts,
         factorLevelMetadata,
         factorLevelSummaries,
         referenceCategories,
@@ -654,9 +655,11 @@ const OrdinalMain: React.FC = () => {
               };
             }),
             ...interactionTerms.map((interaction) => ({
+              id: interaction.id,
               name: interaction.name,
               columnIndex: null,
               role: "interaction",
+              encodedColumnCount: interactionColumnCounts[interaction.id] ?? 1,
               variables: interaction.variables.map((variable) => ({
                 name: variable.name,
                 columnIndex: variable.columnIndex,
